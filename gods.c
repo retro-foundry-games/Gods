@@ -1,17 +1,9 @@
 /* Gods (Bitmap Brothers, 1991), PAL original disks: the game, decompiled.
  *
- * Built with m68k-amigaos-gcc for a 68000 A500 (see flake.nix); the game's variables live at their original
- * addresses, defined by gods.ld.  Every function carries its original address as `orig $ADDR` so it can be matched
+ * Built with m68k-amigaos-gcc for a 68000 A500 (see flake.nix).  The data is in data.c, declared in gods.h, and is
+ * placed at the original addresses by gods.ld.  Every function carries its original address as `orig $ADDR` so it can be matched
  * with the original code.  Progress and method: PLAN.md.  Evidence for each recovered fact: analysis/. */
-#include <stddef.h>
-#include <stdint.h>   /* uintptr_t */
-
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef int8_t s8;
-typedef int16_t s16;
-typedef int32_t s32;
+#include "gods.h"
 
 /* ---- Amiga custom chip registers, base $DFF000 ---------------------------------------------------------------- */
 
@@ -69,41 +61,6 @@ _Static_assert(offsetof(struct Custom, color) == 0x180, "custom layout");
 #define DMAF_BLITHOG 0x0400     /* blitter priority over the CPU */
 #define DMAF_BLTBUSY 0x4000     /* in dmaconr */
 
-/* ---- the screen -------------------------------------------------------------------------------------------------- */
-
-enum { SCREEN_WORDS = 20, SCREEN_ROWS = 200, SCREEN_PLANES = 5 };
-
-/* 320x200, five bitplanes, each plane stored whole (8000 bytes) one after the other */
-struct Screen {
-    u16 plane[SCREEN_PLANES][SCREEN_ROWS][SCREEN_WORDS];
-};
-
-/* A stored picture: a header word, its 16 colours, then the four low bitplanes interleaved word by word */
-struct Picture {
-    u16 header;
-    u16 palette[16];
-    u16 data[];
-};
-
-/* ---- game variables, at their original addresses (gods.ld) ------------------------------------------------------- */
-
-extern u16 *palette_ptr;              /* $1AF6  the 32-word colour table that the interrupt copies to the chip */
-extern volatile u16 palette_dirty;              /* $2CC2  non-zero: copy the colour table to COLOR00..31 at the next VBL */
-extern volatile u16 vbl_saturating;             /* $2CC4  frames counter, stops at $7FFF */
-extern volatile u16 vbl_count;                 /* $2CC6  frames counter, wraps */
-extern struct Screen *screen_front;    /* $2940  the screen being drawn to */
-extern struct Screen *screen_back;     /* $2944  the second screen */
-extern struct Picture title_picture;      /* $3A62 */
-extern struct Picture background_picture; /* $134A6 */
-extern volatile u8 fade_done;          /* $2948  set to $FF when a palette fade has finished */
-extern u16 palette[32];                /* $294A  colour table, copied to COLOR00..31 by the interrupt */
-extern volatile u16 music_enabled;     /* $1DD2  non-zero: the interrupt plays the music */
-extern volatile u16 fire_pressed;      /* $1DD4  set by the interrupt when a fire button is seen */
-extern volatile u16 input_seen;        /* $1E3C  set together with fire_pressed, stops the button polling */
-extern volatile u32 ticks;             /* $1E3E  frames since the intro started, counted by the interrupt */
-
-void game_start(void);   /* orig $000CC8: what follows a fire button; not executed in the recording */
-void intro_story(void);  /* orig $000F1E */
 
 /* ---- palette ------------------------------------------------------------------------------------------------------- */
 
@@ -274,62 +231,12 @@ void nothing(void)
 {
 }
 
-/* ---- the ProTracker module and its replayer ---------------------------------------------------------------------- */
-
-struct Sample {
-    u8 name[22];
-    u16 length;       /* in words */
-    u16 volume;       /* finetune and volume, read together */
-    u16 loop_start;   /* in words */
-    u16 loop_length;  /* in words */
-};
-
-struct Module {
-    u8 title[20];
-    struct Sample sample[31];
-    u8 song_length;
-    u8 restart;
-    u8 order[128];
-    u8 tag[4];
-    u8 patterns[];    /* 1024 bytes per pattern: 64 rows of four 4-byte cells */
-};
-_Static_assert(offsetof(struct Module, order) == 0x3b8, "module layout");
-_Static_assert(offsetof(struct Module, patterns) == 0x43c, "module layout");
-
-struct Channel {
-    u8 cell[4];       /* +00 the current pattern cell: sample/period high, period low, sample low/effect, parameter */
-    u32 sample;       /* +04 start of the sample data */
-    u16 length;       /* +08 length in words */
-    u32 loop;         /* +0A loop start address */
-    u16 loop_length;  /* +0E loop length in words */
-    u16 period;       /* +10 */
-    u16 volume;       /* +12 */
-    u16 dma;          /* +14 this channel's DMA bit */
-    u8 porta_down;    /* +16 tone portamento direction */
-    u8 porta_speed;   /* +17 */
-    u16 porta_target; /* +18 */
-    u8 vibrato;       /* +1A speed and depth */
-    u8 vibrato_pos;   /* +1B */
-};
-_Static_assert(sizeof(struct Channel) == 0x1c, "channel layout");
-
-#define module ((struct Module *)0x1b6f2)
-extern struct Channel channel[4];      /* $28D0 */
-extern u32 sample_start[31];           /* $2854  start of each sample's data, set by music_init */
-extern u16 period_table[];             /* $2800  the 37 periods of the ProTracker table, three octaves */
-extern u8 vibrato_table[32];           /* $27E0 */
-extern u8 music_speed;                 /* $284C  ticks per row */
-extern u8 music_order;                 /* $284D  position in the order table */
-extern u16 music_row;                  /* $284E  byte offset of the row in the pattern, 16 per row */
-extern u8 music_tick;                  /* $2850 */
-extern u8 music_jump;                  /* $2851  pattern break requested */
-extern u16 music_dma;                  /* $2852  DMA bits of the channels started on this row */
 
 /* orig $002242: find where the sample data starts (after the last pattern used), record each sample's address and
  * silence the four channels */
 void music_init(void)
 {
-    const u8 *order = module->order;
+    const u8 *order = module.order;
     u8 highest = 0, entry = 0;   /* highest pattern number seen so far, and the entry being looked at */
     u16 count = 0x7f;
     u8 *data;
@@ -347,11 +254,11 @@ void music_init(void)
         }
     }
 scanned:
-    data = module->patterns + ((u32)(u8)(highest + 1) << 10);   /* the sample data follows the last pattern */
+    data = module.data + ((u32)(u8)(highest + 1) << 10);   /* the sample data follows the last pattern */
     for (i = 0; i < 31; i++) {
         *(u32 *)data = 0;
         sample_start[i] = (u32)data;
-        data += (u32)module->sample[i].length * 2;
+        data += (u32)module.sample[i].length * 2;
     }
     music_speed = 6;
     custom->aud[0].vol = 0;
@@ -388,7 +295,7 @@ static u32 channel_row(struct Channel *ch, volatile struct AudioChannel *hw, con
     offset += 4;
     number = (ch->cell[2] >> 4) | (ch->cell[0] & 0xf0);
     if (number != 0) {
-        const struct Sample *smp = &module->sample[number - 1];
+        const struct Sample *smp = &module.sample[number - 1];
 
         ch->sample = sample_start[number - 1];
         ch->length = smp->length;
@@ -556,8 +463,8 @@ void music_step(void)
     }
     music_tick = 0;
     {
-        const u8 *patterns = module->patterns;
-        u32 offset = (u32)module->order[music_order] << 10;
+        const u8 *patterns = module.data;
+        u32 offset = (u32)module.order[music_order] << 10;
 
         offset = (u16)(offset + music_row);
         music_dma = 0;
@@ -582,7 +489,7 @@ void music_step(void)
         music_row = 0;
         music_jump = 0;
         music_order = (music_order + 1) & 0x7f;
-        if (music_order == module->song_length)
+        if (music_order == module.song_length)
             music_order = 0;
     }
 advance:
@@ -590,7 +497,7 @@ advance:
         music_row = 0;
         music_jump = 0;
         music_order = (music_order + 1) & 0x7f;
-        if (music_order == module->song_length)
+        if (music_order == module.song_length)
             music_order = 0;
     }
 }
@@ -712,14 +619,12 @@ void palette_fade_out(u16 frames)
 void screens_flip(void)
 {
     struct Screen *shown = screen_back;
-    u32 copper;
 
     if (fire_pressed != 0)
         game_start();   /* not executed in the recording: a fire button was pressed */
     screen_back = screen_front;
     screen_front = shown;
-    copper = (u32)screen_back == 0x6c780 ? 0xfc : 0xa8;
-    custom->cop1lc = copper;
+    custom->cop1lc = ADDR(screen_back == &screen_b ? copper_b.words : copper_a.words);
     vbl_saturating = 0;
     vbl_wait();
 }
@@ -771,21 +676,76 @@ __attribute__((interrupt)) void irq_level3(void)
     vbl_housekeeping();
 }
 
+/* ---- text ---------------------------------------------------------------------------------------------------------- */
+
+/* one entry of the image table: the glyphs of both fonts and the title letters */
+
+/* orig $0038E0: draw `text` in the large font, 16 pixels per character, from pixel column x */
+void text_draw_at(const char *text, u16 x, u16 y)
+{
+    for (;;) {
+        s16 ch = (s8)*text++;
+
+        if (ch == 0)
+            return;
+        if (ch != ' ')
+            glyph_draw(x, y, ch + font_offset - 'A');
+        x += 16;
+    }
+}
+
+/* orig $0038C6: draw `text` in the large font, centred on the screen */
+void text_draw(const char *text, u16 y)
+{
+    u16 width = 0;
+    const char *p = text;
+
+    while (*p++ != 0)
+        width += 8;
+    text_draw_at(text, 0xa0 - width, y);
+}
+
+/* orig $003926: draw `text` in the small font, 8 pixels per character, from pixel column x */
+void text_small_at(const char *text, u16 x, u16 y)
+{
+    for (;;) {
+        s16 ch = (s8)*text++;
+
+        if (ch == 0)
+            return;
+        if (ch != ' ')
+            glyph_draw(x, y, ch + 9);
+        x += 8;
+    }
+}
+
+/* orig $00390C: draw `text` in the small font, centred on column $F6 (the right-hand part of the screen) */
+void text_small_line(const char *text, s16 y)
+{
+    u16 width = 0;
+    const char *p = text;
+
+    while (*p++ != 0)
+        width += 4;
+    text_small_at(text, 0xf6 - width, y);
+}
+
 /* ---- the intro: a script of timed steps ----------------------------------------------------------------------------- */
 /* The program runs the intro once, waits for the end of its music, fades out and starts again.  Each step waits for
  * `ticks` (counted by the interrupt) to reach a value, so the sequence is driven by the time since the intro began. */
 
-#define STR(addr) ((const u8 *)(addr))     /* text at an original address */
-#define PAL(addr) ((const u16 *)(addr))    /* a table of 16 colours at an original address */
 
-extern u8 draw_flag;                   /* $2CB0  set while the sprite and text routines should also draw the shadow */
-extern u16 text_colour;                /* $394A  */
-extern u16 scroll_y;                   /* $169A  vertical position of the line being scrolled */
-extern u16 scroll_step;                /* $169E  */
-
-void text_draw(const u8 *text, u16 y);                 /* orig $0038C6 */
-const u8 *text_line(const u8 *text, s16 y);            /* orig $00390C */
-void sprite_draw(u16 x, u16 y, u16 index);             /* orig $003950 */
+/* the colours the intro fades to (the same table appears twice in the original) */
+static const u16 palette_intro[16] = {
+    0x000, 0x343, 0x111, 0x122, 0x334, 0x444, 0x554, 0x777, 0x200, 0x420, 0x530, 0x641, 0x750, 0x031, 0x762, 0x233,
+};
+/* the white that the fade-in-fast starts from */
+static const u16 palette_white[16] = {
+    0x000, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee,
+};
+static const u16 palette_white_text[16] = {
+    0x000, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xffff,
+};
 
 static void wait_ticks(u32 until)
 {
@@ -793,74 +753,89 @@ static void wait_ticks(u32 until)
         ;
 }
 
-/* orig $0016A0: draw a list of text lines from y downwards, 12 lines apart, until one starts with a byte >= $80 */
-static void text_list_draw(const u8 *list)
+/* four lines of the story, shown one by one scrolling up the screen; the last entry is NULL */
+struct Verse {
+    const char *line[5];
+};
+
+static const struct Verse verse[8] = {
+    { { "any man may", "earn through", "skill and courage", "a single favour", 0 } },
+    { { "if he will face", "the fear of the", "ancient city", 0 } },
+    { { "and slay the four", "great guardians", "who have stolen", "our citadel", 0 } },
+    { { "our hero stands", "before the gods", "and asks that", 0 } },
+    { { "if he fulfils", "their quest", "he will join them", "as an equal", 0 } },
+    { { "only the hope", "of the", "heroGs failure" /* G draws an apostrophe */, "comforts them", 0 } },
+    { { "the warrior", "departs for the", "city of legends", 0 } },
+    { { "preparing to", "carve one more", "story on", "its walls", 0 } },
+};
+
+/* orig $0016A0: draw the lines of a verse from scroll_y downwards, 12 rows apart */
+static void verse_draw(const struct Verse *v)
 {
     s16 y = scroll_y;
+    int i;
 
-    while ((s8)*list >= 0) {
-        list = text_line(list, y);
+    for (i = 0; v->line[i] != 0; i++) {
+        text_small_line(v->line[i], y);
         y += 12;
     }
 }
 
-/* orig $001608: scroll a list of text lines up the screen from below, one pixel per frame */
-static void text_list_scroll(const u8 *list)
+/* orig $001608: scroll a verse up the screen from below, one row per frame */
+static void verse_scroll(const struct Verse *v)
 {
     scroll_y = 0xc8;
     scroll_step = 1;
     do {
         scroll_y--;
         background_show_right();
-        text_list_draw(list);
+        verse_draw(v);
         screens_flip_after(1);
     } while ((s16)scroll_y > -60);
 }
 
-/* orig $00190C: four credit screens, each faded in and out */
-static void intro_credits(void)
+/* "Renegade presents a Bitmap Brothers game": each line fades in and out */
+struct PresentsPage {
+    const char *text;
+    u32 fade_in_at;     /* ticks */
+    u32 fade_out_at;
+};
+
+static const struct PresentsPage presents[4] = {
+    { "RENEGADE", 0x00, 0x5a },
+    { "PRESENTS", 0xc2, 0x120 },
+    { "A BITMAP BROTHERS", 0x180, 0x1d8 },
+    { "GAME", 0x241, 0x299 },
+};
+
+/* orig $00190C */
+static void intro_presents(void)
 {
+    int i;
+
     screen_clear();
-    text_colour = 0x30;
-    text_draw(STR(0x1da8), 0x50);
-    screens_flip();
-    palette_fade_in(PAL(0xe98), 1);
-    wait_ticks(0x5a);
-    palette_fade_out(1);
-    screen_clear();
-    text_draw(STR(0x1db1), 0x50);
-    screens_flip();
-    wait_ticks(0xc2);
-    palette_fade_in(PAL(0xe98), 1);
-    wait_ticks(0x120);
-    palette_fade_out(1);
-    screen_clear();
-    text_draw(STR(0x1dba), 0x50);
-    screens_flip();
-    wait_ticks(0x180);
-    palette_fade_in(PAL(0xe98), 1);
-    wait_ticks(0x1d8);
-    palette_fade_out(1);
-    screen_clear();
-    text_draw(STR(0x1dcc), 0x50);
-    screens_flip();
-    wait_ticks(0x241);
-    palette_fade_in(PAL(0xe98), 1);
-    wait_ticks(0x299);
-    palette_fade_out(1);
+    font_offset = 0x30;
+    for (i = 0; i < 4; i++) {
+        if (i != 0)
+            screen_clear();
+        text_draw(presents[i].text, 0x50);
+        screens_flip();
+        wait_ticks(presents[i].fade_in_at);
+        palette_fade_in(palette_intro, 1);
+        wait_ticks(presents[i].fade_out_at);
+        palette_fade_out(1);
+    }
 }
 
 /* orig $001B16: the seven letters of the title, each drawn from its own image */
 static void title_letters(void)
 {
+    u16 x;
+    u16 index = 0x29;
+
     draw_flag = 1;
-    sprite_draw(0x3c, 0x10, 0x29);
-    sprite_draw(0x5c, 0x10, 0x2a);
-    sprite_draw(0x7c, 0x10, 0x2b);
-    sprite_draw(0x9c, 0x10, 0x2c);
-    sprite_draw(0xbc, 0x10, 0x2d);
-    sprite_draw(0xdc, 0x10, 0x2e);
-    sprite_draw(0xfc, 0x10, 0x2f);
+    for (x = 0x3c; x <= 0xfc; x += 0x20)
+        sprite_draw(x, 0x10, index++);
 }
 
 /* orig $001AFA: the title picture and its letters */
@@ -878,15 +853,15 @@ static void intro_logo(void)
     title_screen();
     screens_flip();
     wait_ticks(0x300);
-    palette_fade_in(PAL(0x18ac), 0);
-    palette_fade_to(PAL(0x18ec), 1);
+    palette_fade_in(palette_white, 0);
+    palette_fade_to(palette_intro, 1);
     wait_ticks(0x366);
     palette_ptr += 16;   /* the second set of 16 colours */
     palette_fade_in(title_picture.palette, 2);
     palette_ptr -= 16;
     wait_ticks(0x3c7);
-    palette_fade_in_fast(PAL(0x18ac), 0);
-    palette_fade_to(PAL(0x18ec), 1);
+    palette_fade_in_fast(palette_white, 0);
+    palette_fade_to(palette_intro, 1);
     palette_ptr += 16;
     wait_ticks(0x489);
     palette_fade_out(1);
@@ -895,64 +870,72 @@ static void intro_logo(void)
     palette_fade_out(1);
 }
 
-/* orig $0014F6: the hero scrolls in, then lines of the story scroll up the screen */
-static void intro_text_scroll(void)
+/* orig $0014F6: the hero appears and the story scrolls up the screen */
+static void intro_story(void)
 {
+    int i;
+
     background_show();
     screens_flip();
     wait_ticks(0x53e);
-    palette_fade_in_fast(PAL(0x18cc), 0);
+    palette_fade_in_fast(palette_white_text, 0);
     palette_fade_to(background_picture.palette, 1);
     background_show();
     wait_ticks(0x608);
     screens_flip();
     wait_ticks(0x669);
     draw_flag = 0;
-    text_list_scroll(STR(0x170a));
-    text_list_scroll(STR(0x1746));
-    text_list_scroll(STR(0x1774));
+    verse_scroll(&verse[0]);
+    verse_scroll(&verse[1]);
+    verse_scroll(&verse[2]);
     wait_ticks(0xd28);
     palette_fade_out(1);
     wait_ticks(0xd63);
-    palette_fade_in_fast(PAL(0x18cc), 0);
+    palette_fade_in_fast(palette_white_text, 0);
     palette_fade_to(background_picture.palette, 1);
-    text_list_scroll(STR(0x17b3));
-    text_list_scroll(STR(0x17e2));
-    {
-        int i;
-
-        for (i = 0; i < 100; i++)
-            vbl_wait();
-    }
-    text_list_scroll(STR(0x181b));
-    text_list_scroll(STR(0x184e));
-    text_list_scroll(STR(0x187b));
+    verse_scroll(&verse[3]);
+    verse_scroll(&verse[4]);
+    for (i = 0; i < 100; i++)
+        vbl_wait();
+    verse_scroll(&verse[5]);
+    verse_scroll(&verse[6]);
+    verse_scroll(&verse[7]);
     wait_ticks(0x1900);
     palette_fade_out(3);
 }
 
-/* orig $000EB8: the whole intro */
-void intro_run(void)
+/* a page of the production credits: up to three lines of text */
+struct TeamPage {
+    struct {
+        const char *text;
+        u16 y;
+    } line[3];
+    u32 until;          /* ticks */
+};
+
+static const struct TeamPage team[7] = {
+    { { { "PRODUCTION TEAM", 0x50 } }, 0x1986 },
+    { { { "CODE", 0x46 }, { "STEVE TALL", 0x64 } }, 0x19ea },
+    { { { "GRAPHICS", 0x46 }, { "MARK COLEMAN", 0x64 } }, 0x1a49 },
+    { { { "DESIGN", 0x46 }, { "ERIC MATTHEWS", 0x64 }, { "STEVE TALL", 0x7a } }, 0x1aa8 },
+    { { { "MUSIC", 0x46 }, { "NATION XII", 0x64 } }, 0x1b07 },
+    { { { "MUSIC CODE AND SFX", 0x46 }, { "RICHARD JOSEPH", 0x64 } }, 0x1b66 },
+    { { { "ADDITIONAL CODE", 0x46 }, { "MIKE MONTGOMERY", 0x64 } }, 0x1bc5 },
+};
+
+/* the fade-in that every page of the credits ends with */
+static void team_fade(u16 frames)
 {
-    intro_credits();
-    intro_logo();
-    intro_text_scroll();
-    intro_story();
+    palette_fade_in_fast(palette_white, 0);
+    palette_fade_to(palette_intro, frames);
 }
 
-/* the fade-in that every story page ends with */
-static void story_page_fade(u16 frames)
+/* orig $000F1E: the title picture with the production credits over it */
+static void intro_team(void)
 {
-    palette_fade_in_fast(PAL(0x18ac), 0);
-    palette_fade_to(PAL(0x18ec), frames);
-}
+    int i, l;
 
-/* orig $000F1E: the title picture with the pages of the story over it */
-void intro_story(void)
-{
-    int i;
-
-    text_colour = 0;
+    font_offset = 0;
     draw_flag = 1;
     picture_show_title();
     plane5_set();
@@ -962,78 +945,40 @@ void intro_story(void)
     palette_fade_in(title_picture.palette, 1);
     palette_ptr -= 16;
     for (i = 0; i < 16; i++)
-        palette[i] = PAL(0x18ec)[i] * 2;
+        palette[i] = palette_intro[i] * 2;
     palette_dirty = 0xffff;
 
-    picture_show_title();
-    plane5_set();
-    text_draw(STR(0x144c), 0x50);
-    wait_ticks(0x1986);
-    screens_flip();
-    story_page_fade(1);
-
-    picture_show_title();
-    plane5_set();
-    text_draw(STR(0x145c), 0x46);
-    text_draw(STR(0x1461), 0x64);
-    wait_ticks(0x19ea);
-    screens_flip();
-    story_page_fade(1);
-
-    picture_show_title();
-    plane5_set();
-    text_draw(STR(0x146c), 0x46);
-    text_draw(STR(0x1475), 0x64);
-    wait_ticks(0x1a49);
-    screens_flip();
-    story_page_fade(1);
-
-    picture_show_title();
-    plane5_set();
-    text_draw(STR(0x1482), 0x46);
-    text_draw(STR(0x1489), 0x64);
-    text_draw(STR(0x1497), 0x7a);
-    wait_ticks(0x1aa8);
-    screens_flip();
-    story_page_fade(1);
-
-    picture_show_title();
-    plane5_set();
-    text_draw(STR(0x14a2), 0x46);
-    text_draw(STR(0x14a8), 0x64);
-    wait_ticks(0x1b07);
-    screens_flip();
-    story_page_fade(1);
-
-    picture_show_title();
-    plane5_set();
-    text_draw(STR(0x14b3), 0x46);
-    text_draw(STR(0x14c6), 0x64);
-    wait_ticks(0x1b66);
-    screens_flip();
-    story_page_fade(1);
-
-    picture_show_title();
-    plane5_set();
-    text_draw(STR(0x14d5), 0x46);
-    text_draw(STR(0x14e5), 0x64);
-    wait_ticks(0x1bc5);
-    screens_flip();
-    story_page_fade(1);
-
+    for (i = 0; i < 7; i++) {
+        picture_show_title();
+        plane5_set();
+        for (l = 0; l < 3 && team[i].line[l].text != 0; l++)
+            text_draw(team[i].line[l].text, team[i].line[l].y);
+        wait_ticks(team[i].until);
+        screens_flip();
+        team_fade(1);
+    }
     picture_show_title();
     plane5_set();
     title_letters();
     wait_ticks(0x1c24);
     screens_flip();
-    story_page_fade(1);
+    team_fade(1);
 
     screen_restore();
-    text_draw(STR(0x124e), 0x64);
+    text_draw("INTO THE WONDERFUL", 0x64);
     wait_ticks(0x1d49);
     screens_flip();
-    palette_fade_in_fast(PAL(0x18ac), 0);
-    palette_fade_to(PAL(0x18ec), 3);
+    palette_fade_in_fast(palette_white, 0);
+    palette_fade_to(palette_intro, 3);
+}
+
+/* orig $000EB8: the whole intro */
+void intro_run(void)
+{
+    intro_presents();
+    intro_logo();
+    intro_story();
+    intro_team();
 }
 
 /* ---- the program ---------------------------------------------------------------------------------------------------- */
@@ -1048,39 +993,35 @@ void intro_setup(void);   /* orig $000E06 */
  * enabled. */
 void game_main(void)
 {
-    volatile u32 *vector = (volatile u32 *)0;
     volatile u32 i;
     int s;
 
-    vector[0x84 / 4] = 0x4e714e71;   /* the loader's jump into the program is overwritten with NOPs */
-    vector[0x88 / 4] = 0x4e714e71;
     custom->intena = 0x7fff;
     custom->intreq = 0x7fff;
     custom->dmacon = 0x7fff;
-    custom->cop1lc = 0xf8;
-    custom->cop2lc = 0xf8;
+    custom->cop1lc = ADDR(copper_a.end);   /* an empty list until the screens are set up */
+    custom->cop2lc = ADDR(copper_a.end);
     custom->copjmp1 = 0;
-    screen_front = (struct Screen *)0x763c0;
-    screen_back = (struct Screen *)0x6c780;
+    screen_front = &screen_a;
+    screen_back = &screen_b;
     palette_clear();
     for (s = 0; s < 16; s++) {
         custom->color[s] = palette[s];
         custom->color[16 + s] = palette[s];
     }
-    vector[0x84 / 4] = 0xb9a;   /* the trap vector; the original then executes TRAP #1 */
 
-    vector[0] = 0x38;
+    vectors[0] = ADDR(&vectors[VECTOR_SPRITE_TARGET]);
     for (s = 0; s < 8; s++)
-        custom->sprpt[s] = 0x38;
+        custom->sprpt[s] = ADDR(&vectors[VECTOR_SPRITE_TARGET]);   /* sprite DMA is off; point them somewhere harmless */
     custom->intena = 0x7fff;
     custom->intreq = 0x7fff;
     custom->dmacon = 0x7fff;
-    custom->cop1lc = 0xfc;
-    custom->cop2lc = 0xfc;
+    custom->cop1lc = ADDR(copper_b.words);
+    custom->cop2lc = ADDR(copper_b.words);
     custom->copjmp1 = 0;
     custom->dmacon = 0x83c0;   /* master, bitplane, copper and blitter DMA on */
     ticks = 0;
-    vector[0x6c / 4] = (u32)irq_level3;
+    vectors[VECTOR_LEVEL3] = ADDR(irq_level3);
     custom->intena = 0xc020;   /* master enable and vertical blank */
     (void)custom->intreqr;
     (void)custom->intenar;
