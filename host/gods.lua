@@ -6,6 +6,17 @@
 --
 -- Needs the A500 Kickstart 1.3 (CRC32 c4f0f55f) in ../local/system and ../local/gods-disk1.adf.
 -- ../local/gods.m3u (create: printf 'gods-disk1.adf\ngods-disk2.adf\n' > local/gods.m3u) lists both disks: the core's multidrive option puts disk 1 in DF0 and disk 2 in DF1.
+local script_args = ami.args or ""
+local record_dir = script_args:match("record=(%S+)")
+local compare_dir = script_args:match("compare=(%S+)")
+local recorder
+if record_dir or compare_dir then
+    recorder = {
+        "/usr/bin/env", "python3", ami.script_dir .. "/../../../tools/amiga/frame_recorder.py",
+        record_dir and "--out" or "--compare", record_dir or compare_dir,
+    }
+end
+
 ami.machine{
     name = "Gods",
     model = "A500",
@@ -13,12 +24,17 @@ ami.machine{
     save = "../local/save",
     content = "../local/gods.m3u",
     roms = { { "kick34005.A500", 0xc4f0f55f } },
+    peers = recorder and { recorder = recorder } or nil,
 }
 ami.boot()
 
 -- Script flags (--script-args "..."):
 --   load=NAME            restore snapshot NAME (a file in ../local/save) before running; frames below count from it
 --   snap=F[,F...]        save snapshot gods-F.state at frame F (relative to the start or the loaded snapshot)
+--   record=DIR [screen=N]  stream every frame (hash, chip RAM, every Nth screen) to tools/amiga/frame_recorder.py
+--   compare=DIR         compare each frame with a recording; stops at the first difference
+--   until=N             quit after N frames (with record/compare/cover)
+--   cover=PATH          hook chip RAM and write every executed instruction (pc + bytes) to PATH
 --   ram=PATH            write chip RAM (512 KiB) at the end of the events, then quit
 --   shots=DIR frames=F,. write DIR/gods-F.ppm at those frames, then quit (headless checks)
 local args = ami.args or ""
@@ -34,6 +50,73 @@ if load_name then
     if not ami.snapshot_load(load_name) then ami.log("cannot load snapshot", load_name) ami.quit(2) end
 end
 local base = ami.frame()
+local until_frame = tonumber(args:match("until=(%d+)"))
+local screen_every = tonumber(args:match("screen=(%d+)")) or 0
+local cover_path = args:match("cover=(%S+)")
+
+-- Coverage: every even chip RAM address is hooked; a hook records the instruction's bytes and removes itself, and
+-- the executed set is re-armed every REARM frames so that code overlaid at the same address is seen again.
+local covered, cover_order = {}, {}
+local REARM = 1000
+local function on_cover()
+    local pc = ami.reg("pc")
+    local bytes = ami.read(pc, 10)
+    local seen = covered[pc]
+    if not seen then
+        covered[pc] = { bytes }
+        cover_order[#cover_order + 1] = pc
+    else
+        for _, b in ipairs(seen) do
+            if b == bytes then ami.unhook(pc) return end
+        end
+        seen[#seen + 1] = bytes
+    end
+    ami.unhook(pc)
+end
+if cover_path then
+    for a = 0, 0x7fffe, 2 do ami.hook(a, on_cover) end
+end
+
+local function write_cover()
+    table.sort(cover_order)
+    local out = {}
+    for _, pc in ipairs(cover_order) do
+        for _, b in ipairs(covered[pc]) do
+            out[#out + 1] = ("%06x %s"):format(pc, (b:gsub(".", function(c) return ("%02x"):format(c:byte()) end)))
+        end
+    end
+    ami.save_file(cover_path, table.concat(out, "\n") .. "\n")
+    ami.log("coverage", #cover_order, "instructions")
+end
+
+local peer = recorder and ami.peer("recorder")
+local function run_frames()
+    local sent = 0
+    while not until_frame or sent < until_frame do
+        ami.wait(1)
+        local f = ami.frame() - base
+        if cover_path and f > 0 and f % REARM == 0 then
+            for _, pc in ipairs(cover_order) do ami.hook(pc, on_cover) end
+        end
+        if peer then
+            local rgb = ""
+            local w, h = ami.width(), ami.height()
+            if screen_every > 0 and f % screen_every == 0 then rgb = ami.frame_rgb(0, 0, w, h) end
+            local ram = ami.read(0, 0x80000)
+            local msg = "F" .. string.pack("<I4I8I4I4I2I2", f, ami.frame_hash() & 0x7fffffffffffffff, #ram, #rgb, w, h) .. ram .. rgb
+            if not pcall(peer.send, peer, msg) then
+                ami.log("recorder ended at frame", f)
+                ami.quit(1)
+            end
+        end
+        sent = sent + 1
+        if f % 5000 == 0 then ami.log("frame", f) end
+    end
+    if cover_path then write_cover() end
+    if peer then peer:close() end
+    ami.quit(0)
+end
+if peer or cover_path then run_frames() end
 local events = {}
 for _, f in ipairs(frames_of("snap")) do events[#events + 1] = { f, "snap" } end
 if shots_dir then
