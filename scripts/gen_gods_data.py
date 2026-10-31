@@ -45,13 +45,16 @@ def scalar(name, addr, ctype, size):
 
 
 # ---- variables -------------------------------------------------------------------------------------------------------
-add("palette_ptr", 0x1af6, "u16 *palette_ptr = palette_state.colour;   /* the original holds the address of the colour table */")
+add("palette_ptr", 0x1af6, "u16 *palette_ptr = display.palette.colour;   /* the original holds the address of the colour table */")
 add("screen_front", 0x2940, "struct Screen *screen_front;")
 add("screen_back", 0x2944, "struct Screen *screen_back;")
 scalar("draw_flag", 0x2cb0, "u8", 1)
 scalar("font_offset", 0x394a, "u16", 2)
 scalar("scroll_y", 0x169a, "u16", 2)
 scalar("scroll_step", 0x169e, "u16", 2)
+scalar("glyph_plane_size", 0xe96, "u16", 2)
+assert not any(ram[0x3486:0x3888])
+add("blank_plane", 0x3486, "const u16 blank_plane[513] = { 0 };   /* zeros, up to the table at $3888 */")
 
 def struct_def(ctype, name, addr, fields, extra=""):
     """A struct from the original's bytes; fields = (name, offset, size); zero fields are left out."""
@@ -70,8 +73,10 @@ struct_def("struct GameClock", "game_clock", 0x1e3c, [("input_seen", 0, 2), ("ti
 struct_def("struct MusicState", "music", 0x284c, [("speed", 0, 1), ("order", 1, 1), ("row", 2, 2), ("tick", 4, 1),
                                                   ("jump", 5, 1), ("dma", 6, 2)])
 colours = [u16(0x294a + 2 * i) for i in range(32)]
-struct_def("struct PaletteState", "palette_state", 0x2948, [("fade_done", 0, 1), ("unused", 1, 1)],
-           ".colour = {" + ", ".join(f"{c:#05x}" for c in colours) + "}" if any(colours) else "")
+colours = [u16(0x294a + 2 * i) for i in range(32)]
+assert not any(ram[0x2990:0x2990 + 792]) and u16(0x298e) == 0
+add("display", 0x2948, "struct DisplayData display = {\n    .palette = { .fade_done = %d, .unused = %d, .colour = {%s} },\n    .blit = { .plane_stride = %#x },\n};"
+    % (u8(0x2948), u8(0x2949), ", ".join(f"{c:#05x}" for c in colours), u32(0x298a)))
 
 # ---- the music replayer's tables and channels ---------------------------------------------------------------------------
 add("vibrato_table", 0x27e0, "const u8 vibrato_table[32] = {\n" + lines(list(ram[0x27e0:0x2800]), 16, "%d") + "\n};")
@@ -119,7 +124,8 @@ def picture_init(addr):
             + "\n        },\n        .data = {\n" + lines(words, 12, "%#06x", "            ") + "\n        },\n    }")
 
 add("graphics", 0x3a62, "struct Graphics graphics = {\n    .title = " + picture_init(0x3a62) + ",\n    .glyph_sheet = "
-    + picture_init(0xb784) + ",\n    .background = " + picture_init(0x134a6) + ",\n    /* .images is filled in at the start of the program */\n};")
+    + picture_init(0xb784) + ",\n    .background = " + picture_init(0x134a6) + ",\n    /* the table: how to find each image on the glyph sheet; the program turns it into the images' sizes and addresses */\n    .images = { .source = { .count = %d, .entry = {\n%s\n    } } },\n};" % (u16(0x1b1c8), "\n".join(
+        "        { %d, %d, %d, %d, %d }," % tuple(u16(0x1b1ca + 10 * i + 2 * k) for k in range(5)) for i in range(u16(0x1b1c8)))))
 
 # ---- copper lists, the vectors, the screens and the image table -------------------------------------------------------
 def copper(name, addr):
