@@ -135,3 +135,30 @@ def functions(stable: dict[int, tuple[bytes, str, str]]):
         comps.setdefault(find(pc), []).append(pc)
     entries = set(calls) | {pc for pc in order if pc not in has_pred}
     return comps, entries, calls
+
+
+def static_function(ram: bytes, entry: int, known: set[int]):
+    """Complete function body by recursive descent over `ram` from `entry` (calls are not followed).
+
+    Returns {pc: (bytes, mnemonic, operands, executed)}; `executed` says whether the recording ran it.  Stops at the
+    first undecodable instruction (reported as a gap) so that data is never mistaken for code."""
+    from capstone import CS_ARCH_M68K, CS_MODE_BIG_ENDIAN, CS_MODE_M68K_000, Cs
+
+    md = Cs(CS_ARCH_M68K, CS_MODE_M68K_000 | CS_MODE_BIG_ENDIAN)
+    out: dict[int, tuple[bytes, str, str, bool]] = {}
+    work = [entry]
+    while work:
+        pc = work.pop()
+        if pc in out or pc & 1 or not 0x700 <= pc < 0x3a70:
+            continue
+        ins = next(md.disasm(ram[pc : pc + 12], pc), None)
+        if ins is None:
+            continue
+        out[pc] = (bytes(ram[pc : pc + ins.size]), ins.mnemonic, ins.op_str, pc in known)
+        base = ins.mnemonic.split(".")[0]
+        t = branch_target(ins.mnemonic, ins.op_str)
+        if base not in ("bsr", "jsr") and t is not None and base not in ("rts", "rte"):
+            work.append(t)
+        if base not in END_UNCOND:
+            work.append(pc + ins.size)
+    return out
