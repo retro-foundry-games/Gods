@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "id": "gods",
+  "title": "Gods",
+  "config": "local/gods.uae",
+  "engine_root": "../../tools/engine9000/e9k-debugger",
+  "replay_engine": "build/engine9000-replay/e9k-debugger.exe",
+  "system_dir": "local/system",
+  "memory": [
+    {
+      "name": "chip",
+      "start": 0,
+      "size": 524288
+    }
+  ]
+}
