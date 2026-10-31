@@ -74,10 +74,23 @@ Verified facts:
    (a `--script-args` flag the script already supports). Fix the first differing frame and byte range, repeat. Mask
    dead stack below SP if the real stack lives elsewhere; keep the mask documented.
 
+## Build (verified)
+
+- `native/gods.c` (code), `native/gods.h` (data types and declarations), `native/data.c` (the data, C initializers
+  copied from the original's initial image, frame 1746 of the recording) and `native/gods.ld` (generated with
+  `data.c` by `scripts/gen_gods_data.py`).
+- Compile each with `m68k-amigaos-gcc -m68000 -Os -ffreestanding -nostdlib -fdata-sections -c`, link with
+  `m68k-amigaos-ld -m amiga -T gods.ld gods.o data.o`. In a hunk executable an object's offset in the data hunk is its
+  address, so `gods.ld` lays the data hunk out at the original addresses (`. = ADDR;`, `SUBALIGN(1)`); the loader loads
+  it at address 0, copying only the listed objects (`native/gods.objects`) so the rest of the original image stays.
+  The code hunk follows separately. All 23 data objects checked at their original addresses.
+- Hunk sections are rounded up to 4 bytes, so variables that sit next to each other in the original are structs
+  (`struct Vblank`, `struct MusicState`, `struct Graphics`, ...) that cover the same bytes.
+
 ## Open questions
 
 - Per-function checking against the original (step 3), or only the full lockstep run?
-- Where the C binary is stored on the disk and where it runs in memory (steps 4 and 5).
+- Where the C binary is stored on the disk and where the code hunk runs (steps 4 and 5): slow RAM is the candidate.
 - `move #imm,sr`, `trap` and `rte` need privileged instructions that plain C cannot express. Plain C replacements
   (interrupt-enable register writes, `__attribute__((interrupt))`) may not be byte-for-byte equivalent in effect.
   Revisit when the loader exists; the user must say if any asm beyond `loader.asm` is acceptable.

@@ -45,29 +45,33 @@ def scalar(name, addr, ctype, size):
 
 
 # ---- variables -------------------------------------------------------------------------------------------------------
-add("palette_ptr", 0x1af6, "u16 *palette_ptr = palette;   /* the original holds the address of the colour table */")
-scalar("palette_dirty", 0x2cc2, "volatile u16", 2)
-scalar("vbl_saturating", 0x2cc4, "volatile u16", 2)
-scalar("vbl_count", 0x2cc6, "volatile u16", 2)
+add("palette_ptr", 0x1af6, "u16 *palette_ptr = palette_state.colour;   /* the original holds the address of the colour table */")
 add("screen_front", 0x2940, "struct Screen *screen_front;")
 add("screen_back", 0x2944, "struct Screen *screen_back;")
-scalar("fade_done", 0x2948, "volatile u8", 1)
-pal = [u16(0x294a + 2 * i) for i in range(32)]
-add("palette", 0x294a, "u16 palette[32] = {\n" + lines(pal, 8, "%#06x") + "\n};")
-scalar("music_enabled", 0x1dd2, "volatile u16", 2)
-scalar("fire_pressed", 0x1dd4, "volatile u16", 2)
-scalar("input_seen", 0x1e3c, "volatile u16", 2)
-scalar("ticks", 0x1e3e, "volatile u32", 4)
 scalar("draw_flag", 0x2cb0, "u8", 1)
 scalar("font_offset", 0x394a, "u16", 2)
 scalar("scroll_y", 0x169a, "u16", 2)
 scalar("scroll_step", 0x169e, "u16", 2)
-scalar("music_speed", 0x284c, "u8", 1)
-scalar("music_order", 0x284d, "u8", 1)
-scalar("music_row", 0x284e, "u16", 2)
-scalar("music_tick", 0x2850, "u8", 1)
-scalar("music_jump", 0x2851, "u8", 1)
-scalar("music_dma", 0x2852, "u16", 2)
+
+def struct_def(ctype, name, addr, fields, extra=""):
+    """A struct from the original's bytes; fields = (name, offset, size); zero fields are left out."""
+    init = []
+    for fname, off, size in fields:
+        v = {1: u8, 2: u16, 4: u32}[size](addr + off)
+        if v:
+            init.append(f".{fname} = {v:#x}")
+    body = ", ".join(init + ([extra] if extra else []))
+    add(name, addr, f"{ctype} {name} = {{ {body} }};" if body else f"{ctype} {name};")
+
+
+struct_def("struct Vblank", "vblank", 0x2cc2, [("palette_dirty", 0, 2), ("saturating", 2, 2), ("count", 4, 2)])
+struct_def("struct Flags", "flags", 0x1dd2, [("music_enabled", 0, 2), ("fire_pressed", 2, 2)])
+struct_def("struct GameClock", "game_clock", 0x1e3c, [("input_seen", 0, 2), ("ticks", 2, 4)])
+struct_def("struct MusicState", "music", 0x284c, [("speed", 0, 1), ("order", 1, 1), ("row", 2, 2), ("tick", 4, 1),
+                                                  ("jump", 5, 1), ("dma", 6, 2)])
+colours = [u16(0x294a + 2 * i) for i in range(32)]
+struct_def("struct PaletteState", "palette_state", 0x2948, [("fade_done", 0, 1), ("unused", 1, 1)],
+           ".colour = {" + ", ".join(f"{c:#05x}" for c in colours) + "}" if any(colours) else "")
 
 # ---- the music replayer's tables and channels ---------------------------------------------------------------------------
 add("vibrato_table", 0x27e0, "const u8 vibrato_table[32] = {\n" + lines(list(ram[0x27e0:0x2800]), 16, "%d") + "\n};")
@@ -107,16 +111,15 @@ add("module", M, "struct Module module = {\n    .title = {" + ", ".join(f"{x:#04
     + lines(order, 16, "%d", "        ") + "\n    },\n    .tag = {" + ", ".join(f"'{chr(x)}'" for x in ram[M + 1080:M + 1084])
     + "},\n    /* the patterns, then the sample data */\n    .data = {\n" + lines(body, 24, "%d", "        ") + "\n    },\n};")
 
-# ---- pictures ------------------------------------------------------------------------------------------------------
-def picture(name, addr):
-    hdr = u16(addr)
+# ---- pictures and the image table: one block ------------------------------------------------------------------------------
+def picture_init(addr):
     pal_ = [u16(addr + 2 + 2 * i) for i in range(16)]
     words = [u16(addr + 34 + 2 * i) for i in range(16000)]
-    add(name, addr, f"struct Picture {name} = {{\n    .header = {hdr:#x},\n    .palette = {{\n" + lines(pal_, 8, "%#06x", "        ")
-        + "\n    },\n    .data = {\n" + lines(words, 12, "%#06x", "        ") + "\n    },\n};")
+    return ("{\n        .header = %#x,\n        .palette = {\n" % u16(addr) + lines(pal_, 8, "%#06x", "            ")
+            + "\n        },\n        .data = {\n" + lines(words, 12, "%#06x", "            ") + "\n        },\n    }")
 
-picture("title_picture", 0x3a62)
-picture("background_picture", 0x134a6)
+add("graphics", 0x3a62, "struct Graphics graphics = {\n    .title = " + picture_init(0x3a62) + ",\n    .glyph_sheet = "
+    + picture_init(0xb784) + ",\n    .background = " + picture_init(0x134a6) + ",\n    /* .images is filled in at the start of the program */\n};")
 
 # ---- copper lists, the vectors, the screens and the image table -------------------------------------------------------
 def copper(name, addr):
@@ -129,7 +132,6 @@ copper("copper_b", 0xfc)
 add("vectors", 0x0, "volatile u32 vectors[42] = {\n" + lines([u32(4 * i) for i in range(42)], 4, "%#010x") + "\n};")
 add("screen_a", 0x763c0, "struct Screen screen_a;   /* the original's bitplanes; drawn to by the program */")
 add("screen_b", 0x6c780, "struct Screen screen_b;")
-add("images", 0x1b1c8, "struct Image images[165];   /* filled in at the start of the program */")
 
 # ---- write data.c and gods.ld -----------------------------------------------------------------------------------------
 objects.sort(key=lambda o: o[1])
@@ -138,10 +140,16 @@ objects.sort(key=lambda o: o[1])
     " * program starts) and written as C initializers.  Generated by scripts/gen_gods_data.py; declared in gods.h; placed\n"
     " * at the original addresses by gods.ld.  Variables that are zero at that point have no initializer. */\n"
     "#include \"gods.h\"\n\n" % FRAME + "\n\n".join(t for _, _, t in objects) + "\n")
-ld = ["/* Gods: the data at the addresses the original keeps it at.  Generated by scripts/gen_gods_data.py.",
-      " * The code is placed by the loader; only data is pinned here. */", "SECTIONS {"]
+ld = ["/* Gods: link script for m68k-amigaos-ld -m amiga.  Generated by scripts/gen_gods_data.py.",
+      " *",
+      " * The data hunk is laid out so that an object's offset in it is the address the original keeps it at; it is",
+      " * loaded at address 0, and only the bytes of the listed objects are ever written to memory.  SUBALIGN(1) because",
+      " * the original keeps byte variables at odd addresses.  The code, and the data that only the code uses, follow in",
+      " * a hunk of their own, which the loader places in memory the original does not use. */",
+      "SECTIONS {", "    .data : SUBALIGN(1) {"]
 for name, addr, _ in objects:
-    ld.append(f"    .{name} 0x{addr:x} : {{ *(.data.{name}) *(.rodata.{name}) *(.bss.{name}) }}")
-ld.append("}")
+    ld.append(f"        . = 0x{addr:x}; *(.data.{name}) *(.rodata.{name}) *(.bss.{name})")
+ld += ["    }", "    .text : { *(.text .text.*) *(.rodata .rodata.*) *(.data .data.*) *(.bss .bss.*) *(COMMON) }", "}"]
 (NATIVE / "gods.ld").write_text("\n".join(ld) + "\n")
+(NATIVE / "gods.objects").write_text("".join(f"{name} {addr:x}\n" for name, addr, _ in objects))
 print(f"data.c: {len(objects)} objects, {(NATIVE / 'data.c').stat().st_size} bytes of source")
