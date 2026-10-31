@@ -71,7 +71,7 @@ void palette_clear(void)
 
     for (i = 0; i < 32; i++)
         palette_ptr[i] = 0;
-    palette_dirty = 0xffff;
+    vblank.palette_dirty = 0xffff;
 }
 
 /* orig $003022: colour table entry `index` = `value` (the original takes them in D0 and D1) */
@@ -88,12 +88,12 @@ u16 palette_get(u16 index)
 
 /* ---- timing -------------------------------------------------------------------------------------------------------- */
 
-/* orig $002CDE: wait for the next vertical blank (the interrupt increments vbl_count) */
+/* orig $002CDE: wait for the next vertical blank (the interrupt increments vblank.count) */
 void vbl_wait(void)
 {
-    u16 seen = vbl_count; /* volatile: the interrupt changes it */
+    u16 seen = vblank.count; /* volatile: the interrupt changes it */
 
-    while (vbl_count == seen)
+    while (vblank.count == seen)
         ;
 }
 
@@ -209,20 +209,20 @@ void picture_deinterleave(u16 *pic)
 /* orig $001432: put the title picture on the front screen */
 void picture_show_title(void)
 {
-    blit_copy(title_picture.data, screen_front);
+    blit_copy(graphics.title.data, screen_front);
 }
 
 /* orig $0016C0: put the intro background on the front screen and clear the highlight plane */
 void background_show(void)
 {
-    blit_copy(background_picture.data, screen_front);
+    blit_copy(graphics.background.data, screen_front);
     plane5_clear();
 }
 
 /* orig $0016DE: as background_show, but only the right-hand part */
 void background_show_right(void)
 {
-    blit_copy_right((const u8 *)background_picture.data, (u8 *)screen_front);
+    blit_copy_right((const u8 *)graphics.background.data, (u8 *)screen_front);
     plane5_clear();
 }
 
@@ -260,14 +260,14 @@ scanned:
         sample_start[i] = (u32)data;
         data += (u32)module.sample[i].length * 2;
     }
-    music_speed = 6;
+    music.speed = 6;
     custom->aud[0].vol = 0;
     custom->aud[1].vol = 0;
     custom->aud[2].vol = 0;
     custom->aud[3].vol = 0;
-    music_order = 0;
-    music_tick = 0;
-    music_row = 0;
+    music.order = 0;
+    music.tick = 0;
+    music.row = 0;
 }
 
 /* orig $0025A6: effect 3 (tone portamento): set the target period and the direction */
@@ -319,17 +319,17 @@ static u32 channel_row(struct Channel *ch, volatile struct AudioChannel *hw, con
             hw->lc = ch->sample;
             hw->len = ch->length;
             hw->per = ch->period & 0xfff;
-            music_dma |= ch->dma;
+            music.dma |= ch->dma;
         }
     }
     effect = ch->cell[2] & 0xf;
     switch (effect) {
     case 0xd:   /* pattern break */
-        music_jump = ~music_jump;
+        music.jump = ~music.jump;
         break;
     case 0xb:   /* position jump */
-        music_order = ch->cell[3] - 1;
-        music_jump = ~music_jump;
+        music.order = ch->cell[3] - 1;
+        music.jump = ~music.jump;
         break;
     case 0xc:   /* set volume */
         if (ch->cell[3] > 0x40)
@@ -340,8 +340,8 @@ static u32 channel_row(struct Channel *ch, volatile struct AudioChannel *hw, con
         u16 speed = ch->cell[3] & 0x1f;
 
         if (speed != 0) {
-            music_tick = 0;
-            music_speed = speed;
+            music.tick = 0;
+            music.speed = speed;
         }
         break;
     }
@@ -363,7 +363,7 @@ static void channel_tick(struct Channel *ch, volatile struct AudioChannel *hw)
     effect = ch->cell[2] & 0xf;
     switch (effect) {
     case 0: {   /* arpeggio, orig $00234A */
-        u16 step = music_tick % 3;
+        u16 step = music.tick % 3;
         u16 semitones;
         const u16 *p;
         int n;
@@ -455,19 +455,19 @@ void music_step(void)
     volatile struct AudioChannel *hw = custom->aud;
     int i;
 
-    music_tick++;
-    if ((s8)music_tick < (s8)music_speed) {
+    music.tick++;
+    if ((s8)music.tick < (s8)music.speed) {
         for (i = 0; i < 4; i++)
             channel_tick(&channel[i], &hw[i]);
         goto advance;
     }
-    music_tick = 0;
+    music.tick = 0;
     {
         const u8 *patterns = module.data;
-        u32 offset = (u32)module.order[music_order] << 10;
+        u32 offset = (u32)module.order[music.order] << 10;
 
-        offset = (u16)(offset + music_row);
-        music_dma = 0;
+        offset = (u16)(offset + music.row);
+        music.dma = 0;
         for (i = 0; i < 4; i++)
             offset = channel_row(&channel[i], &hw[i], patterns, offset);
     }
@@ -476,7 +476,7 @@ void music_step(void)
 
         for (wait = 0; wait < 0x12d; wait++)
             ;   /* let the channels stop before the new samples are started */
-        custom->dmacon = music_dma | DMAF_SETCLR;
+        custom->dmacon = music.dma | DMAF_SETCLR;
         for (wait = 0; wait < 0x12d; wait++)
             ;
     }
@@ -484,21 +484,21 @@ void music_step(void)
         hw[i].lc = channel[i].loop;
         hw[i].len = channel[i].loop_length;
     }
-    music_row += 0x10;
-    if (music_row == 0x400) {
-        music_row = 0;
-        music_jump = 0;
-        music_order = (music_order + 1) & 0x7f;
-        if (music_order == module.song_length)
-            music_order = 0;
+    music.row += 0x10;
+    if (music.row == 0x400) {
+        music.row = 0;
+        music.jump = 0;
+        music.order = (music.order + 1) & 0x7f;
+        if (music.order == module.song_length)
+            music.order = 0;
     }
 advance:
-    while (music_jump != 0) {   /* a pattern break or position jump: start the next pattern now */
-        music_row = 0;
-        music_jump = 0;
-        music_order = (music_order + 1) & 0x7f;
-        if (music_order == module.song_length)
-            music_order = 0;
+    while (music.jump != 0) {   /* a pattern break or position jump: start the next pattern now */
+        music.row = 0;
+        music.jump = 0;
+        music.order = (music.order + 1) & 0x7f;
+        if (music.order == module.song_length)
+            music.order = 0;
     }
 }
 
@@ -525,11 +525,11 @@ void palette_fade_in(const u16 *target, u16 frames)
                 colour += 0x100;
             palette_set(i, colour);
         }
-        palette_dirty = 0xffff;
+        vblank.palette_dirty = 0xffff;
         for (wait = 0; wait <= frames; wait++)
             vbl_wait();
     }
-    fade_done = 0xff;
+    palette_state.fade_done = 0xff;
 }
 
 /* orig $002E52: 8 steps; every component below the target goes up by one or two */
@@ -555,11 +555,11 @@ void palette_fade_in_fast(const u16 *target, u16 frames)
                 colour += gap == 0x100 ? 0x100 : 0x200;
             palette_set(i, colour);
         }
-        palette_dirty = 0xffff;
+        vblank.palette_dirty = 0xffff;
         for (wait = 0; wait <= frames; wait++)
             vbl_wait();
     }
-    fade_done = 0xff;
+    palette_state.fade_done = 0xff;
 }
 
 /* orig $002F3A: 15 steps; every component above the target goes down by one */
@@ -581,11 +581,11 @@ void palette_fade_to(const u16 *target, u16 frames)
                 colour -= 0x100;
             palette_set(i, colour);
         }
-        palette_dirty = 0xffff;
+        vblank.palette_dirty = 0xffff;
         for (wait = 0; wait <= frames; wait++)
             vbl_wait();
     }
-    fade_done = 0xff;
+    palette_state.fade_done = 0xff;
 }
 
 /* orig $002FC4: 15 steps; every non-zero component goes down by one, so the colours fade to black */
@@ -606,7 +606,7 @@ void palette_fade_out(u16 frames)
                 colour -= 0x100;
             palette_set(i, colour);
         }
-        palette_dirty = 0xffff;
+        vblank.palette_dirty = 0xffff;
         for (wait = 0; wait <= frames; wait++)
             vbl_wait();
     }
@@ -620,19 +620,19 @@ void screens_flip(void)
 {
     struct Screen *shown = screen_back;
 
-    if (fire_pressed != 0)
+    if (flags.fire_pressed != 0)
         game_start();   /* not executed in the recording: a fire button was pressed */
     screen_back = screen_front;
     screen_front = shown;
     custom->cop1lc = ADDR(screen_back == &screen_b ? copper_b.words : copper_a.words);
-    vbl_saturating = 0;
+    vblank.saturating = 0;
     vbl_wait();
 }
 
 /* orig $003070: wait until `frames` vertical blanks have passed since the last flip, then flip */
 void screens_flip_after(s16 frames)
 {
-    while (frames >= (s16)vbl_saturating)
+    while (frames >= (s16)vblank.saturating)
         ;
     screens_flip();
 }
@@ -645,32 +645,32 @@ void screens_flip_after(s16 frames)
 /* orig $002CF4: the tail of the interrupt: refresh the chip's colours and count frames */
 static void vbl_housekeeping(void)
 {
-    if (palette_dirty != 0) {
+    if (vblank.palette_dirty != 0) {
         int i;
 
-        palette_dirty = 0;
+        vblank.palette_dirty = 0;
         for (i = 0; i < 32; i++)
-            custom->color[i] = palette[i];
+            custom->color[i] = palette_state.colour[i];
     }
-    if (vbl_saturating != 0x7fff)
-        vbl_saturating++;
-    vbl_count++;
+    if (vblank.saturating != 0x7fff)
+        vblank.saturating++;
+    vblank.count++;
 }
 
 /* orig $001DD6: level 3 interrupt (vertical blank).  The original begins with `move #$2700,sr`, which C cannot
  * write; only VERTB is enabled (INTENA is $C020) so no other interrupt can come in and it is not needed. */
 __attribute__((interrupt)) void irq_level3(void)
 {
-    if ((custom->intreqr & INTF_VERTB) && music_enabled != 0)
+    if ((custom->intreqr & INTF_VERTB) && flags.music_enabled != 0)
         music_step();
     custom->intreq = 0x70;   /* clear COPER, VERTB and BLIT */
-    ticks++;
-    if (input_seen == 0) {
+    game_clock.ticks++;
+    if (game_clock.input_seen == 0) {
         u8 pra = CIAA_PRA;
 
         if (!((pra & 0x80) && (pra & 0x40))) {   /* a fire button is down */
-            fire_pressed = 1;
-            input_seen = 1;
+            flags.fire_pressed = 1;
+            game_clock.input_seen = 1;
         }
     }
     vbl_housekeeping();
@@ -732,7 +732,7 @@ void text_small_line(const char *text, s16 y)
 
 /* ---- the intro: a script of timed steps ----------------------------------------------------------------------------- */
 /* The program runs the intro once, waits for the end of its music, fades out and starts again.  Each step waits for
- * `ticks` (counted by the interrupt) to reach a value, so the sequence is driven by the time since the intro began. */
+ * `game_clock.ticks` (counted by the interrupt) to reach a value, so the sequence is driven by the time since the intro began. */
 
 
 /* the colours the intro fades to (the same table appears twice in the original) */
@@ -749,7 +749,7 @@ static const u16 palette_white_text[16] = {
 
 static void wait_ticks(u32 until)
 {
-    while ((s32)ticks < (s32)until)
+    while ((s32)game_clock.ticks < (s32)until)
         ;
 }
 
@@ -797,7 +797,7 @@ static void verse_scroll(const struct Verse *v)
 /* "Renegade presents a Bitmap Brothers game": each line fades in and out */
 struct PresentsPage {
     const char *text;
-    u32 fade_in_at;     /* ticks */
+    u32 fade_in_at;     /* game_clock.ticks */
     u32 fade_out_at;
 };
 
@@ -841,7 +841,7 @@ static void title_letters(void)
 /* orig $001AFA: the title picture and its letters */
 static void title_screen(void)
 {
-    blit_copy(title_picture.data, screen_front);
+    blit_copy(graphics.title.data, screen_front);
     plane5_set();
     title_letters();
 }
@@ -857,7 +857,7 @@ static void intro_logo(void)
     palette_fade_to(palette_intro, 1);
     wait_ticks(0x366);
     palette_ptr += 16;   /* the second set of 16 colours */
-    palette_fade_in(title_picture.palette, 2);
+    palette_fade_in(graphics.title.palette, 2);
     palette_ptr -= 16;
     wait_ticks(0x3c7);
     palette_fade_in_fast(palette_white, 0);
@@ -879,7 +879,7 @@ static void intro_story(void)
     screens_flip();
     wait_ticks(0x53e);
     palette_fade_in_fast(palette_white_text, 0);
-    palette_fade_to(background_picture.palette, 1);
+    palette_fade_to(graphics.background.palette, 1);
     background_show();
     wait_ticks(0x608);
     screens_flip();
@@ -892,7 +892,7 @@ static void intro_story(void)
     palette_fade_out(1);
     wait_ticks(0xd63);
     palette_fade_in_fast(palette_white_text, 0);
-    palette_fade_to(background_picture.palette, 1);
+    palette_fade_to(graphics.background.palette, 1);
     verse_scroll(&verse[3]);
     verse_scroll(&verse[4]);
     for (i = 0; i < 100; i++)
@@ -910,7 +910,7 @@ struct TeamPage {
         const char *text;
         u16 y;
     } line[3];
-    u32 until;          /* ticks */
+    u32 until;          /* game_clock.ticks */
 };
 
 static const struct TeamPage team[7] = {
@@ -942,11 +942,11 @@ static void intro_team(void)
     screens_flip();
     palette_ptr += 16;
     wait_ticks(0x1962);
-    palette_fade_in(title_picture.palette, 1);
+    palette_fade_in(graphics.title.palette, 1);
     palette_ptr -= 16;
     for (i = 0; i < 16; i++)
-        palette[i] = palette_intro[i] * 2;
-    palette_dirty = 0xffff;
+        palette_state.colour[i] = palette_intro[i] * 2;
+    vblank.palette_dirty = 0xffff;
 
     for (i = 0; i < 7; i++) {
         picture_show_title();
@@ -1006,8 +1006,8 @@ void game_main(void)
     screen_back = &screen_b;
     palette_clear();
     for (s = 0; s < 16; s++) {
-        custom->color[s] = palette[s];
-        custom->color[16 + s] = palette[s];
+        custom->color[s] = palette_state.colour[s];
+        custom->color[16 + s] = palette_state.colour[s];
     }
 
     vectors[0] = ADDR(&vectors[VECTOR_SPRITE_TARGET]);
@@ -1020,25 +1020,25 @@ void game_main(void)
     custom->cop2lc = ADDR(copper_b.words);
     custom->copjmp1 = 0;
     custom->dmacon = 0x83c0;   /* master, bitplane, copper and blitter DMA on */
-    ticks = 0;
+    game_clock.ticks = 0;
     vectors[VECTOR_LEVEL3] = ADDR(irq_level3);
     custom->intena = 0xc020;   /* master enable and vertical blank */
     (void)custom->intreqr;
     (void)custom->intenar;
     intro_setup();
-    fire_pressed = 0;
+    flags.fire_pressed = 0;
     for (i = 1000000; i != 0; i--)
         ;
     for (;;) {
         music_init();
         CIAA_PRA |= 0x02;
-        music_enabled = 1;
-        ticks = 0;
+        flags.music_enabled = 1;
+        game_clock.ticks = 0;
         screen_clear();
         intro_run();
-        while ((s32)ticks < 0x1dd0)
+        while ((s32)game_clock.ticks < 0x1dd0)
             ;
-        music_enabled = 0;
+        flags.music_enabled = 0;
         for (s = 0; s < 201; s++)
             vbl_wait();
         palette_ptr += 16;

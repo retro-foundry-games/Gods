@@ -43,15 +43,11 @@ u16 scroll_y = 0x14;
 
 u16 scroll_step;
 
-u16 *palette_ptr = palette;   /* the original holds the address of the colour table */
+u16 *palette_ptr = palette_state.colour;   /* the original holds the address of the colour table */
 
-volatile u16 music_enabled;
+struct Flags flags;
 
-volatile u16 fire_pressed;
-
-volatile u16 input_seen;
-
-volatile u32 ticks;
+struct GameClock game_clock;
 
 const u8 vibrato_table[32] = {
     0, 24, 49, 74, 97, 120, 141, 161, 180, 197, 212, 224, 235, 244, 250, 253,
@@ -66,17 +62,7 @@ const u16 period_table[38] = {
     0x0087, 0x007f, 0x0078, 0x0071, 0x0000, 0x0000,
 };
 
-u8 music_speed = 0x6;
-
-u8 music_order;
-
-u16 music_row;
-
-u8 music_tick;
-
-u8 music_jump;
-
-u16 music_dma;
+struct MusicState music = { .speed = 0x6 };
 
 u32 sample_start[31];   /* filled in by music_init */
 
@@ -91,30 +77,15 @@ struct Screen *screen_front;
 
 struct Screen *screen_back;
 
-volatile u8 fade_done;
-
-u16 palette[32] = {
-    0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
-    0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
-    0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
-    0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
-};
+struct PaletteState palette_state;
 
 u8 draw_flag = 0x1;
 
-volatile u16 palette_dirty;
-
-volatile u16 vbl_saturating;
-
-volatile u16 vbl_count;
+struct Vblank vblank;
 
 u16 font_offset;
 
-struct Picture title_picture;
-
-struct Picture background_picture;
-
-struct Image images[165];   /* filled in at the start of the program */
+struct Graphics graphics;
 
 struct Module module;
 
