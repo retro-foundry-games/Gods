@@ -39,11 +39,13 @@ struct CopperList copper_b = {
     .end = { 0xffff, 0xfffe },
 };
 
+u16 glyph_plane_size;
+
 u16 scroll_y = 0x14;
 
 u16 scroll_step;
 
-u16 *palette_ptr = palette_state.colour;   /* the original holds the address of the colour table */
+u16 *palette_ptr = display.palette.colour;   /* the original holds the address of the colour table */
 
 struct Flags flags;
 
@@ -77,11 +79,16 @@ struct Screen *screen_front;
 
 struct Screen *screen_back;
 
-struct PaletteState palette_state;
+struct DisplayData display = {
+    .palette = { .fade_done = 0, .unused = 0, .colour = {0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000} },
+    .blit = { .plane_stride = 0x1f40 },
+};
 
 u8 draw_flag = 0x1;
 
 struct Vblank vblank;
+
+const u16 blank_plane[513] = { 0 };   /* zeros, up to the table at $3888 */
 
 u16 font_offset;
 

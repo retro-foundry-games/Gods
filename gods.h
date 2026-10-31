@@ -69,7 +69,6 @@ struct MusicState {
     u16 dma;       /* DMA bits of the channels started on this row */
 };
 
-extern struct PaletteState palette_state;
 extern struct Vblank vblank;
 extern struct Flags flags;
 extern struct GameClock game_clock;
@@ -155,14 +154,48 @@ extern struct CopperList copper_a, copper_b;
 enum { VECTOR_SPRITE_TARGET = 14, VECTOR_LEVEL3 = 27 };   /* level 3 is the vertical blank interrupt */
 extern volatile u32 vectors[42];
 
+/* an entry of the table that describes where each image is on the glyph sheet (the unpacker's input) */
+struct ImageSource {
+    u16 width_m1;      /* width in pixels, less one */
+    u16 height_m1;     /* rows, less one */
+    u16 unused;
+    u16 x;             /* position on the sheet, in pixels */
+    u16 y;
+};
+
+union ImageTable {
+    struct {
+        u16 count;
+        struct ImageSource entry[132];
+    } source;
+    struct Image image[132];   /* what orig $002D4C turns it into */
+};
+
 /* The pictures and the table of images sit one after the other in memory. */
 struct Graphics {
     struct Picture title;          /* the title picture */
     struct Picture glyph_sheet;    /* the sheet the glyphs and letters are cut from at the start of the program */
     struct Picture background;     /* the background of the story */
-    struct Image images[165];      /* the table of images (built by orig $002D4C) */
+    union ImageTable images;       /* the table of images: the unpacker's input, converted in place into its output */
 };
 
 extern struct Graphics graphics;
+
+/* what the masked blit keeps between calls: the size of one bitplane of the screen, an extra modulo and the mask it
+ * builds from the planes of the image (the original has room for 400 words) */
+struct BlitState {
+    u32 plane_stride;
+    u16 extra_modulo;
+    u16 mask[396];
+};
+
+/* the colour table and the blitter's working state sit next to each other */
+struct DisplayData {
+    struct PaletteState palette;
+    struct BlitState blit;
+};
+extern struct DisplayData display;
+extern u16 glyph_plane_size;        /* non-zero: the size in bytes of one plane of a glyph, otherwise worked out from its height */
+extern const u16 blank_plane[513];  /* zeros: the source for the fifth plane when drawing text */
 
 #endif

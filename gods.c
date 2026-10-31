@@ -529,7 +529,7 @@ void palette_fade_in(const u16 *target, u16 frames)
         for (wait = 0; wait <= frames; wait++)
             vbl_wait();
     }
-    palette_state.fade_done = 0xff;
+    display.palette.fade_done = 0xff;
 }
 
 /* orig $002E52: 8 steps; every component below the target goes up by one or two */
@@ -559,7 +559,7 @@ void palette_fade_in_fast(const u16 *target, u16 frames)
         for (wait = 0; wait <= frames; wait++)
             vbl_wait();
     }
-    palette_state.fade_done = 0xff;
+    display.palette.fade_done = 0xff;
 }
 
 /* orig $002F3A: 15 steps; every component above the target goes down by one */
@@ -585,7 +585,7 @@ void palette_fade_to(const u16 *target, u16 frames)
         for (wait = 0; wait <= frames; wait++)
             vbl_wait();
     }
-    palette_state.fade_done = 0xff;
+    display.palette.fade_done = 0xff;
 }
 
 /* orig $002FC4: 15 steps; every non-zero component goes down by one, so the colours fade to black */
@@ -650,7 +650,7 @@ static void vbl_housekeeping(void)
 
         vblank.palette_dirty = 0;
         for (i = 0; i < 32; i++)
-            custom->color[i] = palette_state.colour[i];
+            custom->color[i] = display.palette.colour[i];
     }
     if (vblank.saturating != 0x7fff)
         vblank.saturating++;
@@ -674,6 +674,225 @@ __attribute__((interrupt)) void irq_level3(void)
         }
     }
     vbl_housekeeping();
+}
+
+/* ---- drawing images ------------------------------------------------------------------------------------------------ */
+
+#define BLTCON0_USEABCD 0x0f00
+#define BLTCON0_USEABD 0x0d00
+#define MINTERM_A_OR_B_OR_C 0xfe     /* D = A | B | C */
+#define MINTERM_A_OR_B 0xfc          /* D = A | B */
+#define MINTERM_COOKIE_CUT 0xca      /* D = A ? B : C: B where the mask A is set, the background C elsewhere */
+
+static void blitter_idle(void)
+{
+    while (custom->dmaconr & DMAF_BLTBUSY)
+        ;
+}
+
+/* orig $0032CA: the entry for images two words wide, see below.  */
+/* orig $0032B6: draw an image of `rows` rows, `words` words wide, with its planes `plane` bytes apart at `src`, to the
+ * screen at `dst`, `shift` pixels to the right.  The original has a second entry, orig $0032CA, for images two words
+ * wide (the first sets words to 1, the second to 2).
+ *
+ * First the four planes are combined into a mask (a pixel is opaque if it is set in any plane), then each plane is
+ * drawn through the mask over what is on the screen.  With draw_flag the fifth plane is drawn too, from blank_plane. */
+static void blit_image(u8 *dst, const u8 *src, u16 plane, u16 shift, u16 rows, u16 words)
+{
+    u16 size = (rows << 6) | words;
+    u16 screen_modulo = 40 - words * 2;
+    u16 modulo_a, modulo_b;
+    u16 *mask = display.blit.mask;
+    const u8 *image = src;
+    u8 *screen = dst;
+    int p;
+
+    display.blit.extra_modulo = 0;
+    custom->dmacon = DMAF_SETCLR | DMAF_BLITHOG;
+    blitter_idle();
+    custom->bltapt = ADDR(image);
+    image += plane;
+    custom->bltbpt = ADDR(image);
+    image += plane;
+    custom->bltcpt = ADDR(image);
+    image += plane;
+    custom->bltdpt = ADDR(mask);
+    custom->bltafwm = 0xffff;
+    custom->bltalwm = 0xffff;
+    custom->bltdmod = 0;
+    custom->bltcon1 = 0;
+    custom->bltcon0 = BLTCON0_USEABCD | MINTERM_A_OR_B_OR_C;
+    custom->bltamod = 0;
+    custom->bltbmod = 0;
+    custom->bltcmod = 0;
+    custom->bltsize = size;                  /* mask = plane 0 | plane 1 | plane 2 */
+    blitter_idle();
+    custom->bltbmod = 0;
+    custom->bltcon0 = BLTCON0_USEABD | MINTERM_A_OR_B;
+    custom->bltapt = ADDR(image);            /* plane 3 */
+    custom->bltbpt = ADDR(mask);
+    custom->bltdpt = ADDR(mask);
+    custom->bltsize = size;                  /* mask |= plane 3 */
+    blitter_idle();
+    custom->bltafwm = 0xffff;
+    custom->bltalwm = 0;                     /* the extra word of a shifted image is not drawn */
+    if (shift == 0) {
+        custom->bltcon0 = BLTCON0_USEABCD | MINTERM_COOKIE_CUT;
+        custom->bltalwm = 0xffff;
+        modulo_a = 0;
+        custom->bltcon1 = 0;
+        modulo_b = display.blit.extra_modulo;
+    } else {
+        s16 extra;
+
+        blitter_idle();
+        custom->bltcon1 = shift << 12;
+        custom->bltcon0 = (shift << 12) | BLTCON0_USEABCD | MINTERM_COOKIE_CUT;
+        extra = (s16)display.blit.extra_modulo;
+        if (extra >= 0) {
+            screen_modulo -= 2;
+            modulo_a = 0xfffe;
+            size++;                          /* one word wider for the part that shifts into the next word */
+        } else {
+            extra = 0;
+            modulo_a = 0;
+        }
+        modulo_b = modulo_a + extra;
+    }
+    custom->bltamod = modulo_a;
+    custom->bltbmod = modulo_b;
+    custom->bltcmod = screen_modulo;
+    custom->bltdmod = screen_modulo;
+    for (p = 0; p < 4 + (draw_flag != 0); p++) {
+        const u8 *source = p == 4 ? (const u8 *)blank_plane : src + (u32)p * plane;
+
+        if (p != 0)
+            blitter_idle();
+        custom->bltcpt = ADDR(screen);
+        custom->bltbpt = ADDR(source);
+        custom->bltapt = ADDR(mask);
+        custom->bltdpt = ADDR(screen);
+        if (p == 3 + (draw_flag != 0))
+            custom->dmacon = DMAF_BLITHOG;   /* release the blitter priority as the last plane starts */
+        custom->bltsize = size;
+        screen += display.blit.plane_stride;
+    }
+}
+
+/* orig $0039DC: draw glyph or image `index` of the table at pixel (x, y) on the front screen, clipped at the top
+ * and bottom (the image is one word wide) */
+void glyph_draw(u16 x, u16 y, u16 index)
+{
+    const struct Image *img = &graphics.images.image[index];
+    u8 *dst = (u8 *)screen_front + ((s16)(x & 0xfff0) >> 3) + (s16)((u32)y * 40);
+    const u16 *data = img->data;
+    s16 last = img->height;     /* the last row */
+    u16 plane;
+
+    if (flags.fire_pressed != 0)
+        game_start();   /* not executed in the recording */
+    if ((s16)y < 0) {
+        s16 skip = -(s16)y;
+
+        last -= skip;
+        if (last < 0)
+            return;
+        data += skip;           /* two bytes a row */
+        dst += skip * 40;
+    } else if (y - (199 - last) > 0) {
+        last -= y - (199 - last);
+        if (last < 0)
+            return;
+    }
+    plane = glyph_plane_size != 0 ? glyph_plane_size : (img->height + 1) * 2;
+    blit_image(dst, (const u8 *)data, plane, x & 0xf, last + 1, 1);
+}
+
+/* orig $003950: the same for an image two words wide.  The original's clipping at the top looks unfinished: it moves
+ * the destination by the number of rows skipped in bytes and does not skip any image data. */
+void sprite_draw(u16 x, u16 y, u16 index)
+{
+    const struct Image *img = &graphics.images.image[index];
+    u8 *dst = (u8 *)screen_front + ((s16)(x & 0xfff0) >> 3) + (s16)((u32)y * 40);
+    const u16 *data = img->data;
+    s16 last = img->height;
+
+    if (flags.fire_pressed != 0)
+        game_start();   /* not executed in the recording */
+    if ((s16)y < 0) {
+        s16 skip = -(s16)y;
+
+        last -= skip;
+        if (last < 0)
+            return;
+        dst += skip;
+    } else if (y - (199 - last) > 0) {
+        last -= y - (199 - last);
+        if (last < 0)
+            return;
+    }
+    blit_image(dst, (const u8 *)data, (img->height + 1) * 4, x & 0xf, last + 1, 2);
+}
+
+/* orig $002D4C: cut the images out of the glyph sheet.  `sheet` is the sheet's pixels, four planes interleaved word by
+ * word, 80 words a row.  Each image is written to `out` as four planes one after the other, and its entry in the
+ * table is rewritten in place from the description of where to find it to the size and the address of the data. */
+static void images_unpack(const u16 *sheet, u16 *out, union ImageTable *table)
+{
+    const struct ImageSource *in = table->source.entry;
+    struct Image *entry = table->image;
+    u16 count = table->source.count;
+
+    do {
+        u16 width_m1 = in->width_m1;
+        u16 height_m1 = in->height_m1;
+        u16 offset = (in->x >> 1) + (u16)((u16)(in->y << 5) + (u16)(in->y << 7));   /* y * 160 + x / 2 bytes */
+        const u16 *from = (const u16 *)((const u8 *)sheet + (s16)offset);
+        u16 words_m1 = width_m1 >> 4;
+        u16 skip = (u16)((0x13 - words_m1) << 3);                 /* to the start of the next row */
+        u16 plane = (u16)((u16)((words_m1 + 1) << 3) * (u16)(height_m1 + 1)) >> 2;   /* bytes in one plane */
+        u16 row, col;
+
+        entry->neg_width = -(s16)width_m1;
+        entry->height = height_m1;
+        entry->data = out;
+        entry++;
+        in++;
+        for (row = 0; row <= height_m1; row++) {
+            for (col = 0; col <= words_m1; col++) {
+                *out = *from++;
+                *(u16 *)((u8 *)out + plane) = *from++;
+                *(u16 *)((u8 *)out + plane * 2) = *from++;
+                *(u16 *)((u8 *)out + plane * 3) = *from++;
+                out++;
+            }
+            from = (const u16 *)((const u8 *)from + (s16)skip);
+        }
+        out = (u16 *)((u8 *)out + plane * 3);
+    } while (--count != 0);
+}
+
+/* orig $000E06: prepare the pictures and the images.  The glyph sheet is copied to the back screen and cut up there
+ * (the images are written over the sheet's place), and the two interleaved pictures are turned into planes. */
+void intro_setup(void)
+{
+    const u8 *from = (const u8 *)&graphics.glyph_sheet;
+    u8 *to = (u8 *)screen_back;
+    int i;
+
+    for (i = 0; i < 0x7d22; i++)
+        *to++ = *from++;
+    images_unpack(((struct Picture *)screen_back)->data, (u16 *)&graphics.glyph_sheet, &graphics.images);
+    picture_deinterleave(graphics.background.data);
+    picture_deinterleave(graphics.title.data);
+}
+
+/* orig $000CC8: what follows a fire button (the game itself).  The recording never presses fire, so this has not been
+ * decompiled yet. */
+void game_start(void)
+{
+    for (;;)
+        ;
 }
 
 /* ---- text ---------------------------------------------------------------------------------------------------------- */
@@ -945,7 +1164,7 @@ static void intro_team(void)
     palette_fade_in(graphics.title.palette, 1);
     palette_ptr -= 16;
     for (i = 0; i < 16; i++)
-        palette_state.colour[i] = palette_intro[i] * 2;
+        display.palette.colour[i] = palette_intro[i] * 2;
     vblank.palette_dirty = 0xffff;
 
     for (i = 0; i < 7; i++) {
@@ -983,7 +1202,6 @@ void intro_run(void)
 
 /* ---- the program ---------------------------------------------------------------------------------------------------- */
 
-void intro_setup(void);   /* orig $000E06 */
 
 /* orig $000B12: the program.  Set up the hardware, start the interrupt, then run the intro over and over.
  *
@@ -1006,8 +1224,8 @@ void game_main(void)
     screen_back = &screen_b;
     palette_clear();
     for (s = 0; s < 16; s++) {
-        custom->color[s] = palette_state.colour[s];
-        custom->color[16 + s] = palette_state.colour[s];
+        custom->color[s] = display.palette.colour[s];
+        custom->color[16 + s] = display.palette.colour[s];
     }
 
     vectors[0] = ADDR(&vectors[VECTOR_SPRITE_TARGET]);
