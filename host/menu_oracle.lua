@@ -108,6 +108,7 @@ local function check(case)
     for k, v in pairs(regs) do run2[k] = v end
     run2.a7, run2.sr = SCRATCH, case.sr or 0x2700
     ami.write(syms.base, blob)   -- the program may have used the memory the C code sits in
+    if syms.last_random then ami.write(syms.last_random, ami.read(0x1faca, 2)) end   -- the sound code in the C blob keeps its own copy of the original's byte at $1FACA
     if case.no_wait then ami.write(syms[case.no_wait.c], "\x4e\x75") end
     local r2 = ami.call(syms[case.c or case.name], run2)
     settle()
@@ -142,6 +143,7 @@ local function check(case)
         case.bad = (case.bad or 0) + 1
         local inputs = {}
         for _, spec in ipairs(case.args) do inputs[#inputs + 1] = string.format("%s=%x", spec, reg_value(spec, regs)) end
+        if case.name == "player_control" then inputs[#inputs + 1] = string.format("pstate=%d d7=%d stick=%d btn=%d", (before:byte(0x19c + 1) << 8) | before:byte(0x19d + 1), (before:byte(0x19a + 1) << 8) | before:byte(0x19b + 1), before:byte(0x226 + 1), before:byte(0x228 + 1)) end   -- the player state machine: which state, frame and input
         say("DIFF %s (call %d, frame %d) %s: %s", case.name, case.calls, ami.frame(), table.concat(inputs, " "), table.concat(problems, "; "))
     end
 end
