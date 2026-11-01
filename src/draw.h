@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "hw.h"
+#include "amiga/hw.h"
 #include "menu_symbols.h"
 
 /* menu_amiga.asm: the original's masked blit (orig $0171E4 and $0171F6): draw an image of `rows` rows, one word (two words)

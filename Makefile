@@ -1,10 +1,10 @@
 # Gods (projects/gods/native): the C of the intro and of the menu program, built with m68k-amigaos-gcc.
 #
-#   make              both programs linked: ../build/intro.exe, ../build/menu.exe (with their maps and symbol lists)
+#   make              both programs linked: build/intro.exe, build/menu.exe (with their maps and symbol lists)
 #   make intro | menu one of them
-#   make menu-blob    the menu as a blob at $(MENU_BASE) for the checks against the original (../build/menu.blob, menu_syms.lua)
+#   make menu-blob    the menu as a blob at $(MENU_BASE) for the checks against the original (build/menu.blob, menu_syms.lua)
 #   make adf          the disk whose game is the intro's C (build/..., local/gods-c-disk1.adf); needs the original disks in local/
-#   make regen        write the generated sources in src/ again (needs the recordings in ../build/, see ../PLAN.md)
+#   make regen        write the generated sources in src/ again (needs the recordings in build/, see ../PLAN.md)
 #   make clean
 #
 # The toolchain is in the flake of this directory: outside its shell every target is run again inside it.  Variables:
@@ -15,7 +15,9 @@ AS     := vasmm68k_mot
 LD     := m68k-amigaos-ld
 NM     := m68k-amigaos-nm
 SRC    := src
-BUILD  := ../build
+# the Amiga-specific files: the assembly and the custom chip registers
+AMIGA  := $(SRC)/amiga
+BUILD  := build
 PYTHON ?= uv run python
 GODS_OPT ?= -O2
 MENU_BASE ?= C0000
@@ -50,8 +52,8 @@ $(BUILD)/intro.o: $(SRC)/intro.c | $(BUILD)
 	$(CC) $(INTRO_CFLAGS) $(WARN) -MMD -MP -c $< -o $@
 $(BUILD)/intro_data.o: $(SRC)/intro_data.c | $(BUILD)
 	$(CC) $(INTRO_CFLAGS) -MMD -MP -c $< -o $@
-$(BUILD)/intro_amiga.o: $(SRC)/intro_amiga.asm $(SRC)/intro_offsets.i | $(BUILD)
-	$(AS) -Fhunk -no-opt -quiet -nowarn=62 -I$(SRC) -o $@ $<
+$(BUILD)/intro_amiga.o: $(AMIGA)/intro_amiga.asm $(AMIGA)/intro_offsets.i | $(BUILD)
+	$(AS) -Fhunk -no-opt -quiet -nowarn=62 -I$(AMIGA) -o $@ $<
 $(BUILD)/intro.exe: $(INTRO_OBJS) $(SRC)/intro.ld
 	$(LD) -m amiga -T $(SRC)/intro.ld -Map $(BUILD)/intro.map -o $@ $(INTRO_OBJS)
 	$(NM) $@ > $(BUILD)/intro.sym
@@ -61,8 +63,8 @@ $(BUILD)/menu_menu_data.o: $(SRC)/menu_data.c | $(BUILD)
 	$(CC) $(MENU_CFLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/menu_%.o: $(SRC)/%.c | $(BUILD)
 	$(CC) $(MENU_CFLAGS) $(WARN) -MMD -MP -c $< -o $@
-$(BUILD)/menu_amiga.o: $(SRC)/menu_amiga.asm | $(BUILD)
-	$(AS) -Fhunk -no-opt -quiet -nowarn=62 -I$(SRC) -o $@ $<
+$(BUILD)/menu_amiga.o: $(AMIGA)/menu_amiga.asm | $(BUILD)
+	$(AS) -Fhunk -no-opt -quiet -nowarn=62 -I$(AMIGA) -o $@ $<
 $(BUILD)/menu.exe: $(MENU_OBJS) $(SRC)/menu.ld
 	$(LD) -m amiga -T $(SRC)/menu.ld -Map $(BUILD)/menu.map -o $@ $(MENU_OBJS)
 	$(NM) $@ > $(BUILD)/menu.sym

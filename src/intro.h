@@ -8,7 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "hw.h"
+#include "amiga/hw.h"
 
 /* ---- the screen -------------------------------------------------------------------------------------------------- */
 

@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "hw.h"
+#include "amiga/hw.h"
 #include "menu_symbols.h"
 
 uint32_t take_pending_request(void);                                     /* orig $01CF26 (menu.c) */

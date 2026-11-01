@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "hw.h"
+#include "amiga/hw.h"
 #include "menu_symbols.h"
 
 void clear_track_slots(uint8_t *track);                                  /* orig $01DE42 */

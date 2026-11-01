@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "hw.h"
+#include "amiga/hw.h"
 #include "menu_symbols.h"
 
 uint8_t *unpack(uint8_t *to, const uint8_t *from);                       /* orig $01E260 */

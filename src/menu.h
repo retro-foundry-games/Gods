@@ -16,7 +16,7 @@
 #include "draw.h"
 #include "disk.h"
 #include "display.h"
-#include "hw.h"
+#include "amiga/hw.h"
 #include "input.h"
 #include "menu_symbols.h"
 #include "message.h"

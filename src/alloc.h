@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "hw.h"
+#include "amiga/hw.h"
 #include "menu_symbols.h"
 
 void alloc_init(void);                                                   /* orig $01D48E */
