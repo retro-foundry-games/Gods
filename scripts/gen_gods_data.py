@@ -50,8 +50,6 @@ add("screen_front", 0x2940, "struct Screen *screen_front;")
 add("screen_back", 0x2944, "struct Screen *screen_back;")
 scalar("draw_flag", 0x2cb0, "uint8_t", 1)
 scalar("font_offset", 0x394a, "uint16_t", 2)
-scalar("scroll_y", 0x169a, "uint16_t", 2)
-scalar("scroll_step", 0x169e, "uint16_t", 2)
 scalar("glyph_plane_size", 0xe96, "uint16_t", 2)
 assert not any(ram[0x3486:0x3888])
 add("blank_plane", 0x3486, "const uint16_t blank_plane[513] = { 0 };   /* zeros, up to the table at $3888 */")
@@ -67,6 +65,7 @@ def struct_def(ctype, name, addr, fields, extra=""):
     add(name, addr, f"{ctype} {name} = {{ {body} }};" if body else f"{ctype} {name};")
 
 
+struct_def("struct Scroll", "scroll", 0x169a, [("y", 0, 2), ("limit", 2, 2), ("step", 4, 2)])
 struct_def("struct Vblank", "vblank", 0x2cc2, [("palette_dirty", 0, 2), ("saturating", 2, 2), ("count", 4, 2)])
 struct_def("struct Flags", "flags", 0x1dd2, [("music_enabled", 0, 2), ("fire_pressed", 2, 2)])
 struct_def("struct GameClock", "game_clock", 0x1e3c, [("input_seen", 0, 2), ("ticks", 2, 4)])

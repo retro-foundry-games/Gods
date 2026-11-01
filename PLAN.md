@@ -90,32 +90,38 @@ Verified facts:
 ## Lockstep status (latest)
 
 Run: `python3 scripts/build_adf.py` then
-`ami9000_host host/gods.lua --headless --script-args "rebuilt compare=captures/ref100k [survey] until=N"`
-(or `record=DIR` and compare the per-frame hashes). The rebuilt disk is the original disk with its loader patched to load
-the C (see `scripts/build_adf.py`); its load takes a different time, so the rebuilt run is shifted by a constant number of
-frames (369 at 7 MHz, found by matching screen hashes).
+`ami9000_host host/gods.lua --headless --script-args "rebuilt record=captures/rebuilt until=100400 screen=1"` and compare
+the per-frame hashes with the reference at the constant offset the loader's extra disk reads cause (171 frames: found by
+matching screen hashes, see `tools/amiga/frame_recorder.py`); `scripts/compare_memory.py CAPTURE OFFSET` compares the
+game's variables.
 
-- With that shift the rebuilt game matches the original's screens **exactly for 1,312 consecutive frames** (credits, logo,
-  hero picture and the fades) and then diverges at original frame 3545, the start of the story's text scroll.
-- The C touches the chips as the original does (blitter, BLTPRI, CPU fills, music delays); the first scroll step still ends
-  about 4,000 chipset cycles (6% of a frame) later than the original's, so the flip lands a frame late.
-- `ami.cycles()` (new in the host) counts chipset clock units, 70,937 to a PAL frame. Per-function costs, same window:
-  the C's blit routine takes 1,447 per call against 1,096, `glyph_draw` 304 against 170, the bitplane clear 21,000 against
-  16,000 (gcc will not emit `move.l d,(a0)+` for unrolled stores).
-- The original run on a 14 MHz cycle-exact CPU reproduces the 7 MHz recording frame for frame (2,200 frames, 0 differ), so
-  a faster cycle-exact CPU (`--opt puae_cpu_compatibility=exact --opt puae_cpu_multiplier=4`) is a valid way to absorb the
-  C's extra run time. On it the rebuilt game still diverges at the same place, with an irregular 1-2-3 frame scroll cadence,
-  which points at a timing dependence in the rebuilt flip/scroll loop that the original does not have. Not yet explained.
-- Memory is not compared yet: the compare tool has `--survey` and `--mask`, but the mask (vectors, stack zone, loader buffers,
-  the C blob's neighbourhood) has not been written; the boot phase differs because the disk differs.
-- Next: find the cadence difference at the start of the scroll (trace `scroll_y`, `vblank.saturating` and the flips in both
-  on the fast machine), then the memory mask, then run the full 100,000 frames. The from-scratch ADF (own boot block, only
-  the C and its data) is still to do and would remove the loader-patch offset.
+- The C runs from **chip RAM** like the original: the machine is given 1 MB chip RAM (`puae_chipmem_size=2`) and the code
+  sits at `$80000`, above the original's 512 KB (which is full).  The C's own stack is at `$90000`; the stack is not
+  compared.  The CPU is the normal 7 MHz one.
+- The Amiga-specific routines are the original's instructions in `native/amiga.asm` (the user allowed assembly for them,
+  besides `loader.asm`): the blitter work, screen and bitplane fills, the busy-wait loops, the vertical blank interrupt,
+  `vbl_wait` and the music replayer.  `scripts/gen_amiga_asm.py` generates it from the resident code of the recording; every
+  instruction is assembled again at its original address and compared with the original bytes.  Only C-callable
+  wrappers (arguments on the stack, `d2-d7/a2-a6` preserved) were added.  Two deliberate differences: the interrupt saves
+  `d0`/`d1` with `movem.l` (the original's `movem.w` sign-extends them, which C does not survive), and `lea d16(pc),a6` of
+  the music code is `lea abs.w,a6` (same cycles, the data is in another hunk).
+- Why assembly: gcc's code for the blit routine, the glyph drawing, the music and the clears took 30% longer than the
+  original's; the intro is timed to the frame (the first scroll step has to end before the next interrupt), so frames
+  diverged.  Run from fast RAM or on a faster CPU the C was fast enough, but the original's own loops in chip RAM are slower
+  than that, so one frame flip fell on the other side of an interrupt.  With the original's instructions in chip RAM the
+  timing is the same cycle for cycle.
+- **Frames:** 98,100 frames compared (rebuilt frames 2300-100400 against reference frames 2129-100000), 0 differ.
+- **Memory:** `scripts/compare_memory.py` compares the pinned data objects.  Left out: `vblank.count` (counts from boot),
+  the blitter's scratch mask in `display`, and the screen that is being drawn on (the shown one is compared; the frame
+  hashes cover what is displayed anyway).  The interrupt-driven objects (`music`, `channel`, `game_clock`, `vblank`) are
+  compared only in frames where the snapshot (taken at the end of each frame, which is when the vertical blank interrupt
+  begins) did not catch the interrupt half way; a one frame skew is allowed.
+- Still to do: the from-scratch ADF (own boot block, only the C and its data), decompile `game_start` (the fire button).
 
 ## Open questions
 
 - Per-function checking against the original (step 3), or only the full lockstep run?
-- Where the C binary is stored on the disk and where the code hunk runs (steps 4 and 5): slow RAM is the candidate.
+- Where the C binary is stored on the disk: free sectors of the original disk (the code runs in extra chip RAM at `$80000`).
 - `move #imm,sr`, `trap` and `rte` need privileged instructions that plain C cannot express. Plain C replacements
   (interrupt-enable register writes, `__attribute__((interrupt))`) may not be byte-for-byte equivalent in effect.
   Revisit when the loader exists; the user must say if any asm beyond `loader.asm` is acceptable.
