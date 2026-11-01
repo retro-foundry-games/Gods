@@ -42,9 +42,34 @@ end
 local took = false
 ami.wait(1)
 assert(ami.snapshot_load(STATE), "cannot load " .. STATE)
+-- kbd=1 and replay=FILE: the human run of the game (as in menu_oracle.lua)
+local game_keys = {}
+if args:match("kbd=1") then
+    ami.write(0x1e608, read_file("native/build/keyboard_patch.bin"))
+    ami.write(0x1e420, "\x4e\xb9\x00\x01\xe6\x08")
+    ami.write(0x1e2f8, "\x4e\x71\x4e\x71")
+end
+do
+    local rp = args:match("replay=(%S+)")
+    if rp then
+        for line in read_file(rp):gmatch("[^\n]+") do
+            local f, kind, a, b = line:match("(%d+) (%a) (-?%d+) (-?%d+)")
+            if f and kind == "k" then game_keys[tonumber(f)] = game_keys[tonumber(f)] or {}; table.insert(game_keys[tonumber(f)], { tonumber(a), tonumber(b) ~= 0 }) end
+        end
+    end
+end
 local start = ami.frame()
+if MODE == "game" then   -- the game loop's body in C each frame (its routines the original's)
+    local glue = read_file("native/build/takeover_glue.bin")
+    local glue_at = load(read_file("native/build/takeover_glue.lua"))()
+    ami.hook(0x2c20, function()
+        ami.write(syms.base, blob)
+        ami.write(glue_at.base, glue)
+        ami.set_reg("pc", glue_at.game_frame)
+    end)
+end
 local orig_irq3, orig_irq4 = ami.peek32(0x6c), ami.peek32(0x70)
-if MODE ~= "orig" then
+if MODE == "c" or MODE == "irq" then
     ami.hook(0x63a2, function()
         if took then return end
         took = true
@@ -106,6 +131,7 @@ while ami.frame() - start < UNTIL do
     local f = ami.frame() - start
     if joys[f] then ami.joystick(joys[f]) end
     if keys[f] then ami.key(ami.keys[keys[f][1]], keys[f][2]) end
+    for _, k in ipairs(game_keys[f] or {}) do ami.key(k[1], k[2]) end
     if DUMP and f == DUMP then ami.save_file(OUT .. ".ram", ami.read(0, 0x80000)) end
     local line = { tostring(f) }
     PCS = PCS or {}
