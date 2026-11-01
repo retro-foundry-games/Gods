@@ -133,4 +133,10 @@ return {
     { name = "run_object_lists",     orig = 0x015b04, args = {}, blitter = true, scenario = "game" },
     { name = "player_control",       orig = 0x010368, args = {}, blitter = true, scenario = "game" },
     { name = "spawn_player_shots",   orig = 0x0153a2, args = {}, blitter = true, scenario = "game" },
+    { name = "update_creatures",     orig = 0x006ed0, args = {}, blitter = true, scenario = "game" },
+    { name = "item_message",         orig = 0x012924, args = { "d2.w" }, scenario = "game" },
+    { name = "object_message",       orig = 0x012a9c, args = { "a1" }, scenario = "game" },
+    { name = "cell_entry_runs",      orig = 0x012796, args = { "a0" }, scenario = "game" },
+    { name = "hint_message",         orig = 0x010976, args = {}, ret = "d3.w", scenario = "game" },
+    { name = "pick_up_object",       orig = 0x015282, args = { "d2.w" }, blitter = true, scenario = "game" },
 }
