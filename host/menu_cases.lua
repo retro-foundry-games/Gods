@@ -137,6 +137,8 @@ return {
     { name = "spawn_debris_at_cell", orig = 0x01695e, args = { "d0.w", "d1.w", "a1", "a6" }, scenario = "game" },
     { name = "redraw_record_images", orig = 0x017e9c, args = {}, blitter = true, scenario = "game" },
     { name = "check_hit_and_walls",  orig = 0x00d00a, args = { "d0.w", "d1.w", "d2.w" }, ret = "d2.w", scenario = "game" },
+    { name = "take_record_to_18740", orig = 0x018900, args = { "a0" }, scenario = "game" },
+    { name = "call_by_kind",         orig = 0x018a10, args = { "d5.w", "d6.w", "a3" }, scenario = "game" },
     { name = "finish_record_1895a",  orig = 0x01895a, args = { "a0" }, scenario = "game" },
     { name = "claim_free_entries",   orig = 0x00fdba, args = {}, ret = "d0.w", scenario = "game" },
     { name = "blitter_setup_copy",   orig = 0x017044, args = {}, blitter = true, scenario = "game" },
