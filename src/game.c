@@ -145,8 +145,8 @@ void game_frame(void)
     if (param_index == 2 || flag_23a != 1) {
         fn_3ea4();
         fn_417c();
-        fn_7faa();
-        fn_4070();
+        update_falling_thing();
+        game_step_4070();
     }
     fn_15b04();
     fn_15cc4();
@@ -155,9 +155,9 @@ void game_frame(void)
     flag_20e = -1;
     fn_6ed0();
     if (flag_23a == 0) {
-        fn_73d2();
-        fn_77e6();
-        fn_7906();
+        game_step_73d2();
+        game_nothing();
+        game_nothing();
         fn_3f8e();
         fn_18d14();
     }
@@ -179,7 +179,7 @@ void game_frame(void)
         fn_e142();
         fn_de54();
         fn_9ae6();
-        fn_3436();
+        game_nothing();
         fn_3c56();
         fn_8a54();
         fn_7292();
@@ -207,10 +207,10 @@ void game_frame(void)
     fn_c374();
     fn_5842();
     fn_57fc();
-    fn_5608();
-    fn_54c4();
+    update_item_panel();
+    draw_shutter();
     fn_5e02();
-    fn_5d76();
+    draw_energy_bar();
     fn_3806();
     if (flag_268) {
         int16_t d = (int16_t)energy_old;
@@ -661,5 +661,5 @@ void update_score_display(void)
         draw_score_digit(to, score_words[w] >> 4);
         to--;
     }
-    fn_5af6();
+    check_high_scores();
 }

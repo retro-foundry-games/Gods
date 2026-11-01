@@ -192,15 +192,10 @@ fn_ba34           0x0000ba34  void %s(void)
 fn_17e9c          0x00017e9c  void %s(void)
 fn_3ea4           0x00003ea4  void %s(void)
 fn_417c           0x0000417c  void %s(void)
-fn_7faa           0x00007faa  void %s(void)
-fn_4070           0x00004070  void %s(void)
 fn_15b04          0x00015b04  void %s(void)
 fn_15cc4          0x00015cc4  void %s(void)
 fn_836c           0x0000836c  void %s(void)
 fn_6ed0           0x00006ed0  void %s(void)
-fn_73d2           0x000073d2  void %s(void)
-fn_77e6           0x000077e6  void %s(void)
-fn_7906           0x00007906  void %s(void)
 fn_3f8e           0x00003f8e  void %s(void)
 fn_18d14          0x00018d14  void %s(void)
 fn_33d4           0x000033d4  void %s(void)
@@ -212,7 +207,6 @@ fn_190f2          0x000190f2  void %s(void)
 fn_e142           0x0000e142  void %s(void)
 fn_de54           0x0000de54  void %s(void)
 fn_9ae6           0x00009ae6  void %s(void)
-fn_3436           0x00003436  void %s(void)
 fn_3c56           0x00003c56  void %s(void)
 fn_8a54           0x00008a54  void %s(void)
 fn_7292           0x00007292  void %s(void)
@@ -237,10 +231,7 @@ fn_1843e          0x0001843e  void %s(void)
 fn_c374           0x0000c374  void %s(void)
 fn_5842           0x00005842  void %s(void)
 fn_57fc           0x000057fc  void %s(void)
-fn_5608           0x00005608  void %s(void)
-fn_54c4           0x000054c4  void %s(void)
 fn_5e02           0x00005e02  void %s(void)
-fn_5d76           0x00005d76  void %s(void)
 fn_3806           0x00003806  void %s(void)
 fn_12e08          0x00012e08  void %s(void)
 frame_toggle       0x00000196  uint16_t %s   flipped every frame of the game loop
@@ -313,7 +304,6 @@ flag_2d0           0x000002d0 uint16_t %s    set when the score is to be drawn a
 score_words        0x000002d2 uint16_t %s[4]   the score, two decimal digits a word, the low digits first
 word_200           0x00000200 uint16_t %s
 word_202           0x00000202 uint16_t %s
-fn_5af6           0x00005af6 void %s(void)
 word_2ae          0x000002ae  uint16_t %s
 word_2c0          0x000002c0  int16_t %s
 word_2bc          0x000002bc  uint16_t %s

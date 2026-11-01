@@ -183,15 +183,10 @@ extern void fn_ba34(void);   /* $0BA34 */
 extern void fn_17e9c(void);   /* $17E9C */
 extern void fn_3ea4(void);   /* $03EA4 */
 extern void fn_417c(void);   /* $0417C */
-extern void fn_7faa(void);   /* $07FAA */
-extern void fn_4070(void);   /* $04070 */
 extern void fn_15b04(void);   /* $15B04 */
 extern void fn_15cc4(void);   /* $15CC4 */
 extern void fn_836c(void);   /* $0836C */
 extern void fn_6ed0(void);   /* $06ED0 */
-extern void fn_73d2(void);   /* $073D2 */
-extern void fn_77e6(void);   /* $077E6 */
-extern void fn_7906(void);   /* $07906 */
 extern void fn_3f8e(void);   /* $03F8E */
 extern void fn_18d14(void);   /* $18D14 */
 extern void fn_33d4(void);   /* $033D4 */
@@ -203,7 +198,6 @@ extern void fn_190f2(void);   /* $190F2 */
 extern void fn_e142(void);   /* $0E142 */
 extern void fn_de54(void);   /* $0DE54 */
 extern void fn_9ae6(void);   /* $09AE6 */
-extern void fn_3436(void);   /* $03436 */
 extern void fn_3c56(void);   /* $03C56 */
 extern void fn_8a54(void);   /* $08A54 */
 extern void fn_7292(void);   /* $07292 */
@@ -228,10 +222,7 @@ extern void fn_1843e(void);   /* $1843E */
 extern void fn_c374(void);   /* $0C374 */
 extern void fn_5842(void);   /* $05842 */
 extern void fn_57fc(void);   /* $057FC */
-extern void fn_5608(void);   /* $05608 */
-extern void fn_54c4(void);   /* $054C4 */
 extern void fn_5e02(void);   /* $05E02 */
-extern void fn_5d76(void);   /* $05D76 */
 extern void fn_3806(void);   /* $03806 */
 extern void fn_12e08(void);   /* $12E08 */
 extern uint16_t frame_toggle;   /* $00196  flipped every frame of the game loop */
@@ -299,7 +290,6 @@ extern uint16_t flag_2d0;   /* $002D0  set when the score is to be drawn again *
 extern uint16_t score_words[4];   /* $002D2  the score, two decimal digits a word, the low digits first */
 extern uint16_t word_200;   /* $00200 */
 extern uint16_t word_202;   /* $00202 */
-extern void fn_5af6(void);   /* $05AF6 */
 extern uint16_t word_2ae;   /* $002AE */
 extern int16_t word_2c0;   /* $002C0 */
 extern uint16_t word_2bc;   /* $002BC */
