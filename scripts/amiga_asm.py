@@ -16,6 +16,8 @@ from capstone import CS_ARCH_M68K, CS_MODE_M68K_000, Cs
 ENTRIES: dict[int, str] = {}
 LABELS: dict[int, str] = {}
 NATIVE: Path = Path(".")
+CODE_RANGES: list[tuple[int, int]] = []   # all the code that is emitted (branches may go from one piece to another)
+PC_LABELS: dict[int, str] = {}   # data inside the emitted code that the original reaches pc-relative: address -> label
 
 
 def data_symbol(addr: int) -> str | None:
@@ -70,6 +72,8 @@ def text(i: Ins, targets: dict[int, str], final: bool) -> str:
     """vasm source for one instruction.  final: symbols and the C build's addressing; otherwise the original's numbers."""
     op = fix_operand(i)
     mn = i.mn
+    if mn.split(".")[0] in ("btst", "bset", "bclr", "bchg") and re.search(r", d\d$", op):
+        mn = mn.split(".")[0] + ".l"   # capstone prints a bit operation on a data register as a byte one; it is a long
     if is_branch(i):
         tgt = branch_target(i)
         lab = targets.get(tgt) or ENTRIES.get(tgt) or f"${tgt:x}"
@@ -84,6 +88,9 @@ def text(i: Ins, targets: dict[int, str], final: bool) -> str:
         sym = data_symbol(int(m.group(1), 16))
         if sym and "+" not in sym:
             op = op.replace(m.group(0), "#" + sym)
+    m = re.search(r"\$([0-9a-f]+)\(pc(?:, *([ad]\d\.[wl]))?\)", op)
+    if m and final and int(m.group(1), 16) in PC_LABELS:   # pc-relative to data in the code: keep it, by label
+        op = op.replace(m.group(0), f"{PC_LABELS[int(m.group(1), 16)]}(pc" + (f",{m.group(2)})" if m.group(2) else ")"))
     m = re.search(r"\$([0-9a-f]+)\.w\b", op)
     if m and final:   # absolute short: a symbol is an equate (the variable is in another hunk)
         sym = short_symbol(int(m.group(1), 16))
@@ -96,11 +103,19 @@ def text(i: Ins, targets: dict[int, str], final: bool) -> str:
     return f"{mn} {op}".replace(", ", ",")
 
 
-def emit(mem: bytes, lo: int, hi: int) -> list[str]:
-    """The original instructions in [lo, hi) as vasm source, verified against the original bytes."""
+def emit(mem: bytes, lo: int, hi: int, force: set[int] = frozenset()) -> list[str]:
+    """The original instructions in [lo, hi) as vasm source, verified against the original bytes.  `force`: addresses that
+    get a label although no branch in the piece goes there (a jump table's targets)."""
     ins = disassemble(mem, lo, hi)
-    targets = {branch_target(i): LABELS.get(branch_target(i), f"L{branch_target(i):x}") for i in ins
-               if is_branch(i) and lo <= branch_target(i) < hi and branch_target(i) not in ENTRIES}
+
+    def in_code(t: int) -> bool:
+        return lo <= t < hi or any(a <= t < b for a, b in CODE_RANGES)
+    all_targets = {branch_target(i): LABELS.get(branch_target(i), f"L{branch_target(i):x}") for i in ins
+                   if is_branch(i) and in_code(branch_target(i)) and branch_target(i) not in ENTRIES}
+    for a in force:
+        if in_code(a) and a not in ENTRIES:
+            all_targets[a] = LABELS.get(a, f"L{a:x}")
+    targets = {t: n for t, n in all_targets.items() if lo <= t < hi}   # defined here
     check = [f"{name} = ${addr:x}" for addr, name in ENTRIES.items() if not lo <= addr < hi]
     check.append(f"        org ${lo:x}")
     for i in ins:
@@ -126,7 +141,7 @@ def emit(mem: bytes, lo: int, hi: int) -> list[str]:
         if i.address in targets:
             lines.append(f"{targets[i.address]}:")
         if built[off:off + i.size] == i.raw:
-            lines.append("        " + text(i, targets, True))
+            lines.append("        " + text(i, all_targets, True))
         else:
             assert not is_branch(i) and "(pc)" not in i.op, \
                 f"{i.address:x} {i.mn} {i.op}: assembled as {built[off:off + i.size].hex()}, the original is {i.raw.hex()}"

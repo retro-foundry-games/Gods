@@ -24,7 +24,7 @@ import menu_analysis as M  # noqa: E402
 RAM = (PROJECT / "build" / "menu-ram.bin").read_bytes()
 COVERAGE = PROJECT / "analysis" / "coverage-menu-handling.txt"
 NATIVE = PROJECT / "native"
-MENU_C = ["menu", "disk", "alloc", "decrunch", "input", "screen", "draw"]
+MENU_C = ["menu", "disk", "alloc", "decrunch", "input", "screen", "draw", "display"]
 
 
 def decompiled() -> dict[int, str]:
@@ -39,6 +39,12 @@ def decompiled() -> dict[int, str]:
     for a in re.finditer(r"^; void (\w+)\([^\n]*orig \$([0-9A-Fa-f]+)", asm, re.M):
         out[int(a.group(2), 16)] = a.group(1)
     return out
+
+
+def asm_ranges() -> list[tuple[int, int]]:
+    """The code that menu_amiga.asm has from the original: `orig $FIRST-$LAST` in its comments."""
+    text = (NATIVE / "menu_amiga.asm").read_text()
+    return [(int(a, 16), int(b, 16)) for a, b in re.findall(r"orig \$([0-9A-Fa-f]{6})-\$([0-9A-Fa-f]{6})", text)]
 
 
 def stable() -> dict[int, tuple[bytes, str, str]]:
@@ -111,7 +117,7 @@ def todo(st, names) -> None:
     comps, entries, func_of, entry_of, callees, callers = graph(st)
     rows = []
     for root, pcs in comps.items():
-        if any(e in names for e in entry_of[root]):
+        if any(e in names for e in entry_of[root]) or any(a <= min(pcs) <= b for a, b in asm_ranges()):
             continue
         rows.append((len(callees.get(root, [])), len(pcs), min(pcs), entry_of[root]))
     done_n = sum(1 for p in st if p in names)

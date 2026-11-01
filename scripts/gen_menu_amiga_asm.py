@@ -14,9 +14,23 @@ import gen_menu_symbols as S  # noqa: E402
 PROJECT = Path(__file__).resolve().parents[1]
 NATIVE = PROJECT / "native"
 OUT = NATIVE / "menu_amiga.asm"
+
 MEM = (PROJECT / "build" / "menu-ram.bin").read_bytes()
 
-ENTRIES = {0x171E4: "orig_blit_image", 0x171F6: "orig_blit_image_wide", 0x17208: "blit_image_body"}
+ENTRIES = {
+    0x171E4: "orig_blit_image", 0x171F6: "orig_blit_image_wide", 0x17208: "blit_image_body",
+    # the sound system: the audio interrupt, the sequencer that the frame tick calls, starting a sound and what they use
+    0x1F9EA: "_audio_irq", 0x1FA8C: "stop_sound_of_id", 0x1FACC: "random_in_range", 0x1FAF6: "play_sound_body",
+    0x1FC58: "feed_voice", 0x1FCB8: "_sound_tick", 0x1FCDC: "voices_to_hardware", 0x1FCFA: "voice_to_hardware",
+    0x1FD56: "voices_envelope", 0x1FD7A: "voice_envelope", 0x1FE3E: "start_voice", 0x1FF0E: "run_sequencer",
+    0x202DE: "select_period_table", 0x20316: "reset_volume_slides", 0x2032E: "reset_period_slides", 0x633E: "_random_word",
+}
+# the command table of the sequencer: the opcode $80 + 4 n runs the handler of entry n
+COMMAND_TABLE = 0x1FF90
+COMMAND_TARGETS = [int.from_bytes(MEM[COMMAND_TABLE + 4 * n:COMMAND_TABLE + 4 * n + 4], "big") for n in range(22)]
+# the data the sound code reaches pc-relative, inside the code
+DATA_LABELS = {0x1FACA: "last_random", 0x1FE2E: "voice_pointers", 0x1FEFE: "voice_stacks", COMMAND_TABLE: "command_table",
+               0x2034A: "tempo"}
 # the labels inside the blit: a mask is made of the image's planes (three ORed, then the fourth), then each plane is drawn
 # through it over the screen; with a pixel shift the blitter's B channel does the shifting
 LABELS = {
@@ -24,6 +38,7 @@ LABELS = {
     0x172DE: "draw_planes", 0x172FC: "wait_second_plane", 0x17314: "wait_third_plane", 0x1732C: "wait_fourth_plane",
     0x17346: "wait_shifted_draw", 0x1736A: "shifted_modulo", 0x17372: "shifted_set_modulos",
 }
+LABELS.update({t: f"cmd_{0x80 + 4 * n:02x}" for n, t in enumerate(COMMAND_TARGETS)})
 SIZES = {"uint8_t": 1, "int8_t": 1, "uint16_t": 2, "int16_t": 2, "uint32_t": 4, "int32_t": 4, "struct Rec6": 6, "struct Rec10": 10,
          "struct Rec80": 80, "struct Entry8": 8, "struct MemLists": 20, "struct Image": 8}
 
@@ -56,8 +71,54 @@ def short_symbol(addr: int) -> str:
     return f"${addr:x}"
 
 
-A.ENTRIES, A.LABELS, A.NATIVE = ENTRIES, LABELS, NATIVE
+A.ENTRIES, A.LABELS, A.NATIVE, A.PC_LABELS = ENTRIES, LABELS, NATIVE, DATA_LABELS
+A.CODE_RANGES = [(0x171E4, 0x17380), (0x633E, 0x635A)]   # the sound pieces are added below
 A.data_symbol, A.short_symbol = data_symbol, short_symbol
+
+
+# the sound system's pieces: (first, end, kind); the data pieces are between the code pieces
+SOUND = [(0x1F9EA, 0x1FA8C, "code"), (0x1FA8C, 0x1FACA, "code"), (0x1FACA, 0x1FACC, "bytes"), (0x1FACC, 0x1FAF6, "code"),
+         (0x1FAF6, 0x1FE2E, "code"), (0x1FE2E, 0x1FE3E, "longs"), (0x1FE3E, 0x1FEFE, "code"), (0x1FEFE, 0x1FF0E, "longs"),
+         (0x1FF0E, COMMAND_TABLE, "code"), (COMMAND_TABLE, COMMAND_TABLE + 88, "table"), (COMMAND_TABLE + 88, 0x20346, "code"),
+         (0x20346, 0x2034A, "words"), (0x2034A, 0x2034C, "words")]
+
+
+A.CODE_RANGES += [(lo, hi) for lo, hi, kind in SOUND if kind == "code"]
+
+
+def sound_system() -> list[str]:
+    """The Paula sound driver: the audio interrupt, the sequencer (a command interpreter over four voices) and what
+    they use, from the original, with the C-callable entries."""
+    out = ["", "; ---- the sound system (orig $01F9EA-$02034B): four voices, a sequencer that interprets the command bytes of the",
+           "; tracks, the audio interrupt that feeds each voice its next sample.  Entries for C: audio_irq (the interrupt),",
+           "; sound_tick (once a frame), play_sound(id), random_word (orig $00633E).",
+           "        xdef _audio_irq, _sound_tick, _play_sound, _random_word", "",
+           "; void play_sound(uint8_t id): the sound the id names is started on a free voice (orig $01FAF6)",
+           "_play_sound:", "        move.l 4(sp),d0", "        bra.w play_sound_body", ""]
+    # every address that a branch of any piece goes to gets its label, in the piece that has the address
+    force = set(COMMAND_TARGETS)
+    for lo, hi, kind in SOUND:
+        if kind == "code":
+            force |= {A.branch_target(i) for i in A.disassemble(MEM, lo, hi) if A.is_branch(i)}
+    for lo, hi, kind in SOUND:
+        label = DATA_LABELS.get(lo)
+        if kind == "code":
+            out += A.emit(MEM, lo, hi, force)
+        else:
+            if label:
+                out.append(f"{label}:")
+            if kind == "bytes":
+                out.append("        dc.b " + ",".join(f"${b:02x}" for b in MEM[lo:hi]))
+            elif kind == "words":
+                out.append("        dc.w " + ",".join(f"${int.from_bytes(MEM[a:a + 2], 'big'):04x}" for a in range(lo, hi, 2)))
+            elif kind == "longs":
+                out.append("        dc.l " + ",".join(f"${int.from_bytes(MEM[a:a + 4], 'big'):x}" for a in range(lo, hi, 4)))
+            else:   # the command table: the addresses of code
+                out += [f"        dc.l {LABELS[t]}" for t in COMMAND_TARGETS]
+        out.append("")
+    out += ["; uint16_t random_word(void), orig $00633E: the next word of a table, round and round; only d0 is changed"]
+    out += A.emit(MEM, 0x633E, 0x635A)
+    return out
 
 
 def main() -> None:
@@ -86,6 +147,7 @@ def main() -> None:
     idx = max(n for n, ln in enumerate(rest) if ln.strip() == "rts")
     rest[idx:idx + 1] = ["        movem.l (sp)+,d2-d7/a2-a4", "        rts"]
     lines += rest
+    lines += sound_system()
     OUT.write_text("\n".join(A.localize(lines)) + "\n")
     print(f"wrote {OUT}")
 
