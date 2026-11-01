@@ -9,7 +9,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 PROJECT = ROOT / "projects" / "gods"
-HOST = ROOT / "tools" / "engine9000" / "ami9000_host"
+import os
+HOST = Path(os.environ.get("AMI_HOST", ROOT / "tools" / "engine9000" / "ami9000_host"))   # a worktree has none of its own: AMI_HOST names the main checkout's
 SAMPLES = 24
 # the oracle run: the original from a savestate at the menu (host/gods.lua snapname=gods-menu-1m), with the menu used: the
 # selection moved, the password screen opened and some letters picked, then Begin Quest chosen

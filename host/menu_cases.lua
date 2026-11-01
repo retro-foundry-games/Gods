@@ -66,4 +66,13 @@ return {
     { name = "draw_effects",         orig = 0x003f8e, args = {}, blitter = true, scenario = "game" },
     { name = "update_energy_display",orig = 0x005e02, args = {}, blitter = true, scenario = "game" },
     { name = "draw_item_row",        orig = 0x003806, args = {}, blitter = true, scenario = "game" },
+    { name = "update_records_12a0",  orig = 0x009ae6, args = {}, scenario = "game" },
+    { name = "update_records_1354",  orig = 0x008a54, args = {}, scenario = "game" },
+    { name = "next_table_entry",     orig = 0x00d47e, args = {}, scenario = "game" },
+    { name = "mark_player_cells",    orig = 0x003c56, args = {}, scenario = "game" },
+    { name = "draw_sprites_721e",    orig = 0x007292, args = {}, blitter = true, scenario = "game" },
+    { name = "move_records_3a0a6",   orig = 0x003dfc, args = {}, blitter = true, scenario = "game" },
+    { name = "spawn_effect",         orig = 0x003f46, args = { "d0.w", "d1.w", "d2.w" }, scenario = "game" },
+    { name = "check_pickups",        orig = 0x010470, args = {}, scenario = "game" },
+    { name = "update_score_display", orig = 0x005842, args = {}, blitter = true, scenario = "game" },
 }
