@@ -193,7 +193,7 @@ void blit_tile(int16_t src_step, int16_t dst_step, int16_t rows, const uint8_t *
     custom->bltapt = ADDR(src);
     custom->bltdpt = ADDR(dst);
     custom->dmacon = 0x8400;
-    custom->bltsize = size;
+    blit_start(size);
     dst += dst_step;
     src += src_step;
     for (int i = 0; i < 2; i++) {
@@ -201,7 +201,7 @@ void blit_tile(int16_t src_step, int16_t dst_step, int16_t rows, const uint8_t *
             ;
         custom->bltapt = ADDR(src);
         custom->bltdpt = ADDR(dst);
-        custom->bltsize = size;
+        blit_start(size);
         dst += dst_step;
         src += src_step;
     }
@@ -210,7 +210,7 @@ void blit_tile(int16_t src_step, int16_t dst_step, int16_t rows, const uint8_t *
     custom->bltapt = ADDR(src);
     custom->bltdpt = ADDR(dst);
     custom->dmacon = 0x0400;
-    custom->bltsize = size;
+    blit_start(size);
 }
 
 /* orig $017972: one tile of the background: the byte `*map` names the tile (256 bytes of ptr_0c70 each), and the blits of

@@ -64,4 +64,10 @@ _Static_assert(offsetof(struct Custom, color) == 0x180, "custom layout");
 
 #define CIAA_PRA (*(volatile uint8_t *)0xbfe001)   /* bits 6 and 7: the two fire buttons, 0 when pressed */
 
+#ifdef GODS_SDL
+#include "sdl_platform.h"   /* the SDL port (sdl/): the chips are emulated in C */
+#else
+#include "platform.h"   /* amiga/platform.h */
+#endif
+
 #endif

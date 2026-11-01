@@ -26,7 +26,7 @@ const uint16_t *find_color01_move(const uint16_t *list)
     do {
         if (*list++ == 0x0182)
             return list;
-    } while ((int32_t)(uintptr_t)list < 0x5246);
+    } while ((int32_t)(uintptr_t)list < (int32_t)GUEST(0x5246));
     return (const uint16_t *)(intptr_t)-1;
 }
 

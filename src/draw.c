@@ -73,7 +73,7 @@ static void blit_masked_image(uint8_t *dst, const uint8_t *src, uint16_t plane, 
     custom->bltamod = mod;
     custom->bltbmod = mod;
     custom->bltcmod = mod;
-    custom->bltsize = size;
+    blit_start(size);
     /* ... and the plane 3 */
     while (custom->dmaconr & DMAF_BLTBUSY)
         ;
@@ -82,7 +82,7 @@ static void blit_masked_image(uint8_t *dst, const uint8_t *src, uint16_t plane, 
     custom->bltapt = ADDR(s);
     custom->bltbpt = ADDR(mask);
     custom->bltdpt = ADDR(mask);
-    custom->bltsize = size;
+    blit_start(size);
     while (custom->dmaconr & DMAF_BLTBUSY)
         ;
     custom->bltafwm = first_mask;
@@ -133,7 +133,7 @@ static void blit_masked_image(uint8_t *dst, const uint8_t *src, uint16_t plane, 
         custom->bltdpt = ADDR(dd);
         if (i == 3)
             custom->dmacon = 0x0400;
-        custom->bltsize = size;
+        blit_start(size);
     }
 }
 

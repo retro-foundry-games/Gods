@@ -28,14 +28,14 @@ void display_setup(void)
 void sound_init(void)
 {
     uint32_t *state = (uint32_t *)voice;
-    uint8_t *silence = (uint8_t *)0x21e5e;   /* the silent sample, in the data the loader brings */
+    uint8_t *silence = (uint8_t *)GUEST(0x21e5e);   /* the silent sample, in the data the loader brings */
 
     sound_lock = 0xff;
     CIAA_PRA |= 0x02;
-    *(uint32_t *)0x2079e = 0;
-    *(uint16_t *)0x207a2 = 0;
-    *(uint32_t *)0x207a4 = 0;
-    *(uint16_t *)0x207a8 = 0;
+    *(uint32_t *)GUEST(0x2079e) = 0;
+    *(uint16_t *)GUEST(0x207a2) = 0;
+    *(uint32_t *)GUEST(0x207a4) = 0;
+    *(uint16_t *)GUEST(0x207a8) = 0;
     custom->dmacon = 0x820f;
     custom->intena = 0x0780;
     custom->intreq = 0x0780;
@@ -74,9 +74,9 @@ void chips_setup(void)
 {
     for (int i = 0; i < 16; i++)
         custom->color[i] = 0;
-    *(uint32_t *)0x68 = (uint32_t)(uintptr_t)keyboard_irq;
-    *(uint32_t *)0x6c = (uint32_t)(uintptr_t)vbl_irq;
-    *(uint32_t *)0x70 = (uint32_t)(uintptr_t)audio_irq;
+    *(uint32_t *)GUEST(0x68) = (uint32_t)(uintptr_t)keyboard_irq;
+    *(uint32_t *)GUEST(0x6c) = (uint32_t)(uintptr_t)vbl_irq;
+    *(uint32_t *)GUEST(0x70) = (uint32_t)(uintptr_t)audio_irq;
     sound_init();
     custom->spr[0][1] = 0;
     custom->cop1lc = 0x5302;
@@ -88,8 +88,8 @@ void chips_setup(void)
     custom->adkcon = 0x9500;
     custom->intena = 0x3fd7;
     custom->intena = 0xc028;
-    *(volatile uint8_t *)0xbfdd00 = 0x6f;   /* CIA B: the interrupts of the disk index and the others off, then the one on */
-    *(volatile uint8_t *)0xbfdd00 = 0x90;
+    *(volatile uint8_t *)GUEST(0xbfdd00) = 0x6f;   /* CIA B: the interrupts of the disk index and the others off, then the one on */
+    *(volatile uint8_t *)GUEST(0xbfdd00) = 0x90;
     sr_set(0x2000);
 }
 
@@ -147,8 +147,8 @@ void memory_map_init(void)
     p += 0x1450;
     work_area = (uint32_t *)p;
     clear_work_area();
-    *(uint16_t *)0x5258 = (uint16_t)(uintptr_t)p;          /* the copper list's bitplane pointer for the message: the work area */
-    *(uint16_t *)0x5254 = (uint16_t)((uintptr_t)p >> 16);
+    *(uint16_t *)GUEST(0x5258) = (uint16_t)(uintptr_t)p;          /* the copper list's bitplane pointer for the message: the work area */
+    *(uint16_t *)GUEST(0x5254) = (uint16_t)((uintptr_t)p >> 16);
     p += 0x140;
     ptr_0b86 = p;
     p += 0x4000;

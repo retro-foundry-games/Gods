@@ -1,6 +1,6 @@
 /* Gods, the menu program: showing the screens and the colours */
-#include "menu.h"
-#include "screen.h"
+#include "../menu.h"
+#include "../screen.h"
 
 /* orig $004D3E: the fine scroll of a copper list for the pixel offset `x` (only the low byte counts): the scroll nibbles
  * for the two fields of BPLCON1, where the display fetch starts, and the modulos of the bitplane pointers.  x of 16 or more
