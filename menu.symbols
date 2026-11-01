@@ -78,7 +78,7 @@ message_shown     0x000002f4  uint16_t %s     non-zero: the message is on the sc
 message_arg       0x000002f8  uint16_t %s
 message_words     0x000053ee  uint16_t %s[16]   colours of the message (message_words[8..11] the colours it fades to)
 table message_pairs 0x00016f6e uint32_t 8   four pairs of addresses of the two copper lists' colour moves the message fades
-table font_8x8     0x0001e7f4 uint8_t 2048  the text font (8 bytes a character)
+table font_8x8     0x0001e7f4 uint8_t 1272  the text font (8 bytes a character)
 memory_base       0x00000b56  uint8_t *%s    a block of the program's memory (the background image sits 256 bytes into it)
 background        0x00000182  uint8_t *%s    where the background image is
 background_loaded 0x00000276  uint16_t %s    non-zero: the background image has been loaded
@@ -101,3 +101,16 @@ table menu_texts      0x0000635a uint8_t 41   the main menu's lines, each ended 
 table text_top_ten   0x000068c2 uint8_t 13   "TOP TEN GODS"
 table text_enter_a   0x0000689c uint8_t 17   "ENTER A PASSWORD"
 table key_table      0x00006ce0 uint8_t 40   the keys of the grid in the order of its cells (a to z, full stop, space, 0 to 9, backspace), ended by $FF
+table tocache_name 0x000196fe uint8_t 12   "tocache.bin": the file with the directory of the disks (loaded at start)
+asset_name        0x00000d1e  char %s[16]       the file name that assets_load puts together
+picture_header    0x00000d42  uint16_t %s       the first word of the picture file (its resolution)
+asset_directory   0x00000cea  uint8_t *%s       where the table of sprite records of an asset file is read (at +20)
+asset_flag        0x0000023c  int16_t %s        negative: every sprite record is copied; otherwise a bit of shift_bits tells whether
+shift_bits        0x00000bba  uint32_t %s       a shift register of random bits (refilled from shift_source)
+shift_source      0x00000bbe  const uint32_t *%s
+shift_count       0x0000023e  int16_t %s        bits left in shift_bits
+asset_mem_end     0x00000d3e  uint8_t *%s       where assets_load stopped writing sprite data
+asset_table_end   0x00000d3a  struct AssetEntry *%s   ... and where its table of entries ended
+picture_buffer    0x00031fde  uint8_t %s[]      where a picture file is read to
+table asset_extensions 0x00000d2e uint8_t 11   the endings of a picture file name (.pi1) and of its table (.dat, 6 bytes on)
+table asset_names 0x0001ecec uint8_t 138   the names assets_load knows (each ended by 0, ended by $FF), and from byte 86 on a long for each: the address of its list of file names

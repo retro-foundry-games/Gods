@@ -4,6 +4,7 @@
  * is linked at the address it will run at ($c0000), so it needs no relocation. */
 SECTIONS {
     .data : SUBALIGN(1) {
+        . = 0xd2e; *(.rodata.asset_extensions) *(.data.asset_extensions)
         . = 0x29da; *(.rodata.param_table) *(.data.param_table)
         . = 0x4cba; *(.rodata.offsets_4cba) *(.data.offsets_4cba)
         . = 0x635a; *(.rodata.menu_texts) *(.data.menu_texts)
@@ -11,7 +12,9 @@ SECTIONS {
         . = 0x68c2; *(.rodata.text_top_ten) *(.data.text_top_ten)
         . = 0x6ce0; *(.rodata.key_table) *(.data.key_table)
         . = 0x16f6e; *(.rodata.message_pairs) *(.data.message_pairs)
+        . = 0x196fe; *(.rodata.tocache_name) *(.data.tocache_name)
         . = 0x1e7f4; *(.rodata.font_8x8) *(.data.font_8x8)
+        . = 0x1ecec; *(.rodata.asset_names) *(.data.asset_names)
     }
     .text 0xc0000 : { *(.text .text.*) *(.rodata .rodata.*) }
 }
@@ -109,3 +112,13 @@ _key_held = 0x228;
 _disk_digit = 0x1d487;
 _has_continue = 0x27a;
 _menu_item_count = 0x6384;
+_asset_name = 0xd1e;
+_picture_header = 0xd42;
+_asset_directory = 0xcea;
+_asset_flag = 0x23c;
+_shift_bits = 0xbba;
+_shift_source = 0xbbe;
+_shift_count = 0x23e;
+_asset_mem_end = 0xd3e;
+_asset_table_end = 0xd3a;
+_picture_buffer = 0x31fde;

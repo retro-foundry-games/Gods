@@ -20,6 +20,7 @@
 #include "input.h"
 #include "menu_symbols.h"
 #include "message.h"
+#include "file.h"
 #include "ui.h"
 #include "screen.h"
 
@@ -48,5 +49,8 @@ void password_slots_draw(void);                                          /* orig
 void record_list_draw(void);                                             /* orig $006974 */
 void wait_request(int16_t frames);                                       /* orig $006948 */
 void title_draw(void);                                                   /* orig $006754 */
+
+void text_draw_centered_other(const char *text);                      /* orig $012D5C */
+void wait_frames_or_button(uint16_t frames);                             /* orig $01CF64 */
 
 #endif

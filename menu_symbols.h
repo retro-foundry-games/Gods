@@ -99,13 +99,26 @@ extern uint16_t key_held;   /* $00228  non-zero: the button is still down since 
 extern uint8_t disk_digit;   /* $1D487  the digit of the disk's name ("godsd2": the disk the loader asks for) */
 extern uint16_t has_continue;   /* $0027A  non-zero: there is a game to continue (the menu has a third line) */
 extern uint16_t menu_item_count;   /* $06384  the number of the last line of the menu (1 or 2; a word in the code that is changed) */
+extern char asset_name[16];   /* $00D1E  the file name that assets_load puts together */
+extern uint16_t picture_header;   /* $00D42  the first word of the picture file (its resolution) */
+extern uint8_t *asset_directory;   /* $00CEA  where the table of sprite records of an asset file is read (at +20) */
+extern int16_t asset_flag;   /* $0023C  negative: every sprite record is copied; otherwise a bit of shift_bits tells whether */
+extern uint32_t shift_bits;   /* $00BBA  a shift register of random bits (refilled from shift_source) */
+extern const uint32_t *shift_source;   /* $00BBE */
+extern int16_t shift_count;   /* $0023E  bits left in shift_bits */
+extern uint8_t *asset_mem_end;   /* $00D3E  where assets_load stopped writing sprite data */
+extern struct AssetEntry *asset_table_end;   /* $00D3A  ... and where its table of entries ended */
+extern uint8_t picture_buffer[];   /* $31FDE  where a picture file is read to */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
 extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of the two copper lists' colour moves the message fades */
-extern const uint8_t font_8x8[2048];   /* $1E7F4  the text font (8 bytes a character) */
+extern const uint8_t font_8x8[1272];   /* $1E7F4  the text font (8 bytes a character) */
 extern const uint8_t menu_texts[41];   /* $0635A  the main menu's lines, each ended by a 0: "BEGIN QUEST", "ENTER PASSWORD", "CONTINUE GAME" */
 extern const uint8_t text_top_ten[13];   /* $068C2  "TOP TEN GODS" */
 extern const uint8_t text_enter_a[17];   /* $0689C  "ENTER A PASSWORD" */
 extern const uint8_t key_table[40];   /* $06CE0  the keys of the grid in the order of its cells (a to z, full stop, space, 0 to 9, backspace), ended by $FF */
+extern const uint8_t tocache_name[12];   /* $196FE  "tocache.bin": the file with the directory of the disks (loaded at start) */
+extern const uint8_t asset_extensions[11];   /* $00D2E  the endings of a picture file name (.pi1) and of its table (.dat, 6 bytes on) */
+extern const uint8_t asset_names[138];   /* $1ECEC  the names assets_load knows (each ended by 0, ended by $FF), and from byte 86 on a long for each: the address of its list of file names */
 
 #endif

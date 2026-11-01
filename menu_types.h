@@ -13,6 +13,13 @@ struct MemLists {
     uint32_t end;       /* 2 KB after the second */
 };
 
+/* an entry of the table assets_load makes: a sprite cut out of a picture */
+struct AssetEntry {
+    int16_t width_negative;   /* its width in pixels, negated */
+    int16_t height_less_one;
+    uint8_t *planes;          /* where its four planes are */
+};
+
 /* records of the tables the program keeps: their size is what the loops step by */
 struct Rec6 { uint16_t w[3]; };
 struct Rec10 { uint16_t w[5]; };

@@ -297,3 +297,25 @@ void title_draw(void)
         sprite_draw(64 + 32 * i, 5, index + i);
     glyph_draw(256, 5, index + 6);
 }
+
+/* orig $012D5C: the text centred on the other screen (the one that is shown) */
+void text_draw_centered_other(const char *text)
+{
+    uint8_t *saved = screen_buffer;
+
+    screen_buffer = screen_other;
+    text_draw_centered(text);
+    screen_buffer = saved;
+}
+
+/* orig $01CF64: wait up to frames - 1 frames, or until the first button is down */
+void wait_frames_or_button(uint16_t frames)
+{
+    for (;;) {
+        if (--frames == 0)
+            return;
+        wait_vblank();
+        if (button_bits[0] & 1)
+            return;
+    }
+}
