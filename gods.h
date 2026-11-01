@@ -129,8 +129,14 @@ void glyph_draw(uint16_t x, uint16_t y, uint16_t index);              /* orig $0
 void sprite_draw(uint16_t x, uint16_t y, uint16_t index);             /* orig $003950 */
 
 extern uint8_t draw_flag;                   /* set while the sprite and text routines should also draw the shadow */
-extern uint16_t scroll_y;                   /* the line being scrolled */
-extern uint16_t scroll_step;
+/* the story's scroll: the line being scrolled, the lowest it goes (the original stores it but compares with a constant)
+ * and the step of a bouncing scroll that the recording never runs */
+struct Scroll {
+    uint16_t y;
+    uint16_t limit;
+    uint16_t step;
+};
+extern struct Scroll scroll;
 
 /* the two screens, drawn to and shown in turn, and the copper list for each (the copper program that points the
  * bitplanes at its screen).  A list ends with the copper wait for a position that never comes. */
@@ -204,6 +210,9 @@ void plane5_clear(void);                                      /* orig $001D7E */
 void blit_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows);
 void blit_image_wide(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows);
 
+void vbl_wait(void);                                          /* orig $002CDE */
+void music_init(void);                                        /* orig $002242 */
+void irq_level3(void);                                        /* orig $001DD6: the vertical blank interrupt */
 void delay(void);                                             /* the music's busy wait, orig $0024F2 */
 void startup_delay(void);                                     /* orig $000C26 */
 

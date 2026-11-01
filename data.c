@@ -41,9 +41,7 @@ struct CopperList copper_b = {
 
 uint16_t glyph_plane_size;
 
-uint16_t scroll_y = 0x14;
-
-uint16_t scroll_step;
+struct Scroll scroll = { .y = 0x14 };
 
 uint16_t *palette_ptr = display.palette.colour;   /* the original holds the address of the colour table */
 

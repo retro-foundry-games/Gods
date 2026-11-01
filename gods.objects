@@ -2,8 +2,7 @@ vectors 0
 copper_a a8
 copper_b fc
 glyph_plane_size e96
-scroll_y 169a
-scroll_step 169e
+scroll 169a
 palette_ptr 1af6
 flags 1dd2
 game_clock 1e3c
