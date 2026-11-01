@@ -45,7 +45,7 @@ ami.boot()
 --   click=F[,...]        press the left mouse button (the fire button the program polls) for 3 frames at frame F
 --   move=F:DX:DY[,...]   move the mouse by DX, DY at frame F (the software pointer of the menu follows the counters)
 --   joy=F:DIRS[,...]     set the joystick (port 1) at frame F: DIRS is up, down, left, right, fire joined by +, or none
---   press=KEY@F[,...]    press the key (a name from ami.keys, e.g. space) for 3 frames at frame F (to reach the menu with
+--   press=KEY@F[xN][,...] press the key (a name from ami.keys, e.g. space) for N (default 3) frames at frame F (to reach the menu with
 --                        space and take a snapshot; the lockstep recordings never press a key)
 --   record=DIR [screen=N]  stream every frame (hash, chip RAM, every Nth screen) to tools/amiga/frame_recorder.py
 --   record=DIR hook=HEX [maxevents=N]  record at every execution of the instruction at HEX (the entry of the program's
@@ -188,9 +188,9 @@ if shots_dir then
     if #list == 0 then list = { 300, 600, 1200, 2400 } end
     for _, f in ipairs(list) do events[#events + 1] = { f, "shot" } end
 end
-for key, f in (args:match("press=(%S+)") or ""):gmatch("(%w+)@(%d+)") do
+for key, f, hold in (args:match("press=(%S+)") or ""):gmatch("(%w+)@(%d+)x?(%d*)") do
     events[#events + 1] = { tonumber(f), "press", key }
-    events[#events + 1] = { tonumber(f) + 3, "release", key }
+    events[#events + 1] = { tonumber(f) + (tonumber(hold) or 3), "release", key }
 end
 for f, v in pairs(moves) do events[#events + 1] = { f, "move", v } end
 for f, v in pairs(joys) do events[#events + 1] = { f, "joy", v } end
