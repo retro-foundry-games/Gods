@@ -2,7 +2,7 @@
 -- No WHDLoad, no patches: the boot block and the game's own loader run unmodified.
 --
 --   play:   tools/engine9000/ami9000_host projects/gods/host/gods.lua
---   rebuilt             boot the disk whose game is the C in src/ (local/gods-c-disk1.adf, see scripts/build_adf.py)
+--   rebuilt             boot the disk whose game is the C in native/src/ (local/gods-c-disk1.adf, see scripts/build_adf.py)
 --   flags:  see "Script flags" below (snapshots, screenshots)
 --
 -- Needs the A500 Kickstart 1.3 (CRC32 c4f0f55f) in ../local/system and ../local/gods-disk1.adf.

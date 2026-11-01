@@ -6,7 +6,7 @@
 
 The code is the program's RAM while the menu is on show (build/menu-ram.bin: frame 8,000 of captures/menu_ref); the executed
 instructions are those of analysis/coverage-menu-handling.txt (the menu on show, the selection moved, the password screen and
-a start of Begin Quest); what is decompiled is read from the `orig $ADDR` comments of src/*.c.
+a start of Begin Quest); what is decompiled is read from the `orig $ADDR` comments of native/src/*.c.
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ import menu_analysis as M  # noqa: E402
 RAM = (PROJECT / "build" / "menu-ram.bin").read_bytes()
 import os
 COVERAGE = PROJECT / "analysis" / os.environ.get("MENU_COVERAGE", "coverage-menu-handling.txt")   # e.g. coverage-menu.txt, coverage-game-start.txt
-SRC = PROJECT / "src"
+SRC = PROJECT / "native" / "src"
 MENU_C = ["menu", "disk", "alloc", "decrunch", "input", "screen", "draw", "display", "message", "ui", "file", "boot"]
 
 

@@ -31,7 +31,7 @@ def objects() -> list[tuple[str, int, int]]:
     for m in re.finditer(r"\.(?:data|bss|rodata)\.(\w+)\s+([0-9a-f]{8})", out):
         sizes[m.group(1)] = int(m.group(2), 16)
     result = []
-    for line in (PROJECT / "src" / "intro.objects").read_text().split("\n"):
+    for line in (PROJECT / "native" / "src" / "intro.objects").read_text().split("\n"):
         if line.strip():
             name, addr = line.split()
             if name not in SKIP and name in sizes:

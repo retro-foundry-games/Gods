@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Disassemble the loader pieces on disk 1 into projects/gods/src/loader.asm and prove they reassemble exactly.
+"""Disassemble the loader pieces on disk 1 into projects/gods/native/src/loader.asm and prove they reassemble exactly.
 
     uv run python projects/gods/scripts/gen_loader_asm.py
 
@@ -18,7 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import intro_analysis as G  # noqa: E402
 
-SRC = G.ROOT / "src"
+SRC = G.ROOT / "native" / "src"
 BUILD = G.ROOT / "build"
 DISK1 = Path(glob.glob(str(G.ROOT / "local/media-archive/disk1/*.adf"))[0])
 

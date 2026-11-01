@@ -1,4 +1,4 @@
-"""Generate src/intro_amiga.asm: the Amiga-specific routines as the original has them.
+"""Generate native/src/intro_amiga.asm: the Amiga-specific routines as the original has them.
 
 The routines are the original's instructions, disassembled from the resident code in the reference recording (frame
 1746), with data addresses turned into symbols and branch targets into labels, so they take as long as the original,
@@ -22,7 +22,7 @@ import amiga_asm as A  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[3]
 PROJECT = ROOT / "projects" / "gods"
-SRC = PROJECT / "src"
+SRC = PROJECT / "native" / "src"
 OUT = SRC / "intro_amiga.asm"
 REF = PROJECT / "captures" / "ref100k"
 FRAME = 1746

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Copy the game's initial data from the recording into src/intro_data.c (C initializers) and src/intro.ld.
+"""Copy the game's initial data from the recording into native/src/intro_data.c (C initializers) and native/src/intro.ld.
 
     uv run python projects/gods/scripts/gen_intro_data.py
 
@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import intro_analysis as G  # noqa: E402
 
 FRAME = 1746
-SRC = G.ROOT / "src"
+SRC = G.ROOT / "native" / "src"
 ram = G.ram_at(FRAME)
 
 objects: list[tuple[str, int, str]] = []   # (name, address, C definition)

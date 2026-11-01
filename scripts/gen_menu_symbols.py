@@ -1,4 +1,4 @@
-"""Write src/menu_symbols.h, src/menu_data.c and src/menu.ld from src/menu.symbols (the menu's data at the
+"""Write native/src/menu_symbols.h, native/src/menu_data.c and native/src/menu.ld from native/src/menu.symbols (the menu's data at the
 addresses the original program keeps it at).
 
 menu.symbols has two kinds of lines:
@@ -14,7 +14,7 @@ import re
 from pathlib import Path
 
 PROJECT = Path(__file__).resolve().parents[1]
-SRC = PROJECT / "src"
+SRC = PROJECT / "native" / "src"
 RAM = PROJECT / "build" / "menu-ram.bin"
 WIDTH = {"uint8_t": 1, "uint16_t": 2, "uint32_t": 4}
 

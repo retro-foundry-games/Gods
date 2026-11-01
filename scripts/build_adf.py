@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the Gods ADF whose game is the C in src/: boot -> original loader -> C (no original game code runs).
+"""Build the Gods ADF whose game is the C in native/src/: boot -> original loader -> C (no original game code runs).
 
     uv run python projects/gods/scripts/build_adf.py
 
@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gen_loader_asm as L  # noqa: E402
 import intro_analysis as G  # noqa: E402
 
-SRC = G.ROOT / "src"
+SRC = G.ROOT / "native" / "src"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import intro_offsets  # noqa: E402
 
@@ -84,7 +84,7 @@ def parse_hunks(data: bytes):
 def main() -> int:
     BUILD.mkdir(exist_ok=True)
     intro_offsets.write()   # the struct field offsets intro_amiga.asm includes, from intro.h
-    r = subprocess.run(["make", "-C", str(G.ROOT), "--no-print-directory", "build/intro.exe"], capture_output=True, text=True)
+    r = subprocess.run(["make", "-C", str(G.ROOT / "native"), "--no-print-directory", "../build/intro.exe"], capture_output=True, text=True)
     if r.returncode:
         print(r.stdout[-2000:], r.stderr[-3000:])
         return 1
