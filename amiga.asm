@@ -11,9 +11,9 @@
 ; void blitter_wait(void), orig $002F1E: wait until the blitter has finished (and give it priority while waiting)
 _blitter_wait:
         move.w #$8400,$dff096.l
-L2f26:
+blitter_wait_loop:
         btst.b #$e,$dff002.l
-        bne.b L2f26
+        bne.b blitter_wait_loop
         move.w #$400,$dff096.l
         rts 
 
@@ -66,9 +66,9 @@ _screen_clear:
         movem.l d7/a0,-(a7)
         movea.l (_screen_front).l,a0
         move.w #$270f,d7
-L30e2:
+screen_clear_loop:
         clr.l (a0)+
-        dbra d7,L30e2
+        dbra d7,screen_clear_loop
         movem.l (a7)+,d7/a0
         rts 
 
@@ -78,9 +78,9 @@ _screen_restore:
         movea.l (_screen_back).l,a0
         movea.l (_screen_front).l,a1
         move.w #$270f,d7
-L3102:
+screen_restore_loop:
         move.l (a0)+,(a1)+
-        dbra d7,L3102
+        dbra d7,screen_restore_loop
         movem.l (a7)+,d7/a0-a1
         rts 
 
@@ -90,7 +90,7 @@ _plane5_set:
         lea.l $7d00(a0),a0
         move.w #$c7,d1
         moveq #$ff,d0
-L1d64:
+plane5_set_loop:
         move.l d0,(a0)+
         move.l d0,(a0)+
         move.l d0,(a0)+
@@ -101,7 +101,7 @@ L1d64:
         move.l d0,(a0)+
         move.l d0,(a0)+
         move.l d0,(a0)+
-        dbra d1,L1d64
+        dbra d1,plane5_set_loop
         rts 
 
 ; void plane5_clear(void), orig $001D7E: clear the fifth bitplane of the front screen
@@ -110,7 +110,7 @@ _plane5_clear:
         lea.l $7d00(a0),a0
         move.w #$c7,d1
         moveq #$0,d0
-L1d8e:
+plane5_clear_loop:
         move.l d0,(a0)+
         move.l d0,(a0)+
         move.l d0,(a0)+
@@ -121,7 +121,7 @@ L1d8e:
         move.l d0,(a0)+
         move.l d0,(a0)+
         move.l d0,(a0)+
-        dbra d1,L1d8e
+        dbra d1,plane5_clear_loop
         rts 
 
 ; void blit_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows), orig $0032B6:
@@ -163,9 +163,9 @@ blit_image_body:
         lsl.w d5,d4
         or.w d6,d4
         move.w #$8400,$96(a3)
-L32fc:
+wait_mask_or3:
         btst.b #$6,$2(a3)
-        bne.b L32fc
+        bne.b wait_mask_or3
         move.l a4,$50(a3)
         adda.w d0,a4
         move.l a4,$4c(a3)
@@ -181,16 +181,16 @@ L32fc:
         move.w d5,$42(a3)
         move.w #$ffe,$40(a3)
         add.w (_display+$46).l,d5
-        bpl.b L333e
+        bpl.b mask_modulo_ready
         moveq #$0,d5
-L333e:
+mask_modulo_ready:
         move.w d5,$64(a3)
         move.w d5,$62(a3)
         move.w d5,$60(a3)
         move.w d4,$58(a3)
-L334e:
+wait_mask_or4:
         btst.b #$6,$2(a3)
-        bne.b L334e
+        bne.b wait_mask_or4
         move.w #$0,$62(a3)
         move.w #$dfc,$40(a3)
         move.l a4,$50(a3)
@@ -198,9 +198,9 @@ L334e:
         move.l a2,$54(a3)
         move.w d4,$58(a3)
         lea.l (_display+$48).l,a2
-L3378:
+wait_before_draw:
         btst.b #$6,$2(a3)
-        bne.b L3378
+        bne.b wait_before_draw
         move.w d3,$44(a3)
         swap d3
         move.w d3,$46(a3)
@@ -209,7 +209,7 @@ L3378:
         sub.w d6,d1
         neg.w d6
         tst.b d2
-        bne.w L344a
+        bne.w wait_shifted_draw
         move.w #$fca,d2
         move.w d2,$40(a3)
         moveq #$ff,d7
@@ -219,7 +219,7 @@ L3378:
         move.w d7,$42(a3)
         add.w (_display+$46).l,d7
         move.w d7,$62(a3)
-L33bc:
+draw_planes:
         move.w d1,$60(a3)
         move.w d1,$66(a3)
         movea.l a0,a4
@@ -229,79 +229,79 @@ L33bc:
         adda.w d7,a0
         adda.w d7,a4
         adda.w d0,a1
-L33dc:
+wait_second_plane:
         btst.b #$6,$2(a3)
-        bne.b L33dc
+        bne.b wait_second_plane
         movem.l a0-a2/a4,$48(a3)
         move.w d4,$58(a3)
         adda.w d7,a0
         adda.w d7,a4
         adda.w d0,a1
-L33f4:
+wait_third_plane:
         btst.b #$6,$2(a3)
-        bne.b L33f4
+        bne.b wait_third_plane
         movem.l a0-a2/a4,$48(a3)
         move.w d4,$58(a3)
         adda.w d7,a0
         adda.w d7,a4
         adda.w d0,a1
-L340c:
+wait_fourth_plane:
         btst.b #$6,$2(a3)
-        bne.b L340c
+        bne.b wait_fourth_plane
         movem.l a0-a2/a4,$48(a3)
         tst.b (_draw_flag).l
-        beq.b L343e
+        beq.b blit_image_done
         move.w d4,$58(a3)
         adda.w d7,a0
         adda.w d7,a4
         movea.l #_blank_plane,a1
-L3430:
+wait_fifth_plane:
         btst.b #$6,$2(a3)
-        bne.b L3430
+        bne.b wait_fifth_plane
         movem.l a0-a2/a4,$48(a3)
-L343e:
+blit_image_done:
         move.w #$400,$96(a3)
         move.w d4,$58(a3)
         movem.l (sp)+,d2-d7/a2-a4
         rts
-L344a:
+wait_shifted_draw:
         btst.b #$6,$2(a3)
-        bne.b L344a
+        bne.b wait_shifted_draw
         moveq #$c,d5
         lsl.w d5,d2
         move.w d2,$42(a3)
         ori.w #$fca,d2
         move.w d2,$40(a3)
         move.w (_display+$46).l,d3
-        bpl.b L3470
+        bpl.b shifted_modulo
         moveq #$0,d3
         moveq #$0,d7
-        bra.b L3478
-L3470:
+        bra.b shifted_set_modulos
+shifted_modulo:
         subq.w #$2,d1
         moveq #$fe,d7
         add.w d7,d6
         addq.w #$1,d4
-L3478:
+shifted_set_modulos:
         move.w d7,$64(a3)
         add.w d3,d7
         move.w d7,$62(a3)
-        bra.w L33bc
+        bra.w draw_planes
 
 ; ---- timing loops ----
 ; void delay(void), the music's busy wait (inline at orig $0024F2 and $00250A): 301 rounds of a lone dbra
 _delay:
         move.w #$12c,d0
-dl:
-        dbra d0,dl
+delay_loop:
+        dbra d0,delay_loop
         rts
 
 ; void startup_delay(void), orig $000C26: a long wait before the program starts (a register loop, 18 cycles a round)
 _startup_delay:
         move.l #$f4240,d0
-sd:
+startup_delay_loop:
         subq.l #1,d0
-        bne.b sd
+        bne.b startup_delay_loop
         rts
 
 ; void interrupts_on(void), the original's `move #$2000,sr` at orig $000C4A: until here the program runs with all
@@ -315,9 +315,9 @@ _interrupts_on:
 _vbl_wait:
         move.l d0,-(a7)
         move.w (_vblank+$4).l,d0
-L2ce6:
+vbl_wait_loop:
         cmp.w (_vblank+$4).l,d0
-        beq.w L2ce6
+        beq.w vbl_wait_loop
         move.l (a7)+,d0
         rts 
 
@@ -325,15 +325,15 @@ L2ce6:
 _irq_level3:
         move.w #$2700,sr
         btst.b #$5,$dff01f.l
-        beq.w L1df2
+        beq.w irq_clear_request
         tst.w (_flags).l
-        beq.b L1df2
+        beq.b irq_clear_request
         bsr.w music_step
-L1df2:
+irq_clear_request:
         move.w #$70,$dff09c.l
         addq.l #$1,(_game_clock+$2).l
         tst.w (_game_clock).l
-        bne.b L1e36
+        bne.b irq_to_housekeeping
         movem.l d0-d1,-(a7)   ; the original: movem.w
         move.b $bfe001.l,d0
         move.w d0,d1
@@ -341,18 +341,18 @@ L1df2:
         andi.w #$40,d1
         lsl.w #$1,d1
         and.w d0,d1
-        bne.b L1e32
+        bne.b irq_buttons_done
         move.w #$1,(_flags+$2).l
         move.w #$1,(_game_clock).l
-L1e32:
+irq_buttons_done:
         movem.l (a7)+,d0-d1   ; the original: movem.w
-L1e36:
-        jmp (irq_tail).l
-irq_tail:
+irq_to_housekeeping:
+        jmp (irq_housekeeping).l
+irq_housekeeping:
         movem.l d0-d7/a0-a6,-(a7)
         lea.l $dff000.l,a6
         tst.w (_vblank).l
-        beq.w L2d2e
+        beq.w irq_count_frames
         clr.w (_vblank).l
         lea.l (_display+$2).l,a0
         lea.l $dff180.l,a1
@@ -360,11 +360,11 @@ irq_tail:
         movem.l d0-d7,(a1)
         movem.l $20(a0),d0-d7
         movem.l d0-d7,$20(a1)
-L2d2e:
+irq_count_frames:
         cmpi.w #$7fff,(_vblank+$2).l
-        beq.w L2d40
+        beq.w irq_count_vblanks
         addq.w #$1,(_vblank+$2).l
-L2d40:
+irq_count_vblanks:
         addq.w #$1,(_vblank+$4).l
         movem.l (a7)+,d0-d7/a0-a6
         rte 
@@ -377,14 +377,14 @@ _music_init:
         adda.l #$3b8,a1
         moveq #$7f,d0
         moveq #$0,d1
-L2254:
+find_last_pattern:
         move.l d1,d2
         subq.w #$1,d0
-L2258:
+scan_order_table:
         move.b (a1)+,d1
         cmp.b d2,d1
-        bgt.b L2254
-        dbra d0,L2258
+        bgt.b find_last_pattern
+        dbra d0,scan_order_table
         addq.b #$1,d2
         lea.l ($2854).w,a1
         asl.l #$8,d2
@@ -393,7 +393,7 @@ L2258:
         add.l a0,d2
         movea.l d2,a2
         moveq #$1e,d0
-L2278:
+locate_samples:
         clr.l (a2)
         move.l a2,(a1)+
         moveq #$0,d1
@@ -401,7 +401,7 @@ L2278:
         asl.l #$1,d1
         adda.l d1,a2
         adda.l #$1e,a0
-        dbra d0,L2278
+        dbra d0,locate_samples
         move.b #$6,(_music).l
         clr.w $dff0a8.l
         clr.w $dff0b8.l
@@ -412,6 +412,7 @@ L2278:
         clr.w (_music+$2).l
         movem.l (sp)+,d2-d7/a2-a6
         rts
+music_stop:
         clr.w $dff0a8.l
         clr.w $dff0b8.l
         clr.w $dff0c8.l
@@ -427,61 +428,61 @@ music_step:
         addq.b #$1,(_music+$4).l
         move.b (_music+$4).l,d0
         cmp.b (_music).l,d0
-        blt.b L230e
+        blt.b tick_effects
         clr.b (_music+$4).l
-        bra.w L23a4
-L230e:
+        bra.w new_row
+tick_effects:
         lea.l ($28d0).w,a6
         lea.l $dff0a0.l,a5
-        bsr.w L2682
+        bsr.w channel_tick
         lea.l ($28ec).w,a6
         lea.l $dff0b0.l,a5
-        bsr.w L2682
+        bsr.w channel_tick
         lea.l ($2908).w,a6
         lea.l $dff0c0.l,a5
-        bsr.w L2682
+        bsr.w channel_tick
         lea.l ($2924).w,a6
         lea.l $dff0d0.l,a5
-        bsr.w L2682
-        bra.w L2598
-L234a:
+        bsr.w channel_tick
+        bra.w step_done
+arpeggio:
         moveq #$0,d0
         move.b (_music+$4).l,d0
         divs.w #$3,d0
         swap d0
         cmpi.w #$0,d0
-        beq.b L237a
+        beq.b arpeggio_base
         cmpi.w #$2,d0
-        beq.b L236e
+        beq.b arpeggio_low_nibble
         moveq #$0,d0
         move.b $3(a6),d0
         lsr.b #$4,d0
-        bra.b L2380
-L236e:
+        bra.b arpeggio_offset
+arpeggio_low_nibble:
         moveq #$0,d0
         move.b $3(a6),d0
         andi.b #$f,d0
-        bra.b L2380
-L237a:
+        bra.b arpeggio_offset
+arpeggio_base:
         move.w $10(a6),d2
-        bra.b L239e
-L2380:
+        bra.b arpeggio_set_period
+arpeggio_offset:
         asl.w #$1,d0
         moveq #$0,d1
         move.w $10(a6),d1
         lea.l ($2800).w,a0
         moveq #$24,d7
-L238e:
+arpeggio_find_period:
         move.w (a0,d0.w),d2
         cmp.w (a0),d1
-        bge.b L239e
+        bge.b arpeggio_set_period
         addq.l #$2,a0
-        dbra d7,L238e
+        dbra d7,arpeggio_find_period
         rts 
-L239e:
+arpeggio_set_period:
         move.w d2,$6(a5)
         rts 
-L23a4:
+new_row:
         lea.l (_module).l,a0
         movea.l a0,a3
         movea.l a0,a2
@@ -498,18 +499,18 @@ L23a4:
         clr.w (_music+$6).l
         lea.l $dff0a0.l,a5
         lea.l ($28d0).w,a6
-        bsr.b L2412
+        bsr.b channel_row
         lea.l $dff0b0.l,a5
         lea.l ($28ec).w,a6
-        bsr.b L2412
+        bsr.b channel_row
         lea.l $dff0c0.l,a5
         lea.l ($2908).w,a6
-        bsr.b L2412
+        bsr.b channel_row
         lea.l $dff0d0.l,a5
         lea.l ($2924).w,a6
-        bsr.b L2412
-        bra.w L24f2
-L2412:
+        bsr.b channel_row
+        bra.w start_dma
+channel_row:
         move.l (a0,d1.l),(a6)
         addq.l #$4,d1
         moveq #$0,d2
@@ -520,7 +521,7 @@ L2412:
         andi.b #$f0,d0
         or.b d0,d2
         tst.b d2
-        beq.b L2496
+        beq.b row_effect
         moveq #$0,d3
         lea.l ($2854).w,a1
         move.l d2,d4
@@ -532,7 +533,7 @@ L2412:
         move.w $2(a3,d4.l),$12(a6)
         move.w $4(a3,d4.l),d3
         tst.w d3
-        beq.b L2480
+        beq.b sample_without_loop
         move.l $4(a6),d2
         asl.w #$1,d3
         add.l d3,d2
@@ -542,24 +543,24 @@ L2412:
         move.w d0,$8(a6)
         move.w $6(a3,d4.l),$e(a6)
         move.w $12(a6),$8(a5)
-        bra.b L2496
-L2480:
+        bra.b row_effect
+sample_without_loop:
         move.l $4(a6),d2
         add.l d3,d2
         move.l d2,$a(a6)
         move.w $6(a3,d4.l),$e(a6)
         move.w $12(a6),$8(a5)
-L2496:
+row_effect:
         move.w (a6),d0
         andi.w #$fff,d0
-        beq.w L276c
+        beq.w row_command
         move.b $2(a6),d0
         andi.b #$f,d0
         cmpi.b #$3,d0
-        bne.b L24b6
-        bsr.w L25a6
-        bra.w L276c
-L24b6:
+        bne.b start_note
+        bsr.w tone_portamento_target
+        bra.w row_command
+start_note:
         move.w (a6),$10(a6)
         andi.w #$fff,$10(a6)
         move.w $14(a6),d0
@@ -572,17 +573,17 @@ L24b6:
         move.w d0,$6(a5)
         move.w $14(a6),d0
         or.w d0,(_music+$6).l
-        bra.w L276c
-L24f2:
+        bra.w row_command
+start_dma:
         move.w #$12c,d0
-L24f6:
-        dbra d0,L24f6
+start_dma_wait1:
+        dbra d0,start_dma_wait1
         move.w (_music+$6).l,d0
         ori.w #$8000,d0
         move.w d0,$dff096.l
         move.w #$12c,d0
-L250e:
-        dbra d0,L250e
+start_dma_wait2:
+        dbra d0,start_dma_wait2
         lea.l $dff000.l,a5
         lea.l ($2924).w,a6
         move.l $a(a6),$d0(a5)
@@ -598,71 +599,71 @@ L250e:
         move.w $e(a6),$a4(a5)
         addi.w #$10,(_music+$2).l
         cmpi.w #$400,(_music+$2).l
-        bne.b L2598
-L256a:
+        bne.b step_done
+next_order:
         clr.w (_music+$2).l
         clr.b (_music+$5).l
         addq.b #$1,(_music+$1).l
         andi.b #$7f,(_music+$1).l
         move.b (_music+$1).l,d1
         cmp.b (_module+$3b6).l,d1
-        bne.b L2598
+        bne.b step_done
         clr.b (_music+$1).l
-L2598:
+step_done:
         tst.b (_music+$5).l
-        bne.b L256a
+        bne.b next_order
         movem.l (a7)+,d0-d4/a0-a3/a5-a6
         rts 
-L25a6:
+tone_portamento_target:
         move.w (a6),d2
         andi.w #$fff,d2
         move.w d2,$18(a6)
         move.w $10(a6),d0
         clr.b $16(a6)
         cmp.w d0,d2
-        beq.b L25c6
-        bge.b L25ca
+        beq.b portamento_target_reached
+        bge.b portamento_done
         move.b #$1,$16(a6)
         rts 
-L25c6:
+portamento_target_reached:
         clr.w $18(a6)
-L25ca:
+portamento_done:
         rts 
-L25cc:
+tone_portamento:
         move.b $3(a6),d0
-        beq.b L25da
+        beq.b tone_portamento_step
         move.b d0,$17(a6)
         clr.b $3(a6)
-L25da:
+tone_portamento_step:
         tst.w $18(a6)
-        beq.b L25ca
+        beq.b portamento_done
         moveq #$0,d0
         move.b $17(a6),d0
         tst.b $16(a6)
-        bne.b L260c
+        bne.b tone_portamento_down
         add.w d0,$10(a6)
         move.w $18(a6),d0
         cmp.w $10(a6),d0
-        bgt.b L2604
+        bgt.b portamento_set_period
         move.w $18(a6),$10(a6)
         clr.w $18(a6)
-L2604:
+portamento_set_period:
         move.w $10(a6),$6(a5)
         rts 
-L260c:
+tone_portamento_down:
         sub.w d0,$10(a6)
         move.w $18(a6),d0
         cmp.w $10(a6),d0
-        blt.b L2604
+        blt.b portamento_set_period
         move.w $18(a6),$10(a6)
         clr.w $18(a6)
         move.w $10(a6),$6(a5)
         rts 
-L262c:
+vibrato:
         move.b $3(a6),d0
-        beq.b L2636
+        beq.b vibrato_apply
         move.b d0,$1a(a6)
-L2636:
+vibrato_apply:
         move.b $1b(a6),d0
         lea.l ($27e0).w,a4
         lsr.w #$2,d0
@@ -675,131 +676,131 @@ L2636:
         lsr.w #$6,d2
         move.w $10(a6),d0
         tst.b $1b(a6)
-        bmi.b L2664
+        bmi.b vibrato_subtract
         add.w d2,d0
-        bra.b L2666
-L2664:
+        bra.b vibrato_set_period
+vibrato_subtract:
         sub.w d2,d0
-L2666:
+vibrato_set_period:
         move.w d0,$6(a5)
         move.b $1a(a6),d0
         lsr.w #$2,d0
         andi.w #$3c,d0
         add.b d0,$1b(a6)
         rts 
-L267a:
+set_period:
         move.w $10(a6),$6(a5)
         rts 
-L2682:
+channel_tick:
         move.w $2(a6),d0
         andi.w #$fff,d0
-        beq.b L267a
+        beq.b set_period
         move.b $2(a6),d0
         andi.b #$f,d0
         tst.b d0
-        beq.w L234a
+        beq.w arpeggio
         cmpi.b #$1,d0
-        beq.b L2708
+        beq.b portamento_up
         cmpi.b #$2,d0
-        beq.w L273a
+        beq.w portamento_down
         cmpi.b #$3,d0
-        beq.w L25cc
+        beq.w tone_portamento
         cmpi.b #$4,d0
-        beq.w L262c
+        beq.w vibrato
         move.w $10(a6),$6(a5)
         cmpi.b #$a,d0
-        beq.b L26c6
+        beq.b volume_slide
         rts 
-L26c6:
+volume_slide:
         moveq #$0,d0
         move.b $3(a6),d0
         lsr.b #$4,d0
         tst.b d0
-        beq.b L26ec
+        beq.b volume_slide_down
         add.w d0,$12(a6)
         cmpi.w #$40,$12(a6)
-        bmi.b L26e4
+        bmi.b volume_slide_write
         move.w #$40,$12(a6)
-L26e4:
+volume_slide_write:
         move.w $12(a6),$8(a5)
         rts 
-L26ec:
+volume_slide_down:
         moveq #$0,d0
         move.b $3(a6),d0
         andi.b #$f,d0
         sub.w d0,$12(a6)
-        bpl.b L2700
+        bpl.b volume_slide_down_write
         clr.w $12(a6)
-L2700:
+volume_slide_down_write:
         move.w $12(a6),$8(a5)
         rts 
-L2708:
+portamento_up:
         moveq #$0,d0
         move.b $3(a6),d0
         sub.w d0,$10(a6)
         move.w $10(a6),d0
         andi.w #$fff,d0
         cmpi.w #$71,d0
-        bpl.b L272c
+        bpl.b portamento_up_write
         andi.w #$f000,$10(a6)
         ori.w #$71,$10(a6)
-L272c:
+portamento_up_write:
         move.w $10(a6),d0
         andi.w #$fff,d0
         move.w d0,$6(a5)
         rts 
-L273a:
+portamento_down:
         clr.w d0
         move.b $3(a6),d0
         add.w d0,$10(a6)
         move.w $10(a6),d0
         andi.w #$fff,d0
         cmpi.w #$358,d0
-        bmi.b L275e
+        bmi.b portamento_down_write
         andi.w #$f000,$10(a6)
         ori.w #$358,$10(a6)
-L275e:
+portamento_down_write:
         move.w $10(a6),d0
         andi.w #$fff,d0
         move.w d0,$6(a5)
         rts 
-L276c:
+row_command:
         move.b $2(a6),d0
         andi.b #$f,d0
         cmpi.b #$e,d0
-        beq.b L2794
+        beq.b command_extended
         cmpi.b #$d,d0
-        beq.b L2796
+        beq.b command_pattern_break
         cmpi.b #$b,d0
-        beq.b L279e
+        beq.b command_position_jump
         cmpi.b #$c,d0
-        beq.b L27b2
+        beq.b command_volume
         cmpi.b #$f,d0
-        beq.b L27c8
+        beq.b command_speed
         rts 
-L2794:
+command_extended:
         rts 
-L2796:
+command_pattern_break:
         not.b (_music+$5).l
         rts 
-L279e:
+command_position_jump:
         move.b $3(a6),d0
         subq.b #$1,d0
         move.b d0,(_music+$1).l
         not.b (_music+$5).l
         rts 
-L27b2:
+command_volume:
         cmpi.b #$40,$3(a6)
-        ble.b L27c0
+        ble.b command_volume_write
         move.b #$40,$3(a6)
-L27c0:
+command_volume_write:
         move.b $3(a6),$8(a5)
         rts 
-L27c8:
+command_speed:
         move.b $3(a6),d0
         andi.w #$1f,d0
-        beq.b L27de
+        beq.b command_done
         clr.b (_music+$4).l
         move.b d0,(_music).l
-L27de:
+command_done:
         rts 
