@@ -27,7 +27,7 @@ SRC = G.ROOT / "native" / "src"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import intro_offsets  # noqa: E402
 
-BUILD = G.ROOT / "build"
+BUILD = G.ROOT / "native" / "build"
 OUT_ADF = G.ROOT / "local" / "gods-c-disk1.adf"
 TRAMPOLINE_SIZE = 34
 STARTED_FLAG = 0x90010   # a word above the C's stack, outside the blob (the loader's hook copies the blob again)
@@ -84,7 +84,7 @@ def parse_hunks(data: bytes):
 def main() -> int:
     BUILD.mkdir(exist_ok=True)
     intro_offsets.write()   # the struct field offsets intro_amiga.asm includes, from intro.h
-    r = subprocess.run(["make", "-C", str(G.ROOT / "native"), "--no-print-directory", "../build/intro.exe"], capture_output=True, text=True)
+    r = subprocess.run(["make", "-C", str(G.ROOT / "native"), "--no-print-directory", "native/build/intro.exe"], capture_output=True, text=True)
     if r.returncode:
         print(r.stdout[-2000:], r.stderr[-3000:])
         return 1

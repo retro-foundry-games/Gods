@@ -4,7 +4,7 @@
                                                                         # executed instruction, executed instructions marked *
     uv run python projects/gods/scripts/menu_dis.py --todo             # the functions not decompiled yet, the leaves first
 
-The code is the program's RAM while the menu is on show (build/menu-ram.bin: frame 8,000 of captures/menu_ref); the executed
+The code is the program's RAM while the menu is on show (native/build/menu-ram.bin: frame 8,000 of captures/menu_ref); the executed
 instructions are those of analysis/coverage-menu-handling.txt (the menu on show, the selection moved, the password screen and
 a start of Begin Quest); what is decompiled is read from the `orig $ADDR` comments of native/src/*.c.
 """
@@ -21,7 +21,7 @@ sys.path.insert(0, str(PROJECT / "scripts"))
 import intro_analysis as G  # noqa: E402
 import menu_analysis as M  # noqa: E402
 
-RAM = (PROJECT / "build" / "menu-ram.bin").read_bytes()
+RAM = (PROJECT / "native" / "build" / "menu-ram.bin").read_bytes()
 import os
 COVERAGE = PROJECT / "analysis" / os.environ.get("MENU_COVERAGE", "coverage-menu-handling.txt")   # e.g. coverage-menu.txt, coverage-game-start.txt
 SRC = PROJECT / "native" / "src"
@@ -38,7 +38,7 @@ def decompiled() -> dict[int, str]:
             for extra in re.findall(r"and \$([0-9A-Fa-f]+)", c.group(0).split("\n")[0]):   # `orig $A and $B`: the same function twice
                 out[int(extra, 16)] = c.group(2)
     # the routines that are the original's instructions in menu_amiga.asm: `; void name(...), orig $ADDR` (or after the name)
-    asm = (SRC / "menu_amiga.asm").read_text()
+    asm = (SRC / "amiga" / "menu_amiga.asm").read_text()
     for a in re.finditer(r"^; void (\w+)\([^\n]*orig \$([0-9A-Fa-f]+)", asm, re.M):
         out[int(a.group(2), 16)] = a.group(1)
     return out
@@ -46,7 +46,7 @@ def decompiled() -> dict[int, str]:
 
 def asm_ranges() -> list[tuple[int, int]]:
     """The code that menu_amiga.asm has from the original: `orig $FIRST-$LAST` in its comments."""
-    text = (SRC / "menu_amiga.asm").read_text()
+    text = (SRC / "amiga" / "menu_amiga.asm").read_text()
     return [(int(a, 16), int(b, 16)) for a, b in re.findall(r"orig \$([0-9A-Fa-f]{6})-\$([0-9A-Fa-f]{6})", text)]
 
 
@@ -57,7 +57,7 @@ def stable() -> dict[int, tuple[bytes, str, str]]:
 
 
 def listing(lo: int, hi: int) -> list[tuple[int, str]]:
-    tmp = PROJECT / "build" / "menu_dis.tmp"
+    tmp = PROJECT / "native" / "build" / "menu_dis.tmp"
     tmp.write_bytes(RAM[lo:hi])
     r = subprocess.run(["nix", "develop", str(SRC.parent), "--command", "m68k-amigaos-objdump", "-D", "-b", "binary", "-m", "m68k:68000",
                         f"--adjust-vma={lo:#x}", str(tmp)], capture_output=True)

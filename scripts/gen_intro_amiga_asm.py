@@ -1,4 +1,4 @@
-"""Generate native/src/intro_amiga.asm: the Amiga-specific routines as the original has them.
+"""Generate native/src/amiga/intro_amiga.asm: the Amiga-specific routines as the original has them.
 
 The routines are the original's instructions, disassembled from the resident code in the reference recording (frame
 1746), with data addresses turned into symbols and branch targets into labels, so they take as long as the original,
@@ -23,7 +23,7 @@ import amiga_asm as A  # noqa: E402
 ROOT = Path(__file__).resolve().parents[3]
 PROJECT = ROOT / "projects" / "gods"
 SRC = PROJECT / "native" / "src"
-OUT = SRC / "intro_amiga.asm"
+OUT = SRC / "amiga" / "intro_amiga.asm"
 REF = PROJECT / "captures" / "ref100k"
 FRAME = 1746
 
@@ -70,7 +70,7 @@ SKIP_OBJECTS = {"vectors"}
 
 
 def ram() -> bytes:
-    tmp = PROJECT / "build" / "ref-1746.bin"
+    tmp = PROJECT / "native" / "build" / "ref-1746.bin"
     if not tmp.exists():
         tmp.parent.mkdir(exist_ok=True)
         subprocess.run([sys.executable, str(ROOT / "tools/amiga/frame_recorder.py"), "--extract", str(REF), str(FRAME), str(tmp)],
@@ -79,10 +79,10 @@ def ram() -> bytes:
 
 
 def objects() -> list[tuple[str, int, int]]:
-    """The objects intro.objects pins at the original addresses, with their sizes (from the sections of build/intro_data.o)."""
+    """The objects intro.objects pins at the original addresses, with their sizes (from the sections of native/build/intro_data.o)."""
     sizes: dict[str, int] = {}
     out = subprocess.run(["nix", "develop", str(SRC.parent), "--command", "m68k-amigaos-objdump", "-h",
-                          str(PROJECT / "build" / "intro_data.o")], capture_output=True, text=True).stdout
+                          str(PROJECT / "native" / "build" / "intro_data.o")], capture_output=True, text=True).stdout
     for m in re.finditer(r"\.(?:data|bss|rodata)\.(\w+)\s+([0-9a-f]{8})", out):
         sizes[m.group(1)] = int(m.group(2), 16)
     result = []

@@ -35,7 +35,7 @@ def calls(name: str) -> int:
     """How many times the original calls it in the run, from a first oracle run with no comparisons (samples=0)."""
     scenario = scenario_of(name)
     state, until, joy = SCENARIOS[scenario]
-    out = PROJECT / "build" / f"menu_oracle_calls_{scenario}.txt"
+    out = PROJECT / "native" / "build" / f"menu_oracle_calls_{scenario}.txt"
     if not out.exists():
         subprocess.run([str(HOST), str(PROJECT / "host" / "menu_oracle.lua"), "--headless", "--script-args",
                         f"{'state=' + state if state else ''} until={until} joy={joy} samples=0 out={out}"], capture_output=True)
@@ -51,7 +51,7 @@ def main() -> int:
         n = calls(name)
         state, until, joy = SCENARIOS[scenario_of(name)]
         stride = max(1, n // SAMPLES)
-        out = PROJECT / "build" / f"menu_oracle_{name}.txt"
+        out = PROJECT / "native" / "build" / f"menu_oracle_{name}.txt"
         out.unlink(missing_ok=True)
         run = subprocess.run([str(HOST), str(PROJECT / "host" / "menu_oracle.lua"), "--headless", "--script-args",
                         f"{'state=' + state if state else ''} until={until} joy={joy} only={name} samples={SAMPLES} stride={stride} out={out}"], capture_output=True)

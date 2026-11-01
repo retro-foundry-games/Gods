@@ -1,4 +1,4 @@
-"""Generate native/src/menu_amiga.asm: the menu program's hardware routines as the original has them (the blitter's masked
+"""Generate native/src/amiga/menu_amiga.asm: the menu program's hardware routines as the original has them (the blitter's masked
 blit), with C-callable wrappers; see gen_intro_amiga_asm.py, which does the same for the intro.
 
     uv run python projects/gods/scripts/gen_menu_amiga_asm.py
@@ -13,10 +13,10 @@ import gen_menu_symbols as S  # noqa: E402
 
 PROJECT = Path(__file__).resolve().parents[1]
 SRC = PROJECT / "native" / "src"
-OUT = SRC / "menu_amiga.asm"
+OUT = SRC / "amiga" / "menu_amiga.asm"
 
 # the program as the loader leaves it (host/menu_image.lua): the initial values of the data in the code (frame 8000 has them used)
-MEM = (PROJECT / "build" / "menu-image.bin").read_bytes()
+MEM = (PROJECT / "native" / "build" / "menu-image.bin").read_bytes()
 
 ENTRIES = {
     0x171E4: "orig_blit_image", 0x171F6: "orig_blit_image_wide", 0x17208: "blit_image_body",

@@ -99,11 +99,11 @@ game's variables.
 - The C runs from **chip RAM** like the original: the machine is given 1 MB chip RAM (`puae_chipmem_size=2`) and the code
   sits at `$80000`, above the original's 512 KB (which is full).  The C's own stack is at `$90000`; the stack is not
   compared.  The CPU is the normal 7 MHz one.
-- The Amiga-specific routines are the original's instructions in `native/src/intro_amiga.asm` (the user allowed assembly for them,
+- The Amiga-specific routines are the original's instructions in `native/src/amiga/intro_amiga.asm` (the user allowed assembly for them,
   besides `loader.asm`): the blitter work, screen and bitplane fills, the busy-wait loops, the vertical blank interrupt,
   `vbl_wait` and the music replayer.  `scripts/gen_intro_amiga_asm.py` generates it from the resident code of the recording; every
   instruction is assembled again at its original address and compared with the original bytes.  Struct field offsets in
-  the assembly come from the compiler (`native/src/intro_offsets.c` -> `native/src/intro_offsets.i`, which `intro_amiga.asm` includes), so they follow
+  the assembly come from the compiler (`native/src/amiga/intro_offsets.c` -> `native/src/amiga/intro_offsets.i`, which `intro_amiga.asm` includes), so they follow
   `intro.h`.  Only C-callable
   wrappers (arguments on the stack, `d2-d7/a2-a6` preserved) were added.  Two deliberate differences: the interrupt saves
   `d0`/`d1` with `movem.l` (the original's `movem.w` sign-extends them, which C does not survive), and `lea d16(pc),a6` of
@@ -120,7 +120,7 @@ game's variables.
   frame for frame), and the C's loader hook reads its blob from disk.  Those frames are reported as not comparable.
 - **Frames:** reference frames 1,728-99,999 (98,272 frames) compared against the C build at the constant boot offset (169
   frames), 0 differ.
-- **Memory:** `scripts/compare_events.py` compares the pinned data objects (sizes from `build/intro_data.o`: the music module,
+- **Memory:** `scripts/compare_events.py` compares the pinned data objects (sizes from `native/build/intro_data.o`: the music module,
   the graphics, the palette and blitter state, both screens, the music and channel state, the clocks and the frame counter)
   at the program's own points in time, not at the end of each frame.  An event is the entry of `vbl_wait` (the original's
   `$002CDE`), recorded with `gods.lua record=DIR hook=ADDRESS`: the interrupt of the frame has finished and the program has
@@ -199,7 +199,7 @@ from it are checked in their own scenario.  To use the menu in the emulator the 
   `load_directory` ($002988: tocache.bin), `assets_load` ($01ECA2: pictures are cut into sprites with four planes) and
   `display_reset`; `boot.c` has the start-up ($039E50: chips, memory map, sound, first asset set).  The keyboard interrupt
   ($01E2B8) is generated asm too.  The data the asm keeps its state in is copied from the program as the loader leaves it
-  (`host/menu_image.lua` writes `build/menu-image.bin`), not from the RAM of a later frame.
+  (`host/menu_image.lua` writes `native/build/menu-image.bin`), not from the RAM of a later frame.
 - Checked by running the original from a cold boot to the start of the menu ($006388) with the C versions in place of the
   original's (`host/menu_boot.lua`, shims from `scripts/build_glue.py` that give a C function the original's register
   interface and run it on a stack of its own): the RAM is the same as the original's at that point except for the

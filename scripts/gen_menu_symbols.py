@@ -4,7 +4,7 @@ addresses the original program keeps it at).
 menu.symbols has two kinds of lines:
   NAME ADDRESS DECLARATION   a variable: the declaration has %s for the name; the linker script gives the name its address
   table NAME ADDRESS TYPE COUNT   read-only data: COUNT values of TYPE (uint8_t, uint16_t, uint32_t, big endian) copied from
-                             the original program's memory (build/menu-ram.bin) into menu_data.c as C initializers; the linker
+                             the original program's memory (native/build/menu-ram.bin) into menu_data.c as C initializers; the linker
                              script places the array at the address, so the C reads the same bytes at the same place
 After the two fields of a variable's comment or a table's, two or more spaces start a comment.
 
@@ -15,7 +15,7 @@ from pathlib import Path
 
 PROJECT = Path(__file__).resolve().parents[1]
 SRC = PROJECT / "native" / "src"
-RAM = PROJECT / "build" / "menu-ram.bin"
+RAM = PROJECT / "native" / "build" / "menu-ram.bin"
 WIDTH = {"uint8_t": 1, "uint16_t": 2, "uint32_t": 4}
 
 

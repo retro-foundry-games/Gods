@@ -2,7 +2,7 @@
 --
 --   tools/engine9000/ami9000_host projects/gods/host/liftcheck.lua --headless --script-args "out=/abs/results.txt"
 --
--- Reads ../build/lifttest/plan.txt (lines: entry d0..d7 a0..a7 flags, hex), restores gods-11000.state, then for each
+-- Reads ../native/build/lifttest/plan.txt (lines: entry d0..d7 a0..a7 flags, hex), restores gods-11000.state, then for each
 -- line restores chip RAM, runs the routine with ami.call (interrupts masked) and writes one result line:
 --   entry d0..d7 a0..a7 sr | addr:byte,addr:byte,...   (every chip RAM byte that changed)
 ami.machine{
@@ -11,7 +11,7 @@ ami.machine{
     system = "../local/system",
     save = "../local/save",
     content = "../local/gods.m3u",
-    files = "../build/lifttest",
+    files = "../native/build/lifttest",
     roms = { { "kick34005.A500", 0xc4f0f55f } },
 }
 ami.boot()

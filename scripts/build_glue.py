@@ -1,4 +1,4 @@
-"""Build build/takeover_glue.bin: the shims that let host/menu_takeover.lua send the original's calls of a routine to its C
+"""Build native/build/takeover_glue.bin: the shims that let host/menu_takeover.lua send the original's calls of a routine to its C
 version.  Each shim has the original's register interface (arguments in registers, all registers kept, the negative flag
 clear), pushes the arguments for the C function, calls it and returns to the original's caller.
 

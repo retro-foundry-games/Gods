@@ -5,7 +5,7 @@ recorded with `gods.lua ... record=DIR hook=ADDRESS`.  At that point the interru
 program has finished the work it was doing, so the memory is a function of how far the program has got, not of the cycle
 the end of the frame happens to fall on (the end-of-frame recordings catch the interrupt and the fade half way).
 
-Compared: every data object that intro.ld pins at the original's address (sizes from build/intro_data.o), the screens, the
+Compared: every data object that intro.ld pins at the original's address (sizes from native/build/intro_data.o), the screens, the
 blitter's scratch mask and the frame counter included.  Not compared: the stack, the loader's buffers,
 the code, the vectors.
 
@@ -27,7 +27,7 @@ SKIP = {"vectors"}          # the C handler's address is in the vector table, th
 def objects() -> list[tuple[str, int, int]]:
     sizes: dict[str, int] = {}
     out = subprocess.run(["nix", "develop", str(PROJECT), "--command", "m68k-amigaos-objdump", "-h",
-                          str(PROJECT / "build" / "intro_data.o")], capture_output=True, text=True).stdout
+                          str(PROJECT / "native" / "build" / "intro_data.o")], capture_output=True, text=True).stdout
     for m in re.finditer(r"\.(?:data|bss|rodata)\.(\w+)\s+([0-9a-f]{8})", out):
         sizes[m.group(1)] = int(m.group(2), 16)
     result = []

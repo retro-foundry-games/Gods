@@ -1,5 +1,5 @@
 -- Save the menu program as the loader leaves it: the RAM at the moment the original enters it ($84, then $39E50), before
--- the start-up code has run.  build/menu-image.bin (1 MB chip RAM).  The boot-time code (the file loader's start, the
+-- the start-up code has run.  native/build/menu-image.bin (1 MB chip RAM).  The boot-time code (the file loader's start, the
 -- initialisation) is only there at this moment.
 --
 --   ami9000_host projects/gods/host/menu_image.lua --headless [--script-args "click=FRAME"]
@@ -15,7 +15,7 @@ local done = false
 ami.hook(0x39e50, function()
     if done then return end
     done = true
-    ami.save_file("/home/boran/git/amiga-decomp/projects/gods/build/menu-image.bin", ami.read(0, 0x100000))
+    ami.save_file("/home/boran/git/amiga-decomp/projects/gods/native/build/menu-image.bin", ami.read(0, 0x100000))
     ami.log("saved the menu image at frame " .. ami.frame())
 end)
 while not done and ami.frame() < 9000 do
