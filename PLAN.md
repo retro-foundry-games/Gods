@@ -210,7 +210,8 @@ from it are checked in their own scenario.  To use the menu in the emulator the 
   and the menu image's jump to the start-up ($39E50, raw on the disk) goes to `menu_entry` ($000084 in the original, boot.c).
   `menu_entry` does the start-up in C, puts a jump to `menu_start` over the original's menu start ($6388) and enters the original
   at $240C, which loads and runs the copy protection's stub and ends at $6388: from there the menu is C (`menu_main`).  Begin
-  Quest, Continue and what follows the password screen go on in the original's code.  `host/menu_in_build.lua` runs that disk
+  Quest is C too (`begin_quest` in `game_h.c`: the level's files, map, pictures, state and two frames up to the first frame of the
+  game loop; DECOMPILING.md says how it is checked); Continue and what follows the password screen go on in the original's code.  `host/menu_in_build.lua` runs that disk
   and reports which C functions were entered; the cursor keys up and down move the selection (through the key table).
 - The original menu with the keyboard (cursor up/down as the stick, space as fire): `native/src/amiga/keyboard_patch.asm`, a
   change of the original's input routine in memory (the `move.b d1,($1e5ac).l` at $01E420 becomes a call of 58 bytes put in the

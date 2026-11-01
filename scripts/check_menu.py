@@ -26,6 +26,7 @@ SCENARIOS["boot"] = (None, 9000, "")   # from a cold start: the original loads t
 SCENARIOS["idle"] = (STATE, 2600, "")   # nothing pressed: the menu, then the top ten (cases with scenario = "idle")
 # the game: level 1 played by a human (captures/input/level1-run1.txt, recorded with gods.lua inputlog=) from the 1 MB snapshot of its start
 SCENARIOS["game"] = ("gods-level1-1m.state", 6000, "", "kbd=1 replay=captures/input/level1-run1.txt")
+SCENARIOS["begin_quest"] = (STATE, 1500, "20:fire,30:none")   # Begin Quest to the first frames of the game: the level's set-up (cases with scenario = "begin_quest")
 SCENARIOS["begin"] = (STATE, 700, "20:fire,30:none")   # Begin Quest chosen at once: the program starts the game (cases with scenario = "begin")
 
 

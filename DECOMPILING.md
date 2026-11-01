@@ -70,3 +70,31 @@ Commit in your worktree (message ending `[skip ci]`); do not push and do not com
   `kuna`-free methods: `menu_dis.py 0xADDR` after adding that run to the coverage, or capstone on `native/build/game-ram.bin`).
 * Some `rts`-only routines are patched at run time (a `move.w #$4E75,addr` over a first word turns a routine off); do not treat
   every one-instruction routine as empty.
+
+## Begin Quest (the code from the menu's fire to the first frame of the game loop)
+
+`native/src/game_h.c` has it all in C (`begin_quest`, which `ui.c` calls instead of `original_begin`): the level's set-up ($651E,
+$2452 to $2C08 and the routines it calls: the files, the map, the pictures, the copper list, the state, two frames drawn behind
+the loading screen).  How it was made and checked:
+
+* Its coverage: `host/gods.lua` from a snapshot of the C disk just before the fire (a run from the boot with `press=space@2800
+  snap=6440 snapname=gods-c-menu shots=DIR frames=6440`), then `rebuilt joy1 load=gods-c-menu.state joy=10:fire,30:none
+  coverstop=ADDR cover=PATH until=3100`.  `coverstop=` writes the coverage and quits when the program first reaches ADDR (`2c20`
+  for the original's start of the loop, the C `game_loop` address of `native/build/menu_syms.lua` for the C); `ram=PATH` writes the RAM
+  there too, which `MENU_RAM=... MENU_COVERAGE=coverage-begin.txt menu_dis.py --todo` wants (the original's loader overwrites
+  parts of the program, so only the RAM at the end of the window has the code the window ran at its address).  Leave `press=` out of a
+  cover run: it is only read by the runs without cover/record.  `analysis/coverage-begin.txt` is the original's code;
+  `analysis/coverage-begin-c.txt` what of the original still runs after Begin Quest is C.
+* Other flags added to `host/gods.lua` for this: `stopat=ADDR ram=PATH` (the RAM the first time ADDR is reached, then quit),
+  `trace=ADDR[,..]` (the registers and the return address the first 6 times) and `watch=ADDR` (a word's changes, by frame).
+  A savestate holds the C blob: after every build make a new one.
+* The check of the whole: two builds of the disk, one with `original_begin()` and one with `begin_quest()` in `ui.c`, each run
+  from its snapshot to the first frame of the loop (`stopat=2c20` and `stopat=<game_loop>`).  The 512 KB chip RAM of the two is the same
+  except the interrupt vectors and the jump at $2C22 (the blob's addresses), the frame counters ($1D05A, $1E256) and the stack.
+* The oracle (`scenario = "begin_quest"` in `scripts/check_menu.py`: the original from `gods-menu-1m.state`, the fire at frame 20,
+  1500 frames) checks the leaves.  The loaders of the files, the copper list and what waits for the vertical blank are in the
+  whole check only.
+* A function that is only the way that ran says `goes on at $ADDR` where it stops: the other levels (`param_index` 2 to 4), the
+  password start (`word_0266`), the other draw routines of the table at $0D9A and the mirrored or shifted draws of `image_draw_clipped`,
+  the kinds 0, 1 and 6 at the end of a path ($18106).  A file that cannot be read does not come back (`load_file`), so the
+  original's code for that is not written.

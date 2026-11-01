@@ -62,6 +62,7 @@ ami.boot()
 --   compare=DIR [survey] [mask=FILE]  compare each frame with a recording; stops at the first difference, or with
 --                       survey reports every differing RAM range; mask lists RAM ranges to ignore
 --   until=N             quit after N frames (with record/compare/cover)
+--   coverstop=ADDR      with cover= (and ram=): stop at the first time ADDR (hex) is reached (e.g. 2c20: the game loop)
 --   cover=PATH          hook chip RAM and write every executed instruction (pc + bytes) to PATH
 --   ram=PATH            write chip RAM (512 KiB) at the end of the events, then quit
 --   shots=DIR frames=F,. write DIR/gods-F.ppm at those frames, then quit (headless checks)
@@ -132,6 +133,16 @@ local function write_cover()
     ami.save_file(cover_path, table.concat(out, "\n") .. "\n")
     ami.log("coverage", #cover_order, "instructions")
 end
+-- coverstop=ADDR (hex): write the coverage and quit at the first time the program reaches ADDR
+local cover_stop = tonumber(args:match("coverstop=(%x+)") or "", 16)
+if cover_path and cover_stop then
+    ami.hook(cover_stop, function()
+        write_cover()
+        local ram = args:match("ram=(%S+)")   -- also the RAM at that moment
+        if ram then ami.save_file(ram, ami.read(0, 0x80000)) end
+        ami.quit(0)
+    end)
+end
 
 local joys = {}   -- frame -> the joystick state from then on
 for f, dirs in (args:match("joy=(%S+)") or ""):gmatch("(%d+):([%a+]+)") do
@@ -179,6 +190,43 @@ for a in (args:match("count=([%x,]+)") or ""):gmatch("%x+") do
     local addr = tonumber(a, 16)
     counts[addr] = 0
     ami.hook(addr, function() counts[addr] = counts[addr] + 1 end)
+end
+-- trace=ADDR[,ADDR...] (hex): log the registers the first 6 times the program reaches each address
+for a in (args:match("trace=([%x,]+)") or ""):gmatch("%x+") do
+    local addr, hits = tonumber(a, 16), 0
+    ami.hook(addr, function()
+        hits = hits + 1
+        if hits > 6 then return end
+        local t = {}
+        for _, r in ipairs({ "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7" }) do
+            t[#t + 1] = r .. "=" .. ("%x"):format(ami.reg(r))
+        end
+        local top = ami.read(ami.reg("a7"), 4)
+        ami.log(("trace $%x hit %d frame %d: %s ret=%x"):format(addr, hits, ami.frame(), table.concat(t, " "), string.unpack(">I4", top)))
+    end)
+end
+-- stopat=ADDR (hex) [ram=PATH]: at the first time the program reaches ADDR write the chip RAM (512 KiB) to ram= and quit
+local stop_at = tonumber(args:match("stopat=(%x+)") or "", 16)
+if stop_at then
+    ami.hook(stop_at, function()
+        local ram = args:match("ram=(%S+)")
+        if ram then ami.save_file(ram, ami.read(0, 0x80000)) end
+        ami.log(("stopat $%x frame %d"):format(stop_at, ami.frame() - base))
+        ami.quit(0)
+    end)
+end
+-- watch=ADDR (hex): log each frame the word at ADDR has changed (its value and the pc)
+local watch_at = tonumber(args:match("watch=(%x+)") or "", 16)
+if watch_at then
+    local last = nil
+    local function poll()
+        local v = string.unpack(">I2", ami.read(watch_at, 2))
+        if v ~= last then
+            ami.log(("watch $%x = %04x at frame %d pc %06x"):format(watch_at, v, ami.frame() - base, ami.reg("pc")))
+            last = v
+        end
+    end
+    watch_poll = poll
 end
 local function report_counts()
     for addr, n in pairs(counts) do ami.log(("count $%x: %d"):format(addr, n)) end
@@ -231,7 +279,7 @@ end
 table.sort(events, function(a, b) return a[1] < b[1] end)
 local snap_name = args:match("snapname=(%S+)")
 for _, e in ipairs(events) do
-    ami.wait_until(function() return ami.frame() - base >= e[1] end)
+    ami.wait_until(function() if watch_poll then watch_poll() end return ami.frame() - base >= e[1] end)
     if e[2] == "joy" then
         ami.joystick(e[3])
     elseif e[2] == "move" then
