@@ -14,37 +14,35 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build_adf as B  # noqa: E402
+import gen_menu_amiga_asm  # noqa: E402
 import gen_menu_symbols  # noqa: E402
 
 NATIVE, BUILD = B.NATIVE, B.BUILD
 FLAGS = "-m68000 -O2 -ffreestanding -fno-tree-loop-distribute-patterns -fno-tree-forwprop -fno-ivopts -nostdlib -fdata-sections -ffunction-sections"
 
 
-MODULES = ['menu', 'disk', 'alloc', 'decrunch', 'input', 'screen', 'menu_data']   # native/<name>.c
+MODULES = ['menu', 'disk', 'alloc', 'decrunch', 'input', 'screen', 'draw', 'menu_data']   # native/<name>.c
 
 
 def main() -> int:
     base = int(sys.argv[1], 16) if len(sys.argv) > 1 else 0xC0000
     BUILD.mkdir(exist_ok=True)
-    gen_menu_symbols.main()
+    gen_menu_symbols.main(base)
+    gen_menu_amiga_asm.main()
     compile_all = " && ".join(f"m68k-amigaos-gcc {FLAGS} -Wall -Wextra -c {m}.c -o {BUILD}/menu_{m}.o" for m in MODULES)
-    objects = " ".join(f"{BUILD}/menu_{m}.o" for m in MODULES)
-    r = B.nix(f"cd {NATIVE} && {compile_all}"
+    objects = " ".join(f"{BUILD}/menu_{m}.o" for m in MODULES) + f" {BUILD}/menu_amiga.o"
+    r = B.nix(f"cd {NATIVE} && {compile_all} && vasmm68k_mot -Fhunk -no-opt -quiet -o {BUILD}/menu_amiga.o menu_amiga.asm"
               f" && m68k-amigaos-ld -m amiga -T menu.ld -Map {BUILD}/menu.map -o {BUILD}/menu.exe {objects}"
               f" && m68k-amigaos-nm {BUILD}/menu.exe > {BUILD}/menu.sym")
     if r.returncode:
         print(r.stdout[-2000:], r.stderr[-3000:])
         return 1
     hunks = B.parse_hunks((BUILD / "menu.exe").read_bytes())
-    # the tables (a data hunk at address 0, never loaded: the bytes are in memory already) and the code
+    # the tables (a data hunk at address 0, never loaded: the bytes are in memory already) and the code, linked at `base`
     assert len(hunks) in (1, 2), f"expected the code hunk and perhaps a data hunk, got {len(hunks)}"
-    data = hunks[0] if len(hunks) == 2 else None
     _, code, relocs = hunks[-1]
+    assert not relocs, "the code is linked at its address and needs no relocation"
     code = bytearray(code)
-    for target, offsets in relocs.items():
-        add = base if target == len(hunks) - 1 else 0   # code refers to itself (moved to `base`) and to the tables (at their addresses)
-        for off in offsets:
-            struct.pack_into(">I", code, off, struct.unpack_from(">I", code, off)[0] + add)
     (BUILD / "menu.blob").write_bytes(bytes(code))
     funcs = {m.group(3).lstrip("_"): int(m.group(1), 16) + base
              for m in re.finditer(r"^([0-9a-f]{8}) ([tT]) (\S+)$", (BUILD / "menu.sym").read_text(), re.M)}

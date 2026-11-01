@@ -22,6 +22,7 @@ for _m in "right right down fire left up fire down down right fire up fire left 
     _t += 30
 SCENARIOS["menu"] = (STATE, 1400, JOY)
 SCENARIOS["boot"] = (None, 9000, "")   # from a cold start: the original loads the menu (cases with scenario = "boot")
+SCENARIOS["idle"] = (STATE, 2600, "")   # nothing pressed: the menu, then the top ten (cases with scenario = "idle")
 SCENARIOS["begin"] = (STATE, 700, "20:fire,30:none")   # Begin Quest chosen at once: the program starts the game (cases with scenario = "begin")
 
 

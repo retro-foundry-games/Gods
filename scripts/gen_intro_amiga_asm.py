@@ -15,10 +15,10 @@ import sys
 import tempfile
 from pathlib import Path
 
-from capstone import CS_ARCH_M68K, CS_MODE_M68K_000, Cs
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import intro_offsets  # noqa: E402
+import amiga_asm as A  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[3]
 PROJECT = ROOT / "projects" / "gods"
@@ -139,6 +139,11 @@ def short_symbol(addr: int) -> str:
     return f"${addr:x}"
 
 
+A.ENTRIES, A.LABELS, A.NATIVE = ENTRIES, LABELS, NATIVE
+A.data_symbol, A.short_symbol = data_symbol, short_symbol
+from amiga_asm import emit, entry_label, localize, scratch  # noqa: E402
+
+
 def channel_fields(lines: list[str]) -> list[str]:
     """In the replayer a6 is the channel's state and a5 the chip's audio channel: name the offsets."""
     cf, af = fields("Channel"), fields("AudioChannel")
@@ -162,120 +167,6 @@ def channel_fields(lines: list[str]) -> list[str]:
             head = re.sub(r"\$([0-9a-f]+)\(a5\)", five, head)
         out.append(head + sep + comment)
     return out
-
-
-class Ins:
-    def __init__(self, i, mem: bytes) -> None:
-        self.address, self.size, self.mn, self.op = i.address, i.size, i.mnemonic, i.op_str
-        self.raw = mem[i.address:i.address + i.size]
-
-
-def disassemble(mem: bytes, lo: int, hi: int) -> list[Ins]:
-    md = Cs(CS_ARCH_M68K, CS_MODE_M68K_000)
-    ins = [Ins(i, mem) for i in md.disasm(mem[lo:hi], lo)]
-    assert sum(i.size for i in ins) == hi - lo, f"{lo:x}-{hi:x}: the disassembly stops early"
-    return ins
-
-
-BRANCH = re.compile(r"^(b(?!tst|set|clr|chg)\w*|db\w+)(\.[bwl])?$")
-
-
-def is_branch(i: Ins) -> bool:
-    return bool(BRANCH.match(i.mn)) and "$" in i.op and "(" not in i.op
-
-
-def branch_target(i: Ins) -> int:
-    m = re.search(r"\$([0-9a-f]+)$", fix_operand(i))
-    assert m
-    return int(m.group(1), 16)
-
-
-def fix_operand(i: Ins) -> str:
-    """capstone prints some absolute operands as $aaaaaaaa; read them from the instruction's bytes instead."""
-    op = i.op
-    if "$aaaa" not in op:
-        return op
-    if "$aaaaaaaa.l" in op:
-        op = op.replace("$aaaaaaaa.l", f"${int.from_bytes(i.raw[-4:], 'big'):x}.l")
-    size = i.mn.split(".")[-1]
-    imm = {"b": i.raw[3:4], "w": i.raw[2:4], "l": i.raw[2:6]}.get(size)
-    if imm is not None and re.search(r"#\$a{2,8}\b", op):
-        op = re.sub(r"#\$a{2,8}\b", "#$" + format(int.from_bytes(imm, "big"), "x"), op, count=1)
-    return op
-
-
-def text(i: Ins, targets: dict[int, str], final: bool) -> str:
-    """vasm source for one instruction.  final: symbols and the C build's addressing; otherwise the original's numbers."""
-    op = fix_operand(i)
-    mn = i.mn
-    if is_branch(i):
-        tgt = branch_target(i)
-        lab = targets.get(tgt) or ENTRIES.get(tgt) or f"${tgt:x}"
-        return f"{mn} {op[:op.rindex('$')]}{lab}".replace(", ", ",")
-    m = re.search(r"\$([0-9a-f]+)\.l", op)
-    if m and final:
-        sym = data_symbol(int(m.group(1), 16)) or ENTRIES.get(int(m.group(1), 16))
-        if sym:
-            op = op.replace(m.group(0), f"({sym}).l")
-    m = re.search(r"#\$([0-9a-f]+)", op)
-    if m and final and mn == "movea.l" and re.search(r", a\d$", op):
-        sym = data_symbol(int(m.group(1), 16))
-        if sym and "+" not in sym:
-            op = op.replace(m.group(0), "#" + sym)
-    m = re.match(r"\$([0-9a-f]+)\(pc\),(.*)$", op.replace(", ", ","))
-    if m and final:
-        # pc-relative to data: the data is in another hunk, so use absolute short (8 cycles as well, no relocation)
-        return f"{mn} ({short_symbol(int(m.group(1), 16))}).w,{m.group(2)}"
-    return f"{mn} {op}".replace(", ", ",")
-
-
-def emit(mem: bytes, lo: int, hi: int) -> list[str]:
-    """The original instructions in [lo, hi) as vasm source, verified against the original bytes."""
-    ins = disassemble(mem, lo, hi)
-    targets = {branch_target(i): LABELS.get(branch_target(i), f"L{branch_target(i):x}") for i in ins
-               if is_branch(i) and lo <= branch_target(i) < hi and branch_target(i) not in ENTRIES}
-    check = [f"{name} = ${addr:x}" for addr, name in ENTRIES.items() if not lo <= addr < hi]
-    check.append(f"        org ${lo:x}")
-    for i in ins:
-        if i.address in ENTRIES:
-            check.append(f"{ENTRIES[i.address]}:")
-        if i.address in targets:
-            check.append(f"{targets[i.address]}:")
-        check.append(f"        org ${i.address:x}")
-        check.append("        " + text(i, targets, False))
-    with tempfile.TemporaryDirectory() as d:
-        src, out = Path(d) / "c.asm", Path(d) / "c.bin"
-        src.write_text("\n".join(check) + "\n")
-        r = subprocess.run(["nix", "develop", str(NATIVE), "--command", "vasmm68k_mot", "-Fbin", "-no-opt", "-quiet", "-o", str(out), str(src)],
-                           capture_output=True, text=True)
-        if r.returncode:
-            sys.exit(f"{lo:x}: {r.stdout}{r.stderr}")
-        built = out.read_bytes()
-    lines = []
-    for i in ins:
-        off = i.address - lo
-        if i.address in ENTRIES:
-            lines.append(f"{ENTRIES[i.address]}:")
-        if i.address in targets:
-            lines.append(f"{targets[i.address]}:")
-        if built[off:off + i.size] == i.raw:
-            lines.append("        " + text(i, targets, True))
-        else:
-            assert not is_branch(i) and "(pc)" not in i.op, \
-                f"{i.address:x} {i.mn} {i.op}: assembled as {built[off:off + i.size].hex()}, the original is {i.raw.hex()}"
-            words = ",".join(f"${int.from_bytes(i.raw[k:k + 2], 'big'):04x}" for k in range(0, i.size, 2))
-            lines.append(f"        dc.w {words}   ; {i.mn} {i.op}, the original's bytes")
-    return lines
-
-
-def entry_label(lines: list[str]) -> list[str]:
-    """Drop the label line of the original's entry (the wrapper has its own)."""
-    return lines[1:] if lines and lines[0].endswith(":") and lines[0].split(":")[0] in ENTRIES.values() else lines
-
-
-def scratch(lines: list[str]) -> list[str]:
-    """The original keeps a counter and a value in d7 and d6; in C those are callee-saved, d1 and d0 are not (same cost)."""
-    return [re.sub(r"\bd6\b", "d0", re.sub(r"\bd7\b", "d1", ln)) for ln in lines]
 
 
 SPACE_FIRE = True   # patch the interrupt so that the space bar sets fire_pressed as the fire buttons do
@@ -322,63 +213,6 @@ def space_fire(irq: list[str]) -> list[str]:
         "        beq.b button_down",
     ]
     return out[:at] + patch + out[at:]
-
-
-LABEL_DEF = re.compile(r"^([A-Za-z_]\w*):\s*$")
-CALL = re.compile(r"^\s+(bsr|jsr|jmp)\b")
-
-
-def localize(lines: list[str]) -> list[str]:
-    """Labels that are only branched to from inside their own routine become local (`.name`, scoped to the preceding
-    global label); a routine's single `*_loop` label is called `.loop`.  Labels that are called, jumped to from another
-    routine or exported stay global."""
-    defs = {ln.split(":")[0]: n for n, ln in enumerate(lines) if LABEL_DEF.match(ln)}
-    exported = set()
-    for ln in lines:
-        if ln.strip().startswith("xdef"):
-            exported |= {x.strip() for x in ln.split("xdef")[1].split(",")}
-    refs: dict[str, list[tuple[int, bool]]] = {name: [] for name in defs}
-    for n, ln in enumerate(lines):
-        code = ln.split(";")[0]
-        if LABEL_DEF.match(ln) or not code.strip() or code.strip().startswith(("xref", "xdef", "section")):
-            continue
-        for name in defs:
-            if re.search(r"(?<![\w.])" + re.escape(name) + r"(?!\w)", code):
-                refs[name].append((n, bool(CALL.match(code))))
-    glob = {name for name in defs if name in exported or name.startswith("_") or not refs[name]
-            or any(call for _, call in refs[name])}
-    while True:
-        starts = sorted(defs[g] for g in glob)
-
-        def scope(n: int) -> int:
-            k = [x for x in starts if x <= n]
-            return k[-1] if k else -1
-        promote = {name for name in defs if name not in glob and any(scope(r) != scope(defs[name]) for r, _ in refs[name])}
-        if not promote:
-            break
-        glob |= promote
-    local = {name for name in defs if name not in glob}
-    # name the single loop of a routine `.loop`
-    by_scope: dict[int, list[str]] = {}
-    for name in local:
-        by_scope.setdefault(scope(defs[name]), []).append(name)
-    new = {name: "." + name for name in local}
-    for names in by_scope.values():
-        loops = [x for x in names if x.endswith("_loop")]
-        if len(loops) == 1:
-            new[loops[0]] = ".loop"
-    out = []
-    for ln in lines:
-        m = LABEL_DEF.match(ln)
-        if m and m.group(1) in new:
-            out.append(new[m.group(1)] + ":")
-            continue
-        head, sep, comment = ln.partition(";")
-        if head.strip() and not head.strip().startswith(("xref", "xdef", "section")):
-            for name in local:
-                head = re.sub(r"(?<![\w.])" + re.escape(name) + r"(?!\w)", new[name], head)
-        out.append(head + sep + comment)
-    return out
 
 
 def main() -> None:

@@ -31,6 +31,7 @@ local syms = load(read_file("build/menu_syms.lua"))()
 local blob = read_file("build/menu.blob")
 local cases = load(read_file("host/menu_cases.lua"))()
 
+local BLITTER_WAIT = 0x01dfd8   -- the original's blitter_wait
 local SCRATCH = 0xE8000   -- a stack for the test, above the memory that is compared
 local CHIP = 0x100000   -- the whole of the machine's 1 MB chip RAM: the original program may use the half above 512 KB too
 local DATA_REGS = { "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "a0", "a1", "a2", "a3", "a4", "a5", "a6" }
@@ -72,7 +73,15 @@ local function check(case)
     local run = {}
     for k, v in pairs(regs) do run[k] = v end
     run.a7, run.sr = SCRATCH, 0x2700
+    -- functions that use the blitter: it goes on after they return, so wait for it (the original's own wait)
+    local function settle()
+        if case.blitter then ami.call(BLITTER_WAIT, { a7 = SCRATCH, sr = 0x2700 }) end
+    end
+    settle()
+    local before_settled = ami.read(0, CHIP)
+    if before_settled ~= before then before = before_settled end
     local r1 = ami.call(case.orig, run)
+    settle()
     local after_orig = ami.read(0, CHIP)
     ami.write(0, before)
     -- the original once more: what differs between the two runs is done by the chips (the disk DMA writes the track
@@ -81,6 +90,7 @@ local function check(case)
     for k, v in pairs(regs) do run1b[k] = v end
     run1b.a7, run1b.sr = SCRATCH, 0x2700
     ami.call(case.orig, run1b)
+    settle()
     local noise = differences(after_orig, ami.read(0, CHIP))
     ami.write(0, before)
     -- and the buffer the disk DMA is filling, which the chips write at their own pace
@@ -94,6 +104,7 @@ local function check(case)
     run2.a7, run2.sr = SCRATCH, 0x2700
     ami.write(syms.base, blob)   -- the program may have used the memory the C code sits in
     local r2 = ami.call(syms[case.name], run2)
+    settle()
     local after_c = ami.read(0, CHIP)
     ami.write(0, before)
     busy = false
