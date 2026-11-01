@@ -46,4 +46,11 @@ return {
     { name = "copper_colors_restore",orig = 0x01d216, args = {} },
     { name = "alloc_init",           orig = 0x01d48e, args = {}, scenario = "boot" },
     { name = "input_poll",           orig = 0x01e39c, args = {} },
+    { name = "background_draw",      orig = 0x006b06, args = {}, scenario = "menu" },
+    { name = "draw_line_text",       orig = 0x006dea, args = {}, blitter = true, scenario = "menu" },
+    { name = "cursor_draw",          orig = 0x006e1c, args = {}, blitter = true, scenario = "menu" },
+    { name = "password_grid_draw",   orig = 0x006e5e, args = {}, blitter = true, scenario = "menu" },
+    { name = "password_slots_draw",  orig = 0x006994, args = {}, blitter = true, scenario = "menu" },
+    { name = "record_list_draw",     orig = 0x006974, args = {}, blitter = true, scenario = "menu" },
+    { name = "title_draw",           orig = 0x006754, args = {}, blitter = true, scenario = "menu" },
 }
