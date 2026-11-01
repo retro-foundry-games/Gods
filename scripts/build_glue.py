@@ -42,7 +42,7 @@ def main() -> None:
                   f"        movea.l (${GLUE_BASE + 0x400:x}).l,sp", "        movem.l (sp)+,d0-d7/a0-a6", ] + AFTER.get(name, []) + ["        move #0,ccr", "        rts", ""]
     src = BM.BUILD / "takeover_glue.asm"
     src.write_text("\n".join(lines) + "\n")
-    r = BM.B.nix(f"cd {BM.NATIVE} && vasmm68k_mot -Fbin -no-opt -quiet -o {BM.BUILD}/takeover_glue.bin {src} ")
+    r = BM.B.nix(f"cd {BM.SRC} && vasmm68k_mot -Fbin -no-opt -quiet -o {BM.BUILD}/takeover_glue.bin {src} ")
     if r.returncode:
         sys.exit(r.stdout + r.stderr)
     (BM.BUILD / "takeover_glue.lua").write_text("return {\n  base = 0x%x,\n%s}\n" % (GLUE_BASE, "".join(

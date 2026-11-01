@@ -3,7 +3,7 @@ instructions from a memory image as vasm source, with data addresses as symbols 
 instruction checked by assembling it again at its original address.
 
 The caller sets (module attributes) ENTRIES (address -> label of the routines called by name), LABELS (names for the labels
-inside routines), NATIVE (the directory with the flake, for vasm), data_symbol(addr) and short_symbol(addr).
+inside routines), SRC (the sources; its parent has the flake, for vasm), data_symbol(addr) and short_symbol(addr).
 """
 import re
 import subprocess
@@ -15,7 +15,7 @@ from capstone import CS_ARCH_M68K, CS_MODE_M68K_000, Cs
 
 ENTRIES: dict[int, str] = {}
 LABELS: dict[int, str] = {}
-NATIVE: Path = Path(".")
+SRC: Path = Path(".")
 CODE_RANGES: list[tuple[int, int]] = []   # all the code that is emitted (branches may go from one piece to another)
 PC_LABELS: dict[int, str] = {}   # data inside the emitted code that the original reaches pc-relative: address -> label
 
@@ -163,7 +163,7 @@ def emit(mem: bytes, lo: int, hi: int, force: set[int] = frozenset()) -> list[st
     with tempfile.TemporaryDirectory() as d:
         src, out = Path(d) / "c.asm", Path(d) / "c.bin"
         src.write_text("\n".join(check) + "\n")
-        r = subprocess.run(["nix", "develop", str(NATIVE), "--command", "vasmm68k_mot", "-Fbin", "-no-opt", "-quiet", "-o", str(out), str(src)],
+        r = subprocess.run(["nix", "develop", str(SRC.parent), "--command", "vasmm68k_mot", "-Fbin", "-no-opt", "-quiet", "-o", str(out), str(src)],
                            capture_output=True, text=True)
         if r.returncode:
             sys.exit(f"{lo:x}: {r.stdout}{r.stderr}")

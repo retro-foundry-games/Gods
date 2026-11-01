@@ -5,15 +5,15 @@ anything older here; see also [AGENTS.md](AGENTS.md).
 
 ## Direction (from the user)
 
-- The game is **one C file per program**: the intro is `native/intro.c` (its data in `intro_data.c`, header `intro.h`, link script
-  `intro.ld`, assembly `intro_amiga.asm`), the menu will be `native/menu.c` the same way.  Each is built with `m68k-amigaos-gcc` from the `native/` flake
+- The game is **one C file per program**: the intro is `src/intro.c` (its data in `intro_data.c`, header `intro.h`, link script
+  `intro.ld`, assembly `intro_amiga.asm`), the menu will be `src/menu.c` the same way.  Each is built with `m68k-amigaos-gcc` from the `src/` flake
   (`nix develop --command ...`), for the A500 (68000).
 - It is **real decompiled C**: typed structs and globals at the original addresses, real parameters and return
   values. No emulated register file, no flag/`op_` helpers (same architecture: the compiler produces the flags), no
   `rd8/wr16`-style accessors.
 - **Every function carries its original address** in a comment, e.g. `/* orig $002CF4 */`, so functions can be matched.
 - **No inline asm** in the game. The loader (boot block, trackloader, decruncher) is the one exception: it is
-  assembly in a separate `loader.asm`, assembled with `vasm` (`vasmm68k_mot`, in the `native/` flake shell).
+  assembly in a separate `loader.asm`, assembled with `vasm` (`vasmm68k_mot`, in the `src/` flake shell).
 - **The C runs from boot.** No original game code executes and there is no switching between original and C at run
   time. Boot method: a new bootable ADF whose boot block and loader come from `loader.asm`.
 - **Verification is lockstep** against the recording `captures/ref100k`, from frame 0, comparing the screen and chip
@@ -77,13 +77,13 @@ Verified facts:
 
 ## Build (verified)
 
-- `native/intro.c` (code), `native/intro.h` (data types and declarations), `native/intro_data.c` (the data, C initializers
-  copied from the original's initial image, frame 1746 of the recording) and `native/intro.ld` (generated with
+- `src/intro.c` (code), `src/intro.h` (data types and declarations), `src/intro_data.c` (the data, C initializers
+  copied from the original's initial image, frame 1746 of the recording) and `src/intro.ld` (generated with
   `intro_data.c` by `scripts/gen_intro_data.py`).
 - Compile each with `m68k-amigaos-gcc -m68000 -Os -ffreestanding -nostdlib -fdata-sections -c`, link with
   `m68k-amigaos-ld -m amiga -T intro.ld intro.o intro_data.o`. In a hunk executable an object's offset in the data hunk is its
   address, so `intro.ld` lays the data hunk out at the original addresses (`. = ADDR;`, `SUBALIGN(1)`); the loader loads
-  it at address 0, copying only the listed objects (`native/intro.objects`) so the rest of the original image stays.
+  it at address 0, copying only the listed objects (`src/intro.objects`) so the rest of the original image stays.
   The code hunk follows separately. All 23 data objects checked at their original addresses.
 - Hunk sections are rounded up to 4 bytes, so variables that sit next to each other in the original are structs
   (`struct Vblank`, `struct MusicState`, `struct Graphics`, ...) that cover the same bytes.
@@ -99,11 +99,11 @@ game's variables.
 - The C runs from **chip RAM** like the original: the machine is given 1 MB chip RAM (`puae_chipmem_size=2`) and the code
   sits at `$80000`, above the original's 512 KB (which is full).  The C's own stack is at `$90000`; the stack is not
   compared.  The CPU is the normal 7 MHz one.
-- The Amiga-specific routines are the original's instructions in `native/intro_amiga.asm` (the user allowed assembly for them,
+- The Amiga-specific routines are the original's instructions in `src/intro_amiga.asm` (the user allowed assembly for them,
   besides `loader.asm`): the blitter work, screen and bitplane fills, the busy-wait loops, the vertical blank interrupt,
   `vbl_wait` and the music replayer.  `scripts/gen_intro_amiga_asm.py` generates it from the resident code of the recording; every
   instruction is assembled again at its original address and compared with the original bytes.  Struct field offsets in
-  the assembly come from the compiler (`native/intro_offsets.c` -> `native/intro_offsets.i`, which `intro_amiga.asm` includes), so they follow
+  the assembly come from the compiler (`src/intro_offsets.c` -> `src/intro_offsets.i`, which `intro_amiga.asm` includes), so they follow
   `intro.h`.  Only C-callable
   wrappers (arguments on the stack, `d2-d7/a2-a6` preserved) were added.  Two deliberate differences: the interrupt saves
   `d0`/`d1` with `movem.l` (the original's `movem.w` sign-extends them, which C does not survive), and `lea d16(pc),a6` of
@@ -165,7 +165,7 @@ from it are checked in their own scenario.  To use the menu in the emulator the 
 - The menu program's C is split by what the code does: `disk.c` (the disk layer: MFM, track buffer, sector copy), `alloc.c`
   (memory), `decrunch.c` (the unpacker), `input.c` (buttons, joystick, mouse), `screen.c` (buffers, colour shadow table, copper
   list search, blitter wait); `menu.c` has what is not placed yet.  Each module has its header, `menu.h` includes them all and
-  `menu_types.h` has the types of the data.  Its its data is declared from `native/menu.symbols` (name, address, type;
+  `menu_types.h` has the types of the data.  Its its data is declared from `src/menu.symbols` (name, address, type;
   `scripts/gen_menu_symbols.py` writes `menu_symbols.h` and `menu.ld`, so the C names no address).  `scripts/build_menu.py`
   builds the C into a blob at an address in the RAM above the original's 512 KB.
 - `host/menu_oracle.lua` (driven by `scripts/check_menu.py`) checks each decompiled function against the original **on the
@@ -240,4 +240,4 @@ python3 tools/amiga/frame_recorder.py --extract projects/gods/captures/ref100k F
 ```
 
 Python tools use `uv run python ...` (capstone and unicorn are in `pyproject.toml`). The m68k toolchain is
-`nix develop projects/gods/native --command ...`.
+`nix develop projects/gods/src --command ...`.

@@ -1,4 +1,4 @@
-"""Generate native/intro_amiga.asm: the Amiga-specific routines as the original has them.
+"""Generate src/intro_amiga.asm: the Amiga-specific routines as the original has them.
 
 The routines are the original's instructions, disassembled from the resident code in the reference recording (frame
 1746), with data addresses turned into symbols and branch targets into labels, so they take as long as the original,
@@ -22,8 +22,8 @@ import amiga_asm as A  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[3]
 PROJECT = ROOT / "projects" / "gods"
-NATIVE = PROJECT / "native"
-OUT = NATIVE / "intro_amiga.asm"
+SRC = PROJECT / "src"
+OUT = SRC / "intro_amiga.asm"
 REF = PROJECT / "captures" / "ref100k"
 FRAME = 1746
 
@@ -81,12 +81,12 @@ def ram() -> bytes:
 def objects() -> list[tuple[str, int, int]]:
     """The objects intro.objects pins at the original addresses, with their sizes (from the sections of build/intro_data.o)."""
     sizes: dict[str, int] = {}
-    out = subprocess.run(["nix", "develop", str(NATIVE), "--command", "m68k-amigaos-objdump", "-h",
+    out = subprocess.run(["nix", "develop", str(SRC.parent), "--command", "m68k-amigaos-objdump", "-h",
                           str(PROJECT / "build" / "intro_data.o")], capture_output=True, text=True).stdout
     for m in re.finditer(r"\.(?:data|bss|rodata)\.(\w+)\s+([0-9a-f]{8})", out):
         sizes[m.group(1)] = int(m.group(2), 16)
     result = []
-    for line in (NATIVE / "intro.objects").read_text().split("\n"):
+    for line in (SRC / "intro.objects").read_text().split("\n"):
         if line.strip():
             name, addr = line.split()
             if name not in SKIP_OBJECTS and name in sizes:
@@ -139,7 +139,7 @@ def short_symbol(addr: int) -> str:
     return f"${addr:x}"
 
 
-A.ENTRIES, A.LABELS, A.NATIVE = ENTRIES, LABELS, NATIVE
+A.ENTRIES, A.LABELS, A.SRC = ENTRIES, LABELS, SRC
 A.data_symbol, A.short_symbol = data_symbol, short_symbol
 from amiga_asm import emit, entry_label, localize, scratch  # noqa: E402
 

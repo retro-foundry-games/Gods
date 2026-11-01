@@ -26,12 +26,12 @@ SKIP = {"vectors"}          # the C handler's address is in the vector table, th
 
 def objects() -> list[tuple[str, int, int]]:
     sizes: dict[str, int] = {}
-    out = subprocess.run(["nix", "develop", str(PROJECT / "native"), "--command", "m68k-amigaos-objdump", "-h",
+    out = subprocess.run(["nix", "develop", str(PROJECT), "--command", "m68k-amigaos-objdump", "-h",
                           str(PROJECT / "build" / "intro_data.o")], capture_output=True, text=True).stdout
     for m in re.finditer(r"\.(?:data|bss|rodata)\.(\w+)\s+([0-9a-f]{8})", out):
         sizes[m.group(1)] = int(m.group(2), 16)
     result = []
-    for line in (PROJECT / "native" / "intro.objects").read_text().split("\n"):
+    for line in (PROJECT / "src" / "intro.objects").read_text().split("\n"):
         if line.strip():
             name, addr = line.split()
             if name not in SKIP and name in sizes:

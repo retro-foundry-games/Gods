@@ -1,6 +1,7 @@
-"""Build the menu program's C (native/menu.c) as a blob at an address, for checking it against the original.
+"""Build the menu program's C (src/menu.c) as a blob at an address, for checking it against the original.
 
-Compiles menu.c, links it with menu.ld (the data names at their addresses), relocates the code hunk to BASE and writes
+Makes build/menu.exe (the Makefile compiles the modules of src/ and links them with menu.ld, the data names at their
+addresses), relocates the code hunk to BASE and writes
 build/menu.blob (the bytes), build/menu.sym (nm) and build/menu_syms.lua (function name -> address, for host/menu_oracle.lua).
 
     uv run python projects/gods/scripts/build_menu.py [BASE]        # BASE in hex, default C0000 (RAM above the original's 512 KB)
@@ -9,6 +10,7 @@ from __future__ import annotations
 
 import re
 import struct
+import subprocess
 import sys
 from pathlib import Path
 
@@ -17,11 +19,9 @@ import build_adf as B  # noqa: E402
 import gen_menu_amiga_asm  # noqa: E402
 import gen_menu_symbols  # noqa: E402
 
-NATIVE, BUILD = B.NATIVE, B.BUILD
-FLAGS = "-m68000 -O2 -ffreestanding -fno-tree-loop-distribute-patterns -fno-tree-forwprop -fno-ivopts -nostdlib -fdata-sections -ffunction-sections"
+SRC, BUILD = B.SRC, B.BUILD
 
 
-MODULES = ['menu', 'disk', 'alloc', 'decrunch', 'input', 'screen', 'draw', 'display', 'message', 'ui', 'file', 'boot', 'menu_data']   # native/<name>.c
 
 
 def main() -> int:
@@ -29,11 +29,7 @@ def main() -> int:
     BUILD.mkdir(exist_ok=True)
     gen_menu_symbols.main(base)
     gen_menu_amiga_asm.main()
-    compile_all = " && ".join(f"m68k-amigaos-gcc {FLAGS} -Wall -Wextra -c {m}.c -o {BUILD}/menu_{m}.o" for m in MODULES)
-    objects = " ".join(f"{BUILD}/menu_{m}.o" for m in MODULES) + f" {BUILD}/menu_amiga.o"
-    r = B.nix(f"cd {NATIVE} && {compile_all} && vasmm68k_mot -Fhunk -no-opt -quiet -o {BUILD}/menu_amiga.o menu_amiga.asm"
-              f" && m68k-amigaos-ld -m amiga -T menu.ld -Map {BUILD}/menu.map -o {BUILD}/menu.exe {objects}"
-              f" && m68k-amigaos-nm {BUILD}/menu.exe > {BUILD}/menu.sym")
+    r = subprocess.run(["make", "-C", str(B.G.ROOT), "--no-print-directory", "build/menu.exe"], capture_output=True, text=True)
     if r.returncode:
         print(r.stdout[-2000:], r.stderr[-3000:])
         return 1

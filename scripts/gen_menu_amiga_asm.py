@@ -1,4 +1,4 @@
-"""Generate native/menu_amiga.asm: the menu program's hardware routines as the original has them (the blitter's masked
+"""Generate src/menu_amiga.asm: the menu program's hardware routines as the original has them (the blitter's masked
 blit), with C-callable wrappers; see gen_intro_amiga_asm.py, which does the same for the intro.
 
     uv run python projects/gods/scripts/gen_menu_amiga_asm.py
@@ -12,8 +12,8 @@ import amiga_asm as A  # noqa: E402
 import gen_menu_symbols as S  # noqa: E402
 
 PROJECT = Path(__file__).resolve().parents[1]
-NATIVE = PROJECT / "native"
-OUT = NATIVE / "menu_amiga.asm"
+SRC = PROJECT / "src"
+OUT = SRC / "menu_amiga.asm"
 
 # the program as the loader leaves it (host/menu_image.lua): the initial values of the data in the code (frame 8000 has them used)
 MEM = (PROJECT / "build" / "menu-image.bin").read_bytes()
@@ -78,7 +78,7 @@ def short_symbol(addr: int) -> str:
     return f"${addr:x}"
 
 
-A.ENTRIES, A.LABELS, A.NATIVE, A.PC_LABELS = ENTRIES, LABELS, NATIVE, DATA_LABELS
+A.ENTRIES, A.LABELS, A.SRC, A.PC_LABELS = ENTRIES, LABELS, SRC, DATA_LABELS
 A.CODE_RANGES = [(0x171E4, 0x17380), (0x633E, 0x635A)]   # the sound pieces are added below
 A.data_symbol, A.short_symbol = data_symbol, short_symbol
 

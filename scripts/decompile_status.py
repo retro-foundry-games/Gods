@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Which original function entries have a C counterpart in native/intro.c (matched by its `orig $ADDR` comments).
+"""Which original function entries have a C counterpart in src/intro.c (matched by its `orig $ADDR` comments).
 
     uv run python projects/gods/scripts/decompile_status.py
 """
@@ -17,7 +17,7 @@ def main() -> int:
     dec = G.decode(G.read_coverage())
     _, stable = G.stable_set(dec)
     _, entries, _ = G.functions(stable)
-    text = (G.ROOT / "native" / "intro.c").read_text()
+    text = (G.ROOT / "src" / "intro.c").read_text()
     # only a comment on a function definition counts, not one on a prototype or inside a body
     done = set()
     for m in re.finditer(r"(?m)^/\* orig \$([0-9A-Fa-f]{6})", text):   # comments that open a line, above a definition

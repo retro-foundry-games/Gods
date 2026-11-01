@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the Gods ADF whose game is the C in native/: boot -> original loader -> C (no original game code runs).
+"""Build the Gods ADF whose game is the C in src/: boot -> original loader -> C (no original game code runs).
 
     uv run python projects/gods/scripts/build_adf.py
 
@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gen_loader_asm as L  # noqa: E402
 import intro_analysis as G  # noqa: E402
 
-NATIVE = G.ROOT / "native"
+SRC = G.ROOT / "src"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import intro_offsets  # noqa: E402
 
@@ -35,7 +35,7 @@ STACK_TOP = 0x90000       # the C's own stack, in the extra chip RAM above the c
 
 
 def nix(cmd: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["nix", "develop", str(NATIVE), "--command", "sh", "-c", cmd], capture_output=True, text=True)
+    return subprocess.run(["nix", "develop", str(SRC.parent), "--command", "sh", "-c", cmd], capture_output=True, text=True)
 
 
 def parse_hunks(data: bytes):
@@ -84,12 +84,7 @@ def parse_hunks(data: bytes):
 def main() -> int:
     BUILD.mkdir(exist_ok=True)
     intro_offsets.write()   # the struct field offsets intro_amiga.asm includes, from intro.h
-    flags = os.environ.get("GODS_CFLAGS", "") + " -m68000 " + os.environ.get("GODS_OPT", "-O2") + " -ffreestanding -fno-tree-loop-distribute-patterns -fno-tree-forwprop -fno-ivopts -nostdlib -fdata-sections"
-    r = nix(f"cd {NATIVE} && m68k-amigaos-gcc {flags} -Wall -Wextra -c intro.c -o {BUILD}/intro.o"
-            f" && m68k-amigaos-gcc {flags} -c intro_data.c -o {BUILD}/intro_data.o"
-            f" && vasmm68k_mot -Fhunk -no-opt -quiet -o {BUILD}/intro_amiga.o intro_amiga.asm"
-            f" && m68k-amigaos-ld -m amiga -T intro.ld -Map {BUILD}/intro.map -o {BUILD}/intro.exe {BUILD}/intro.o {BUILD}/intro_amiga.o {BUILD}/intro_data.o"
-            f" && m68k-amigaos-nm {BUILD}/intro.exe > {BUILD}/intro.sym")
+    r = subprocess.run(["make", "-C", str(G.ROOT), "--no-print-directory", "build/intro.exe"], capture_output=True, text=True)
     if r.returncode:
         print(r.stdout[-2000:], r.stderr[-3000:])
         return 1
@@ -115,7 +110,7 @@ def main() -> int:
     tramp_src.write_text(f"        org ${L.SLOW_BASE:x}\n        tst.w ${STARTED_FLAG:x}.l\n        bne.b next_stage\n"
                          f"        move.w #1,${STARTED_FLAG:x}.l\n        movea.l #${STACK_TOP:x},a7\n        jmp ${game_main:x}.l\n"
                          f"next_stage:\n        jmp $84.l\n")
-    r = subprocess.run(["nix", "develop", str(NATIVE), "--command", "sh", "-c",
+    r = subprocess.run(["nix", "develop", str(SRC.parent), "--command", "sh", "-c",
                         f"vasmm68k_mot -Fbin -no-opt -quiet -o {BUILD}/trampoline.bin {tramp_src}"], capture_output=True, text=True)
     tramp = (BUILD / "trampoline.bin").read_bytes()
     assert len(tramp) == TRAMPOLINE_SIZE, f"trampoline is {len(tramp)} bytes"

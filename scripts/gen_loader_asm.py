@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Disassemble the loader pieces on disk 1 into projects/gods/native/loader.asm and prove they reassemble exactly.
+"""Disassemble the loader pieces on disk 1 into projects/gods/src/loader.asm and prove they reassemble exactly.
 
     uv run python projects/gods/scripts/gen_loader_asm.py
 
@@ -18,7 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import intro_analysis as G  # noqa: E402
 
-NATIVE = G.ROOT / "native"
+SRC = G.ROOT / "src"
 BUILD = G.ROOT / "build"
 DISK1 = Path(glob.glob(str(G.ROOT / "local/media-archive/disk1/*.adf"))[0])
 
@@ -58,7 +58,7 @@ def hook_asm() -> list[str]:
 
 def vasm(src: Path, out: Path) -> subprocess.CompletedProcess:
     cmd = f"vasmm68k_mot -Fbin -no-opt -quiet -o {out} {src}"
-    return subprocess.run(["nix", "develop", str(NATIVE), "--command", "sh", "-c", cmd], capture_output=True, text=True)
+    return subprocess.run(["nix", "develop", str(SRC.parent), "--command", "sh", "-c", cmd], capture_output=True, text=True)
 
 
 def gas_to_vasm(mn: str, ops: str) -> str:
@@ -119,7 +119,7 @@ def main(patched: bool = False, adf_out: Path | None = None, blob: bytes = b"") 
                 text.append(f"        dc.w {','.join(words)}")
                 off = end
         text.append("")
-    src = NATIVE / "loader.asm"
+    src = SRC / "loader.asm"
     src.write_text("\n".join(text) + "\n")
     # vasm's flat binary output pads between org addresses, so each piece is assembled on its own
     pieces = re.split(r"(?m)^(?=; ---- )", src.read_text())[1:]
