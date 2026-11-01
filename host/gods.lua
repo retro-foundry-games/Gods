@@ -31,6 +31,7 @@ ami.machine{
     save = "../local/save",
     content = script_args:match("rebuilt") and "../local/gods-c.m3u" or "../local/gods.m3u",
     roms = { { "kick34005.A500", 0xc4f0f55f } },
+    opt = script_args:match("rebuilt") and { puae_chipmem_size = 2 } or nil,   -- the C runs from chip RAM above 512 KB
     peers = recorder and { recorder = recorder } or nil,
 }
 ami.boot()

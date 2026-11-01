@@ -31,11 +31,11 @@ PIECES = [
 ]
 
 
-# The C game is loaded to slow RAM (the original loader uses only chip RAM).  The stage is patched in place in three
+# The C game is loaded to chip RAM (the original loader uses only chip RAM), where its code is fetched over the same bus as the original's.  The stage is patched in place in three
 # places: the jump that ends it goes to the entry in slow RAM instead of $84; a call replaces the `lea` before the
 # first disk read, and a small hook in an unused part of the stage reads the blob from free sectors of the disk and
 # copies it to slow RAM.
-SLOW_BASE = 0xC40000
+SLOW_BASE = 0x80000    # chip RAM above the original's 512 KB (the machine is given 1 MB chip: puae_chipmem_size=2)
 STAGING = 0x10000               # chip RAM that is still unused when the hook runs
 HOOK = 0x334                    # 126 unused bytes of the stage
 HOOK_SIZE = 126
