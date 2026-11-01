@@ -5,38 +5,42 @@
  * with the original code.  Progress and method: PLAN.md.  Evidence for each recovered fact: analysis/. */
 #include "gods.h"
 
+/* The original is hand-written 68000 and the intro is timed to the frame, so the code that runs every frame (drawing,
+ * the blitter helpers, the interrupt and the music) is compiled for speed; the rest for size. */
+#define HOT __attribute__((optimize("O2")))
+
 /* ---- Amiga custom chip registers, base $DFF000 ---------------------------------------------------------------- */
 
 struct AudioChannel {
-    u32 lc;           /* sample address */
-    u16 len, per, vol, dat, pad[2];
+    uint32_t lc;           /* sample address */
+    uint16_t len, per, vol, dat, pad[2];
 };
 
 struct Custom {
-    u16 bltddat, dmaconr, vposr, vhposr, dskdatr, joy0dat, joy1dat, clxdat;      /* 000 */
-    u16 adkconr, pot0dat, pot1dat, potgor, serdatr, dskbytr, intenar, intreqr;   /* 010 */
-    u32 dskpt;                                                                   /* 020 */
-    u16 dsklen, dskdat, refptr, vposw, vhposw, copcon, serdat, serper, potgo, joytest;
-    u16 pad038[4];                                                               /* 038 */
-    u16 bltcon0, bltcon1, bltafwm, bltalwm;                                      /* 040 */
-    u32 bltcpt, bltbpt, bltapt, bltdpt;                                          /* 048 */
-    u16 bltsize, bltcon0l, bltsizv, bltsizh;                                     /* 058 */
-    u16 bltcmod, bltbmod, bltamod, bltdmod;                                      /* 060 */
-    u16 pad068[4];                                                               /* 068 */
-    u16 bltcdat, bltbdat, bltadat;                                               /* 070 */
-    u16 pad076[4], dsksync;                                                      /* 076 */
-    u32 cop1lc, cop2lc;                                                          /* 080 */
-    u16 copjmp1, copjmp2, copins, diwstrt, diwstop, ddfstrt, ddfstop;            /* 088 */
-    u16 dmacon, clxcon, intena, intreq, adkcon;                                  /* 096 */
+    uint16_t bltddat, dmaconr, vposr, vhposr, dskdatr, joy0dat, joy1dat, clxdat;      /* 000 */
+    uint16_t adkconr, pot0dat, pot1dat, potgor, serdatr, dskbytr, intenar, intreqr;   /* 010 */
+    uint32_t dskpt;                                                                   /* 020 */
+    uint16_t dsklen, dskdat, refptr, vposw, vhposw, copcon, serdat, serper, potgo, joytest;
+    uint16_t pad038[4];                                                               /* 038 */
+    uint16_t bltcon0, bltcon1, bltafwm, bltalwm;                                      /* 040 */
+    uint32_t bltcpt, bltbpt, bltapt, bltdpt;                                          /* 048 */
+    uint16_t bltsize, bltcon0l, bltsizv, bltsizh;                                     /* 058 */
+    uint16_t bltcmod, bltbmod, bltamod, bltdmod;                                      /* 060 */
+    uint16_t pad068[4];                                                               /* 068 */
+    uint16_t bltcdat, bltbdat, bltadat;                                               /* 070 */
+    uint16_t pad076[4], dsksync;                                                      /* 076 */
+    uint32_t cop1lc, cop2lc;                                                          /* 080 */
+    uint16_t copjmp1, copjmp2, copins, diwstrt, diwstop, ddfstrt, ddfstop;            /* 088 */
+    uint16_t dmacon, clxcon, intena, intreq, adkcon;                                  /* 096 */
     struct AudioChannel aud[4];                                                  /* 0A0 */
-    u32 bplpt[6];                                                                /* 0E0 */
-    u16 pad0f8[4];
-    u16 bplcon0, bplcon1, bplcon2, bplcon3, bpl1mod, bpl2mod, pad10c[2];         /* 100 */
-    u16 bpldat[6];                                                               /* 110 */
-    u16 pad11c[2];
-    u32 sprpt[8];                                                                /* 120 */
-    u16 spr[8][4];                                                               /* 140 */
-    u16 color[32];                                                               /* 180 */
+    uint32_t bplpt[6];                                                                /* 0E0 */
+    uint16_t pad0f8[4];
+    uint16_t bplcon0, bplcon1, bplcon2, bplcon3, bpl1mod, bpl2mod, pad10c[2];         /* 100 */
+    uint16_t bpldat[6];                                                               /* 110 */
+    uint16_t pad11c[2];
+    uint32_t sprpt[8];                                                                /* 120 */
+    uint16_t spr[8][4];                                                               /* 140 */
+    uint16_t color[32];                                                               /* 180 */
 };
 _Static_assert(offsetof(struct Custom, dmaconr) == 0x002, "custom layout");
 _Static_assert(offsetof(struct Custom, intreqr) == 0x01e, "custom layout");
@@ -55,7 +59,7 @@ _Static_assert(offsetof(struct Custom, spr) == 0x140, "custom layout");
 _Static_assert(offsetof(struct Custom, color) == 0x180, "custom layout");
 
 #define custom ((volatile struct Custom *)0xdff000)
-#define ADDR(p) ((u32)(uintptr_t)(p))   /* a pointer as the chip wants it: a 32-bit address */
+#define ADDR(p) ((uint32_t)(uintptr_t)(p))   /* a pointer as the chip wants it: a 32-bit address */
 
 #define DMAF_SETCLR 0x8000
 #define DMAF_BLITHOG 0x0400     /* blitter priority over the CPU */
@@ -65,7 +69,7 @@ _Static_assert(offsetof(struct Custom, color) == 0x180, "custom layout");
 /* ---- palette ------------------------------------------------------------------------------------------------------- */
 
 /* orig $002EFE: clear the colour table and ask for it to be copied to the chip */
-void palette_clear(void)
+HOT void palette_clear(void)
 {
     int i;
 
@@ -75,13 +79,13 @@ void palette_clear(void)
 }
 
 /* orig $003022: colour table entry `index` = `value` (the original takes them in D0 and D1) */
-void palette_set(u16 index, u16 value)
+HOT void palette_set(uint16_t index, uint16_t value)
 {
     palette_ptr[index] = value;
 }
 
 /* orig $003036: colour table entry `index` */
-u16 palette_get(u16 index)
+HOT uint16_t palette_get(uint16_t index)
 {
     return palette_ptr[index];
 }
@@ -89,9 +93,9 @@ u16 palette_get(u16 index)
 /* ---- timing -------------------------------------------------------------------------------------------------------- */
 
 /* orig $002CDE: wait for the next vertical blank (the interrupt increments vblank.count) */
-void vbl_wait(void)
+HOT void vbl_wait(void)
 {
-    u16 seen = vblank.count; /* volatile: the interrupt changes it */
+    uint16_t seen = vblank.count; /* volatile: the interrupt changes it */
 
     while (vblank.count == seen)
         ;
@@ -100,7 +104,7 @@ void vbl_wait(void)
 /* ---- blitter -------------------------------------------------------------------------------------------------------- */
 
 /* orig $002F1E: wait until the blitter has finished (and give it priority while waiting) */
-void blitter_wait(void)
+HOT void blitter_wait(void)
 {
     custom->dmacon = DMAF_SETCLR | DMAF_BLITHOG;
     while (custom->dmaconr & DMAF_BLTBUSY)
@@ -109,7 +113,7 @@ void blitter_wait(void)
 }
 
 /* orig $001B7C: copy 800 rows of 20 words (four planes) from `src` to `dst` with the blitter, A -> D */
-void blit_copy(const void *src, void *dst)
+HOT void blit_copy(const void *src, void *dst)
 {
     blitter_wait();
     custom->bltafwm = 0xffff;
@@ -126,7 +130,7 @@ void blit_copy(const void *src, void *dst)
 }
 
 /* orig $001BC6: as blit_copy, but only the right-hand 9 words of each row (the left 11 words are skipped) */
-void blit_copy_right(const u8 *src, u8 *dst)
+HOT void blit_copy_right(const uint8_t *src, uint8_t *dst)
 {
     src += 0x16;
     dst += 0x16;
@@ -147,9 +151,9 @@ void blit_copy_right(const u8 *src, u8 *dst)
 /* ---- screens ----------------------------------------------------------------------------------------------------- */
 
 /* orig $0030D4: clear the front screen */
-void screen_clear(void)
+HOT void screen_clear(void)
 {
-    u32 *p = (u32 *)screen_front;
+    uint32_t *p = (uint32_t *)screen_front;
     int i;
 
     for (i = 0; i < 10000; i++)
@@ -157,10 +161,10 @@ void screen_clear(void)
 }
 
 /* orig $0030EE: copy the back screen over the front screen */
-void screen_restore(void)
+HOT void screen_restore(void)
 {
-    const u32 *from = (const u32 *)screen_back;
-    u32 *to = (u32 *)screen_front;
+    const uint32_t *from = (const uint32_t *)screen_back;
+    uint32_t *to = (uint32_t *)screen_front;
     int i;
 
     for (i = 0; i < 10000; i++)
@@ -168,34 +172,54 @@ void screen_restore(void)
 }
 
 /* orig $001D54: set the whole fifth bitplane of the front screen (the highlight plane) */
-void plane5_set(void)
+HOT void plane5_set(void)
 {
-    u32 *p = (u32 *)screen_front->plane[4];
+    uint32_t *p = (uint32_t *)screen_front->plane[4];
     int i;
 
-    for (i = 0; i < 2000; i++)
+    for (i = 0; i < 200; i++) {   /* ten longs a time */
         *p++ = 0xffffffff;
+        *p++ = 0xffffffff;
+        *p++ = 0xffffffff;
+        *p++ = 0xffffffff;
+        *p++ = 0xffffffff;
+        *p++ = 0xffffffff;
+        *p++ = 0xffffffff;
+        *p++ = 0xffffffff;
+        *p++ = 0xffffffff;
+        *p++ = 0xffffffff;
+    }
 }
 
 /* orig $001D7E: clear the fifth bitplane of the front screen */
-void plane5_clear(void)
+HOT void plane5_clear(void)
 {
-    u32 *p = (u32 *)screen_front->plane[4];
+    uint32_t *p = (uint32_t *)screen_front->plane[4];
     int i;
 
-    for (i = 0; i < 2000; i++)
+    for (i = 0; i < 200; i++) {   /* ten longs a time */
         *p++ = 0;
+        *p++ = 0;
+        *p++ = 0;
+        *p++ = 0;
+        *p++ = 0;
+        *p++ = 0;
+        *p++ = 0;
+        *p++ = 0;
+        *p++ = 0;
+        *p++ = 0;
+    }
 }
 
 /* orig $001C18: unscramble the picture at `pic` through the front screen and store it back, plane by plane, in
  * place.  Pictures are stored with the four low planes interleaved word by word. */
-void picture_deinterleave(u16 *pic)
+void picture_deinterleave(uint16_t *pic)
 {
-    const u16 *src = pic;
+    const uint16_t *src = pic;
     struct Screen *dst = screen_front;
     int row, w, p;
-    u32 *from = (u32 *)screen_front;
-    u32 *to = (u32 *)pic;
+    uint32_t *from = (uint32_t *)screen_front;
+    uint32_t *to = (uint32_t *)pic;
     int i;
 
     for (row = 0; row < SCREEN_ROWS; row++)
@@ -207,22 +231,22 @@ void picture_deinterleave(u16 *pic)
 }
 
 /* orig $001432: put the title picture on the front screen */
-void picture_show_title(void)
+HOT void picture_show_title(void)
 {
     blit_copy(graphics.title.data, screen_front);
 }
 
 /* orig $0016C0: put the intro background on the front screen and clear the highlight plane */
-void background_show(void)
+HOT void background_show(void)
 {
     blit_copy(graphics.background.data, screen_front);
     plane5_clear();
 }
 
 /* orig $0016DE: as background_show, but only the right-hand part */
-void background_show_right(void)
+HOT void background_show_right(void)
 {
-    blit_copy_right((const u8 *)graphics.background.data, (u8 *)screen_front);
+    blit_copy_right((const uint8_t *)graphics.background.data, (uint8_t *)screen_front);
     plane5_clear();
 }
 
@@ -236,10 +260,10 @@ void nothing(void)
  * silence the four channels */
 void music_init(void)
 {
-    const u8 *order = module.order;
-    u8 highest = 0, entry = 0;   /* highest pattern number seen so far, and the entry being looked at */
-    u16 count = 0x7f;
-    u8 *data;
+    const uint8_t *order = module.order;
+    uint8_t highest = 0, entry = 0;   /* highest pattern number seen so far, and the entry being looked at */
+    uint16_t count = 0x7f;
+    uint8_t *data;
     int i;
 
     for (;;) {
@@ -247,18 +271,18 @@ void music_init(void)
         count--;   /* each new highest pattern costs one entry of the scan */
         for (;;) {
             entry = *order++;
-            if ((s8)entry > (s8)highest)
+            if ((int8_t)entry > (int8_t)highest)
                 break;
             if (--count == 0xffff)
                 goto scanned;
         }
     }
 scanned:
-    data = module.data + ((u32)(u8)(highest + 1) << 10);   /* the sample data follows the last pattern */
+    data = module.data + ((uint32_t)(uint8_t)(highest + 1) << 10);   /* the sample data follows the last pattern */
     for (i = 0; i < 31; i++) {
-        *(u32 *)data = 0;
-        sample_start[i] = (u32)data;
-        data += (u32)module.sample[i].length * 2;
+        *(uint32_t *)data = 0;
+        sample_start[i] = (uint32_t)data;
+        data += (uint32_t)module.sample[i].length * 2;
     }
     music.speed = 6;
     custom->aud[0].vol = 0;
@@ -271,27 +295,27 @@ scanned:
 }
 
 /* orig $0025A6: effect 3 (tone portamento): set the target period and the direction */
-static void tone_portamento_setup(struct Channel *ch)
+HOT static void tone_portamento_setup(struct Channel *ch)
 {
-    u16 target = *(u16 *)ch->cell & 0xfff;
+    uint16_t target = *(uint16_t *)ch->cell & 0xfff;
 
     ch->porta_target = target;
     ch->porta_down = 0;
     if (target == ch->period) {
         ch->porta_target = 0;
-    } else if ((s16)target < (s16)ch->period) {
+    } else if ((int16_t)target < (int16_t)ch->period) {
         ch->porta_down = 1;
     }
 }
 
 /* orig $002412: start of a row for one channel.  Read the pattern cell at `offset`, start the sample it names and
  * run the effects that act when the row begins.  Returns the offset of the next cell. */
-static u32 channel_row(struct Channel *ch, volatile struct AudioChannel *hw, const u8 *patterns, u32 offset)
+HOT static uint32_t channel_row(struct Channel *ch, volatile struct AudioChannel *hw, const uint8_t *patterns, uint32_t offset)
 {
-    u8 number;
-    u8 effect;
+    uint8_t number;
+    uint8_t effect;
 
-    *(u32 *)ch->cell = *(const u32 *)(patterns + offset);
+    *(uint32_t *)ch->cell = *(const uint32_t *)(patterns + offset);
     offset += 4;
     number = (ch->cell[2] >> 4) | (ch->cell[0] & 0xf0);
     if (number != 0) {
@@ -301,7 +325,7 @@ static u32 channel_row(struct Channel *ch, volatile struct AudioChannel *hw, con
         ch->length = smp->length;
         ch->volume = smp->volume;
         if (smp->loop_start != 0) {
-            ch->loop = ch->sample + (u16)(smp->loop_start << 1);
+            ch->loop = ch->sample + (uint16_t)(smp->loop_start << 1);
             ch->length = smp->loop_start + smp->loop_length;
         } else {
             ch->loop = ch->sample;
@@ -309,11 +333,11 @@ static u32 channel_row(struct Channel *ch, volatile struct AudioChannel *hw, con
         ch->loop_length = smp->loop_length;
         hw->vol = ch->volume;
     }
-    if ((*(u16 *)ch->cell & 0xfff) != 0) {
+    if ((*(uint16_t *)ch->cell & 0xfff) != 0) {
         if ((ch->cell[2] & 0xf) == 3) {
             tone_portamento_setup(ch);
         } else {
-            ch->period = *(u16 *)ch->cell & 0xfff;
+            ch->period = *(uint16_t *)ch->cell & 0xfff;
             custom->dmacon = ch->dma;           /* stop the channel until the new sample is in place */
             ch->vibrato_pos = 0;
             hw->lc = ch->sample;
@@ -337,7 +361,7 @@ static u32 channel_row(struct Channel *ch, volatile struct AudioChannel *hw, con
         hw->vol = ch->cell[3];
         break;
     case 0xf: { /* set speed */
-        u16 speed = ch->cell[3] & 0x1f;
+        uint16_t speed = ch->cell[3] & 0x1f;
 
         if (speed != 0) {
             music.tick = 0;
@@ -352,20 +376,20 @@ static u32 channel_row(struct Channel *ch, volatile struct AudioChannel *hw, con
 }
 
 /* orig $002682: the effects that run on every tick after the first of a row */
-static void channel_tick(struct Channel *ch, volatile struct AudioChannel *hw)
+HOT static void channel_tick(struct Channel *ch, volatile struct AudioChannel *hw)
 {
-    u8 effect;
+    uint8_t effect;
 
-    if ((*(u16 *)&ch->cell[2] & 0xfff) == 0) {
+    if ((*(uint16_t *)&ch->cell[2] & 0xfff) == 0) {
         hw->per = ch->period;   /* orig $00267A */
         return;
     }
     effect = ch->cell[2] & 0xf;
     switch (effect) {
     case 0: {   /* arpeggio, orig $00234A */
-        u16 step = music.tick % 3;
-        u16 semitones;
-        const u16 *p;
+        uint16_t step = music.tick % 3;
+        uint16_t semitones;
+        const uint16_t *p;
         int n;
 
         if (step == 0) {
@@ -374,9 +398,9 @@ static void channel_tick(struct Channel *ch, volatile struct AudioChannel *hw)
         }
         semitones = step == 2 ? (ch->cell[3] & 0xf) : (ch->cell[3] >> 4);
         for (p = period_table, n = 0x24; n >= 0; n--, p++) {
-            u16 shifted = p[semitones];
+            uint16_t shifted = p[semitones];
 
-            if ((s16)ch->period >= (s16)p[0]) {
+            if ((int16_t)ch->period >= (int16_t)p[0]) {
                 hw->per = shifted;
                 return;
             }
@@ -385,13 +409,13 @@ static void channel_tick(struct Channel *ch, volatile struct AudioChannel *hw)
     }
     case 1:     /* portamento up, orig $002708 */
         ch->period -= ch->cell[3];
-        if ((s16)(ch->period & 0xfff) < 0x71)
+        if ((int16_t)(ch->period & 0xfff) < 0x71)
             ch->period = (ch->period & 0xf000) | 0x71;
         hw->per = ch->period & 0xfff;
         return;
     case 2:     /* portamento down, orig $00273A */
         ch->period += ch->cell[3];
-        if ((s16)(ch->period & 0xfff) >= 0x358)
+        if ((int16_t)(ch->period & 0xfff) >= 0x358)
             ch->period = (ch->period & 0xf000) | 0x358;
         hw->per = ch->period & 0xfff;
         return;
@@ -404,13 +428,13 @@ static void channel_tick(struct Channel *ch, volatile struct AudioChannel *hw)
             return;
         if (ch->porta_down == 0) {
             ch->period += ch->porta_speed;
-            if ((s16)ch->porta_target <= (s16)ch->period) {
+            if ((int16_t)ch->porta_target <= (int16_t)ch->period) {
                 ch->period = ch->porta_target;
                 ch->porta_target = 0;
             }
         } else {
             ch->period -= ch->porta_speed;
-            if ((s16)ch->porta_target >= (s16)ch->period) {
+            if ((int16_t)ch->porta_target >= (int16_t)ch->period) {
                 ch->period = ch->porta_target;
                 ch->porta_target = 0;
             }
@@ -418,13 +442,13 @@ static void channel_tick(struct Channel *ch, volatile struct AudioChannel *hw)
         hw->per = ch->period;
         return;
     case 4: {   /* vibrato, orig $00262C */
-        u16 amount;
-        u16 per;
+        uint16_t amount;
+        uint16_t per;
 
         if (ch->cell[3] != 0)
             ch->vibrato = ch->cell[3];
         amount = (vibrato_table[(ch->vibrato_pos >> 2) & 0x1f] * (ch->vibrato & 0xf)) >> 6;
-        per = (s8)ch->vibrato_pos < 0 ? ch->period - amount : ch->period + amount;
+        per = (int8_t)ch->vibrato_pos < 0 ? ch->period - amount : ch->period + amount;
         hw->per = per;
         ch->vibrato_pos += (ch->vibrato >> 2) & 0x3c;
         return;
@@ -434,52 +458,54 @@ static void channel_tick(struct Channel *ch, volatile struct AudioChannel *hw)
     }
     hw->per = ch->period;
     if (effect == 0xa) {   /* volume slide, orig $0026C6 */
-        u8 up = ch->cell[3] >> 4;
+        uint8_t up = ch->cell[3] >> 4;
 
         if (up != 0) {
             ch->volume += up;
-            if ((s16)ch->volume >= 0x40)
+            if ((int16_t)ch->volume >= 0x40)
                 ch->volume = 0x40;
         } else {
             ch->volume -= ch->cell[3] & 0xf;
-            if ((s16)ch->volume < 0)
+            if ((int16_t)ch->volume < 0)
                 ch->volume = 0;
         }
         hw->vol = ch->volume;
     }
     }
 
+/* a short busy wait: a counted loop kept in a register, like the original's dbra loop (the optimizer would remove an
+ * empty loop, and a volatile counter in memory would be several times slower) */
+static void __attribute__((optimize("O0"))) delay(register uint16_t count)
+{
+    while (count-- != 0)
+        ;
+}
+
 /* orig $0022E6: advance the music by one tick (called by the interrupt) */
-void music_step(void)
+HOT void music_step(void)
 {
     volatile struct AudioChannel *hw = custom->aud;
     int i;
 
     music.tick++;
-    if ((s8)music.tick < (s8)music.speed) {
+    if ((int8_t)music.tick < (int8_t)music.speed) {
         for (i = 0; i < 4; i++)
             channel_tick(&channel[i], &hw[i]);
         goto advance;
     }
     music.tick = 0;
     {
-        const u8 *patterns = module.data;
-        u32 offset = (u32)module.order[music.order] << 10;
+        const uint8_t *patterns = module.data;
+        uint32_t offset = (uint32_t)module.order[music.order] << 10;
 
-        offset = (u16)(offset + music.row);
+        offset = (uint16_t)(offset + music.row);
         music.dma = 0;
         for (i = 0; i < 4; i++)
             offset = channel_row(&channel[i], &hw[i], patterns, offset);
     }
-    {
-        volatile int wait;
-
-        for (wait = 0; wait < 0x12d; wait++)
-            ;   /* let the channels stop before the new samples are started */
-        custom->dmacon = music.dma | DMAF_SETCLR;
-        for (wait = 0; wait < 0x12d; wait++)
-            ;
-    }
+    delay(0x12d);   /* let the channels stop before the new samples are started */
+    custom->dmacon = music.dma | DMAF_SETCLR;
+    delay(0x12d);
     for (i = 3; i >= 0; i--) {   /* the loops that follow the start of each sample */
         hw[i].lc = channel[i].loop;
         hw[i].len = channel[i].loop_length;
@@ -507,15 +533,15 @@ advance:
  * table holds the colours at half scale (each component is doubled before it is compared). */
 
 /* orig $002DC8: 15 steps; every component that differs from the target goes up by one */
-void palette_fade_in(const u16 *target, u16 frames)
+void palette_fade_in(const uint16_t *target, uint16_t frames)
 {
     int step, i;
-    u16 wait;
+    uint16_t wait;
 
     for (step = 0; step < 15; step++) {
         for (i = 15; i >= 0; i--) {
-            u16 colour = palette_get(i);
-            u16 want = target[i] + target[i];
+            uint16_t colour = palette_get(i);
+            uint16_t want = target[i] + target[i];
 
             if (((want & 0x00f) - (colour & 0x00f)) & 0xffff)
                 colour += 0x001;
@@ -533,16 +559,16 @@ void palette_fade_in(const u16 *target, u16 frames)
 }
 
 /* orig $002E52: 8 steps; every component below the target goes up by one or two */
-void palette_fade_in_fast(const u16 *target, u16 frames)
+void palette_fade_in_fast(const uint16_t *target, uint16_t frames)
 {
     int step, i;
-    u16 wait;
+    uint16_t wait;
 
     for (step = 0; step < 8; step++) {
         for (i = 15; i >= 0; i--) {
-            u16 colour = palette_get(i);
-            u16 want = target[i] + target[i];
-            s16 gap;
+            uint16_t colour = palette_get(i);
+            uint16_t want = target[i] + target[i];
+            int16_t gap;
 
             gap = (want & 0x00f) - (colour & 0x00f);
             if (gap > 0)
@@ -563,21 +589,21 @@ void palette_fade_in_fast(const u16 *target, u16 frames)
 }
 
 /* orig $002F3A: 15 steps; every component above the target goes down by one */
-void palette_fade_to(const u16 *target, u16 frames)
+void palette_fade_to(const uint16_t *target, uint16_t frames)
 {
     int step, i;
-    u16 wait;
+    uint16_t wait;
 
     for (step = 0; step < 15; step++) {
         for (i = 15; i >= 0; i--) {
-            u16 colour = palette_get(i);
-            u16 want = target[i] + target[i];
+            uint16_t colour = palette_get(i);
+            uint16_t want = target[i] + target[i];
 
-            if ((s16)((want & 0x00f) - (colour & 0x00f)) < 0)
+            if ((int16_t)((want & 0x00f) - (colour & 0x00f)) < 0)
                 colour -= 0x001;
-            if ((s16)((want & 0x0f0) - (colour & 0x0f0)) < 0)
+            if ((int16_t)((want & 0x0f0) - (colour & 0x0f0)) < 0)
                 colour -= 0x010;
-            if ((s16)((want & 0xf00) - (colour & 0xf00)) < 0)
+            if ((int16_t)((want & 0xf00) - (colour & 0xf00)) < 0)
                 colour -= 0x100;
             palette_set(i, colour);
         }
@@ -589,14 +615,14 @@ void palette_fade_to(const u16 *target, u16 frames)
 }
 
 /* orig $002FC4: 15 steps; every non-zero component goes down by one, so the colours fade to black */
-void palette_fade_out(u16 frames)
+void palette_fade_out(uint16_t frames)
 {
     int step, i;
-    u16 wait;
+    uint16_t wait;
 
     for (step = 0; step < 15; step++) {
         for (i = 15; i >= 0; i--) {
-            u16 colour = palette_get(i);
+            uint16_t colour = palette_get(i);
 
             if (colour & 0x00f)
                 colour -= 0x001;
@@ -616,7 +642,7 @@ void palette_fade_out(u16 frames)
 
 /* orig $00307A: show the screen that was drawn, and start drawing on the other one.  The copper list for the buffer
  * that is now on show lives at $A8 or $FC. */
-void screens_flip(void)
+HOT void screens_flip(void)
 {
     struct Screen *shown = screen_back;
 
@@ -630,9 +656,9 @@ void screens_flip(void)
 }
 
 /* orig $003070: wait until `frames` vertical blanks have passed since the last flip, then flip */
-void screens_flip_after(s16 frames)
+HOT void screens_flip_after(int16_t frames)
 {
-    while (frames >= (s16)vblank.saturating)
+    while (frames >= (int16_t)vblank.saturating)
         ;
     screens_flip();
 }
@@ -640,10 +666,10 @@ void screens_flip_after(s16 frames)
 /* ---- the vertical-blank interrupt -------------------------------------------------------------------------------- */
 
 #define INTF_VERTB 0x0020
-#define CIAA_PRA (*(volatile u8 *)0xbfe001)   /* bits 6 and 7: the two fire buttons, 0 when pressed */
+#define CIAA_PRA (*(volatile uint8_t *)0xbfe001)   /* bits 6 and 7: the two fire buttons, 0 when pressed */
 
 /* orig $002CF4: the tail of the interrupt: refresh the chip's colours and count frames */
-static void vbl_housekeeping(void)
+HOT static void vbl_housekeeping(void)
 {
     if (vblank.palette_dirty != 0) {
         int i;
@@ -659,14 +685,14 @@ static void vbl_housekeeping(void)
 
 /* orig $001DD6: level 3 interrupt (vertical blank).  The original begins with `move #$2700,sr`, which C cannot
  * write; only VERTB is enabled (INTENA is $C020) so no other interrupt can come in and it is not needed. */
-__attribute__((interrupt)) void irq_level3(void)
+HOT __attribute__((interrupt)) void irq_level3(void)
 {
     if ((custom->intreqr & INTF_VERTB) && flags.music_enabled != 0)
         music_step();
     custom->intreq = 0x70;   /* clear COPER, VERTB and BLIT */
     game_clock.ticks++;
     if (game_clock.input_seen == 0) {
-        u8 pra = CIAA_PRA;
+        uint8_t pra = CIAA_PRA;
 
         if (!((pra & 0x80) && (pra & 0x40))) {   /* a fire button is down */
             flags.fire_pressed = 1;
@@ -684,7 +710,7 @@ __attribute__((interrupt)) void irq_level3(void)
 #define MINTERM_A_OR_B 0xfc          /* D = A | B */
 #define MINTERM_COOKIE_CUT 0xca      /* D = A ? B : C: B where the mask A is set, the background C elsewhere */
 
-static void blitter_idle(void)
+HOT static void blitter_idle(void)
 {
     while (custom->dmaconr & DMAF_BLTBUSY)
         ;
@@ -697,14 +723,14 @@ static void blitter_idle(void)
  *
  * First the four planes are combined into a mask (a pixel is opaque if it is set in any plane), then each plane is
  * drawn through the mask over what is on the screen.  With draw_flag the fifth plane is drawn too, from blank_plane. */
-static void blit_image(u8 *dst, const u8 *src, u16 plane, u16 shift, u16 rows, u16 words)
+HOT static void blit_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows, uint16_t words)
 {
-    u16 size = (rows << 6) | words;
-    u16 screen_modulo = 40 - words * 2;
-    u16 modulo_a, modulo_b;
-    u16 *mask = display.blit.mask;
-    const u8 *image = src;
-    u8 *screen = dst;
+    uint16_t size = (rows << 6) | words;
+    uint16_t screen_modulo = 40 - words * 2;
+    uint16_t modulo_a, modulo_b;
+    uint16_t *mask = display.blit.mask;
+    const uint8_t *image = src;
+    uint8_t *screen = dst;
     int p;
 
     display.blit.extra_modulo = 0;
@@ -743,12 +769,12 @@ static void blit_image(u8 *dst, const u8 *src, u16 plane, u16 shift, u16 rows, u
         custom->bltcon1 = 0;
         modulo_b = display.blit.extra_modulo;
     } else {
-        s16 extra;
+        int16_t extra;
 
         blitter_idle();
         custom->bltcon1 = shift << 12;
         custom->bltcon0 = (shift << 12) | BLTCON0_USEABCD | MINTERM_COOKIE_CUT;
-        extra = (s16)display.blit.extra_modulo;
+        extra = (int16_t)display.blit.extra_modulo;
         if (extra >= 0) {
             screen_modulo -= 2;
             modulo_a = 0xfffe;
@@ -764,7 +790,7 @@ static void blit_image(u8 *dst, const u8 *src, u16 plane, u16 shift, u16 rows, u
     custom->bltcmod = screen_modulo;
     custom->bltdmod = screen_modulo;
     for (p = 0; p < 4 + (draw_flag != 0); p++) {
-        const u8 *source = p == 4 ? (const u8 *)blank_plane : src + (u32)p * plane;
+        const uint8_t *source = p == 4 ? (const uint8_t *)blank_plane : src + (uint32_t)p * plane;
 
         if (p != 0)
             blitter_idle();
@@ -781,18 +807,18 @@ static void blit_image(u8 *dst, const u8 *src, u16 plane, u16 shift, u16 rows, u
 
 /* orig $0039DC: draw glyph or image `index` of the table at pixel (x, y) on the front screen, clipped at the top
  * and bottom (the image is one word wide) */
-void glyph_draw(u16 x, u16 y, u16 index)
+HOT void glyph_draw(uint16_t x, uint16_t y, uint16_t index)
 {
     const struct Image *img = &graphics.images.image[index];
-    u8 *dst = (u8 *)screen_front + ((s16)(x & 0xfff0) >> 3) + (s16)((u32)y * 40);
-    const u16 *data = img->data;
-    s16 last = img->height;     /* the last row */
-    u16 plane;
+    uint8_t *dst = (uint8_t *)screen_front + ((int16_t)(x & 0xfff0) >> 3) + (int16_t)((uint32_t)y * 40);
+    const uint16_t *data = img->data;
+    int16_t last = img->height;     /* the last row */
+    uint16_t plane;
 
     if (flags.fire_pressed != 0)
         game_start();   /* not executed in the recording */
-    if ((s16)y < 0) {
-        s16 skip = -(s16)y;
+    if ((int16_t)y < 0) {
+        int16_t skip = -(int16_t)y;
 
         last -= skip;
         if (last < 0)
@@ -805,22 +831,22 @@ void glyph_draw(u16 x, u16 y, u16 index)
             return;
     }
     plane = glyph_plane_size != 0 ? glyph_plane_size : (img->height + 1) * 2;
-    blit_image(dst, (const u8 *)data, plane, x & 0xf, last + 1, 1);
+    blit_image(dst, (const uint8_t *)data, plane, x & 0xf, last + 1, 1);
 }
 
 /* orig $003950: the same for an image two words wide.  The original's clipping at the top looks unfinished: it moves
  * the destination by the number of rows skipped in bytes and does not skip any image data. */
-void sprite_draw(u16 x, u16 y, u16 index)
+HOT void sprite_draw(uint16_t x, uint16_t y, uint16_t index)
 {
     const struct Image *img = &graphics.images.image[index];
-    u8 *dst = (u8 *)screen_front + ((s16)(x & 0xfff0) >> 3) + (s16)((u32)y * 40);
-    const u16 *data = img->data;
-    s16 last = img->height;
+    uint8_t *dst = (uint8_t *)screen_front + ((int16_t)(x & 0xfff0) >> 3) + (int16_t)((uint32_t)y * 40);
+    const uint16_t *data = img->data;
+    int16_t last = img->height;
 
     if (flags.fire_pressed != 0)
         game_start();   /* not executed in the recording */
-    if ((s16)y < 0) {
-        s16 skip = -(s16)y;
+    if ((int16_t)y < 0) {
+        int16_t skip = -(int16_t)y;
 
         last -= skip;
         if (last < 0)
@@ -831,29 +857,29 @@ void sprite_draw(u16 x, u16 y, u16 index)
         if (last < 0)
             return;
     }
-    blit_image(dst, (const u8 *)data, (img->height + 1) * 4, x & 0xf, last + 1, 2);
+    blit_image(dst, (const uint8_t *)data, (img->height + 1) * 4, x & 0xf, last + 1, 2);
 }
 
 /* orig $002D4C: cut the images out of the glyph sheet.  `sheet` is the sheet's pixels, four planes interleaved word by
  * word, 80 words a row.  Each image is written to `out` as four planes one after the other, and its entry in the
  * table is rewritten in place from the description of where to find it to the size and the address of the data. */
-static void images_unpack(const u16 *sheet, u16 *out, union ImageTable *table)
+static void images_unpack(const uint16_t *sheet, uint16_t *out, union ImageTable *table)
 {
     const struct ImageSource *in = table->source.entry;
     struct Image *entry = table->image;
-    u16 count = table->source.count;
+    uint16_t count = table->source.count;
 
     do {
-        u16 width_m1 = in->width_m1;
-        u16 height_m1 = in->height_m1;
-        u16 offset = (in->x >> 1) + (u16)((u16)(in->y << 5) + (u16)(in->y << 7));   /* y * 160 + x / 2 bytes */
-        const u16 *from = (const u16 *)((const u8 *)sheet + (s16)offset);
-        u16 words_m1 = width_m1 >> 4;
-        u16 skip = (u16)((0x13 - words_m1) << 3);                 /* to the start of the next row */
-        u16 plane = (u16)((u16)((words_m1 + 1) << 3) * (u16)(height_m1 + 1)) >> 2;   /* bytes in one plane */
-        u16 row, col;
+        uint16_t width_m1 = in->width_m1;
+        uint16_t height_m1 = in->height_m1;
+        uint16_t offset = (in->x >> 1) + (uint16_t)((uint16_t)(in->y << 5) + (uint16_t)(in->y << 7));   /* y * 160 + x / 2 bytes */
+        const uint16_t *from = (const uint16_t *)((const uint8_t *)sheet + (int16_t)offset);
+        uint16_t words_m1 = width_m1 >> 4;
+        uint16_t skip = (uint16_t)((0x13 - words_m1) << 3);                 /* to the start of the next row */
+        uint16_t plane = (uint16_t)((uint16_t)((words_m1 + 1) << 3) * (uint16_t)(height_m1 + 1)) >> 2;   /* bytes in one plane */
+        uint16_t row, col;
 
-        entry->neg_width = -(s16)width_m1;
+        entry->neg_width = -(int16_t)width_m1;
         entry->height = height_m1;
         entry->data = out;
         entry++;
@@ -861,14 +887,14 @@ static void images_unpack(const u16 *sheet, u16 *out, union ImageTable *table)
         for (row = 0; row <= height_m1; row++) {
             for (col = 0; col <= words_m1; col++) {
                 *out = *from++;
-                *(u16 *)((u8 *)out + plane) = *from++;
-                *(u16 *)((u8 *)out + plane * 2) = *from++;
-                *(u16 *)((u8 *)out + plane * 3) = *from++;
+                *(uint16_t *)((uint8_t *)out + plane) = *from++;
+                *(uint16_t *)((uint8_t *)out + plane * 2) = *from++;
+                *(uint16_t *)((uint8_t *)out + plane * 3) = *from++;
                 out++;
             }
-            from = (const u16 *)((const u8 *)from + (s16)skip);
+            from = (const uint16_t *)((const uint8_t *)from + (int16_t)skip);
         }
-        out = (u16 *)((u8 *)out + plane * 3);
+        out = (uint16_t *)((uint8_t *)out + plane * 3);
     } while (--count != 0);
 }
 
@@ -876,13 +902,13 @@ static void images_unpack(const u16 *sheet, u16 *out, union ImageTable *table)
  * (the images are written over the sheet's place), and the two interleaved pictures are turned into planes. */
 void intro_setup(void)
 {
-    const u8 *from = (const u8 *)&graphics.glyph_sheet;
-    u8 *to = (u8 *)screen_back;
+    const uint8_t *from = (const uint8_t *)&graphics.glyph_sheet;
+    uint8_t *to = (uint8_t *)screen_back;
     int i;
 
     for (i = 0; i < 0x7d22; i++)
         *to++ = *from++;
-    images_unpack(((struct Picture *)screen_back)->data, (u16 *)&graphics.glyph_sheet, &graphics.images);
+    images_unpack(((struct Picture *)screen_back)->data, (uint16_t *)&graphics.glyph_sheet, &graphics.images);
     picture_deinterleave(graphics.background.data);
     picture_deinterleave(graphics.title.data);
 }
@@ -900,10 +926,10 @@ void game_start(void)
 /* one entry of the image table: the glyphs of both fonts and the title letters */
 
 /* orig $0038E0: draw `text` in the large font, 16 pixels per character, from pixel column x */
-void text_draw_at(const char *text, u16 x, u16 y)
+HOT void text_draw_at(const char *text, uint16_t x, uint16_t y)
 {
     for (;;) {
-        s16 ch = (s8)*text++;
+        int16_t ch = (int8_t)*text++;
 
         if (ch == 0)
             return;
@@ -914,9 +940,9 @@ void text_draw_at(const char *text, u16 x, u16 y)
 }
 
 /* orig $0038C6: draw `text` in the large font, centred on the screen */
-void text_draw(const char *text, u16 y)
+HOT void text_draw(const char *text, uint16_t y)
 {
-    u16 width = 0;
+    uint16_t width = 0;
     const char *p = text;
 
     while (*p++ != 0)
@@ -925,10 +951,10 @@ void text_draw(const char *text, u16 y)
 }
 
 /* orig $003926: draw `text` in the small font, 8 pixels per character, from pixel column x */
-void text_small_at(const char *text, u16 x, u16 y)
+HOT void text_small_at(const char *text, uint16_t x, uint16_t y)
 {
     for (;;) {
-        s16 ch = (s8)*text++;
+        int16_t ch = (int8_t)*text++;
 
         if (ch == 0)
             return;
@@ -939,9 +965,9 @@ void text_small_at(const char *text, u16 x, u16 y)
 }
 
 /* orig $00390C: draw `text` in the small font, centred on column $F6 (the right-hand part of the screen) */
-void text_small_line(const char *text, s16 y)
+HOT void text_small_line(const char *text, int16_t y)
 {
-    u16 width = 0;
+    uint16_t width = 0;
     const char *p = text;
 
     while (*p++ != 0)
@@ -955,20 +981,20 @@ void text_small_line(const char *text, s16 y)
 
 
 /* the colours the intro fades to (the same table appears twice in the original) */
-static const u16 palette_intro[16] = {
+static const uint16_t palette_intro[16] = {
     0x000, 0x343, 0x111, 0x122, 0x334, 0x444, 0x554, 0x777, 0x200, 0x420, 0x530, 0x641, 0x750, 0x031, 0x762, 0x233,
 };
 /* the white that the fade-in-fast starts from */
-static const u16 palette_white[16] = {
+static const uint16_t palette_white[16] = {
     0x000, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee,
 };
-static const u16 palette_white_text[16] = {
+static const uint16_t palette_white_text[16] = {
     0x000, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xeee, 0xffff,
 };
 
-static void wait_ticks(u32 until)
+static void wait_ticks(uint32_t until)
 {
-    while ((s32)game_clock.ticks < (s32)until)
+    while ((int32_t)game_clock.ticks < (int32_t)until)
         ;
 }
 
@@ -989,9 +1015,9 @@ static const struct Verse verse[8] = {
 };
 
 /* orig $0016A0: draw the lines of a verse from scroll_y downwards, 12 rows apart */
-static void verse_draw(const struct Verse *v)
+HOT static void verse_draw(const struct Verse *v)
 {
-    s16 y = scroll_y;
+    int16_t y = scroll_y;
     int i;
 
     for (i = 0; v->line[i] != 0; i++) {
@@ -1001,7 +1027,7 @@ static void verse_draw(const struct Verse *v)
 }
 
 /* orig $001608: scroll a verse up the screen from below, one row per frame */
-static void verse_scroll(const struct Verse *v)
+HOT static void verse_scroll(const struct Verse *v)
 {
     scroll_y = 0xc8;
     scroll_step = 1;
@@ -1010,14 +1036,14 @@ static void verse_scroll(const struct Verse *v)
         background_show_right();
         verse_draw(v);
         screens_flip_after(1);
-    } while ((s16)scroll_y > -60);
+    } while ((int16_t)scroll_y > -60);
 }
 
 /* "Renegade presents a Bitmap Brothers game": each line fades in and out */
 struct PresentsPage {
     const char *text;
-    u32 fade_in_at;     /* game_clock.ticks */
-    u32 fade_out_at;
+    uint32_t fade_in_at;     /* game_clock.ticks */
+    uint32_t fade_out_at;
 };
 
 static const struct PresentsPage presents[4] = {
@@ -1049,8 +1075,8 @@ static void intro_presents(void)
 /* orig $001B16: the seven letters of the title, each drawn from its own image */
 static void title_letters(void)
 {
-    u16 x;
-    u16 index = 0x29;
+    uint16_t x;
+    uint16_t index = 0x29;
 
     draw_flag = 1;
     for (x = 0x3c; x <= 0xfc; x += 0x20)
@@ -1127,9 +1153,9 @@ static void intro_story(void)
 struct TeamPage {
     struct {
         const char *text;
-        u16 y;
+        uint16_t y;
     } line[3];
-    u32 until;          /* game_clock.ticks */
+    uint32_t until;          /* game_clock.ticks */
 };
 
 static const struct TeamPage team[7] = {
@@ -1143,7 +1169,7 @@ static const struct TeamPage team[7] = {
 };
 
 /* the fade-in that every page of the credits ends with */
-static void team_fade(u16 frames)
+static void team_fade(uint16_t frames)
 {
     palette_fade_in_fast(palette_white, 0);
     palette_fade_to(palette_intro, frames);
@@ -1211,7 +1237,7 @@ void intro_run(void)
  * enabled. */
 void game_main(void)
 {
-    volatile u32 i;
+    volatile uint32_t i;
     int s;
 
     custom->intena = 0x7fff;
@@ -1254,7 +1280,7 @@ void game_main(void)
         game_clock.ticks = 0;
         screen_clear();
         intro_run();
-        while ((s32)game_clock.ticks < 0x1dd0)
+        while ((int32_t)game_clock.ticks < 0x1dd0)
             ;
         flags.music_enabled = 0;
         for (s = 0; s < 201; s++)

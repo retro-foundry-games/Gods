@@ -3,7 +3,7 @@
  * at the original addresses by gods.ld.  Variables that are zero at that point have no initializer. */
 #include "gods.h"
 
-volatile u32 vectors[42] = {
+volatile uint32_t vectors[42] = {
     0x00000000, 0x00c00276, 0x00fc0818, 0x00fc081a,
     0x00fc081c, 0x00fc081e, 0x00fc0820, 0x02fc0822,
     0x00fc090e, 0x00fc0826, 0x00c00000, 0x00c00000,
@@ -39,24 +39,24 @@ struct CopperList copper_b = {
     .end = { 0xffff, 0xfffe },
 };
 
-u16 glyph_plane_size;
+uint16_t glyph_plane_size;
 
-u16 scroll_y = 0x14;
+uint16_t scroll_y = 0x14;
 
-u16 scroll_step;
+uint16_t scroll_step;
 
-u16 *palette_ptr = display.palette.colour;   /* the original holds the address of the colour table */
+uint16_t *palette_ptr = display.palette.colour;   /* the original holds the address of the colour table */
 
 struct Flags flags;
 
 struct GameClock game_clock;
 
-const u8 vibrato_table[32] = {
+const uint8_t vibrato_table[32] = {
     0, 24, 49, 74, 97, 120, 141, 161, 180, 197, 212, 224, 235, 244, 250, 253,
     255, 253, 250, 244, 235, 224, 212, 197, 180, 161, 141, 120, 97, 74, 49, 24,
 };
 
-const u16 period_table[38] = {
+const uint16_t period_table[38] = {
     0x0358, 0x0328, 0x02fa, 0x02d0, 0x02a6, 0x0280, 0x025c, 0x023a,
     0x021a, 0x01fc, 0x01e0, 0x01c5, 0x01ac, 0x0194, 0x017d, 0x0168,
     0x0153, 0x0140, 0x012e, 0x011d, 0x010d, 0x00fe, 0x00f0, 0x00e2,
@@ -66,7 +66,7 @@ const u16 period_table[38] = {
 
 struct MusicState music = { .speed = 0x6 };
 
-u32 sample_start[31];   /* filled in by music_init */
+uint32_t sample_start[31];   /* filled in by music_init */
 
 struct Channel channel[4] = {
     { .dma = 0x1 },
@@ -84,13 +84,13 @@ struct DisplayData display = {
     .blit = { .plane_stride = 0x1f40 },
 };
 
-u8 draw_flag = 0x1;
+uint8_t draw_flag = 0x1;
 
 struct Vblank vblank;
 
-const u16 blank_plane[513] = { 0 };   /* zeros, up to the table at $3888 */
+const uint16_t blank_plane[513] = { 0 };   /* zeros, up to the table at $3888 */
 
-u16 font_offset;
+uint16_t font_offset;
 
 struct Graphics graphics;
 
