@@ -191,4 +191,20 @@ extern struct DisplayData display;
 extern uint16_t glyph_plane_size;        /* non-zero: the size in bytes of one plane of a glyph, otherwise worked out from its height */
 extern const uint16_t blank_plane[513];  /* zeros: the source for the fifth plane when drawing text */
 
+/* ---- amiga.asm: the Amiga-specific routines (blitter work and screen fills), the original's instructions ---------- */
+
+void blitter_wait(void);                                      /* orig $002F1E */
+void blit_copy(const void *src, void *dst);                   /* orig $001B7C */
+void blit_copy_right(const void *src, void *dst);             /* orig $001BC6 */
+void screen_clear(void);                                      /* orig $0030D4 */
+void screen_restore(void);                                    /* orig $0030EE */
+void plane5_set(void);                                        /* orig $001D54 */
+void plane5_clear(void);                                      /* orig $001D7E */
+/* draw an image one word (two words) wide through a mask built from its planes; orig $0032B6 ($0032CA) */
+void blit_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows);
+void blit_image_wide(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows);
+
+void delay(void);                                             /* the music's busy wait, orig $0024F2 */
+void startup_delay(void);                                     /* orig $000C26 */
+
 #endif

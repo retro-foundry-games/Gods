@@ -7,7 +7,7 @@
 
 /* The original is hand-written 68000 and the intro is timed to the frame, so the code that runs every frame (drawing,
  * the blitter helpers, the interrupt and the music) is compiled for speed; the rest for size. */
-#define HOT __attribute__((optimize("O2")))
+#define HOT
 
 /* ---- Amiga custom chip registers, base $DFF000 ---------------------------------------------------------------- */
 
@@ -103,117 +103,7 @@ HOT void vbl_wait(void)
 
 /* ---- blitter -------------------------------------------------------------------------------------------------------- */
 
-/* orig $002F1E: wait until the blitter has finished (and give it priority while waiting) */
-HOT void blitter_wait(void)
-{
-    custom->dmacon = DMAF_SETCLR | DMAF_BLITHOG;
-    while (custom->dmaconr & DMAF_BLTBUSY)
-        ;
-    custom->dmacon = DMAF_BLITHOG;
-}
-
-/* orig $001B7C: copy 800 rows of 20 words (four planes) from `src` to `dst` with the blitter, A -> D */
-HOT void blit_copy(const void *src, void *dst)
-{
-    blitter_wait();
-    custom->bltafwm = 0xffff;
-    custom->bltalwm = 0xffff;
-    custom->bltdpt = ADDR(dst);
-    custom->bltapt = ADDR(src);
-    custom->bltdmod = 0;
-    custom->bltamod = 0;
-    custom->bltcon1 = 0;
-    custom->bltcon0 = 0x09f0;            /* use A and D, D = A */
-    custom->dmacon = DMAF_BLITHOG;
-    custom->bltsize = (800 << 6) | 20;   /* starts the blit */
-    custom->dmacon = DMAF_SETCLR | DMAF_BLITHOG;
-}
-
-/* orig $001BC6: as blit_copy, but only the right-hand 9 words of each row (the left 11 words are skipped) */
-HOT void blit_copy_right(const uint8_t *src, uint8_t *dst)
-{
-    src += 0x16;
-    dst += 0x16;
-    blitter_wait();
-    custom->bltafwm = 0xffff;
-    custom->bltalwm = 0xffff;
-    custom->bltdpt = ADDR(dst);
-    custom->bltapt = ADDR(src);
-    custom->bltdmod = 0x16;
-    custom->bltamod = 0x16;
-    custom->bltcon1 = 0;
-    custom->bltcon0 = 0x09f0;
-    custom->dmacon = DMAF_BLITHOG;
-    custom->bltsize = (800 << 6) | 9;
-    custom->dmacon = DMAF_SETCLR | DMAF_BLITHOG;
-}
-
 /* ---- screens ----------------------------------------------------------------------------------------------------- */
-
-/* orig $0030D4: clear the front screen */
-HOT void screen_clear(void)
-{
-    uint32_t *p = (uint32_t *)screen_front;
-    int i;
-
-    for (i = 0; i < 10000; i++)
-        *p++ = 0;
-}
-
-/* orig $0030EE: copy the back screen over the front screen */
-HOT void screen_restore(void)
-{
-    const uint32_t *from = (const uint32_t *)screen_back;
-    uint32_t *to = (uint32_t *)screen_front;
-    int i;
-
-    for (i = 0; i < 10000; i++)
-        *to++ = *from++;
-}
-
-/* orig $001D54: set the whole fifth bitplane of the front screen (the highlight plane) */
-HOT void plane5_set(void)
-{
-    uint32_t *p = (uint32_t *)screen_front->plane[4];
-    int i;
-    volatile uint32_t source = 0xffffffff;
-    uint32_t value = source;   /* in a register, as the original's D6: a constant would be stored with an immediate */
-
-    for (i = 0; i < 200; i++) {   /* ten longs a time */
-        *p++ = value;
-        *p++ = value;
-        *p++ = value;
-        *p++ = value;
-        *p++ = value;
-        *p++ = value;
-        *p++ = value;
-        *p++ = value;
-        *p++ = value;
-        *p++ = value;
-    }
-}
-
-/* orig $001D7E: clear the fifth bitplane of the front screen */
-HOT void plane5_clear(void)
-{
-    uint32_t *p = (uint32_t *)screen_front->plane[4];
-    int i;
-    volatile uint32_t source = 0;
-    uint32_t value = source;   /* in a register, as the original's D6: a constant would be stored with clr.l, twice as slow */
-
-    for (i = 0; i < 200; i++) {   /* ten longs a time */
-        *p++ = value;
-        *p++ = value;
-        *p++ = value;
-        *p++ = value;
-        *p++ = value;
-        *p++ = value;
-        *p++ = value;
-        *p++ = value;
-        *p++ = value;
-        *p++ = value;
-    }
-}
 
 /* orig $001C18: unscramble the picture at `pic` through the front screen and store it back, plane by plane, in
  * place.  Pictures are stored with the four low planes interleaved word by word. */
@@ -477,23 +367,6 @@ HOT static void channel_tick(struct Channel *ch, volatile struct AudioChannel *h
     }
     }
 
-/* A short busy wait.  The original loops 301 times round a lone `dbra` (10 cycles, about 3000 cycles in all).  This loop
- * needs one instruction more per round, to keep the optimizer from removing it (18 cycles), so it goes round 167 times to
- * wait as long. */
-#define DELAY_ROUNDS 167
-
-HOT __attribute__((noinline)) static void delay(void)
-{
-    uint16_t count = DELAY_ROUNDS;
-    uint16_t acc = 0;
-    volatile uint16_t sink;
-
-    do {
-        acc ^= count;
-    } while (count-- != 0);
-    sink = acc;
-}
-
 /* orig $0022E6: advance the music by one tick (called by the interrupt) */
 HOT void music_step(void)
 {
@@ -723,101 +596,6 @@ HOT __attribute__((interrupt)) void irq_level3(void)
 #define MINTERM_A_OR_B 0xfc          /* D = A | B */
 #define MINTERM_COOKIE_CUT 0xca      /* D = A ? B : C: B where the mask A is set, the background C elsewhere */
 
-HOT static void blitter_idle(volatile struct Custom *c)
-{
-    while (c->dmaconr & DMAF_BLTBUSY)
-        ;
-}
-
-/* orig $0032CA: the entry for images two words wide, see below.  */
-/* orig $0032B6: draw an image of `rows` rows, `words` words wide, with its planes `plane` bytes apart at `src`, to the
- * screen at `dst`, `shift` pixels to the right.  The original has a second entry, orig $0032CA, for images two words
- * wide (the first sets words to 1, the second to 2).
- *
- * First the four planes are combined into a mask (a pixel is opaque if it is set in any plane), then each plane is
- * drawn through the mask over what is on the screen.  With draw_flag the fifth plane is drawn too, from blank_plane. */
-HOT __attribute__((noinline)) static void blit_image(volatile struct Custom *c, uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows, uint16_t words)
-{
-    uint16_t size = (rows << 6) | words;
-    uint16_t screen_modulo = 40 - words * 2;
-    uint16_t modulo_a, modulo_b;
-    uint16_t *mask = display.blit.mask;
-    const uint8_t *image = src;
-    uint8_t *screen = dst;
-    int p;
-
-    display.blit.extra_modulo = 0;
-    c->dmacon = DMAF_SETCLR | DMAF_BLITHOG;
-    blitter_idle(c);
-    c->bltapt = ADDR(image);
-    image += plane;
-    c->bltbpt = ADDR(image);
-    image += plane;
-    c->bltcpt = ADDR(image);
-    image += plane;
-    c->bltdpt = ADDR(mask);
-    c->bltafwm = 0xffff;
-    c->bltalwm = 0xffff;
-    c->bltdmod = 0;
-    c->bltcon1 = 0;
-    c->bltcon0 = BLTCON0_USEABCD | MINTERM_A_OR_B_OR_C;
-    c->bltamod = 0;
-    c->bltbmod = 0;
-    c->bltcmod = 0;
-    c->bltsize = size;                  /* mask = plane 0 | plane 1 | plane 2 */
-    blitter_idle(c);
-    c->bltbmod = 0;
-    c->bltcon0 = BLTCON0_USEABD | MINTERM_A_OR_B;
-    c->bltapt = ADDR(image);            /* plane 3 */
-    c->bltbpt = ADDR(mask);
-    c->bltdpt = ADDR(mask);
-    c->bltsize = size;                  /* mask |= plane 3 */
-    blitter_idle(c);
-    c->bltafwm = 0xffff;
-    c->bltalwm = 0;                     /* the extra word of a shifted image is not drawn */
-    if (shift == 0) {
-        c->bltcon0 = BLTCON0_USEABCD | MINTERM_COOKIE_CUT;
-        c->bltalwm = 0xffff;
-        modulo_a = 0;
-        c->bltcon1 = 0;
-        modulo_b = display.blit.extra_modulo;
-    } else {
-        int16_t extra;
-
-        blitter_idle(c);
-        c->bltcon1 = shift << 12;
-        c->bltcon0 = (shift << 12) | BLTCON0_USEABCD | MINTERM_COOKIE_CUT;
-        extra = (int16_t)display.blit.extra_modulo;
-        if (extra >= 0) {
-            screen_modulo -= 2;
-            modulo_a = 0xfffe;
-            size++;                          /* one word wider for the part that shifts into the next word */
-        } else {
-            extra = 0;
-            modulo_a = 0;
-        }
-        modulo_b = modulo_a + extra;
-    }
-    c->bltamod = modulo_a;
-    c->bltbmod = modulo_b;
-    c->bltcmod = screen_modulo;
-    c->bltdmod = screen_modulo;
-    for (p = 0; p < 4 + (draw_flag != 0); p++) {
-        const uint8_t *source = p == 4 ? (const uint8_t *)blank_plane : src + (uint32_t)p * plane;
-
-        if (p != 0)
-            blitter_idle(c);
-        c->bltcpt = ADDR(screen);
-        c->bltbpt = ADDR(source);
-        c->bltapt = ADDR(mask);
-        c->bltdpt = ADDR(screen);
-        if (p == 3 + (draw_flag != 0))
-            c->dmacon = DMAF_BLITHOG;   /* release the blitter priority as the last plane starts, as the original */
-        c->bltsize = size;
-        screen += display.blit.plane_stride;
-    }
-}
-
 /* orig $0039DC: draw glyph or image `index` of the table at pixel (x, y) on the front screen, clipped at the top
  * and bottom (the image is one word wide) */
 HOT void glyph_draw(uint16_t x, uint16_t y, uint16_t index)
@@ -851,7 +629,7 @@ HOT void glyph_draw(uint16_t x, uint16_t y, uint16_t index)
         dst = (uint8_t *)screen_front + ((int16_t)(x & 0xfff0) >> 3) + (int16_t)((uint32_t)y * 40);
     }
     plane = glyph_plane_size != 0 ? glyph_plane_size : (img->height + 1) * 2;
-    blit_image(custom, dst, (const uint8_t *)data, plane, x & 0xf, last + 1, 1);
+    blit_image(dst, (const uint8_t *)data, plane, x & 0xf, last + 1);
 }
 
 /* orig $003950: the same for an image two words wide.  The original's clipping at the top looks unfinished: it moves
@@ -881,7 +659,7 @@ HOT void sprite_draw(uint16_t x, uint16_t y, uint16_t index)
         }
         dst = (uint8_t *)screen_front + ((int16_t)(x & 0xfff0) >> 3) + (int16_t)((uint32_t)y * 40);
     }
-    blit_image(custom, dst, (const uint8_t *)img->data, (img->height + 1) * 4, x & 0xf, last + 1, 2);
+    blit_image_wide(dst, (const uint8_t *)img->data, (img->height + 1) * 4, x & 0xf, last + 1);
 }
 
 /* orig $002D4C: cut the images out of the glyph sheet.  `sheet` is the sheet's pixels, four planes interleaved word by
@@ -966,11 +744,12 @@ HOT void text_draw_at(const char *text, uint16_t x, uint16_t y)
 /* orig $0038C6: draw `text` in the large font, centred on the screen */
 HOT void text_draw(const char *text, uint16_t y)
 {
-    uint16_t width = 0;
+    uint16_t width = (uint16_t)-8;   /* the original starts at -8 and adds 8 for every byte, the terminator included */
     const char *p = text;
 
-    while (*p++ != 0)
+    do {
         width += 8;
+    } while (*p++ != 0);
     text_draw_at(text, 0xa0 - width, y);
 }
 
@@ -991,11 +770,12 @@ HOT void text_small_at(const char *text, uint16_t x, uint16_t y)
 /* orig $00390C: draw `text` in the small font, centred on column $F6 (the right-hand part of the screen) */
 HOT void text_small_line(const char *text, int16_t y)
 {
-    uint16_t width = 0;
+    uint16_t width = (uint16_t)-8;   /* the original starts at -8 and adds 4 for every byte, the terminator included */
     const char *p = text;
 
-    while (*p++ != 0)
+    do {
         width += 4;
+    } while (*p++ != 0);
     text_small_at(text, 0xf6 - width, y);
 }
 
@@ -1295,8 +1075,7 @@ void game_main(void)
     (void)custom->intenar;
     intro_setup();
     flags.fire_pressed = 0;
-    for (i = 1000000; i != 0; i--)
-        ;
+    startup_delay();
     for (;;) {
         music_init();
         CIAA_PRA |= 0x02;
