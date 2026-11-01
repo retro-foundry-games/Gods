@@ -150,6 +150,22 @@ the loader reads and decrunches over the intro.  It is a different program, abou
   disk into memory; the trampoline's second entry (now `jmp $84`) will enter the C menu instead, which uses the data that is
   in memory at the original addresses (pinned by the linker script) and ignores the original code.
 
+### Decompiling the menu: how it is checked
+
+- `native/menu.c` / `menu.h` are the menu program's C; its data is declared from `native/menu.symbols` (name, address, type;
+  `scripts/gen_menu_symbols.py` writes `menu_symbols.h` and `menu.ld`, so the C names no address).  `scripts/build_menu.py`
+  builds the C into a blob at an address in the RAM above the original's 512 KB.
+- `host/menu_oracle.lua` (driven by `scripts/check_menu.py`) checks each decompiled function against the original **on the
+  running original**: it hooks the original's entry, saves the machine state, runs the original routine with `ami.call`,
+  puts the memory back, runs the C function on the same state with the arguments in the registers the original has them in,
+  and compares the result register and all of chip RAM, leaving out what the chips write meanwhile (two runs of the original
+  show which addresses; the disk DMA buffer).  Then the state is put back, so the program goes on.  The functions to check are
+  listed in `host/menu_cases.lua` (the registers the arguments and the result are in).
+- The first batch, 15 leaf functions of the engine layer (MFM decode and encode, the unpacker, mouse and joystick polling,
+  buffer copies, the colour shadow table, ...), match on 24 calls each spread over the first 9,000 frames.
+- What the program turned out to be: the menu is the game's whole engine (memory, disk and file layer, input, blitter and
+  copper helpers) with the menu screens on top, so many leaves are library routines.
+
 ## Open questions
 
 - Per-function checking against the original (step 3), or only the full lockstep run?
