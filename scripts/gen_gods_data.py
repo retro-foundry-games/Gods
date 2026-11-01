@@ -45,16 +45,16 @@ def scalar(name, addr, ctype, size):
 
 
 # ---- variables -------------------------------------------------------------------------------------------------------
-add("palette_ptr", 0x1af6, "u16 *palette_ptr = display.palette.colour;   /* the original holds the address of the colour table */")
+add("palette_ptr", 0x1af6, "uint16_t *palette_ptr = display.palette.colour;   /* the original holds the address of the colour table */")
 add("screen_front", 0x2940, "struct Screen *screen_front;")
 add("screen_back", 0x2944, "struct Screen *screen_back;")
-scalar("draw_flag", 0x2cb0, "u8", 1)
-scalar("font_offset", 0x394a, "u16", 2)
-scalar("scroll_y", 0x169a, "u16", 2)
-scalar("scroll_step", 0x169e, "u16", 2)
-scalar("glyph_plane_size", 0xe96, "u16", 2)
+scalar("draw_flag", 0x2cb0, "uint8_t", 1)
+scalar("font_offset", 0x394a, "uint16_t", 2)
+scalar("scroll_y", 0x169a, "uint16_t", 2)
+scalar("scroll_step", 0x169e, "uint16_t", 2)
+scalar("glyph_plane_size", 0xe96, "uint16_t", 2)
 assert not any(ram[0x3486:0x3888])
-add("blank_plane", 0x3486, "const u16 blank_plane[513] = { 0 };   /* zeros, up to the table at $3888 */")
+add("blank_plane", 0x3486, "const uint16_t blank_plane[513] = { 0 };   /* zeros, up to the table at $3888 */")
 
 def struct_def(ctype, name, addr, fields, extra=""):
     """A struct from the original's bytes; fields = (name, offset, size); zero fields are left out."""
@@ -79,9 +79,9 @@ add("display", 0x2948, "struct DisplayData display = {\n    .palette = { .fade_d
     % (u8(0x2948), u8(0x2949), ", ".join(f"{c:#05x}" for c in colours), u32(0x298a)))
 
 # ---- the music replayer's tables and channels ---------------------------------------------------------------------------
-add("vibrato_table", 0x27e0, "const u8 vibrato_table[32] = {\n" + lines(list(ram[0x27e0:0x2800]), 16, "%d") + "\n};")
-add("period_table", 0x2800, "const u16 period_table[38] = {\n" + lines([u16(0x2800 + 2 * i) for i in range(38)], 8, "%#06x") + "\n};")
-add("sample_start", 0x2854, "u32 sample_start[31];   /* filled in by music_init */")
+add("vibrato_table", 0x27e0, "const uint8_t vibrato_table[32] = {\n" + lines(list(ram[0x27e0:0x2800]), 16, "%d") + "\n};")
+add("period_table", 0x2800, "const uint16_t period_table[38] = {\n" + lines([u16(0x2800 + 2 * i) for i in range(38)], 8, "%#06x") + "\n};")
+add("sample_start", 0x2854, "uint32_t sample_start[31];   /* filled in by music_init */")
 fields = [("cell", 0, 4), ("sample", 4, 4), ("length", 8, 2), ("loop", 10, 4), ("loop_length", 14, 2), ("period", 16, 2),
           ("volume", 18, 2), ("dma", 20, 2), ("porta_down", 22, 1), ("porta_speed", 23, 1), ("porta_target", 24, 2),
           ("vibrato", 26, 1), ("vibrato_pos", 27, 1)]
@@ -135,7 +135,7 @@ def copper(name, addr):
 
 copper("copper_a", 0xa8)
 copper("copper_b", 0xfc)
-add("vectors", 0x0, "volatile u32 vectors[42] = {\n" + lines([u32(4 * i) for i in range(42)], 4, "%#010x") + "\n};")
+add("vectors", 0x0, "volatile uint32_t vectors[42] = {\n" + lines([u32(4 * i) for i in range(42)], 4, "%#010x") + "\n};")
 add("screen_a", 0x763c0, "struct Screen screen_a;   /* the original's bitplanes; drawn to by the program */")
 add("screen_b", 0x6c780, "struct Screen screen_b;")
 

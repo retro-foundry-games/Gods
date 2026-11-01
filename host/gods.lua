@@ -2,6 +2,7 @@
 -- No WHDLoad, no patches: the boot block and the game's own loader run unmodified.
 --
 --   play:   tools/engine9000/ami9000_host projects/gods/host/gods.lua
+--   rebuilt             boot the disk whose game is the C in native/ (local/gods-c-disk1.adf, see scripts/build_adf.py)
 --   flags:  see "Script flags" below (snapshots, screenshots)
 --
 -- Needs the A500 Kickstart 1.3 (CRC32 c4f0f55f) in ../local/system and ../local/gods-disk1.adf.
@@ -15,6 +16,12 @@ if record_dir or compare_dir then
         "/usr/bin/env", "python3", ami.script_dir .. "/../../../tools/amiga/frame_recorder.py",
         record_dir and "--out" or "--compare", record_dir or compare_dir,
     }
+    if compare_dir and script_args:match("%f[%w]survey%f[%W]") then recorder[#recorder + 1] = "--survey" end
+    local mask = script_args:match("mask=(%S+)")
+    if compare_dir and mask then
+        recorder[#recorder + 1] = "--mask"
+        recorder[#recorder + 1] = mask
+    end
 end
 
 ami.machine{
@@ -22,7 +29,7 @@ ami.machine{
     model = "A500",
     system = "../local/system",
     save = "../local/save",
-    content = "../local/gods.m3u",
+    content = script_args:match("rebuilt") and "../local/gods-c.m3u" or "../local/gods.m3u",
     roms = { { "kick34005.A500", 0xc4f0f55f } },
     peers = recorder and { recorder = recorder } or nil,
 }
@@ -32,7 +39,8 @@ ami.boot()
 --   load=NAME            restore snapshot NAME (a file in ../local/save) before running; frames below count from it
 --   snap=F[,F...]        save snapshot gods-F.state at frame F (relative to the start or the loaded snapshot)
 --   record=DIR [screen=N]  stream every frame (hash, chip RAM, every Nth screen) to tools/amiga/frame_recorder.py
---   compare=DIR         compare each frame with a recording; stops at the first difference
+--   compare=DIR [survey] [mask=FILE]  compare each frame with a recording; stops at the first difference, or with
+--                       survey reports every differing RAM range; mask lists RAM ranges to ignore
 --   until=N             quit after N frames (with record/compare/cover)
 --   cover=PATH          hook chip RAM and write every executed instruction (pc + bytes) to PATH
 --   ram=PATH            write chip RAM (512 KiB) at the end of the events, then quit
