@@ -29,6 +29,7 @@ ami.machine{
     model = "A500",
     system = "../local/system",
     save = "../local/save",
+    files = "..",
     content = script_args:match("rebuilt") and "../local/gods-c.m3u" or "../local/gods.m3u",
     roms = { { "kick34005.A500", 0xc4f0f55f } },
     opt = script_args:match("rebuilt") and { puae_chipmem_size = 2 } or nil,   -- the C runs from chip RAM above 512 KB
@@ -37,6 +38,7 @@ ami.machine{
 ami.boot()
 
 -- Script flags (--script-args "..."):
+--   keyboard            the original menu with the keyboard: cursor up/down, space = fire (native/src/amiga/keyboard_patch.asm; build it with scripts/build_keyboard_patch.py)
 --   load=NAME            restore snapshot NAME (a file in ../local/save) before running; frames below count from it
 --   snap=F[,F...]        save snapshot gods-F.state at frame F (relative to the start or the loaded snapshot)
 --   snapname=NAME        save the snapshots as NAME.state (with one frame in snap=) and quit afterwards
@@ -65,6 +67,21 @@ local shots_dir = args:match("shots=(%S+)")
 if load_name then
     ami.wait(1)
     if not ami.snapshot_load(load_name) then ami.log("cannot load snapshot", load_name) ami.quit(2) end
+end
+-- keyboard: the original menu with the keyboard in its input (native/src/amiga/keyboard_patch.asm, a change of the original's code in
+-- memory: cursor up and down are the stick, the space bar is fire).  Applied when the menu program starts its menu ($6388),
+-- or at once when a snapshot of the menu is loaded.
+if script_args:match("keyboard") then
+    local function patch_menu()
+        local code = ami.file_read("native/build/keyboard_patch.bin", 0, ami.file_size("native/build/keyboard_patch.bin"))
+        ami.write(0x1e608, code)
+        ami.write(0x1e420, "\x4e\xb9\x00\x01\xe6\x08")
+        ami.log("keyboard patch applied")
+    end
+    if load_name then patch_menu() else
+        local done = false
+        ami.hook(0x6388, function() if not done then done = true; patch_menu() end end)
+    end
 end
 local base = ami.frame()
 local until_frame = tonumber(args:match("until=(%d+)"))

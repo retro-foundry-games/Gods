@@ -212,6 +212,11 @@ from it are checked in their own scenario.  To use the menu in the emulator the 
   at $240C, which loads and runs the copy protection's stub and ends at $6388: from there the menu is C (`menu_main`).  Begin
   Quest, Continue and what follows the password screen go on in the original's code.  `host/menu_in_build.lua` runs that disk
   and reports which C functions were entered; the cursor keys up and down move the selection (through the key table).
+- The original menu with the keyboard (cursor up/down as the stick, space as fire): `native/src/amiga/keyboard_patch.asm`, a
+  change of the original's input routine in memory (the `move.b d1,($1e5ac).l` at $01E420 becomes a call of 58 bytes put in the
+  unused bytes at $01E608).  `scripts/build_keyboard_patch.py` assembles it and `host/gods.lua` flag `keyboard` applies it when the
+  menu starts ($6388), or at once after `load=` of a snapshot of the menu.  It cannot be put on the disk: the menu program's image
+  is packed there, and the copy protection stops the game (Guru #4) when the loader's final jump or the entry code is changed.
 - What the program turned out to be: the menu is the game's whole engine (memory, disk and file layer, input, blitter and
   copper helpers) with the menu screens on top, so many leaves are library routines.
 
