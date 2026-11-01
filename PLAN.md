@@ -152,6 +152,14 @@ tools/engine9000/ami9000_host projects/gods/host/gods.lua
 tools/engine9000/ami9000_host projects/gods/host/gods.lua --headless --script-args "compare=$PWD/projects/gods/captures/ref100k until=100000"
 # re-record (replaces captures/ref100k; about 7 minutes)
 tools/engine9000/ami9000_host projects/gods/host/gods.lua --headless --script-args "record=$PWD/projects/gods/captures/ref100k until=100000 screen=1 cover=$PWD/projects/gods/analysis/coverage-100k.txt"
+# the C build: press space (the interrupt takes it as the fire button), wait for the main menu and save a savestate
+# (two ways: the script's press=, or the Lua control socket, which any client can drive while the host runs)
+tools/engine9000/ami9000_host projects/gods/host/gods.lua --headless --script-args "rebuilt press=space@2700 snap=6000 snapname=gods-c-menu"
+tools/engine9000/ami9000_host projects/gods/host/gods.lua --headless --control /tmp/gods.sock --script-args "rebuilt" &
+python3 tools/ami9000_host/ctl.py /tmp/gods.sock 'ami.key("space", true)'   # ... later: 'ami.key("space", false)'
+python3 tools/ami9000_host/ctl.py /tmp/gods.sock 'ami.snapshot_save("gods-c-menu-ctl.state")'
+# start from the savestate (a file in local/save), in a window
+tools/engine9000/ami9000_host projects/gods/host/gods.lua --script-args "rebuilt load=gods-c-menu.state"
 # RAM of any recorded frame
 python3 tools/amiga/frame_recorder.py --extract projects/gods/captures/ref100k FRAME out.bin
 ```

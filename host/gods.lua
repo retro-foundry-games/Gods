@@ -39,6 +39,9 @@ ami.boot()
 -- Script flags (--script-args "..."):
 --   load=NAME            restore snapshot NAME (a file in ../local/save) before running; frames below count from it
 --   snap=F[,F...]        save snapshot gods-F.state at frame F (relative to the start or the loaded snapshot)
+--   snapname=NAME        save the snapshots as NAME.state (with one frame in snap=) and quit afterwards
+--   press=KEY@F[,...]    press the key (a name from ami.keys, e.g. space) for 3 frames at frame F (to reach the menu with
+--                        space and take a snapshot; the lockstep recordings never press a key)
 --   record=DIR [screen=N]  stream every frame (hash, chip RAM, every Nth screen) to tools/amiga/frame_recorder.py
 --   record=DIR hook=HEX [maxevents=N]  record at every execution of the instruction at HEX (the entry of the program's
 --                       wait for the vertical blank) instead of every frame: event number, frame and chip RAM
@@ -152,11 +155,20 @@ if shots_dir then
     if #list == 0 then list = { 300, 600, 1200, 2400 } end
     for _, f in ipairs(list) do events[#events + 1] = { f, "shot" } end
 end
+for key, f in (args:match("press=(%S+)") or ""):gmatch("(%w+)@(%d+)") do
+    events[#events + 1] = { tonumber(f), "press", key }
+    events[#events + 1] = { tonumber(f) + 3, "release", key }
+end
 table.sort(events, function(a, b) return a[1] < b[1] end)
+local snap_name = args:match("snapname=(%S+)")
 for _, e in ipairs(events) do
     ami.wait_until(function() return ami.frame() - base >= e[1] end)
-    if e[2] == "snap" then
-        local name = "gods-" .. e[1] .. ".state"
+    if e[2] == "press" then
+        ami.key(e[3], true)
+    elseif e[2] == "release" then
+        ami.key(e[3], false)
+    elseif e[2] == "snap" then
+        local name = snap_name and (snap_name .. ".state") or ("gods-" .. e[1] .. ".state")
         ami.log("snapshot", name, ami.snapshot_save(name))
     else
         ami.screenshot(shots_dir .. "/gods-" .. e[1] .. ".ppm")
@@ -169,4 +181,4 @@ if ram_path then
     ami.save_file(ram_path, ami.read(0, 0x80000))
     ami.log("ram", ram_path, "pc", string.format("%06x", ami.reg("pc")), "frame", ami.frame() - base)
 end
-if shots_dir or ram_path then ami.quit(0) end
+if shots_dir or ram_path or snap_name then ami.quit(0) end
