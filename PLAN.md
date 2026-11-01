@@ -191,6 +191,20 @@ from it are checked in their own scenario.  To use the menu in the emulator the 
   runs are compared flip by flip, not frame by frame; the palette checksum differs at the flips next to a fade (4 of 381).
   A joystick run (down, fire, then the password screen) gives the same first picks; later picks depend on how many loop
   iterations a held direction gets, which differs with the speed.
+- The file loading layer is in too (`MENU_COVERAGE=coverage-menu.txt menu_dis.py --todo`, the run that loads the menu from
+  the disks, lists what is left: the code at $2400 that loads the copy protection's stub and runs what it releases).  The
+  drive control, the track reads and writes through the disk DMA, the MFM coding and the directory search ($01D4CA-$01E253)
+  are generated asm (`file_layer()` in `gen_menu_amiga_asm.py`, every instruction checked against the original's bytes);
+  `file.c` has what is built on it: `load_file` ($01D3A6), `load_unpacked` ($002702: the packed file is "c" + name),
+  `load_directory` ($002988: tocache.bin), `assets_load` ($01ECA2: pictures are cut into sprites with four planes) and
+  `display_reset`; `boot.c` has the start-up ($039E50: chips, memory map, sound, first asset set).  The keyboard interrupt
+  ($01E2B8) is generated asm too.  The data the asm keeps its state in is copied from the program as the loader leaves it
+  (`host/menu_image.lua` writes `build/menu-image.bin`), not from the RAM of a later frame.
+- Checked by running the original from a cold boot to the start of the menu ($006388) with the C versions in place of the
+  original's (`host/menu_boot.lua`, shims from `scripts/build_glue.py` that give a C function the original's register
+  interface and run it on a stack of its own): the RAM is the same as the original's at that point except for the
+  interrupt vectors (C's handlers), the restart address, frame counters and a few hundred bytes of the sound state and the
+  stack, which depend on the timing.
 - What the program turned out to be: the menu is the game's whole engine (memory, disk and file layer, input, blitter and
   copper helpers) with the menu screens on top, so many leaves are library routines.
 
