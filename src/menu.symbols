@@ -280,3 +280,4 @@ records_19334     0x00019334  struct Slot8 %s[10]    ten records of 8 bytes (the
 records_19b14     0x00019b14  struct Slot8 %s[200]   two hundred records of 8 bytes (the second word is negative for one that is free)
 dispatch_18be0    0x00018be0  void (*%s[])(void)     the routines a record's kind (0, 1, ...) names
 message_slots     0x00012be6  uint8_t %s[]           the first of the lines of text the messages are made of (88 bytes each)
+message_hold      0x00000264  int16_t %s     frames a message stays once it is in (counted down by the frame tick)

@@ -287,3 +287,4 @@ _records_19334 = 0x19334;
 _records_19b14 = 0x19b14;
 _dispatch_18be0 = 0x18be0;
 _message_slots = 0x12be6;
+_message_hold = 0x264;

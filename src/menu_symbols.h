@@ -271,6 +271,7 @@ extern struct Slot8 records_19334[10];   /* $19334  ten records of 8 bytes (the 
 extern struct Slot8 records_19b14[200];   /* $19B14  two hundred records of 8 bytes (the second word is negative for one that is free) */
 extern void (*dispatch_18be0[])(void);   /* $18BE0  the routines a record's kind (0, 1, ...) names */
 extern uint8_t message_slots[];   /* $12BE6  the first of the lines of text the messages are made of (88 bytes each) */
+extern int16_t message_hold;   /* $00264  frames a message stays once it is in (counted down by the frame tick) */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
 extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of the two copper lists' colour moves the message fades */

@@ -116,7 +116,10 @@ void message_tick(void)
             red += 512;
         *a = *b = blue | green | red;
     }
-    message_timer--;
+    if (--message_timer < 0) {   /* the colours are all the way in: the message stays for 50 frames of the game's tick */
+        message_state = 0;
+        message_hold = 50;
+    }
 }
 
 /* orig $016D76: ask for the line message_next to be shown with the priority `priority` (a message of a higher priority that

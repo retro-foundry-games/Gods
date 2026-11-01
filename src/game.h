@@ -18,4 +18,6 @@ struct SavedByte *restore_saved_bytes(struct SavedByte *list, int16_t count);   
 void call_by_kind(int16_t kind);                           /* orig $018A10 */
 uint8_t *next_message_slot(void);                          /* orig $012A80 */
 
+void game_frame(void);                                     /* orig $002C20 */
+
 #endif
