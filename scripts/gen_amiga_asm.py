@@ -49,7 +49,7 @@ LABELS = {
     0x2254: "find_last_pattern", 0x2258: "scan_order_table", 0x2278: "locate_samples",
     # music_step and what it calls: per row (every `speed` ticks) the four channels start their next cell
     0x230E: "tick_effects", 0x2598: "step_done", 0x256A: "next_order", 0x23A4: "new_row",
-    0x2412: "channel_row", 0x2480: "sample_without_loop", 0x2496: "row_effect", 0x24B6: "start_note",
+    0x2412: "channel_row", 0x2480: "sample_no_repeat", 0x2496: "row_effect", 0x24B6: "start_note",
     0x24F2: "start_dma", 0x24F6: "start_dma_wait1", 0x250E: "start_dma_wait2",
     0x25A6: "tone_portamento_target", 0x25C6: "portamento_target_reached", 0x25CA: "portamento_done",
     0x25CC: "tone_portamento", 0x25DA: "tone_portamento_step", 0x2604: "portamento_set_period",
@@ -219,6 +219,63 @@ def scratch(lines: list[str]) -> list[str]:
     return [re.sub(r"\bd6\b", "d0", re.sub(r"\bd7\b", "d1", ln)) for ln in lines]
 
 
+LABEL_DEF = re.compile(r"^([A-Za-z_]\w*):\s*$")
+CALL = re.compile(r"^\s+(bsr|jsr|jmp)\b")
+
+
+def localize(lines: list[str]) -> list[str]:
+    """Labels that are only branched to from inside their own routine become local (`.name`, scoped to the preceding
+    global label); a routine's single `*_loop` label is called `.loop`.  Labels that are called, jumped to from another
+    routine or exported stay global."""
+    defs = {ln.split(":")[0]: n for n, ln in enumerate(lines) if LABEL_DEF.match(ln)}
+    exported = set()
+    for ln in lines:
+        if ln.strip().startswith("xdef"):
+            exported |= {x.strip() for x in ln.split("xdef")[1].split(",")}
+    refs: dict[str, list[tuple[int, bool]]] = {name: [] for name in defs}
+    for n, ln in enumerate(lines):
+        code = ln.split(";")[0]
+        if LABEL_DEF.match(ln) or not code.strip() or code.strip().startswith(("xref", "xdef", "section")):
+            continue
+        for name in defs:
+            if re.search(r"(?<![\w.])" + re.escape(name) + r"(?!\w)", code):
+                refs[name].append((n, bool(CALL.match(code))))
+    glob = {name for name in defs if name in exported or name.startswith("_") or not refs[name]
+            or any(call for _, call in refs[name])}
+    while True:
+        starts = sorted(defs[g] for g in glob)
+
+        def scope(n: int) -> int:
+            k = [x for x in starts if x <= n]
+            return k[-1] if k else -1
+        promote = {name for name in defs if name not in glob and any(scope(r) != scope(defs[name]) for r, _ in refs[name])}
+        if not promote:
+            break
+        glob |= promote
+    local = {name for name in defs if name not in glob}
+    # name the single loop of a routine `.loop`
+    by_scope: dict[int, list[str]] = {}
+    for name in local:
+        by_scope.setdefault(scope(defs[name]), []).append(name)
+    new = {name: "." + name for name in local}
+    for names in by_scope.values():
+        loops = [x for x in names if x.endswith("_loop")]
+        if len(loops) == 1:
+            new[loops[0]] = ".loop"
+    out = []
+    for ln in lines:
+        m = LABEL_DEF.match(ln)
+        if m and m.group(1) in new:
+            out.append(new[m.group(1)] + ":")
+            continue
+        head, sep, comment = ln.partition(";")
+        if head.strip() and not head.strip().startswith(("xref", "xdef", "section")):
+            for name in local:
+                head = re.sub(r"(?<![\w.])" + re.escape(name) + r"(?!\w)", new[name], head)
+        out.append(head + sep + comment)
+    return out
+
+
 def main() -> None:
     mem = ram()
     a: list[str] = [
@@ -296,6 +353,7 @@ def main() -> None:
     init = entry_label(music[:split])
     init = [x for ln in init for x in (["        movem.l (sp)+,d2-d7/a2-a6", "        rts"] if ln.strip() == "rts" else [ln])]   # also the channel silencing that follows
     a += init + ["", "; orig $0022E6: advance the music by one tick (called by the interrupt)"] + music[split:]
+    a = localize(a)
     OUT.write_text("\n".join(a) + "\n")
     print(f"wrote {OUT} ({len(a)} lines)")
 
