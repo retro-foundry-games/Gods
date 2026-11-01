@@ -559,7 +559,7 @@ static void record_update(struct Slot8 *record, uint8_t *flag, int16_t counter)
     list_count_1294++;
     if (list_count_1294 <= 20) {
         if (id == 45) {
-            value_1296 = 0x121c;
+            value_1296 = GUEST(0x121c);
             list_count_1294 = 20;
             flag_25e = 1;
         }
@@ -597,7 +597,7 @@ void update_records(void)
     list_count_1294 = 0;
     flag_25e = 0;
     onscreen_count = 0;
-    value_1296 = 0x121c;
+    value_1296 = GUEST(0x121c);
     counter_204 = (counter_204 + 1) & 31;
     if (frame_toggle != 0)
         counter_20c = (counter_20c + 1) & 3;

@@ -569,7 +569,7 @@ void update_records_12a0(void)
 void update_records_1354(void)
 {
     flag_244 = 0;
-    value_1296 = 0x121c;
+    value_1296 = GUEST(0x121c);
     for (int i = 0; i < 10; i++) {
         temp_bb6 = ptr_0cee + 400 * i;
         if (records_1354[i * 214] != 0)
