@@ -47,7 +47,7 @@ LABELS = {
 }
 LABELS.update({t: f"cmd_{0x80 + 4 * n:02x}" for n, t in enumerate(COMMAND_TARGETS)})
 SIZES = {"char": 1, "uint8_t": 1, "int8_t": 1, "uint16_t": 2, "int16_t": 2, "uint32_t": 4, "int32_t": 4, "struct Rec6": 6, "struct Rec10": 10,
-         "struct Rec80": 80, "struct Entry8": 8, "struct MemLists": 20, "struct Image": 8, "struct AssetEntry": 8, "struct Voice": 148}
+         "struct Rec80": 80, "struct Entry8": 8, "struct MemLists": 20, "struct Image": 8, "struct AssetEntry": 8, "struct Voice": 148, "void": 2}
 
 
 def size_of(decl: str) -> int:
@@ -176,7 +176,9 @@ def keyboard() -> list[str]:
     out += A.emit(MEM, 0x1E2B8, 0x1E31C)
     out += [""] + A.emit(MEM, 0x1E50C, 0x1E5A8)
     out += ["", "; void sr_set(uint16_t value): the status register is set (not in the original; the start-up needs it in C)",
-            "        xdef _sr_set", "_sr_set:", "        move.w 6(sp),d0", "        move.w d0,sr", "        rts", ""]
+            "        xdef _sr_set", "_sr_set:", "        move.w 6(sp),d0", "        move.w d0,sr", "        rts", "",
+            "; void jump_with_stack(void (*address)(void), uint8_t *stack): the stack is changed and the code entered (not in the original)",
+            "        xdef _jump_with_stack", "_jump_with_stack:", "        movea.l 4(sp),a0", "        movea.l 8(sp),a1", "        movea.l a1,sp", "        jmp (a0)", ""]
     return out
 
 

@@ -39,20 +39,22 @@ SLOW_BASE = 0x80000    # chip RAM above the original's 512 KB (the machine is gi
 STAGING = 0x10000               # chip RAM that is still unused when the hook runs
 HOOK = 0x334                    # 126 unused bytes of the stage
 HOOK_SIZE = 126
-BLOB_READS = [(11, 11), (23, 3), (0xa6800 // 512, 3), (0xa8000 // 512, 3)]   # (first sector, count): free sectors of the disk
-BLOB_BYTES = sum(c for _, c in BLOB_READS) * 512
 
 
-def hook_asm() -> list[str]:
-    out = ["        ; ---- hook: read the C blob from free sectors and copy it to slow RAM (replaces unused bytes)",
-           f"        org ${HOOK:x}", "        movem.l d0-d7/a0-a6,-(a7)", "        lea.l $9c0(pc),a1", f"        movea.l #${STAGING:x},a0"]
-    for sector, count in BLOB_READS:
-        out += ["        moveq #0,d0", f"        move.w #{sector},d1", f"        moveq #{count},d2", "        moveq #0,d3",
-                "        bsr.w $15a", f"        adda.w #{count * 512},a0"]
-        # the read leaves a0 unchanged: it is advanced here
-    out += [f"        movea.l #${STAGING:x},a0", f"        movea.l #${SLOW_BASE:x},a1", f"        move.w #{BLOB_BYTES // 4 - 1},d0",
-            ".copy:  move.l (a0)+,(a1)+", "        dbra d0,.copy", "        movem.l (a7)+,d0-d7/a0-a6",
-            "        lea.l $9c0(pc),a1", "        rts", f"        org ${HOOK + HOOK_SIZE:x}"]
+EXTRA_SECTOR = 1760   # the first sector of cylinder 80: the disk image gets extra cylinders after the 80 of a normal disk, for the C
+
+
+def hook_asm(sectors: int, intro_longs: int, menu_longs: int, menu_base: int) -> list[str]:
+    """Read the C (the intro, then the menu) from the extra cylinders into STAGING and copy the two parts to where they run."""
+    out = ["        ; ---- hook: read the C from the extra cylinders and copy it to where it runs (replaces unused bytes)",
+           f"        org ${HOOK:x}", "        movem.l d0-d7/a0-a6,-(a7)", "        lea.l $9c0(pc),a1", f"        movea.l #${STAGING:x},a0",
+           "        moveq #0,d0", f"        move.w #{EXTRA_SECTOR},d1", f"        moveq #{sectors},d2" if sectors < 128 else f"        move.w #{sectors},d2",
+           "        moveq #0,d3", "        bsr.w $15a",
+           f"        movea.l #${STAGING:x},a0", f"        movea.l #${SLOW_BASE:x},a1", f"        move.w #{intro_longs - 1},d0",
+           ".copy:  move.l (a0)+,(a1)+", "        dbra d0,.copy",
+           f"        movea.l #${menu_base:x},a1", f"        move.w #{menu_longs - 1},d0",
+           ".copy2: move.l (a0)+,(a1)+", "        dbra d0,.copy2",
+           "        movem.l (a7)+,d0-d7/a0-a6", "        lea.l $9c0(pc),a1", "        rts", f"        org ${HOOK + HOOK_SIZE:x}"]
     return out
 
 
@@ -69,7 +71,7 @@ def gas_to_vasm(mn: str, ops: str) -> str:
     return f"{mn} {ops.replace(', ', ',')}".strip()
 
 
-def main(patched: bool = False, adf_out: Path | None = None, blob: bytes = b"") -> int:
+def main(patched: bool = False, adf_out: Path | None = None, blob: bytes = b"", menu_blob: bytes = b"", menu_base: int = 0, menu_entry: int = 0) -> int:
     from capstone import CS_ARCH_M68K, CS_MODE_BIG_ENDIAN, CS_MODE_M68K_000, Cs
 
     md = Cs(CS_ARCH_M68K, CS_MODE_M68K_000 | CS_MODE_BIG_ENDIAN)
@@ -85,8 +87,12 @@ def main(patched: bool = False, adf_out: Path | None = None, blob: bytes = b"") 
     if patched:
         patches[("stage", 0xb8)] = ([f"        move.l #${SLOW_BASE:x},$2(a0)   ; PATCH: the stage's last jump goes to the C entry, not $84"], 8)
         patches[("stage", 0xf6)] = ([f"        bsr.w ${HOOK:x}   ; PATCH: the hook reads the C blob first"], 4)
-        patches[("stage", HOOK)] = (hook_asm(), HOOK_SIZE)
-        allowed["stage"] = [(0xb8 - 0xb4, 0xb8 - 0xb4 + 8), (0xf6 - 0xb4, 0xf6 - 0xb4 + 4), (HOOK - 0xb4, HOOK - 0xb4 + HOOK_SIZE)]
+        intro_bytes = -(-len(blob) // 4) * 4
+        sectors = -(-(intro_bytes + len(menu_blob)) // 512)
+        patches[("stage", HOOK)] = (hook_asm(sectors, intro_bytes // 4, -(-len(menu_blob) // 4), menu_base), HOOK_SIZE)
+        # the read routine refuses sectors beyond the 1760 of a disk: the limit is raised for the extra cylinders (the C is read from there)
+        patches[("stage", 0x19a)] = (["        cmp.w #$740,d3   ; PATCH: the limit of the read is 1856 sectors, not 1760"], 4)
+        allowed["stage"] = [(0x19a - 0xb4, 0x19a - 0xb4 + 4), (0xb8 - 0xb4, 0xb8 - 0xb4 + 8), (0xf6 - 0xb4, 0xf6 - 0xb4 + 4), (HOOK - 0xb4, HOOK - 0xb4 + HOOK_SIZE)]
     for name, start, length, base, comment in PIECES:
         data = disk[start : start + length]
         text += [f"; ---- {name}: {comment}", f"        org ${base:x}", ""]
@@ -158,15 +164,17 @@ def main(patched: bool = False, adf_out: Path | None = None, blob: bytes = b"") 
         image = bytearray(disk)
         for start, built in new_pieces.values():
             image[start : start + len(built)] = built
-        assert len(blob) <= BLOB_BYTES, f"the blob is {len(blob)} bytes, the free sectors hold {BLOB_BYTES}"
-        padded = blob + bytes(BLOB_BYTES - len(blob))
-        pos = 0
-        for sector, count in BLOB_READS:
-            assert not any(image[sector * 512 : (sector + count) * 512]), f"sectors {sector}.. are not free"
-            image[sector * 512 : (sector + count) * 512] = padded[pos : pos + count * 512]
-            pos += count * 512
+        packed = blob + bytes(intro_bytes - len(blob)) + menu_blob
+        cylinders = -(-sectors // 22)
+        image += bytes(cylinders * 22 * 512)
+        image[EXTRA_SECTOR * 512 : EXTRA_SECTOR * 512 + len(packed)] = packed
+        if menu_entry:   # the menu program's image is raw on the disk: its first code jumps to the start-up ($39E50), which becomes the C entry
+            start = bytes.fromhex("2e7c000780002f3c0000240c4ef9")
+            at = image.find(start + (0x39E50).to_bytes(4, "big"))
+            assert at >= 0 and image.find(start, at + 1) < 0, "the menu image's entry code is not on the disk (once)"
+            image[at + len(start) : at + len(start) + 4] = menu_entry.to_bytes(4, "big")
         adf_out.write_bytes(bytes(image))
-        print(f"{adf_out}: disk 1 with the C blob ({len(blob)} bytes) in sectors {BLOB_READS}")
+        print(f"{adf_out}: disk 1 with {cylinders} extra cylinders: the intro ({len(blob)} bytes) and the menu ({len(menu_blob)} bytes) in sectors {EXTRA_SECTOR}..{EXTRA_SECTOR + sectors - 1}")
     return 0 if ok else 1
 
 

@@ -205,6 +205,13 @@ from it are checked in their own scenario.  To use the menu in the emulator the 
   interface and run it on a stack of its own): the RAM is the same as the original's at that point except for the
   interrupt vectors (C's handlers), the restart address, frame counters and a few hundred bytes of the sound state and the
   stack, which depend on the timing.
+- The disk of the C build now runs the C menu: the C is on three extra cylinders (80 to 82) of disk 1's image (the loader's hook
+  reads the intro and the menu from there and copies them to $80000 and $C0000; the loader's sector limit is raised for it),
+  and the menu image's jump to the start-up ($39E50, raw on the disk) goes to `menu_entry` ($000084 in the original, boot.c).
+  `menu_entry` does the start-up in C, puts a jump to `menu_start` over the original's menu start ($6388) and enters the original
+  at $240C, which loads and runs the copy protection's stub and ends at $6388: from there the menu is C (`menu_main`).  Begin
+  Quest, Continue and what follows the password screen go on in the original's code.  `host/menu_in_build.lua` runs that disk
+  and reports which C functions were entered; the cursor keys up and down move the selection (through the key table).
 - What the program turned out to be: the menu is the game's whole engine (memory, disk and file layer, input, blitter and
   copper helpers) with the menu screens on top, so many leaves are library routines.
 
