@@ -256,14 +256,34 @@ void blitter_setup_copy(void)
     custom->bltdmod = 40;
 }
 
+/* orig $017814 and $01786E..: the whole screen (4 planes of 192 rows, 44 bytes a row) is copied by the blitter from `from` to `to` (the
+ * original waits for the blitter first, clears the first/last word masks and the modulos, and the copy is A to D with no shift) */
+static void copy_screen(const uint8_t *from, uint8_t *to)
+{
+    while (custom->dmaconr & DMAF_BLTBUSY)
+        ;
+    custom->bltafwm = 0xFFFF;
+    custom->bltalwm = 0xFFFF;
+    custom->bltapt = ADDR(from);
+    custom->bltdpt = ADDR(to);
+    custom->bltdmod = 0;
+    custom->bltamod = 0;
+    custom->bltcon1 = 0;
+    custom->bltcon0 = 2544;
+    custom->dmacon = 0x0400;
+    blit_start(0xC016);
+}
+
 /* orig $0178C6: the background of the level is drawn into the screen buffer from the map ptr_0b86 with blits of tiles: eleven
  * tiles of 32 pixels across and up to twelve rows of 16 lines, from the scroll position (blitter_setup_copy first; the steps
  * between the four blits of a tile are 64 and $2100).  Does nothing more when word_037c is above 2 (the original goes on at $17814 then) and the original goes on at $1785C
  * when it is 2 (neither ran) */
 void draw_background(void)
 {
-    if (word_037c > 2)
+    if (word_037c > 2) {   /* the background is kept: it is copied to the screen */
+        copy_screen(background, screen_buffer);
         return;
+    }
     x_offset = scroll_x & 31;
     blitter_setup_copy();
 
@@ -290,8 +310,11 @@ void draw_background(void)
         if (y >= 192)
             break;
     }
-    if (word_037c == 2)
-        return;   /* goes on at $1785C, which did not run */
+    if (word_037c != 2)
+        return;
+    background = memory_base + 256;   /* the screen drawn is kept to be copied the next times */
+    copy_screen(screen_buffer, background);
+    word_037c = 4;
 }
 
 /* orig $018072: the entry a2 is looked at (word_185bc gets its byte at +5, plus one); when the record a1 has its byte at +5

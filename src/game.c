@@ -223,7 +223,7 @@ void game_frame(void)
     if (flag_26e)
         fn_30c6();
     fn_178c6();
-    fn_1924c();
+    draw_records_19334();
     fn_194d0();
     fn_17cc0();
     fn_ba34();
@@ -278,7 +278,7 @@ void game_frame(void)
         unit3_update();
         unit4_update();
         next_table_entry();
-        fn_d314();
+        find_record_113c();
         fn_d6b8();
         step_d898();
     } else {
