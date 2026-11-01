@@ -390,7 +390,7 @@ def main() -> None:
         "; d2-d7/a2-a6 preserved) is added around them where C calls them.",
         "        xref " + ", ".join(f"_{n}" for n, _, _ in OBJECTS),
         "        xdef _blitter_wait, _blit_copy, _blit_copy_right, _screen_clear, _screen_restore, _plane5_set, _plane5_clear",
-        "        xdef _blit_image, _blit_image_wide, _delay, _startup_delay, _interrupts_on, _vbl_wait, _irq_level3, _music_init",
+        "        xdef _blit_image, _blit_image_wide, _delay, _startup_delay, _interrupts_on, _load_next_stage, _vbl_wait, _irq_level3, _music_init",
         "        section .text,code",
         "",
         '        include "gods_offsets.i"',
@@ -437,7 +437,11 @@ def main() -> None:
           "_startup_delay:", "        move.l #$f4240,d0", "startup_delay_loop:", "        subq.l #1,d0", "        bne.b startup_delay_loop", "        rts",
           "", "; void interrupts_on(void), the original's `move #$2000,sr` at orig $000C4A: until here the program runs with all",
           "; interrupts masked, so the vertical blank that came in the meantime is still pending and is taken at once",
-          "_interrupts_on:", "        move.w #$2000,sr", "        rts"]
+          "_interrupts_on:", "        move.w #$2000,sr", "        rts",
+          "", "; void load_next_stage(void), orig $000DC4: interrupts masked, then the loader that is still in memory (its entry at",
+          "; $0150, reached in the original through `jmp $88`, the nops and `jmp $150` at $A2) loads the next part of the game,",
+          "; which runs from $0084 as the first part did.  Does not return.",
+          "_load_next_stage:", "        move.w #$2700,sr", "        jmp ($150).l"]
 
     if os.environ.get("GODS_ASM_NO_MUSIC"):
         OUT.write_text("\n".join(a) + "\n")

@@ -29,7 +29,8 @@ import gods_offsets  # noqa: E402
 
 BUILD = G.ROOT / "build"
 OUT_ADF = G.ROOT / "local" / "gods-c-disk1.adf"
-TRAMPOLINE_SIZE = 12
+TRAMPOLINE_SIZE = 34
+STARTED_FLAG = 0x90010   # a word above the C's stack, outside the blob (the loader's hook copies the blob again)
 STACK_TOP = 0x90000       # the C's own stack, in the extra chip RAM above the code
 
 
@@ -109,7 +110,11 @@ def main() -> int:
     game_main = base + syms["game_main"]
     # the trampoline: interrupt mask 0, the original's stack, then the game
     tramp_src = BUILD / "trampoline.asm"
-    tramp_src.write_text(f"        org ${L.SLOW_BASE:x}\n        movea.l #${STACK_TOP:x},a7\n        jmp ${game_main:x}.l\n")
+    # The stage's last jump goes here every time it loads something.  The first time it is the C game; later it is the part
+    # of the game that the C asked the loader for (a fire button or the space bar), which the original runs from $0084.
+    tramp_src.write_text(f"        org ${L.SLOW_BASE:x}\n        tst.w ${STARTED_FLAG:x}.l\n        bne.b next_stage\n"
+                         f"        move.w #1,${STARTED_FLAG:x}.l\n        movea.l #${STACK_TOP:x},a7\n        jmp ${game_main:x}.l\n"
+                         f"next_stage:\n        jmp $84.l\n")
     r = subprocess.run(["nix", "develop", str(NATIVE), "--command", "sh", "-c",
                         f"vasmm68k_mot -Fbin -no-opt -quiet -o {BUILD}/trampoline.bin {tramp_src}"], capture_output=True, text=True)
     tramp = (BUILD / "trampoline.bin").read_bytes()
