@@ -25,18 +25,6 @@ void count_if_visible(int16_t x, int16_t y)
     onscreen_count++;
 }
 
-/* orig $006136: the first of the twenty records of 8 bytes ptr_0cce points at whose fourth word is not negative (the others are
- * free), or 0.  The original goes on with the record at $6186, which did not run */
-struct Slot8 *find_record_cce(void)
-{
-    struct Slot8 *record = (struct Slot8 *)ptr_0cce;
-
-    for (int i = 0; i < 20; i++, record++)
-        if (record->w[3] >= 0)
-            return record;
-    return 0;
-}
-
 /* orig $00D314: the first of the ten records of 12 bytes at $113C whose third word is not 0, or 0 (the original goes on at $D32A) */
 struct Slot12 *find_record_113c(void)
 {
@@ -236,7 +224,7 @@ void game_frame(void)
         update_falling_thing();
         game_step_4070();
     }
-    fn_15b04();
+    run_object_lists();
     fn_15cc4_c();
     step_836c();
     value_c6c = 3030;
@@ -290,7 +278,7 @@ void game_frame(void)
     fn_bc1a();
     move_records_3a0a6();
     draw_sprite_8472();
-    fn_6136();
+    update_bolts();
     step_1843e();
     fn_c374();
     update_score_display();

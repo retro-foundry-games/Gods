@@ -477,3 +477,4 @@ word_22e          0x0000022e  uint16_t %s   counts the spots remembered in point
 ptr_0bc6          0x00000bc6  const uint16_t *%s   its first word is how many spots end the level
 words_2a2         0x000002a2  int16_t %s[2]   a copy of the player position (player_x, player_y) made by remember_visited_spot
 points_b3a        0x00000b3a  int16_t %s[12]   the six spots (x, y; the latest first) remember_visited_spot keeps
+shot_offsets_6a4 0x000006a4 int16_t %s[9]    per-column counters handler 1 of the object lists (update_shots_sliding) adds to the shots of a column

@@ -68,7 +68,7 @@ void draw_player_sprite(uint16_t index)
  * second map there (the position, plus the scroll, plus 8, rounded to a tile) has the type 1 the shot ends: sound 3 is played, a record of
  * records_3a0a6 that is free (first word negative) gets the place of the hit (no speed, count 58) and the shot is cleared.  When the tile
  * is 109 on the first map and param_index is 3 or more the original calls $17B98, which did not run. */
-static void shot_hit_tile(const struct Object *object, struct Shot *shot, int16_t x, int16_t y)
+void shot_hit_tile(const struct Object *object, struct Shot *shot, int16_t x, int16_t y)
 {
     if (object->hits_tiles == 0) {
         mark_shot_cells(x, y, &shot->active);
@@ -143,8 +143,25 @@ static void update_shots(struct ShotList *list, struct Object *object)
         if (object->draw_type == 0) {
             shot_hit_tile(object, shot, x, y);
             glyph_draw(x, y, frame);
+        } else if (object->draw_type == 1) {
+            /* orig $0167E0: the cells under the shot are marked (3 by 3), a two word image is drawn */
+            mark_shot_cells_3x3(x, y, shot);
+            sprite_draw(x, y, frame);
+        } else if (object->draw_type == 2) {
+            /* orig $0167F2: a glyph and an image side by side, the image first (at y + 2) with a positive anim_mode */
+            mark_shot_cells_3x3(x, y - 16, shot);
+            if (object->anim_mode >= 0) {
+                sprite_draw(x, y + 2, frame);
+                glyph_draw(x + 32, y, frame + 1);
+            } else {
+                glyph_draw(x, y, frame);
+                sprite_draw(x + 16, y + 2, frame + 1);
+            }
         } else {
-            return;   /* goes on at $167E0, $167F2 or $16858 (draw types 1 to 3), which did not run */
+            /* orig $016858: the tile test, then a glyph while the shot lives */
+            shot_hit_tile(object, shot, x, y);
+            if (shot->active != 0)
+                glyph_draw(x, y, frame);
         }
     }
 
@@ -154,8 +171,12 @@ static void update_shots(struct ShotList *list, struct Object *object)
         frame++;
         if (frame > object->max_frame)
             frame = 0;
-        object->frame = frame;
+    } else {
+        frame--;   /* orig $01688E */
+        if (frame < 0)
+            frame = object->max_frame;
     }
+    object->frame = frame;
 }
 
 /* orig $015B36: the list of shots of an object (its first word is the number of the object, negative: none) is run by the routine the
@@ -172,10 +193,13 @@ void run_object_list(struct ShotList *list)
     case 0:
         update_shots(list, object);
         break;
+    case 1:
+        update_shots_sliding(list, object);
+        break;
     case 2:
         break;
     default:
-        break;   /* goes on at $168AE, $15DB2, $1645C or $1661E */
+        break;   /* goes on at $15DB2, $1645C or $1661E */
     }
 }
 

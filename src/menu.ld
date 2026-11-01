@@ -483,3 +483,4 @@ _word_22e = 0x22e;
 _ptr_0bc6 = 0xbc6;
 _words_2a2 = 0x2a2;
 _points_b3a = 0xb3a;
+_shot_offsets_6a4 = 0x6a4;

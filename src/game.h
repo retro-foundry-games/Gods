@@ -9,7 +9,6 @@
 void game_read_input(void);                      /* orig $00363A */
 void count_if_visible(int16_t x, int16_t y);     /* orig $004952 */
 
-struct Slot8 *find_record_cce(void);                       /* orig $006136 */
 struct Slot12 *find_record_113c(void);                     /* orig $00D314 */
 struct Slot8 *find_record_19334(void);                     /* orig $01924C */
 struct Slot8 *find_free_record_19b14(void);                /* orig $018EF6 */

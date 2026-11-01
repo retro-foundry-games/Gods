@@ -441,6 +441,7 @@ extern uint16_t word_22e;   /* $0022E  counts the spots remembered in points_b3a
 extern const uint16_t *ptr_0bc6;   /* $00BC6  its first word is how many spots end the level */
 extern int16_t words_2a2[2];   /* $002A2  a copy of the player position (player_x, player_y) made by remember_visited_spot */
 extern int16_t points_b3a[12];   /* $00B3A  the six spots (x, y; the latest first) remember_visited_spot keeps */
+extern int16_t shot_offsets_6a4[9];   /* $006A4  per-column counters handler 1 of the object lists (update_shots_sliding) adds to the shots of a column */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
 extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of the two copper lists' colour moves the message fades */
