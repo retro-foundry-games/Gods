@@ -219,11 +219,11 @@ void game_frame(void)
     fill_buffer();
     if (flag_26e)
         fn_30c6();
-    fn_178c6();
+    draw_background();
     draw_records_19334();
-    fn_194d0();
-    fn_17cc0();
-    fn_ba34();
+    do_nothing_b();
+    do_nothing_b();
+    do_nothing_b();
     if (flag_23a)
         callback_4e4();
     redraw_record_images();
@@ -259,16 +259,16 @@ void game_frame(void)
     scroll_y = scroll_y_a;
     step_16aee();
     if (flag_23a == 0) {
-        fn_db04();
+        do_nothing_b();
         step_190f2();
-        fn_e142();
-        fn_de54();
+        do_nothing_b();
+        do_nothing_b();
         update_records_12a0();
         game_nothing();
         mark_player_cells();
         update_records_1354();
         draw_sprites_721e();
-        fn_e3a2();
+        do_nothing_b();
         unit0_update();
         unit1_update();
         unit2_update();
@@ -276,20 +276,20 @@ void game_frame(void)
         unit4_update();
         next_table_entry();
         find_record_113c();
-        fn_d6b8();
+        do_nothing_b();
         step_d898();
     } else {
         callback_4e0();
-        fn_c58e();
-        fn_cb0e();
-        fn_c406();
+        do_nothing_b();
+        do_nothing_b();
+        do_nothing_b();
     }
-    fn_bc1a();
+    do_nothing_b();
     move_records_3a0a6();
     draw_sprite_8472();
     update_bolts();
     step_1843e();
-    fn_c374();
+    do_nothing_b();
     update_score_display();
     draw_score_panel();
     update_item_panel();

@@ -312,7 +312,7 @@ L00332:  rts                               ; $00332
 .copy:  move.l (a0)+,(a1)+
         dbra d0,.copy
         movea.l #$c0000,a1
-        move.w #12406,d0
+        move.w #12395,d0
 .copy2: move.l (a0)+,(a1)+
         dbra d0,.copy2
         movem.l (a7)+,d0-d7/a0-a6

@@ -225,7 +225,7 @@ static int16_t pickup_handler(int16_t index, int16_t counter)
         countdown_220 = 1000;    /* orig $010802 */
         return 1;
     case 18:
-        fn_10976();              /* orig $010976, game_e writes it */
+        hint_message();          /* orig $010976 */
         return 0;
     case 19:
         energy_pickup(2, 0);     /* orig $01086C */
