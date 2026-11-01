@@ -53,6 +53,8 @@ $(BUILD)/g_shims.o: $(HERE)/shims.c | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/g_display_sdl.o: $(HERE)/display_sdl.c | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
+$(BUILD)/g_draw.o: $(SRC)/draw.c | $(BUILD)
+	$(CC) $(GAME_CFLAGS) -fno-inline -MMD -MP -c $< -o $@   # (blit_masked_image is replaced by blitter.c: no copy of it inside)
 $(BUILD)/g_%.o: $(SRC)/%.c | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/h_%.o: $(HERE)/%.c $(BUILD)/guest_tables.h | $(BUILD)

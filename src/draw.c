@@ -38,7 +38,7 @@ static int rows_to_draw(int16_t y, const struct Image *img, int skip_bytes, cons
  * shift is not 0).  `extra_modulo` (what the original keeps in blit_extra_modulo): the bytes of a row of the image that are not
  * drawn (2 when only the first word of an image two words wide is, or when the second is, on the screen); negative: the
  * shifted image gets no extra word on the right */
-static void blit_masked_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows, uint16_t words,
+void blit_masked_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows, uint16_t words,
                               uint16_t extra_modulo, uint16_t first_mask, uint16_t last_mask)
 {
     uint16_t size = (uint16_t)((rows << 6) | words);

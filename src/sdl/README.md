@@ -36,7 +36,7 @@ writes the picture of every 100th frame as `/tmp/gods_NNNNN.ppm` and presses the
 | `gen_guest.py` | from `menu.symbols`: the variables as absolute symbols, stubs for the original's code (`fn_...`, `original_...`), the table list |
 | `guest.c` | the memory at the Amiga's addresses (the first 64 KiB at `0x01000000 +` : Linux does not map them), the chips' register pages, the menu image |
 | `files.c` | the disks (ADF): the directory in sector 22, `file_read`, the packer, the menu image (`bm.2` of disk 1, unpacked to `$84`) |
-| `blitter.c` | the blitter (copy and logic modes, shifts, masks, modulos) and `blit_image`/`blit_image_wide` of the asm |
+| `blitter.c` | the masked-image blit done directly (`blit_masked_image` of draw.c is replaced; no chip emulation) and `blit_image`/`blit_image_wide` of the asm |
 | `render.c` | the display: the copper lists' effect from the program's state (screen shown, scroll, colours, message line) |
 | `display_sdl.c` | `amiga/display.c` for the host (no copper scroll, a vertical blank wait that yields) |
 | `irq.c` | the vertical blank (50 Hz from the main thread), the keyboard, `random_word`, `sr_set` |
