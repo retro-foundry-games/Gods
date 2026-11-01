@@ -7,6 +7,8 @@
         xdef _blit_image, _blit_image_wide, _delay, _startup_delay, _interrupts_on, _vbl_wait, _irq_level3, _music_init
         section .text,code
 
+        include "gods_offsets.i"
+
 ; ---- blitter and screens ----
 ; void blitter_wait(void), orig $002F1E: wait until the blitter has finished (and give it priority while waiting)
 _blitter_wait:
@@ -134,7 +136,7 @@ _blit_image:
         move.w 54(sp),d1           ; pixel shift
         move.w 58(sp),d7           ; rows
         move.l #$ffff,d3
-        clr.w (_display+$46).l
+        clr.w (_display+DisplayData_blit_extra_modulo).l
         moveq #$1,d6
         moveq #$0,d2
         move.b d1,d2
@@ -149,13 +151,13 @@ _blit_image_wide:
         move.w 54(sp),d1           ; pixel shift
         move.w 58(sp),d7           ; rows
         move.l #$ffff,d3
-        clr.w (_display+$46).l
+        clr.w (_display+DisplayData_blit_extra_modulo).l
         move.w #$2,d6
         moveq #$0,d2
         move.b d1,d2
 blit_image_body:
         movea.l a1,a4
-        lea.l (_display+$48).l,a2
+        lea.l (_display+DisplayData_blit_mask).l,a2
         lea.l $dff000.l,a3
         moveq #$0,d4
         moveq #$6,d5
@@ -180,7 +182,7 @@ blit_image_body:
         move.w d5,$66(a3)
         move.w d5,$42(a3)
         move.w #$ffe,$40(a3)
-        add.w (_display+$46).l,d5
+        add.w (_display+DisplayData_blit_extra_modulo).l,d5
         bpl.b .mask_modulo_ready
         moveq #$0,d5
 .mask_modulo_ready:
@@ -197,7 +199,7 @@ blit_image_body:
         move.l a2,$4c(a3)
         move.l a2,$54(a3)
         move.w d4,$58(a3)
-        lea.l (_display+$48).l,a2
+        lea.l (_display+DisplayData_blit_mask).l,a2
 .wait_before_draw:
         btst.b #$6,$2(a3)
         bne.b .wait_before_draw
@@ -217,7 +219,7 @@ blit_image_body:
         addq.w #$1,d7
         move.w d7,$64(a3)
         move.w d7,$42(a3)
-        add.w (_display+$46).l,d7
+        add.w (_display+DisplayData_blit_extra_modulo).l,d7
         move.w d7,$62(a3)
 .draw_planes:
         move.w d1,$60(a3)
@@ -225,7 +227,7 @@ blit_image_body:
         movea.l a0,a4
         movem.l a0-a2/a4,$48(a3)
         move.w d4,$58(a3)
-        move.l (_display+$42).l,d7
+        move.l (_display+DisplayData_blit_plane_stride).l,d7
         adda.w d7,a0
         adda.w d7,a4
         adda.w d0,a1
@@ -272,7 +274,7 @@ blit_image_body:
         move.w d2,$42(a3)
         ori.w #$fca,d2
         move.w d2,$40(a3)
-        move.w (_display+$46).l,d3
+        move.w (_display+DisplayData_blit_extra_modulo).l,d3
         bpl.b .shifted_modulo
         moveq #$0,d3
         moveq #$0,d7
@@ -314,9 +316,9 @@ _interrupts_on:
 ; void vbl_wait(void), orig $002CDE: wait for the next vertical blank (the interrupt increments the frame count)
 _vbl_wait:
         move.l d0,-(a7)
-        move.w (_vblank+$4).l,d0
+        move.w (_vblank+Vblank_count).l,d0
 .loop:
-        cmp.w (_vblank+$4).l,d0
+        cmp.w (_vblank+Vblank_count).l,d0
         beq.w .loop
         move.l (a7)+,d0
         rts 
@@ -326,13 +328,13 @@ _irq_level3:
         move.w #$2700,sr
         btst.b #$5,$dff01f.l
         beq.w .irq_clear_request
-        tst.w (_flags).l
+        tst.w (_flags+Flags_music_enabled).l
         beq.b .irq_clear_request
         bsr.w music_step
 .irq_clear_request:
         move.w #$70,$dff09c.l
-        addq.l #$1,(_game_clock+$2).l
-        tst.w (_game_clock).l
+        addq.l #$1,(_game_clock+GameClock_ticks).l
+        tst.w (_game_clock+GameClock_input_seen).l
         bne.b .irq_to_housekeeping
         movem.l d0-d1,-(a7)   ; the original: movem.w
         move.b $bfe001.l,d0
@@ -342,8 +344,8 @@ _irq_level3:
         lsl.w #$1,d1
         and.w d0,d1
         bne.b .irq_buttons_done
-        move.w #$1,(_flags+$2).l
-        move.w #$1,(_game_clock).l
+        move.w #$1,(_flags+Flags_fire_pressed).l
+        move.w #$1,(_game_clock+GameClock_input_seen).l
 .irq_buttons_done:
         movem.l (a7)+,d0-d1   ; the original: movem.w
 .irq_to_housekeeping:
@@ -351,21 +353,21 @@ _irq_level3:
 irq_housekeeping:
         movem.l d0-d7/a0-a6,-(a7)
         lea.l $dff000.l,a6
-        tst.w (_vblank).l
+        tst.w (_vblank+Vblank_palette_dirty).l
         beq.w .irq_count_frames
-        clr.w (_vblank).l
-        lea.l (_display+$2).l,a0
+        clr.w (_vblank+Vblank_palette_dirty).l
+        lea.l (_display+DisplayData_palette_colour).l,a0
         lea.l $dff180.l,a1
         movem.l (a0),d0-d7
         movem.l d0-d7,(a1)
         movem.l $20(a0),d0-d7
         movem.l d0-d7,$20(a1)
 .irq_count_frames:
-        cmpi.w #$7fff,(_vblank+$2).l
+        cmpi.w #$7fff,(_vblank+Vblank_saturating).l
         beq.w .irq_count_vblanks
-        addq.w #$1,(_vblank+$2).l
+        addq.w #$1,(_vblank+Vblank_saturating).l
 .irq_count_vblanks:
-        addq.w #$1,(_vblank+$4).l
+        addq.w #$1,(_vblank+Vblank_count).l
         movem.l (a7)+,d0-d7/a0-a6
         rte 
 
@@ -386,7 +388,7 @@ _music_init:
         bgt.b .find_last_pattern
         dbra d0,.scan_order_table
         addq.b #$1,d2
-        lea.l ($2854).w,a1
+        lea.l (Addr_sample_start).w,a1
         asl.l #$8,d2
         asl.l #$2,d2
         addi.l #$43c,d2
@@ -402,14 +404,14 @@ _music_init:
         adda.l d1,a2
         adda.l #$1e,a0
         dbra d0,.locate_samples
-        move.b #$6,(_music).l
+        move.b #$6,(_music+MusicState_speed).l
         clr.w $dff0a8.l
         clr.w $dff0b8.l
         clr.w $dff0c8.l
         clr.w $dff0d8.l
-        clr.b (_music+$1).l
-        clr.b (_music+$4).l
-        clr.w (_music+$2).l
+        clr.b (_music+MusicState_order).l
+        clr.b (_music+MusicState_tick).l
+        clr.w (_music+MusicState_row).l
         movem.l (sp)+,d2-d7/a2-a6
         rts
 music_stop:
@@ -425,29 +427,29 @@ music_stop:
 music_step:
         movem.l d0-d4/a0-a3/a5-a6,-(a7)
         lea.l (_module).l,a0
-        addq.b #$1,(_music+$4).l
-        move.b (_music+$4).l,d0
-        cmp.b (_music).l,d0
+        addq.b #$1,(_music+MusicState_tick).l
+        move.b (_music+MusicState_tick).l,d0
+        cmp.b (_music+MusicState_speed).l,d0
         blt.b .tick_effects
-        clr.b (_music+$4).l
+        clr.b (_music+MusicState_tick).l
         bra.w new_row
 .tick_effects:
-        lea.l ($28d0).w,a6
+        lea.l (Addr_channel).w,a6
         lea.l $dff0a0.l,a5
         bsr.w channel_tick
-        lea.l ($28ec).w,a6
+        lea.l (Addr_channel+Channel_size*1).w,a6
         lea.l $dff0b0.l,a5
         bsr.w channel_tick
-        lea.l ($2908).w,a6
+        lea.l (Addr_channel+Channel_size*2).w,a6
         lea.l $dff0c0.l,a5
         bsr.w channel_tick
-        lea.l ($2924).w,a6
+        lea.l (Addr_channel+Channel_size*3).w,a6
         lea.l $dff0d0.l,a5
         bsr.w channel_tick
         bra.w step_done
 arpeggio:
         moveq #$0,d0
-        move.b (_music+$4).l,d0
+        move.b (_music+MusicState_tick).l,d0
         divs.w #$3,d0
         swap d0
         cmpi.w #$0,d0
@@ -455,22 +457,22 @@ arpeggio:
         cmpi.w #$2,d0
         beq.b .arpeggio_low_nibble
         moveq #$0,d0
-        move.b $3(a6),d0
+        move.b Channel_cell+3(a6),d0
         lsr.b #$4,d0
         bra.b .arpeggio_offset
 .arpeggio_low_nibble:
         moveq #$0,d0
-        move.b $3(a6),d0
+        move.b Channel_cell+3(a6),d0
         andi.b #$f,d0
         bra.b .arpeggio_offset
 .arpeggio_base:
-        move.w $10(a6),d2
+        move.w Channel_period(a6),d2
         bra.b .arpeggio_set_period
 .arpeggio_offset:
         asl.w #$1,d0
         moveq #$0,d1
-        move.w $10(a6),d1
-        lea.l ($2800).w,a0
+        move.w Channel_period(a6),d1
+        lea.l (Addr_period_table).w,a0
         moveq #$24,d7
 .arpeggio_find_period:
         move.w (a0,d0.w),d2
@@ -480,7 +482,7 @@ arpeggio:
         dbra d7,.arpeggio_find_period
         rts 
 .arpeggio_set_period:
-        move.w d2,$6(a5)
+        move.w d2,AudioChannel_per(a5)
         rts 
 new_row:
         lea.l (_module).l,a0
@@ -491,30 +493,30 @@ new_row:
         adda.l #$43c,a0
         moveq #$0,d0
         move.l d0,d1
-        move.b (_music+$1).l,d0
+        move.b (_music+MusicState_order).l,d0
         move.b (a2,d0.w),d1
         asl.l #$8,d1
         asl.l #$2,d1
-        add.w (_music+$2).l,d1
-        clr.w (_music+$6).l
+        add.w (_music+MusicState_row).l,d1
+        clr.w (_music+MusicState_dma).l
         lea.l $dff0a0.l,a5
-        lea.l ($28d0).w,a6
+        lea.l (Addr_channel).w,a6
         bsr.b channel_row
         lea.l $dff0b0.l,a5
-        lea.l ($28ec).w,a6
+        lea.l (Addr_channel+Channel_size*1).w,a6
         bsr.b channel_row
         lea.l $dff0c0.l,a5
-        lea.l ($2908).w,a6
+        lea.l (Addr_channel+Channel_size*2).w,a6
         bsr.b channel_row
         lea.l $dff0d0.l,a5
-        lea.l ($2924).w,a6
+        lea.l (Addr_channel+Channel_size*3).w,a6
         bsr.b channel_row
         bra.w start_dma
 channel_row:
         move.l (a0,d1.l),(a6)
         addq.l #$4,d1
         moveq #$0,d2
-        move.b $2(a6),d2
+        move.b Channel_cell+2(a6),d2
         andi.b #$f0,d2
         lsr.b #$4,d2
         move.b (a6),d0
@@ -523,179 +525,179 @@ channel_row:
         tst.b d2
         beq.b .row_effect
         moveq #$0,d3
-        lea.l ($2854).w,a1
+        lea.l (Addr_sample_start).w,a1
         move.l d2,d4
         subq.l #$1,d2
         asl.l #$2,d2
         mulu.w #$1e,d4
-        move.l (a1,d2.l),$4(a6)
-        move.w (a3,d4.l),$8(a6)
-        move.w $2(a3,d4.l),$12(a6)
+        move.l (a1,d2.l),Channel_sample(a6)
+        move.w (a3,d4.l),Channel_length(a6)
+        move.w $2(a3,d4.l),Channel_volume(a6)
         move.w $4(a3,d4.l),d3
         tst.w d3
         beq.b .sample_no_repeat
-        move.l $4(a6),d2
+        move.l Channel_sample(a6),d2
         asl.w #$1,d3
         add.l d3,d2
-        move.l d2,$a(a6)
+        move.l d2,Channel_loop(a6)
         move.w $4(a3,d4.l),d0
         add.w $6(a3,d4.l),d0
-        move.w d0,$8(a6)
-        move.w $6(a3,d4.l),$e(a6)
-        move.w $12(a6),$8(a5)
+        move.w d0,Channel_length(a6)
+        move.w $6(a3,d4.l),Channel_loop_length(a6)
+        move.w Channel_volume(a6),AudioChannel_vol(a5)
         bra.b .row_effect
 .sample_no_repeat:
-        move.l $4(a6),d2
+        move.l Channel_sample(a6),d2
         add.l d3,d2
-        move.l d2,$a(a6)
-        move.w $6(a3,d4.l),$e(a6)
-        move.w $12(a6),$8(a5)
+        move.l d2,Channel_loop(a6)
+        move.w $6(a3,d4.l),Channel_loop_length(a6)
+        move.w Channel_volume(a6),AudioChannel_vol(a5)
 .row_effect:
         move.w (a6),d0
         andi.w #$fff,d0
         beq.w row_command
-        move.b $2(a6),d0
+        move.b Channel_cell+2(a6),d0
         andi.b #$f,d0
         cmpi.b #$3,d0
         bne.b .start_note
         bsr.w tone_portamento_target
         bra.w row_command
 .start_note:
-        move.w (a6),$10(a6)
-        andi.w #$fff,$10(a6)
-        move.w $14(a6),d0
+        move.w (a6),Channel_period(a6)
+        andi.w #$fff,Channel_period(a6)
+        move.w Channel_dma(a6),d0
         move.w d0,$dff096.l
-        clr.b $1b(a6)
-        move.l $4(a6),(a5)
-        move.w $8(a6),$4(a5)
-        move.w $10(a6),d0
+        clr.b Channel_vibrato_pos(a6)
+        move.l Channel_sample(a6),(a5)
+        move.w Channel_length(a6),AudioChannel_len(a5)
+        move.w Channel_period(a6),d0
         andi.w #$fff,d0
-        move.w d0,$6(a5)
-        move.w $14(a6),d0
-        or.w d0,(_music+$6).l
+        move.w d0,AudioChannel_per(a5)
+        move.w Channel_dma(a6),d0
+        or.w d0,(_music+MusicState_dma).l
         bra.w row_command
 start_dma:
         move.w #$12c,d0
 .start_dma_wait1:
         dbra d0,.start_dma_wait1
-        move.w (_music+$6).l,d0
+        move.w (_music+MusicState_dma).l,d0
         ori.w #$8000,d0
         move.w d0,$dff096.l
         move.w #$12c,d0
 .start_dma_wait2:
         dbra d0,.start_dma_wait2
         lea.l $dff000.l,a5
-        lea.l ($2924).w,a6
-        move.l $a(a6),$d0(a5)
-        move.w $e(a6),$d4(a5)
-        lea.l ($2908).w,a6
-        move.l $a(a6),$c0(a5)
-        move.w $e(a6),$c4(a5)
-        lea.l ($28ec).w,a6
-        move.l $a(a6),$b0(a5)
-        move.w $e(a6),$b4(a5)
-        lea.l ($28d0).w,a6
-        move.l $a(a6),$a0(a5)
-        move.w $e(a6),$a4(a5)
-        addi.w #$10,(_music+$2).l
-        cmpi.w #$400,(_music+$2).l
+        lea.l (Addr_channel+Channel_size*3).w,a6
+        move.l Channel_loop(a6),$d0(a5)
+        move.w Channel_loop_length(a6),$d4(a5)
+        lea.l (Addr_channel+Channel_size*2).w,a6
+        move.l Channel_loop(a6),$c0(a5)
+        move.w Channel_loop_length(a6),$c4(a5)
+        lea.l (Addr_channel+Channel_size*1).w,a6
+        move.l Channel_loop(a6),$b0(a5)
+        move.w Channel_loop_length(a6),$b4(a5)
+        lea.l (Addr_channel).w,a6
+        move.l Channel_loop(a6),$a0(a5)
+        move.w Channel_loop_length(a6),$a4(a5)
+        addi.w #$10,(_music+MusicState_row).l
+        cmpi.w #$400,(_music+MusicState_row).l
         bne.b step_done
 next_order:
-        clr.w (_music+$2).l
-        clr.b (_music+$5).l
-        addq.b #$1,(_music+$1).l
-        andi.b #$7f,(_music+$1).l
-        move.b (_music+$1).l,d1
-        cmp.b (_module+$3b6).l,d1
+        clr.w (_music+MusicState_row).l
+        clr.b (_music+MusicState_jump).l
+        addq.b #$1,(_music+MusicState_order).l
+        andi.b #$7f,(_music+MusicState_order).l
+        move.b (_music+MusicState_order).l,d1
+        cmp.b (_module+Module_song_length).l,d1
         bne.b step_done
-        clr.b (_music+$1).l
+        clr.b (_music+MusicState_order).l
 step_done:
-        tst.b (_music+$5).l
+        tst.b (_music+MusicState_jump).l
         bne.b next_order
         movem.l (a7)+,d0-d4/a0-a3/a5-a6
         rts 
 tone_portamento_target:
         move.w (a6),d2
         andi.w #$fff,d2
-        move.w d2,$18(a6)
-        move.w $10(a6),d0
-        clr.b $16(a6)
+        move.w d2,Channel_porta_target(a6)
+        move.w Channel_period(a6),d0
+        clr.b Channel_porta_down(a6)
         cmp.w d0,d2
         beq.b .portamento_target_reached
         bge.b portamento_done
-        move.b #$1,$16(a6)
+        move.b #$1,Channel_porta_down(a6)
         rts 
 .portamento_target_reached:
-        clr.w $18(a6)
+        clr.w Channel_porta_target(a6)
 portamento_done:
         rts 
 tone_portamento:
-        move.b $3(a6),d0
+        move.b Channel_cell+3(a6),d0
         beq.b .tone_portamento_step
-        move.b d0,$17(a6)
-        clr.b $3(a6)
+        move.b d0,Channel_porta_speed(a6)
+        clr.b Channel_cell+3(a6)
 .tone_portamento_step:
-        tst.w $18(a6)
+        tst.w Channel_porta_target(a6)
         beq.b portamento_done
         moveq #$0,d0
-        move.b $17(a6),d0
-        tst.b $16(a6)
+        move.b Channel_porta_speed(a6),d0
+        tst.b Channel_porta_down(a6)
         bne.b .tone_portamento_down
-        add.w d0,$10(a6)
-        move.w $18(a6),d0
-        cmp.w $10(a6),d0
+        add.w d0,Channel_period(a6)
+        move.w Channel_porta_target(a6),d0
+        cmp.w Channel_period(a6),d0
         bgt.b .portamento_set_period
-        move.w $18(a6),$10(a6)
-        clr.w $18(a6)
+        move.w Channel_porta_target(a6),Channel_period(a6)
+        clr.w Channel_porta_target(a6)
 .portamento_set_period:
-        move.w $10(a6),$6(a5)
+        move.w Channel_period(a6),AudioChannel_per(a5)
         rts 
 .tone_portamento_down:
-        sub.w d0,$10(a6)
-        move.w $18(a6),d0
-        cmp.w $10(a6),d0
+        sub.w d0,Channel_period(a6)
+        move.w Channel_porta_target(a6),d0
+        cmp.w Channel_period(a6),d0
         blt.b .portamento_set_period
-        move.w $18(a6),$10(a6)
-        clr.w $18(a6)
-        move.w $10(a6),$6(a5)
+        move.w Channel_porta_target(a6),Channel_period(a6)
+        clr.w Channel_porta_target(a6)
+        move.w Channel_period(a6),AudioChannel_per(a5)
         rts 
 vibrato:
-        move.b $3(a6),d0
+        move.b Channel_cell+3(a6),d0
         beq.b .vibrato_apply
-        move.b d0,$1a(a6)
+        move.b d0,Channel_vibrato(a6)
 .vibrato_apply:
-        move.b $1b(a6),d0
-        lea.l ($27e0).w,a4
+        move.b Channel_vibrato_pos(a6),d0
+        lea.l (Addr_vibrato_table).w,a4
         lsr.w #$2,d0
         andi.w #$1f,d0
         moveq #$0,d2
         move.b (a4,d0.w),d2
-        move.b $1a(a6),d0
+        move.b Channel_vibrato(a6),d0
         andi.w #$f,d0
         mulu.w d0,d2
         lsr.w #$6,d2
-        move.w $10(a6),d0
-        tst.b $1b(a6)
+        move.w Channel_period(a6),d0
+        tst.b Channel_vibrato_pos(a6)
         bmi.b .vibrato_subtract
         add.w d2,d0
         bra.b .vibrato_set_period
 .vibrato_subtract:
         sub.w d2,d0
 .vibrato_set_period:
-        move.w d0,$6(a5)
-        move.b $1a(a6),d0
+        move.w d0,AudioChannel_per(a5)
+        move.b Channel_vibrato(a6),d0
         lsr.w #$2,d0
         andi.w #$3c,d0
-        add.b d0,$1b(a6)
+        add.b d0,Channel_vibrato_pos(a6)
         rts 
 set_period:
-        move.w $10(a6),$6(a5)
+        move.w Channel_period(a6),AudioChannel_per(a5)
         rts 
 channel_tick:
-        move.w $2(a6),d0
+        move.w Channel_cell+2(a6),d0
         andi.w #$fff,d0
         beq.b set_period
-        move.b $2(a6),d0
+        move.b Channel_cell+2(a6),d0
         andi.b #$f,d0
         tst.b d0
         beq.w arpeggio
@@ -707,65 +709,65 @@ channel_tick:
         beq.w tone_portamento
         cmpi.b #$4,d0
         beq.w vibrato
-        move.w $10(a6),$6(a5)
+        move.w Channel_period(a6),AudioChannel_per(a5)
         cmpi.b #$a,d0
         beq.b .volume_slide
         rts 
 .volume_slide:
         moveq #$0,d0
-        move.b $3(a6),d0
+        move.b Channel_cell+3(a6),d0
         lsr.b #$4,d0
         tst.b d0
         beq.b .volume_slide_down
-        add.w d0,$12(a6)
-        cmpi.w #$40,$12(a6)
+        add.w d0,Channel_volume(a6)
+        cmpi.w #$40,Channel_volume(a6)
         bmi.b .volume_slide_write
-        move.w #$40,$12(a6)
+        move.w #$40,Channel_volume(a6)
 .volume_slide_write:
-        move.w $12(a6),$8(a5)
+        move.w Channel_volume(a6),AudioChannel_vol(a5)
         rts 
 .volume_slide_down:
         moveq #$0,d0
-        move.b $3(a6),d0
+        move.b Channel_cell+3(a6),d0
         andi.b #$f,d0
-        sub.w d0,$12(a6)
+        sub.w d0,Channel_volume(a6)
         bpl.b .volume_slide_down_write
-        clr.w $12(a6)
+        clr.w Channel_volume(a6)
 .volume_slide_down_write:
-        move.w $12(a6),$8(a5)
+        move.w Channel_volume(a6),AudioChannel_vol(a5)
         rts 
 .portamento_up:
         moveq #$0,d0
-        move.b $3(a6),d0
-        sub.w d0,$10(a6)
-        move.w $10(a6),d0
+        move.b Channel_cell+3(a6),d0
+        sub.w d0,Channel_period(a6)
+        move.w Channel_period(a6),d0
         andi.w #$fff,d0
         cmpi.w #$71,d0
         bpl.b .portamento_up_write
-        andi.w #$f000,$10(a6)
-        ori.w #$71,$10(a6)
+        andi.w #$f000,Channel_period(a6)
+        ori.w #$71,Channel_period(a6)
 .portamento_up_write:
-        move.w $10(a6),d0
+        move.w Channel_period(a6),d0
         andi.w #$fff,d0
-        move.w d0,$6(a5)
+        move.w d0,AudioChannel_per(a5)
         rts 
 .portamento_down:
         clr.w d0
-        move.b $3(a6),d0
-        add.w d0,$10(a6)
-        move.w $10(a6),d0
+        move.b Channel_cell+3(a6),d0
+        add.w d0,Channel_period(a6)
+        move.w Channel_period(a6),d0
         andi.w #$fff,d0
         cmpi.w #$358,d0
         bmi.b .portamento_down_write
-        andi.w #$f000,$10(a6)
-        ori.w #$358,$10(a6)
+        andi.w #$f000,Channel_period(a6)
+        ori.w #$358,Channel_period(a6)
 .portamento_down_write:
-        move.w $10(a6),d0
+        move.w Channel_period(a6),d0
         andi.w #$fff,d0
-        move.w d0,$6(a5)
+        move.w d0,AudioChannel_per(a5)
         rts 
 row_command:
-        move.b $2(a6),d0
+        move.b Channel_cell+2(a6),d0
         andi.b #$f,d0
         cmpi.b #$e,d0
         beq.b .command_extended
@@ -781,26 +783,26 @@ row_command:
 .command_extended:
         rts 
 .command_pattern_break:
-        not.b (_music+$5).l
+        not.b (_music+MusicState_jump).l
         rts 
 .command_position_jump:
-        move.b $3(a6),d0
+        move.b Channel_cell+3(a6),d0
         subq.b #$1,d0
-        move.b d0,(_music+$1).l
-        not.b (_music+$5).l
+        move.b d0,(_music+MusicState_order).l
+        not.b (_music+MusicState_jump).l
         rts 
 .command_volume:
-        cmpi.b #$40,$3(a6)
+        cmpi.b #$40,Channel_cell+3(a6)
         ble.b .command_volume_write
-        move.b #$40,$3(a6)
+        move.b #$40,Channel_cell+3(a6)
 .command_volume_write:
-        move.b $3(a6),$8(a5)
+        move.b Channel_cell+3(a6),AudioChannel_vol(a5)
         rts 
 .command_speed:
-        move.b $3(a6),d0
+        move.b Channel_cell+3(a6),d0
         andi.w #$1f,d0
         beq.b .command_done
-        clr.b (_music+$4).l
-        move.b d0,(_music).l
+        clr.b (_music+MusicState_tick).l
+        move.b d0,(_music+MusicState_speed).l
 .command_done:
         rts 

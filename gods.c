@@ -11,11 +11,6 @@
 
 /* ---- Amiga custom chip registers, base $DFF000 ---------------------------------------------------------------- */
 
-struct AudioChannel {
-    uint32_t lc;           /* sample address */
-    uint16_t len, per, vol, dat, pad[2];
-};
-
 struct Custom {
     uint16_t bltddat, dmaconr, vposr, vhposr, dskdatr, joy0dat, joy1dat, clxdat;      /* 000 */
     uint16_t adkconr, pot0dat, pot1dat, potgor, serdatr, dskbytr, intenar, intreqr;   /* 010 */
