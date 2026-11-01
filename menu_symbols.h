@@ -20,5 +20,22 @@ extern uint32_t pending_request;   /* $1E5A8  non-zero: something is waiting to 
 extern uint8_t joystick;   /* $1E5AC  bit 0 up, 1 down, 2 left, 3 right, 7 fire */
 extern uint32_t heap_base;   /* $0002C  where the program's memory starts (a vector slot the program uses for it) */
 extern struct MemLists mem_lists;   /* $1D41C  the allocator's two lists (alloc_init) */
+extern uint16_t param_index;   /* $001D4  which row of param_table select_params takes (1 to 4) */
+extern uint32_t param_a;   /* $0024C  set by select_params */
+extern uint32_t param_b;   /* $00250 */
+extern uint16_t param_c;   /* $00254 */
+extern uint16_t param_d;   /* $00256 */
+extern struct Entry8 *entry_list;   /* $00CAE  a list of address/size entries that assign_addresses fills in */
+extern const uint16_t *words_source;   /* $00CBE  words that narrow_words_to_bytes makes bytes of */
+extern uint8_t *bytes_dest;   /* $00CC2  ... and where the bytes go */
+extern uint8_t *buffer_cb6;   /* $00CB6  a buffer of 2400 bytes that load_buffer_2400 fills */
+extern uint16_t saved_slot_words[22];   /* $148E8  two words of each of the eleven slots, put away by save_slot_words */
+extern struct Rec80 object_slots[11];   /* $14988  eleven records of 80 bytes */
+extern struct Rec10 table_14cf8[132];   /* $14CF8  built by build_table_14cf8 */
+extern uint32_t marker_table[100];   /* $1A3FC  set to -1 by reset_marker_table */
+extern struct Rec6 record_table[200];   /* $1A58C  copied in by copy_record_table */
+extern struct Rec6 entry_table[50];   /* $3A25E  cleared by clear_entry_table */
+extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
+extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
 
 #endif

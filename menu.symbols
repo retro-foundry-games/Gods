@@ -14,3 +14,20 @@ pending_request   0x0001e5a8  uint32_t %s     non-zero: something is waiting to 
 joystick          0x0001e5ac  uint8_t %s      bit 0 up, 1 down, 2 left, 3 right, 7 fire
 heap_base         0x0000002c  uint32_t %s     where the program's memory starts (a vector slot the program uses for it)
 mem_lists         0x0001d41c  struct MemLists %s   the allocator's two lists (alloc_init)
+param_index       0x000001d4  uint16_t %s     which row of param_table select_params takes (1 to 4)
+param_a           0x0000024c  uint32_t %s     set by select_params
+param_b           0x00000250  uint32_t %s
+param_c           0x00000254  uint16_t %s
+param_d           0x00000256  uint16_t %s
+entry_list        0x00000cae  struct Entry8 *%s   a list of address/size entries that assign_addresses fills in
+words_source      0x00000cbe  const uint16_t *%s   words that narrow_words_to_bytes makes bytes of
+bytes_dest        0x00000cc2  uint8_t *%s     ... and where the bytes go
+buffer_cb6        0x00000cb6  uint8_t *%s     a buffer of 2400 bytes that load_buffer_2400 fills
+saved_slot_words  0x000148e8  uint16_t %s[22]   two words of each of the eleven slots, put away by save_slot_words
+object_slots      0x00014988  struct Rec80 %s[11]   eleven records of 80 bytes
+table_14cf8       0x00014cf8  struct Rec10 %s[132]   built by build_table_14cf8
+marker_table      0x0001a3fc  uint32_t %s[100]   set to -1 by reset_marker_table
+record_table      0x0001a58c  struct Rec6 %s[200]   copied in by copy_record_table
+entry_table       0x0003a25e  struct Rec6 %s[50]   cleared by clear_entry_table
+table param_table  0x000029da uint16_t 24   four rows of 12 bytes (two longs, two words) that select_params takes
+table offsets_4cba 0x00004cba uint8_t 132   signed bytes that build_table_14cf8 puts in the table

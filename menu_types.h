@@ -13,4 +13,19 @@ struct MemLists {
     uint32_t end;       /* 2 KB after the second */
 };
 
+/* records of the tables the program keeps: their size is what the loops step by */
+struct Rec6 { uint16_t w[3]; };
+struct Rec10 { uint16_t w[5]; };
+struct Rec80 {
+    uint8_t before[12];
+    uint16_t value_c;      /* +$0C */
+    uint8_t between[16];
+    uint16_t value_1e;     /* +$1E */
+    uint8_t after[48];
+};
+struct Entry8 {
+    uint32_t address;      /* the address the entry's data gets (negative: the list ends here) */
+    uint32_t size;
+};
+
 #endif
