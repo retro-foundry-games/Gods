@@ -12,12 +12,12 @@ extern uint16_t mouse_x;   /* $1E4FC  pointer position, 0 to $200 (moved by inpu
 extern uint16_t mouse_y;   /* $1E4FE  pointer position, 0 to $C7 */
 extern uint16_t mouse_x_copy;   /* $1E500 */
 extern uint16_t mouse_y_copy;   /* $1E502 */
-extern uint8_t button_bits[2];   /* $1E504  bit 0: a button down (either), bit 1: the second; cleared at the start of every poll */
-extern uint16_t mouse_counter;   /* $1E506  JOY0DAT as last read: vertical counter in the high byte, horizontal in the low byte */
-extern uint16_t mouse_counter_old;   /* $1E508  the value before it */
-extern uint8_t button_presses;   /* $1E50A  bits set by input_poll (1 first button, 4 second or the pot lines), cleared by whoever reads them */
-extern uint32_t pending_request;   /* $1E5A8  non-zero: something is waiting to be taken (take_pending_request) */
-extern uint8_t joystick;   /* $1E5AC  bit 0 up, 1 down, 2 left, 3 right, 7 fire */
+extern volatile uint8_t button_bits[2];   /* $1E504  bit 0: a button down (either), bit 1: the second; cleared at the start of every poll */
+extern volatile uint16_t mouse_counter;   /* $1E506  JOY0DAT as last read: vertical counter in the high byte, horizontal in the low byte */
+extern volatile uint16_t mouse_counter_old;   /* $1E508  the value before it */
+extern volatile uint8_t button_presses;   /* $1E50A  bits set by input_poll (1 first button, 4 second or the pot lines), cleared by whoever reads them */
+extern volatile uint32_t pending_request;   /* $1E5A8  non-zero: something is waiting to be taken (take_pending_request) */
+extern volatile uint8_t joystick;   /* $1E5AC  bit 0 up, 1 down, 2 left, 3 right, 7 fire */
 extern uint32_t heap_base;   /* $0002C  where the program's memory starts (a vector slot the program uses for it) */
 extern struct MemLists mem_lists;   /* $1D41C  the allocator's two lists (alloc_init) */
 extern uint16_t param_index;   /* $001D4  which row of param_table select_params takes (1 to 4) */
@@ -50,8 +50,8 @@ extern uint8_t *screen_other;   /* $00E64  the other screen: the one that is sho
 extern uint16_t *copper_save;   /* $00E50  where copper_colors_save puts the colours of the copper list, and the fades take their target from */
 extern uint16_t palette_dirty;   /* $00E0E  non-zero: the vertical blank copies the shadow table to the colour registers */
 extern struct Rec6 buffer_state[2];   /* $00DE4  what is kept for each of the two screens; swapped when they are */
-extern uint16_t vbl_saturating;   /* $1D058  frames since the last flip, stops at $7FFF */
-extern uint16_t vbl_count;   /* $1D05A  frames, wraps */
+extern volatile uint16_t vbl_saturating;   /* $1D058  frames since the last flip, stops at $7FFF */
+extern volatile uint16_t vbl_count;   /* $1D05A  frames, wraps */
 extern uint16_t copper_colors[];   /* $04E3A  the part of the copper list that has the moves to COLOR01 (the colour of each band) */
 extern uint8_t copper_list_a[];   /* $04D8A  the copper list of one screen */
 extern uint8_t copper_list_b[];   /* $04DDE  ... and of the other */
@@ -65,8 +65,8 @@ extern uint16_t copper_a_scroll;   /* $04D90  the scroll word in the first coppe
 extern uint16_t copper_b_scroll;   /* $04DE4  ... and in the second */
 extern uint16_t scroll_value;   /* $00E12  what the frame tick puts in both once the copper list is set up */
 extern uint16_t sound_enabled;   /* $002F6  non-zero: the frame tick runs the sound */
-extern uint32_t tick_count;   /* $00CE2  frames the tick has run */
-extern uint16_t countdown_220;   /* $00220  counted down to 0 by the frame tick */
+extern volatile uint32_t tick_count;   /* $00CE2  frames the tick has run */
+extern volatile uint16_t countdown_220;   /* $00220  counted down to 0 by the frame tick */
 extern uint16_t tick_hold_38a;   /* $0038A  the frame tick does its message work only while these three are 0 */
 extern uint16_t tick_hold_296;   /* $00296 */
 extern uint16_t tick_hold_26c;   /* $0026C */

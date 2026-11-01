@@ -237,6 +237,7 @@ blit_image_body:
 ; tracks, the audio interrupt that feeds each voice its next sample.  Entries for C: audio_irq (the interrupt),
 ; sound_tick (once a frame), play_sound(id), random_word (orig $00633E).
         xdef _audio_irq, _sound_tick, _play_sound, _random_word
+        xdef last_random, voice_pointers, voice_stacks, tempo   ; the sound code's own state (the takeover test copies it)
 
 ; void play_sound(uint16_t id, uint16_t priority): the sound the id names is started on a free voice (orig $01FAF6)
 _play_sound:
@@ -658,7 +659,7 @@ start_voice:
         movea.l (a0,d0.w),a0
         move.l a0,$36(a4)
         move.l a0,$3a(a4)
-        move.l .voice_stacks(pc,d1.w),$18(a4)
+        move.l voice_stacks(pc,d1.w),$18(a4)
         movea.l #$3a38a,a0
         move.w (a0)+,$24(a4)
         move.w (a0)+,$26(a4)
@@ -675,7 +676,7 @@ start_voice:
         clr.w $2079c.l
         rts 
 
-.voice_stacks:
+voice_stacks:
         dc.l $2061c,$2069c,$2071c,$2079c
 
 run_sequencer:
