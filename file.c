@@ -12,7 +12,7 @@ void load_file(const char *name, void *dest)
             custom->color[0] = (uint16_t)tick_count;
 }
 
-/* orig $002702: load the packed file whose name is "c" and then `name`, and unpack it to `dest`.  The packed file is read to
+/* orig $002702 (and $002718, the part after the name is made): load the packed file whose name is "c" and then `name`, and unpack it to `dest`.  The packed file is read to
  * `dest` first, unpacked on to the screen buffer and copied back (at most 64 KB come back).  The name is put together in the buffer line_text points at */
 void load_unpacked(const char *name, void *dest)
 {
@@ -91,7 +91,7 @@ mismatch:
     }
 }
 
-/* orig $01EE3C (entered by orig $01ECA2): load the pictures of an asset set.  `keyword` names the set (asset_names); each
+/* orig $01ECA2 and $01EE3C: load the pictures of an asset set.  `keyword` names the set (asset_names); each
  * of its files is read as a picture (name + ext_picture, unpacked: the resolution word, 16 colours) and a table (name + ext_data):
  * a count and records of 10 bytes (width, height less one, ?, x, y) of sprites to cut out of the picture.  The colours go to
  * `palette`; the picture to the screen buffer; each sprite is made into four planes at `memory` and gets an entry in `table`.

@@ -160,6 +160,18 @@ done:
     copper_setup_done = 0;
 }
 
+/* orig $006388: the start of the menu program's main part: the screen the background image is read to, the sound on, and then
+ * the main menu */
+void menu_start(void)
+{
+    background = memory_base;
+    sound_enabled = 1;
+    menu_active = 1;
+    message_shown = 0;
+    leave_load_screen();
+    menu_main();
+}
+
 /* orig $0063A2: the main menu, from the start until a line is chosen: the three lines, the pointer moved by the joystick, and
  * after 750 frames without a move the top ten (then the menu again).  The first line (Begin Quest) and the third (Continue)
  * go on to the game, which is not in the menu's own part; the second is the password screen */

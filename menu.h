@@ -21,6 +21,7 @@
 #include "menu_symbols.h"
 #include "message.h"
 #include "file.h"
+#include "boot.h"
 #include "ui.h"
 #include "screen.h"
 

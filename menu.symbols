@@ -114,3 +114,63 @@ asset_table_end   0x00000d3a  struct AssetEntry *%s   ... and where its table of
 picture_buffer    0x00031fde  uint8_t %s[]      where a picture file is read to
 table asset_extensions 0x00000d2e uint8_t 11   the endings of a picture file name (.pi1) and of its table (.dat, 6 bytes on)
 table asset_names 0x0001ecec uint8_t 138   the names assets_load knows (each ended by 0, ended by $FF), and from byte 86 on a long for each: the address of its list of file names
+menu_active      0x00000278  uint16_t %s     set when the menu program's main part has started
+stack_top        0x00000e38  uint8_t *%s
+asset_memory    0x00000e40  uint8_t *%s
+ptr_0b5a          0x00000b5a  uint8_t *%s
+ptr_0b5e          0x00000b5e  uint8_t *%s
+ptr_03ac          0x000003ac  uint8_t *%s
+ptr_0b52          0x00000b52  uint8_t *%s
+ptr_0e4c          0x00000e4c  uint8_t *%s
+ptr_0cee          0x00000cee  uint8_t *%s
+ptr_0cc6          0x00000cc6  uint8_t *%s
+ptr_0b86          0x00000b86  uint8_t *%s
+ptr_0cc2          0x00000cc2  uint8_t *%s
+ptr_0cda          0x00000cda  uint8_t *%s
+ptr_0cfa         0x00000cfa  uint8_t *%s[5]   five pointers, 200 bytes apart (the first is set by memory_map_init)
+ptr_0cba          0x00000cba  uint8_t *%s
+ptr_0bce          0x00000bce  uint8_t *%s
+ptr_0cce          0x00000cce  uint8_t *%s
+ptr_0c9e          0x00000c9e  uint8_t *%s
+ptr_0bb2          0x00000bb2  uint8_t *%s
+ptr_0e44          0x00000e44  uint8_t *%s
+ptr_0e5c          0x00000e5c  uint8_t *%s
+ptr_0cb2          0x00000cb2  uint8_t *%s
+ptr_0cbe          0x00000cbe  uint8_t *%s
+ptr_0d0e          0x00000d0e  uint8_t *%s
+ptr_0ce6          0x00000ce6  uint8_t *%s
+ptr_0c9a          0x00000c9a  uint8_t *%s
+ptr_0cf2          0x00000cf2  uint8_t *%s
+restart_address   0x00000e48  uint8_t *%s
+program_end       0x0003a670  uint8_t %s[]      the end of the program as the loader reads it: the memory map begins here
+voice             0x0002034c  struct Voice %s[4]   the four voices of the sound system (the state of the sound system goes on after them)
+voice_buffers     0x0002061c  uint8_t %s[]      a buffer of 128 bytes for each voice
+sound_lock        0x0002079c  uint8_t %s        $FF while the sound system is being set up
+table_199ac      0x000199ac  uint8_t %s[]      records of 36 bytes whose first long is a pointer (these are 140 bytes apart)     records of 36 bytes whose first long is a pointer (set up at the start)
+data_1aa66        0x0001aa66  uint8_t %s[]
+data_1ad8a        0x0001ad8a  uint8_t %s[]
+data_1b17e        0x0001b17e  uint8_t %s[]
+data_1b7be        0x0001b7be  uint8_t %s[]
+data_1c302        0x0001c302  uint8_t %s[]
+loading_text      0x0001d3f4  uint8_t %s[]      "loading game please wait"
+palette_words     0x00000134  uint16_t %s[16]   the sixteen colours of the picture assets_load read last
+first_asset_name  0x000196d6  char %s[]         "always": the name of the first asset set
+key_modifiers     0x0001e69a  uint8_t %s[2]     the shift keys: non-zero while one is down
+table keymap      0x0001e5ae uint8_t 128   the character a raw key code gives (0 when none)
+data_1c5be        0x0001c5be  uint8_t %s[]
+ptr_0e58          0x00000e58  uint8_t *%s
+random_seed       0x0001d0aa  uint16_t %s       the seed of the program's random numbers (a word in the code)
+word_037c         0x0000037c  uint16_t %s
+word_5418         0x00005418  uint16_t %s
+word_0240         0x00000240  uint16_t %s
+word_01dc         0x000001dc  uint16_t %s
+word_0248         0x00000248  uint16_t %s
+asset_end_28ec    0x000028ec  uint8_t *%s       a copy of where assets_load ended
+asset_table_28f0  0x000028f0  uint8_t *%s       ... and of its table's end
+word_28ea         0x000028ea  uint16_t %s
+asset_end_0ca2    0x00000ca2  uint8_t *%s
+asset_table_0ca6  0x00000ca6  uint8_t *%s
+word_025c         0x0000025c  uint16_t %s
+word_0266         0x00000266  uint16_t %s
+word_0384         0x00000384  uint16_t %s
+flags_0ddd        0x00000ddd  uint8_t %s

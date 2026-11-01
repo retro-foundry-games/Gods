@@ -7,6 +7,7 @@
 void menu_screen_draw(void);       /* orig $0066CC */
 void top_ten_screen(void);         /* orig $0068DE */
 void password_screen(void);        /* orig $006B4C */
+void menu_start(void);            /* orig $006388 */
 void menu_main(void);              /* orig $0063A2 */
 
 #endif

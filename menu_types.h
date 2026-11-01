@@ -20,6 +20,25 @@ struct AssetEntry {
     uint8_t *planes;          /* where its four planes are */
 };
 
+/* a voice of the sound system (its object is 148 bytes; the fields the start-up sets are named, the rest belongs to the sequencer) */
+struct Voice {
+    uint16_t dma_on;          /* +0   the write to DMACON that starts the channel */
+    uint16_t dma_bit;
+    uint16_t int_on;          /* +4   ... and to INTENA that enables its interrupt */
+    uint16_t int_bit;
+    struct AudioChannel *channel;   /* +8 the channel's registers */
+    uint16_t pad_c;
+    uint16_t field_e;
+    uint8_t pad_10[8];
+    uint8_t *buffer;          /* +0x18 */
+    const uint8_t *sample_a;  /* +0x1c */
+    const uint8_t *sample_b;  /* +0x20 */
+    uint8_t pad_24[4];
+    uint16_t field_28;
+    uint8_t pad_2a[0x68];
+    uint16_t number;          /* +0x92 */
+};
+
 /* records of the tables the program keeps: their size is what the loops step by */
 struct Rec6 { uint16_t w[3]; };
 struct Rec10 { uint16_t w[5]; };

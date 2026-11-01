@@ -109,6 +109,65 @@ extern int16_t shift_count;   /* $0023E  bits left in shift_bits */
 extern uint8_t *asset_mem_end;   /* $00D3E  where assets_load stopped writing sprite data */
 extern struct AssetEntry *asset_table_end;   /* $00D3A  ... and where its table of entries ended */
 extern uint8_t picture_buffer[];   /* $31FDE  where a picture file is read to */
+extern uint16_t menu_active;   /* $00278  set when the menu program's main part has started */
+extern uint8_t *stack_top;   /* $00E38 */
+extern uint8_t *asset_memory;   /* $00E40 */
+extern uint8_t *ptr_0b5a;   /* $00B5A */
+extern uint8_t *ptr_0b5e;   /* $00B5E */
+extern uint8_t *ptr_03ac;   /* $003AC */
+extern uint8_t *ptr_0b52;   /* $00B52 */
+extern uint8_t *ptr_0e4c;   /* $00E4C */
+extern uint8_t *ptr_0cee;   /* $00CEE */
+extern uint8_t *ptr_0cc6;   /* $00CC6 */
+extern uint8_t *ptr_0b86;   /* $00B86 */
+extern uint8_t *ptr_0cc2;   /* $00CC2 */
+extern uint8_t *ptr_0cda;   /* $00CDA */
+extern uint8_t *ptr_0cfa[5];   /* $00CFA  five pointers, 200 bytes apart (the first is set by memory_map_init) */
+extern uint8_t *ptr_0cba;   /* $00CBA */
+extern uint8_t *ptr_0bce;   /* $00BCE */
+extern uint8_t *ptr_0cce;   /* $00CCE */
+extern uint8_t *ptr_0c9e;   /* $00C9E */
+extern uint8_t *ptr_0bb2;   /* $00BB2 */
+extern uint8_t *ptr_0e44;   /* $00E44 */
+extern uint8_t *ptr_0e5c;   /* $00E5C */
+extern uint8_t *ptr_0cb2;   /* $00CB2 */
+extern uint8_t *ptr_0cbe;   /* $00CBE */
+extern uint8_t *ptr_0d0e;   /* $00D0E */
+extern uint8_t *ptr_0ce6;   /* $00CE6 */
+extern uint8_t *ptr_0c9a;   /* $00C9A */
+extern uint8_t *ptr_0cf2;   /* $00CF2 */
+extern uint8_t *restart_address;   /* $00E48 */
+extern uint8_t program_end[];   /* $3A670  the end of the program as the loader reads it: the memory map begins here */
+extern struct Voice voice[4];   /* $2034C  the four voices of the sound system (the state of the sound system goes on after them) */
+extern uint8_t voice_buffers[];   /* $2061C  a buffer of 128 bytes for each voice */
+extern uint8_t sound_lock;   /* $2079C  $FF while the sound system is being set up */
+extern uint8_t table_199ac[];   /* $199AC  records of 36 bytes whose first long is a pointer (these are 140 bytes apart)     records of 36 bytes whose first long is a pointer (set up at the start) */
+extern uint8_t data_1aa66[];   /* $1AA66 */
+extern uint8_t data_1ad8a[];   /* $1AD8A */
+extern uint8_t data_1b17e[];   /* $1B17E */
+extern uint8_t data_1b7be[];   /* $1B7BE */
+extern uint8_t data_1c302[];   /* $1C302 */
+extern uint8_t loading_text[];   /* $1D3F4  "loading game please wait" */
+extern uint16_t palette_words[16];   /* $00134  the sixteen colours of the picture assets_load read last */
+extern char first_asset_name[];   /* $196D6  "always": the name of the first asset set */
+extern uint8_t key_modifiers[2];   /* $1E69A  the shift keys: non-zero while one is down */
+extern uint8_t data_1c5be[];   /* $1C5BE */
+extern uint8_t *ptr_0e58;   /* $00E58 */
+extern uint16_t random_seed;   /* $1D0AA  the seed of the program's random numbers (a word in the code) */
+extern uint16_t word_037c;   /* $0037C */
+extern uint16_t word_5418;   /* $05418 */
+extern uint16_t word_0240;   /* $00240 */
+extern uint16_t word_01dc;   /* $001DC */
+extern uint16_t word_0248;   /* $00248 */
+extern uint8_t *asset_end_28ec;   /* $028EC  a copy of where assets_load ended */
+extern uint8_t *asset_table_28f0;   /* $028F0  ... and of its table's end */
+extern uint16_t word_28ea;   /* $028EA */
+extern uint8_t *asset_end_0ca2;   /* $00CA2 */
+extern uint8_t *asset_table_0ca6;   /* $00CA6 */
+extern uint16_t word_025c;   /* $0025C */
+extern uint16_t word_0266;   /* $00266 */
+extern uint16_t word_0384;   /* $00384 */
+extern uint8_t flags_0ddd;   /* $00DDD */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
 extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of the two copper lists' colour moves the message fades */
@@ -120,5 +179,6 @@ extern const uint8_t key_table[40];   /* $06CE0  the keys of the grid in the ord
 extern const uint8_t tocache_name[12];   /* $196FE  "tocache.bin": the file with the directory of the disks (loaded at start) */
 extern const uint8_t asset_extensions[11];   /* $00D2E  the endings of a picture file name (.pi1) and of its table (.dat, 6 bytes on) */
 extern const uint8_t asset_names[138];   /* $1ECEC  the names assets_load knows (each ended by 0, ended by $FF), and from byte 86 on a long for each: the address of its list of file names */
+extern const uint8_t keymap[128];   /* $1E5AE  the character a raw key code gives (0 when none) */
 
 #endif
