@@ -80,7 +80,7 @@ return {
     { name = "draw_shutter",       orig = 0x0054c4, args = {}, blitter = true, scenario = "game" },
     { name = "game_step_5496",       orig = 0x005496, args = {}, scenario = "game" },
     { name = "game_step_73d2",       orig = 0x0073d2, args = {}, scenario = "game" },
-    { name = "game_step_5608",       orig = 0x005608, args = {}, scenario = "game" },
+    { name = "update_item_panel",       orig = 0x005608, args = {}, blitter = true, scenario = "game" },
     { name = "map_cell",             orig = 0x007e90, args = { "d0.w", "d1.w" }, ret = "a0", scenario = "game" },
     { name = "check_high_scores",    orig = 0x005af6, args = {}, scenario = "game" },
     { name = "score_add",            orig = 0x004718, args = { "d6" }, scenario = "game" },
@@ -89,5 +89,6 @@ return {
     { name = "update_falling_thing", orig = 0x007faa, args = {}, blitter = true, scenario = "game" },
     { name = "draw_energy_bar",      orig = 0x005d76, args = {}, blitter = true, scenario = "game" },
     { name = "walk_pace_x",          orig = 0x007ba8, args = { "a3", "a5", "d0.w", "d1.w" }, ret = "d0.w", scenario = "game" },
-    { name = "walk_pace_frame",      orig = 0x007ba8, args = { "a3", "a5", "d0.w", "d1.w" }, ret = "d2.w", scenario = "game" },
+    { name = "creature_step_717e",   orig = 0x00717e, args = { "a3", "a5" }, scenario = "game" },
+    { name = "walk_pace_frame",     orig = 0x007ba8, args = { "a3", "a5", "d0.w", "d1.w" }, ret = "d2.w", scenario = "game" },
 }
