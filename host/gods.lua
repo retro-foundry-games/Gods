@@ -31,20 +31,12 @@ ami.machine{
     save = "../local/save",
     content = script_args:match("rebuilt") and "../local/gods-c.m3u" or "../local/gods.m3u",
     roms = { { "kick34005.A500", 0xc4f0f55f } },
-    opt = (function()
-        local o = {}
-        if script_args:match("rebuilt") then o.puae_chipmem_size = 2 end   -- the C runs from chip RAM above 512 KB
-        if script_args:match("joy1") then o.puae_joyport_order = "2143" end   -- the arrow keys as the joystick need it in port 1
-        return next(o) and o or nil
-    end)(),   -- the C runs from chip RAM above 512 KB
-    joystick_keys = true,   -- the arrow keys and Ctrl are the joystick (port 1); the other keys, space too, stay the keyboard
+    opt = script_args:match("rebuilt") and { puae_chipmem_size = 2 } or nil,   -- the C runs from chip RAM above 512 KB
     peers = recorder and { recorder = recorder } or nil,
 }
 ami.boot()
 
 -- Script flags (--script-args "..."):
---   joy1                put the joystick in port 1 (puae_joyport_order=2143): the arrow keys (up, down, ...) and Ctrl (fire) move the
---                        menu's selection; savestates made without it need it left off
 --   load=NAME            restore snapshot NAME (a file in ../local/save) before running; frames below count from it
 --   snap=F[,F...]        save snapshot gods-F.state at frame F (relative to the start or the loaded snapshot)
 --   snapname=NAME        save the snapshots as NAME.state (with one frame in snap=) and quit afterwards
