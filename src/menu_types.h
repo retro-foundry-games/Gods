@@ -39,6 +39,12 @@ struct Voice {
     uint16_t number;          /* +0x92 */
 };
 
+/* a record of 8 bytes of the game's tables, a record of 12 bytes */
+struct Slot8 { int16_t w[4]; };
+struct Slot12 { int16_t w[6]; };
+/* an entry of a list of bytes to put back: where, and the value */
+struct __attribute__((packed)) SavedByte { uint8_t *address; uint16_t value; };
+
 /* records of the tables the program keeps: their size is what the loops step by */
 struct Rec6 { uint16_t w[3]; };
 struct Rec10 { uint16_t w[5]; };

@@ -157,7 +157,6 @@ extern uint16_t random_seed;   /* $1D0AA  the seed of the program's random numbe
 extern uint16_t word_037c;   /* $0037C */
 extern uint16_t word_5418;   /* $05418 */
 extern uint16_t word_0240;   /* $00240 */
-extern uint16_t word_01dc;   /* $001DC */
 extern uint16_t word_0248;   /* $00248 */
 extern uint8_t *asset_end_28ec;   /* $028EC  a copy of where assets_load ended */
 extern uint8_t *asset_table_28f0;   /* $028F0  ... and of its table's end */
@@ -174,6 +173,104 @@ extern void original_continue(void);   /* $06650  ... and Continue Game */
 extern void original_after_password(void);   /* $064C2  the original's code after the password screen */
 extern uint8_t menu_start_code[6];   /* $06388  the first instruction of the original's menu start: replaced by a jump to menu_start */
 extern uint8_t drives_present;   /* $1D48C  bit n set: drive n is there (the start finds them) */
+extern void fn_6002(void);   /* $06002 */
+extern void fn_30c6(void);   /* $030C6 */
+extern void fn_178c6(void);   /* $178C6 */
+extern void fn_1924c(void);   /* $1924C */
+extern void fn_194d0(void);   /* $194D0 */
+extern void fn_17cc0(void);   /* $17CC0 */
+extern void fn_ba34(void);   /* $0BA34 */
+extern void fn_17e9c(void);   /* $17E9C */
+extern void fn_3ea4(void);   /* $03EA4 */
+extern void fn_417c(void);   /* $0417C */
+extern void fn_7faa(void);   /* $07FAA */
+extern void fn_4070(void);   /* $04070 */
+extern void fn_15b04(void);   /* $15B04 */
+extern void fn_15cc4(void);   /* $15CC4 */
+extern void fn_836c(void);   /* $0836C */
+extern void fn_6ed0(void);   /* $06ED0 */
+extern void fn_73d2(void);   /* $073D2 */
+extern void fn_77e6(void);   /* $077E6 */
+extern void fn_7906(void);   /* $07906 */
+extern void fn_3f8e(void);   /* $03F8E */
+extern void fn_18d14(void);   /* $18D14 */
+extern void fn_33d4(void);   /* $033D4 */
+extern void fn_10368(void);   /* $10368 */
+extern void fn_9912(void);   /* $09912 */
+extern void fn_16aee(void);   /* $16AEE */
+extern void fn_db04(void);   /* $0DB04 */
+extern void fn_190f2(void);   /* $190F2 */
+extern void fn_e142(void);   /* $0E142 */
+extern void fn_de54(void);   /* $0DE54 */
+extern void fn_9ae6(void);   /* $09AE6 */
+extern void fn_3436(void);   /* $03436 */
+extern void fn_3c56(void);   /* $03C56 */
+extern void fn_8a54(void);   /* $08A54 */
+extern void fn_7292(void);   /* $07292 */
+extern void fn_e3a2(void);   /* $0E3A2 */
+extern void fn_e486(void);   /* $0E486 */
+extern void fn_e76c(void);   /* $0E76C */
+extern void fn_ea52(void);   /* $0EA52 */
+extern void fn_ed38(void);   /* $0ED38 */
+extern void fn_f01e(void);   /* $0F01E */
+extern void fn_d47e(void);   /* $0D47E */
+extern void fn_d314(void);   /* $0D314 */
+extern void fn_d6b8(void);   /* $0D6B8 */
+extern void fn_d898(void);   /* $0D898 */
+extern void fn_c58e(void);   /* $0C58E */
+extern void fn_cb0e(void);   /* $0CB0E */
+extern void fn_c406(void);   /* $0C406 */
+extern void fn_bc1a(void);   /* $0BC1A */
+extern void fn_3dfc(void);   /* $03DFC */
+extern void fn_8452(void);   /* $08452 */
+extern void fn_6136(void);   /* $06136 */
+extern void fn_1843e(void);   /* $1843E */
+extern void fn_c374(void);   /* $0C374 */
+extern void fn_5842(void);   /* $05842 */
+extern void fn_57fc(void);   /* $057FC */
+extern void fn_5608(void);   /* $05608 */
+extern void fn_54c4(void);   /* $054C4 */
+extern void fn_5e02(void);   /* $05E02 */
+extern void fn_5d76(void);   /* $05D76 */
+extern void fn_3806(void);   /* $03806 */
+extern void fn_12e08(void);   /* $12E08 */
+extern uint16_t frame_toggle;   /* $00196  flipped every frame of the game loop */
+extern uint16_t frame_phase;   /* $001E4  0, 1, 0, 1 ...: counts the frames of the loop in twos */
+extern int16_t timer_306;   /* $00306  counted down to 0 once a frame */
+extern int16_t demo_mode;   /* $0022A  0 the player plays; negative a demo is played back; positive the input is recorded */
+extern uint8_t game_stick;   /* $00226  the joystick byte of this frame (bit 0 up, 1 down, 2 left, 3 right) */
+extern int16_t fire_latch;   /* $00222  cleared while fire is up */
+extern uint16_t camera_x_old;   /* $00C98  the camera's column of the frame before */
+extern uint16_t camera_x;   /* $00C96  the camera's column */
+extern int16_t life_state;   /* $00216  0 or less: the player is not alive (the loop goes on elsewhere) */
+extern uint16_t flag_26e;   /* $0026E */
+extern uint16_t flag_23a;   /* $0023A */
+extern void (*callback_4e4)(void);   /* $004E4 */
+extern void (*callback_4e0)(void);   /* $004E0 */
+extern int16_t scroll_x;   /* $00358  the screen's position in the level */
+extern int16_t scroll_y;   /* $0035A */
+extern int16_t scroll_x_a;   /* $0029A  the scroll position kept while the loop runs */
+extern int16_t scroll_y_a;   /* $0029C */
+extern int16_t scroll_x_b;   /* $0029E */
+extern int16_t scroll_y_b;   /* $002A0 */
+extern int16_t flag_290;   /* $00290 */
+extern uint16_t flag_268;   /* $00268 */
+extern uint16_t flag_2b0;   /* $002B0 */
+extern uint16_t flag_230;   /* $00230 */
+extern uint16_t frame_wait;   /* $001DC  frames of a game frame, less one (the flip waits for more than this many) */
+extern uint16_t flag_258;   /* $00258 */
+extern uint16_t flag_1f0;   /* $001F0 */
+extern uint8_t flags_3b0;   /* $003B0 */
+extern int16_t flag_20e;   /* $0020E */
+extern uint32_t value_c6c;   /* $00C6C */
+extern uint8_t *game_record_ptr;   /* $00BD2  where the input of this frame is recorded when demo_mode is positive */
+extern uint16_t onscreen_count;   /* $002B8  how many things were counted as on the screen this frame */
+extern uint8_t game_buttons;   /* $00228  the button bits of this frame (bit 0 fire); the byte at $228 (the menu uses the word there) */
+extern struct Slot12 records_113c[10];   /* $0113C  ten records of 12 bytes (the second word is not 0 for one in use) */
+extern struct Slot8 records_19334[10];   /* $19334  ten records of 8 bytes (the second word is negative for one that is free) */
+extern struct Slot8 records_19b14[200];   /* $19B14  two hundred records of 8 bytes (the second word is negative for one that is free) */
+extern void (*dispatch_18be0[])(void);   /* $18BE0  the routines a record's kind (0, 1, ...) names */
+extern uint8_t message_slots[];   /* $12BE6  the first of the lines of text the messages are made of (88 bytes each) */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
 extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of the two copper lists' colour moves the message fades */

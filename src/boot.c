@@ -207,7 +207,7 @@ void menu_boot(void)
     word_0240 = 0;
     sound_enabled = 0;
     screen_prepared = 0;
-    word_01dc = 2;
+    frame_wait = 2;
     asset_flag = -1;
     word_0248 = 1;
     play_sound(0, 0);

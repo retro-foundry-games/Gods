@@ -27,3 +27,8 @@ input:  tst.b ($1e686).l          ; cursor up: key $4C
         bset #0,($1e50a).l
 .store: move.b d1,($1e5ac).l
         rts
+
+; And the keyboard interrupt ($01E2B8) took a key only when the serial flag was in the interrupt flags it read at its start
+; (`btst #3,d2` / `beq.w` at $01E2F4: the 4 bytes of the `beq.w` at $01E2F8 become two nops): the flag of a second key that came
+; while the handler of the first ran was cleared by the first handler's last read of the flags, so the second key was lost, and
+; with it a release (the key stayed down).

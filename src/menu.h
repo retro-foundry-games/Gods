@@ -22,6 +22,7 @@
 #include "message.h"
 #include "file.h"
 #include "boot.h"
+#include "game.h"
 #include "ui.h"
 #include "screen.h"
 

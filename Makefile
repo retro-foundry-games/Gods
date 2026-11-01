@@ -35,7 +35,7 @@ MENU_CFLAGS := $(COMMON) -O2 -ffunction-sections
 WARN := -Wall -Wextra
 
 # the menu program: one object for each module (the sources are split by what the code does, see src/menu.h)
-MENU_MODULES := menu disk alloc decrunch input screen draw display message ui file boot menu_data
+MENU_MODULES := menu disk alloc decrunch input screen draw display message ui file boot game menu_data
 MENU_OBJS := $(MENU_MODULES:%=$(BUILD)/menu_%.o) $(BUILD)/menu_amiga.o
 INTRO_OBJS := $(BUILD)/intro.o $(BUILD)/intro_amiga.o $(BUILD)/intro_data.o
 
