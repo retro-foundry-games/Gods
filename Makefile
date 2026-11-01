@@ -1,6 +1,6 @@
 # Gods (projects/gods/native): the C of the intro and of the menu program, built with m68k-amigaos-gcc.
 #
-#   make              both programs linked: build/intro.exe, build/menu.exe (with their maps and symbol lists)
+#   make              both programs linked: build/intro, build/menu (with their maps and symbol lists)
 #   make intro | menu one of them
 #   make menu-blob    the menu as a blob at $(MENU_BASE) for the checks against the original (build/menu.blob, menu_syms.lua)
 #   make adf          the disk whose game is the intro's C (build/..., local/gods-c-disk1.adf); needs the original disks in local/
@@ -41,8 +41,8 @@ INTRO_OBJS := $(BUILD)/intro.o $(BUILD)/intro_amiga.o $(BUILD)/intro_data.o
 
 .PHONY: all intro menu menu-blob adf regen clean
 all: intro menu
-intro: $(BUILD)/intro.exe
-menu: $(BUILD)/menu.exe
+intro: $(BUILD)/intro
+menu: $(BUILD)/menu
 
 $(BUILD):
 	mkdir -p $@
@@ -54,7 +54,7 @@ $(BUILD)/intro_data.o: $(SRC)/intro_data.c | $(BUILD)
 	$(CC) $(INTRO_CFLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/intro_amiga.o: $(AMIGA)/intro_amiga.asm $(AMIGA)/intro_offsets.i | $(BUILD)
 	$(AS) -Fhunk -no-opt -quiet -nowarn=62 -I$(AMIGA) -o $@ $<
-$(BUILD)/intro.exe: $(INTRO_OBJS) $(SRC)/intro.ld
+$(BUILD)/intro: $(INTRO_OBJS) $(SRC)/intro.ld
 	$(LD) -m amiga -T $(SRC)/intro.ld -Map $(BUILD)/intro.map -o $@ $(INTRO_OBJS)
 	$(NM) $@ > $(BUILD)/intro.sym
 
@@ -65,7 +65,7 @@ $(BUILD)/menu_%.o: $(SRC)/%.c | $(BUILD)
 	$(CC) $(MENU_CFLAGS) $(WARN) -MMD -MP -c $< -o $@
 $(BUILD)/menu_amiga.o: $(AMIGA)/menu_amiga.asm | $(BUILD)
 	$(AS) -Fhunk -no-opt -quiet -nowarn=62 -I$(AMIGA) -o $@ $<
-$(BUILD)/menu.exe: $(MENU_OBJS) $(SRC)/menu.ld
+$(BUILD)/menu: $(MENU_OBJS) $(SRC)/menu.ld
 	$(LD) -m amiga -T $(SRC)/menu.ld -Map $(BUILD)/menu.map -o $@ $(MENU_OBJS)
 	$(NM) $@ > $(BUILD)/menu.sym
 
@@ -83,7 +83,7 @@ regen:
 	$(PYTHON) ../scripts/gen_menu_amiga_asm.py
 
 clean:
-	rm -f $(BUILD)/*.o $(BUILD)/*.d $(BUILD)/intro.exe $(BUILD)/menu.exe $(BUILD)/intro.map $(BUILD)/menu.map $(BUILD)/intro.sym $(BUILD)/menu.sym
+	rm -f $(BUILD)/*.o $(BUILD)/*.d $(BUILD)/intro $(BUILD)/menu $(BUILD)/intro.map $(BUILD)/menu.map $(BUILD)/intro.sym $(BUILD)/menu.sym
 
 -include $(BUILD)/*.d
 endif
