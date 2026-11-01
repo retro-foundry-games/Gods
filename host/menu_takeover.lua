@@ -59,6 +59,17 @@ do
     end
 end
 local start = ami.frame()
+if MODE == "gameirq" then   -- the same, and the interrupts are C's too (the sound code starts with the original's state)
+    ami.write(syms.base, blob)
+    ami.write(syms.last_random, ami.read(0x1faca, 2))
+    ami.write(syms.voice_pointers, ami.read(0x1fe2e, 16))
+    ami.write(syms.voice_stacks, ami.read(0x1fefe, 16))
+    ami.write(syms.tempo, ami.read(0x2034a, 2))
+    ami.poke32(0x68, syms.keyboard_irq)
+    ami.poke32(0x6c, syms.vbl_irq)
+    ami.poke32(0x70, syms.audio_irq)
+    MODE = "game"
+end
 if MODE == "game" then   -- the game loop's body in C each frame (its routines the original's)
     local glue = read_file("native/build/takeover_glue.bin")
     local glue_at = load(read_file("native/build/takeover_glue.lua"))()

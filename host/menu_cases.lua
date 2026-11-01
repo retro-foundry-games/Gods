@@ -60,4 +60,10 @@ return {
     { name = "find_record_19334",    orig = 0x01924c, args = {}, scenario = "game" },
     { name = "find_free_record_19b14", orig = 0x018ef6, args = {}, scenario = "game" },
     { name = "next_message_slot",    orig = 0x012a80, args = {}, ret = "a6", scenario = "game" },
+    { name = "fill_buffer",          orig = 0x006002, args = {}, scenario = "game" },
+    { name = "activate_records",     orig = 0x003ea4, args = {}, scenario = "game" },
+    { name = "count_zones",          orig = 0x009912, args = {}, scenario = "game" },
+    { name = "draw_effects",         orig = 0x003f8e, args = {}, blitter = true, scenario = "game" },
+    { name = "update_energy_display",orig = 0x005e02, args = {}, blitter = true, scenario = "game" },
+    { name = "draw_item_row",        orig = 0x003806, args = {}, blitter = true, scenario = "game" },
 }
