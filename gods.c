@@ -176,18 +176,20 @@ HOT void plane5_set(void)
 {
     uint32_t *p = (uint32_t *)screen_front->plane[4];
     int i;
+    volatile uint32_t source = 0xffffffff;
+    uint32_t value = source;   /* in a register, as the original's D6: a constant would be stored with an immediate */
 
     for (i = 0; i < 200; i++) {   /* ten longs a time */
-        *p++ = 0xffffffff;
-        *p++ = 0xffffffff;
-        *p++ = 0xffffffff;
-        *p++ = 0xffffffff;
-        *p++ = 0xffffffff;
-        *p++ = 0xffffffff;
-        *p++ = 0xffffffff;
-        *p++ = 0xffffffff;
-        *p++ = 0xffffffff;
-        *p++ = 0xffffffff;
+        *p++ = value;
+        *p++ = value;
+        *p++ = value;
+        *p++ = value;
+        *p++ = value;
+        *p++ = value;
+        *p++ = value;
+        *p++ = value;
+        *p++ = value;
+        *p++ = value;
     }
 }
 
@@ -196,18 +198,20 @@ HOT void plane5_clear(void)
 {
     uint32_t *p = (uint32_t *)screen_front->plane[4];
     int i;
+    volatile uint32_t source = 0;
+    uint32_t value = source;   /* in a register, as the original's D6: a constant would be stored with clr.l, twice as slow */
 
     for (i = 0; i < 200; i++) {   /* ten longs a time */
-        *p++ = 0;
-        *p++ = 0;
-        *p++ = 0;
-        *p++ = 0;
-        *p++ = 0;
-        *p++ = 0;
-        *p++ = 0;
-        *p++ = 0;
-        *p++ = 0;
-        *p++ = 0;
+        *p++ = value;
+        *p++ = value;
+        *p++ = value;
+        *p++ = value;
+        *p++ = value;
+        *p++ = value;
+        *p++ = value;
+        *p++ = value;
+        *p++ = value;
+        *p++ = value;
     }
 }
 
@@ -473,12 +477,21 @@ HOT static void channel_tick(struct Channel *ch, volatile struct AudioChannel *h
     }
     }
 
-/* a short busy wait: a counted loop kept in a register, like the original's dbra loop (the optimizer would remove an
- * empty loop, and a volatile counter in memory would be several times slower) */
-static void __attribute__((optimize("O0"))) delay(register uint16_t count)
+/* A short busy wait.  The original loops 301 times round a lone `dbra` (10 cycles, about 3000 cycles in all).  This loop
+ * needs one instruction more per round, to keep the optimizer from removing it (18 cycles), so it goes round 167 times to
+ * wait as long. */
+#define DELAY_ROUNDS 167
+
+HOT __attribute__((noinline)) static void delay(void)
 {
-    while (count-- != 0)
-        ;
+    uint16_t count = DELAY_ROUNDS;
+    uint16_t acc = 0;
+    volatile uint16_t sink;
+
+    do {
+        acc ^= count;
+    } while (count-- != 0);
+    sink = acc;
 }
 
 /* orig $0022E6: advance the music by one tick (called by the interrupt) */
@@ -503,9 +516,9 @@ HOT void music_step(void)
         for (i = 0; i < 4; i++)
             offset = channel_row(&channel[i], &hw[i], patterns, offset);
     }
-    delay(0x12d);   /* let the channels stop before the new samples are started */
+    delay();   /* let the channels stop before the new samples are started */
     custom->dmacon = music.dma | DMAF_SETCLR;
-    delay(0x12d);
+    delay();
     for (i = 3; i >= 0; i--) {   /* the loops that follow the start of each sample */
         hw[i].lc = channel[i].loop;
         hw[i].len = channel[i].loop_length;
@@ -710,9 +723,9 @@ HOT __attribute__((interrupt)) void irq_level3(void)
 #define MINTERM_A_OR_B 0xfc          /* D = A | B */
 #define MINTERM_COOKIE_CUT 0xca      /* D = A ? B : C: B where the mask A is set, the background C elsewhere */
 
-HOT static void blitter_idle(void)
+HOT static void blitter_idle(volatile struct Custom *c)
 {
-    while (custom->dmaconr & DMAF_BLTBUSY)
+    while (c->dmaconr & DMAF_BLTBUSY)
         ;
 }
 
@@ -723,7 +736,7 @@ HOT static void blitter_idle(void)
  *
  * First the four planes are combined into a mask (a pixel is opaque if it is set in any plane), then each plane is
  * drawn through the mask over what is on the screen.  With draw_flag the fifth plane is drawn too, from blank_plane. */
-HOT static void blit_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows, uint16_t words)
+HOT __attribute__((noinline)) static void blit_image(volatile struct Custom *c, uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows, uint16_t words)
 {
     uint16_t size = (rows << 6) | words;
     uint16_t screen_modulo = 40 - words * 2;
@@ -734,46 +747,46 @@ HOT static void blit_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uin
     int p;
 
     display.blit.extra_modulo = 0;
-    custom->dmacon = DMAF_SETCLR | DMAF_BLITHOG;
-    blitter_idle();
-    custom->bltapt = ADDR(image);
+    c->dmacon = DMAF_SETCLR | DMAF_BLITHOG;
+    blitter_idle(c);
+    c->bltapt = ADDR(image);
     image += plane;
-    custom->bltbpt = ADDR(image);
+    c->bltbpt = ADDR(image);
     image += plane;
-    custom->bltcpt = ADDR(image);
+    c->bltcpt = ADDR(image);
     image += plane;
-    custom->bltdpt = ADDR(mask);
-    custom->bltafwm = 0xffff;
-    custom->bltalwm = 0xffff;
-    custom->bltdmod = 0;
-    custom->bltcon1 = 0;
-    custom->bltcon0 = BLTCON0_USEABCD | MINTERM_A_OR_B_OR_C;
-    custom->bltamod = 0;
-    custom->bltbmod = 0;
-    custom->bltcmod = 0;
-    custom->bltsize = size;                  /* mask = plane 0 | plane 1 | plane 2 */
-    blitter_idle();
-    custom->bltbmod = 0;
-    custom->bltcon0 = BLTCON0_USEABD | MINTERM_A_OR_B;
-    custom->bltapt = ADDR(image);            /* plane 3 */
-    custom->bltbpt = ADDR(mask);
-    custom->bltdpt = ADDR(mask);
-    custom->bltsize = size;                  /* mask |= plane 3 */
-    blitter_idle();
-    custom->bltafwm = 0xffff;
-    custom->bltalwm = 0;                     /* the extra word of a shifted image is not drawn */
+    c->bltdpt = ADDR(mask);
+    c->bltafwm = 0xffff;
+    c->bltalwm = 0xffff;
+    c->bltdmod = 0;
+    c->bltcon1 = 0;
+    c->bltcon0 = BLTCON0_USEABCD | MINTERM_A_OR_B_OR_C;
+    c->bltamod = 0;
+    c->bltbmod = 0;
+    c->bltcmod = 0;
+    c->bltsize = size;                  /* mask = plane 0 | plane 1 | plane 2 */
+    blitter_idle(c);
+    c->bltbmod = 0;
+    c->bltcon0 = BLTCON0_USEABD | MINTERM_A_OR_B;
+    c->bltapt = ADDR(image);            /* plane 3 */
+    c->bltbpt = ADDR(mask);
+    c->bltdpt = ADDR(mask);
+    c->bltsize = size;                  /* mask |= plane 3 */
+    blitter_idle(c);
+    c->bltafwm = 0xffff;
+    c->bltalwm = 0;                     /* the extra word of a shifted image is not drawn */
     if (shift == 0) {
-        custom->bltcon0 = BLTCON0_USEABCD | MINTERM_COOKIE_CUT;
-        custom->bltalwm = 0xffff;
+        c->bltcon0 = BLTCON0_USEABCD | MINTERM_COOKIE_CUT;
+        c->bltalwm = 0xffff;
         modulo_a = 0;
-        custom->bltcon1 = 0;
+        c->bltcon1 = 0;
         modulo_b = display.blit.extra_modulo;
     } else {
         int16_t extra;
 
-        blitter_idle();
-        custom->bltcon1 = shift << 12;
-        custom->bltcon0 = (shift << 12) | BLTCON0_USEABCD | MINTERM_COOKIE_CUT;
+        blitter_idle(c);
+        c->bltcon1 = shift << 12;
+        c->bltcon0 = (shift << 12) | BLTCON0_USEABCD | MINTERM_COOKIE_CUT;
         extra = (int16_t)display.blit.extra_modulo;
         if (extra >= 0) {
             screen_modulo -= 2;
@@ -785,22 +798,22 @@ HOT static void blit_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uin
         }
         modulo_b = modulo_a + extra;
     }
-    custom->bltamod = modulo_a;
-    custom->bltbmod = modulo_b;
-    custom->bltcmod = screen_modulo;
-    custom->bltdmod = screen_modulo;
+    c->bltamod = modulo_a;
+    c->bltbmod = modulo_b;
+    c->bltcmod = screen_modulo;
+    c->bltdmod = screen_modulo;
     for (p = 0; p < 4 + (draw_flag != 0); p++) {
         const uint8_t *source = p == 4 ? (const uint8_t *)blank_plane : src + (uint32_t)p * plane;
 
         if (p != 0)
-            blitter_idle();
-        custom->bltcpt = ADDR(screen);
-        custom->bltbpt = ADDR(source);
-        custom->bltapt = ADDR(mask);
-        custom->bltdpt = ADDR(screen);
+            blitter_idle(c);
+        c->bltcpt = ADDR(screen);
+        c->bltbpt = ADDR(source);
+        c->bltapt = ADDR(mask);
+        c->bltdpt = ADDR(screen);
         if (p == 3 + (draw_flag != 0))
-            custom->dmacon = DMAF_BLITHOG;   /* release the blitter priority as the last plane starts */
-        custom->bltsize = size;
+            c->dmacon = DMAF_BLITHOG;   /* release the blitter priority as the last plane starts, as the original */
+        c->bltsize = size;
         screen += display.blit.plane_stride;
     }
 }
@@ -810,28 +823,35 @@ HOT static void blit_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uin
 HOT void glyph_draw(uint16_t x, uint16_t y, uint16_t index)
 {
     const struct Image *img = &graphics.images.image[index];
-    uint8_t *dst = (uint8_t *)screen_front + ((int16_t)(x & 0xfff0) >> 3) + (int16_t)((uint32_t)y * 40);
-    const uint16_t *data = img->data;
     int16_t last = img->height;     /* the last row */
+    const uint16_t *data;
+    uint8_t *dst;
     uint16_t plane;
 
     if (flags.fire_pressed != 0)
         game_start();   /* not executed in the recording */
+    /* clip first: most calls of a scrolling line are above or below the screen and need nothing else */
     if ((int16_t)y < 0) {
         int16_t skip = -(int16_t)y;
 
         last -= skip;
         if (last < 0)
             return;
-        data += skip;           /* two bytes a row */
-        dst += skip * 40;
-    } else if (y - (199 - last) > 0) {
-        last -= y - (199 - last);
-        if (last < 0)
-            return;
+        data = img->data + skip;   /* two bytes a row */
+        dst = (uint8_t *)screen_front + ((int16_t)(x & 0xfff0) >> 3) + (int16_t)((uint32_t)y * 40) + skip * 40;
+    } else {
+        int16_t over = y - (199 - last);
+
+        if (over > 0) {
+            last -= over;
+            if (last < 0)
+                return;
+        }
+        data = img->data;
+        dst = (uint8_t *)screen_front + ((int16_t)(x & 0xfff0) >> 3) + (int16_t)((uint32_t)y * 40);
     }
     plane = glyph_plane_size != 0 ? glyph_plane_size : (img->height + 1) * 2;
-    blit_image(dst, (const uint8_t *)data, plane, x & 0xf, last + 1, 1);
+    blit_image(custom, dst, (const uint8_t *)data, plane, x & 0xf, last + 1, 1);
 }
 
 /* orig $003950: the same for an image two words wide.  The original's clipping at the top looks unfinished: it moves
@@ -839,9 +859,8 @@ HOT void glyph_draw(uint16_t x, uint16_t y, uint16_t index)
 HOT void sprite_draw(uint16_t x, uint16_t y, uint16_t index)
 {
     const struct Image *img = &graphics.images.image[index];
-    uint8_t *dst = (uint8_t *)screen_front + ((int16_t)(x & 0xfff0) >> 3) + (int16_t)((uint32_t)y * 40);
-    const uint16_t *data = img->data;
     int16_t last = img->height;
+    uint8_t *dst;
 
     if (flags.fire_pressed != 0)
         game_start();   /* not executed in the recording */
@@ -851,13 +870,18 @@ HOT void sprite_draw(uint16_t x, uint16_t y, uint16_t index)
         last -= skip;
         if (last < 0)
             return;
-        dst += skip;
-    } else if (y - (199 - last) > 0) {
-        last -= y - (199 - last);
-        if (last < 0)
-            return;
+        dst = (uint8_t *)screen_front + ((int16_t)(x & 0xfff0) >> 3) + (int16_t)((uint32_t)y * 40) + skip;
+    } else {
+        int16_t over = y - (199 - last);
+
+        if (over > 0) {
+            last -= over;
+            if (last < 0)
+                return;
+        }
+        dst = (uint8_t *)screen_front + ((int16_t)(x & 0xfff0) >> 3) + (int16_t)((uint32_t)y * 40);
     }
-    blit_image(dst, (const uint8_t *)data, (img->height + 1) * 4, x & 0xf, last + 1, 2);
+    blit_image(custom, dst, (const uint8_t *)img->data, (img->height + 1) * 4, x & 0xf, last + 1, 2);
 }
 
 /* orig $002D4C: cut the images out of the glyph sheet.  `sheet` is the sheet's pixels, four planes interleaved word by
