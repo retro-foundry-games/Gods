@@ -32,7 +32,7 @@ def decompiled() -> dict[int, str]:
     """address -> function name, from the `orig $ADDR` comment that precedes each function of the menu's C."""
     out: dict[int, str] = {}
     for m in MENU_C:
-        text = (SRC / f"{m}.c").read_text()
+        text = (SRC / f"{m}.c" if (SRC / f"{m}.c").exists() else SRC / "amiga" / f"{m}.c").read_text()   # (display.c is Amiga only: amiga/)
         for c in re.finditer(r"/\* orig \$([0-9A-Fa-f]+)[^\n]*(?:\n \*[^\n]*)*\*/\n(?:static )?[\w\s\*]*?\b(\w+)\([^)]*\)\n\{", text):
             out[int(c.group(1), 16)] = c.group(2)
             for extra in re.findall(r"\$([0-9A-Fa-f]{4,6})", c.group(0).split("\n")[0])[1:]:   # `orig $A, $B and $C`: the same function at more addresses
