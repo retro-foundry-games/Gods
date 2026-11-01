@@ -23,6 +23,8 @@ for _m in "right right down fire left up fire down down right fire up fire left 
 SCENARIOS["menu"] = (STATE, 1400, JOY)
 SCENARIOS["boot"] = (None, 9000, "")   # from a cold start: the original loads the menu (cases with scenario = "boot")
 SCENARIOS["idle"] = (STATE, 2600, "")   # nothing pressed: the menu, then the top ten (cases with scenario = "idle")
+# the game: level 1 played by a human (captures/input/level1-run1.txt, recorded with gods.lua inputlog=) from the 1 MB snapshot of its start
+SCENARIOS["game"] = ("gods-level1-1m.state", 6000, "", "kbd=1 replay=captures/input/level1-run1.txt")
 SCENARIOS["begin"] = (STATE, 700, "20:fire,30:none")   # Begin Quest chosen at once: the program starts the game (cases with scenario = "begin")
 
 
@@ -34,11 +36,11 @@ def scenario_of(name: str) -> str:
 def calls(name: str) -> int:
     """How many times the original calls it in the run, from a first oracle run with no comparisons (samples=0)."""
     scenario = scenario_of(name)
-    state, until, joy = SCENARIOS[scenario]
+    state, until, joy, extra = (SCENARIOS[scenario] + ('',))[:4]
     out = PROJECT / "native" / "build" / f"menu_oracle_calls_{scenario}.txt"
     if not out.exists():
         subprocess.run([str(HOST), str(PROJECT / "host" / "menu_oracle.lua"), "--headless", "--script-args",
-                        f"{'state=' + state if state else ''} until={until} joy={joy} samples=0 out={out}"], capture_output=True)
+                        f"{'state=' + state if state else ''} until={until} joy={joy} {extra} samples=0 out={out}"], capture_output=True)
     m = re.search(rf"^{name}\s+calls\s+(\d+)", out.read_text(), re.M)
     return int(m.group(1)) if m else 0
 
@@ -49,12 +51,12 @@ def main() -> int:
     bad = 0
     for name in names:
         n = calls(name)
-        state, until, joy = SCENARIOS[scenario_of(name)]
+        state, until, joy, extra = (SCENARIOS[scenario_of(name)] + ('',))[:4]
         stride = max(1, n // SAMPLES)
         out = PROJECT / "native" / "build" / f"menu_oracle_{name}.txt"
         out.unlink(missing_ok=True)
         run = subprocess.run([str(HOST), str(PROJECT / "host" / "menu_oracle.lua"), "--headless", "--script-args",
-                        f"{'state=' + state if state else ''} until={until} joy={joy} only={name} samples={SAMPLES} stride={stride} out={out}"], capture_output=True)
+                        f"{'state=' + state if state else ''} until={until} joy={joy} {extra} only={name} samples={SAMPLES} stride={stride} out={out}"], capture_output=True)
         if not out.exists():
             print(f"{name}: the run wrote no result\n" + (run.stdout + run.stderr).decode()[-600:])
             bad += 1

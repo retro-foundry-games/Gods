@@ -53,4 +53,11 @@ return {
     { name = "password_slots_draw",  orig = 0x006994, args = {}, blitter = true, scenario = "idle" },
     { name = "record_list_draw",     orig = 0x006974, args = {}, blitter = true, scenario = "idle" },
     { name = "title_draw",           orig = 0x006754, args = {}, blitter = true, scenario = "menu" },
+    { name = "game_read_input",      orig = 0x00363a, args = {}, scenario = "game" },
+    { name = "count_if_visible",     orig = 0x004952, args = { "d0.w", "d1.w" }, scenario = "game" },
+    { name = "find_record_cce",      orig = 0x006136, args = {}, scenario = "game" },
+    { name = "find_record_113c",     orig = 0x00d314, args = {}, scenario = "game" },
+    { name = "find_record_19334",    orig = 0x01924c, args = {}, scenario = "game" },
+    { name = "find_free_record_19b14", orig = 0x018ef6, args = {}, scenario = "game" },
+    { name = "next_message_slot",    orig = 0x012a80, args = {}, ret = "a6", scenario = "game" },
 }

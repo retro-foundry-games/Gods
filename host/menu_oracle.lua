@@ -163,6 +163,17 @@ for f, dirs in (args:match("joy=(%S+)") or ""):gmatch("(%d+):([%a+]+)") do
     for d in dirs:gmatch("%a+") do if d ~= "none" then st[d] = true end end
     joys[tonumber(f)] = st
 end
+-- kbd=1: the original's keyboard patch (native/src/amiga/keyboard_patch.asm) is put in memory after the state is loaded; replay=FILE: the keys
+-- of a file written by gods.lua inputlog= (relative to projects/gods), as the human run of the game
+local keys = {}
+local replay_path = args:match("replay=(%S+)")
+if replay_path then
+    local text = ami.file_read(replay_path, 0, ami.file_size(replay_path))
+    for line in text:gmatch("[^\n]+") do
+        local f, kind, a, b = line:match("(%d+) (%a) (-?%d+) (-?%d+)")
+        if f and kind == "k" then keys[tonumber(f)] = keys[tonumber(f)] or {}; table.insert(keys[tonumber(f)], { tonumber(a), tonumber(b) ~= 0 }) end
+    end
+end
 local start = 0
 local loaded = false
 if STATE then
@@ -170,6 +181,12 @@ if STATE then
     assert(ami.snapshot_load(STATE), "cannot load " .. STATE)
     ami.write(syms.base, blob); loaded = true
     start = ami.frame()
+    if args:match("kbd=1") then
+        local code = read_file("native/build/keyboard_patch.bin")
+        ami.write(0x1e608, code)
+        ami.write(0x1e420, "\x4e\xb9\x00\x01\xe6\x08")
+        ami.write(0x1e2f8, "\x4e\x71\x4e\x71")
+    end
 end
 while ami.frame() - start < UNTIL do
     ami.wait(1)
@@ -178,6 +195,7 @@ while ami.frame() - start < UNTIL do
     if not STATE and f == CLICK then ami.mouse_button(0, true) end
     if not STATE and f == CLICK + 3 then ami.mouse_button(0, false) end
     if joys[f] then ami.joystick(joys[f]) end
+    for _, k in ipairs(keys[f] or {}) do ami.key(k[1], k[2]) end
 end
 say("--- %d frames; samples per function up to %d", UNTIL, SAMPLES)
 for _, case in ipairs(active) do

@@ -43,6 +43,8 @@ ami.machine{
 ami.boot()
 
 -- Script flags (--script-args "..."):
+--   inputlog=FILE       play with the window and write the keys and mouse buttons used, with their frames, to FILE
+--   replay=FILE         play such a file again (same snapshot, same frames); FILE is relative to projects/gods
 --   onemb               1 MB chip RAM (the state files gods-*-1m.state)
 --   joy1                the joystick in port 1 (puae_joyport_order=2143): needed for joy= to reach the program
 --   keyboard            the original menu with the keyboard: cursor up/down, space = fire (native/src/amiga/keyboard_patch.asm; build it with scripts/build_keyboard_patch.py)
@@ -83,6 +85,7 @@ if script_args:match("keyboard") then
         local code = ami.file_read("native/build/keyboard_patch.bin", 0, ami.file_size("native/build/keyboard_patch.bin"))
         ami.write(0x1e608, code)
         ami.write(0x1e420, "\x4e\xb9\x00\x01\xe6\x08")
+        ami.write(0x1e2f8, "\x4e\x71\x4e\x71")   -- the keyboard interrupt takes every key (it lost the second of two close events)
         ami.log("keyboard patch applied")
     end
     if load_name then patch_menu() else
@@ -199,6 +202,16 @@ for key, f, hold in (args:match("press=(%S+)") or ""):gmatch("(%w+)@(%d+)x?(%d*)
     events[#events + 1] = { tonumber(f), "press", key }
     events[#events + 1] = { tonumber(f) + (tonumber(hold) or 3), "release", key }
 end
+-- replay=FILE: the keys and mouse buttons of a file written by inputlog= (frame kind a b), at the same frames
+local replay_path = args:match("replay=(%S+)")
+if replay_path then
+    local text = ami.file_read(replay_path, 0, ami.file_size(replay_path))   -- a path inside the project directory
+    for line in text:gmatch("[^\n]+") do
+        local f, kind, a, b = line:match("(%d+) (%a) (-?%d+) (-?%d+)")
+        if f and kind == "k" then events[#events + 1] = { tonumber(f), "key", tonumber(a), tonumber(b) ~= 0 } end
+        if f and kind == "b" and tonumber(a) == 0 then events[#events + 1] = { tonumber(f), "button", tonumber(b) ~= 0 } end
+    end
+end
 for f, v in pairs(moves) do events[#events + 1] = { f, "move", v } end
 for f, v in pairs(joys) do events[#events + 1] = { f, "joy", v } end
 for _, f in ipairs(frames_of("click")) do
@@ -219,6 +232,10 @@ for _, e in ipairs(events) do
         ami.mouse_button(0, false)
     elseif e[2] == "press" then
         ami.key(e[3], true)
+    elseif e[2] == "key" then
+        ami.key(e[3], e[4])
+    elseif e[2] == "button" then
+        ami.mouse_button(0, e[3])
     elseif e[2] == "release" then
         ami.key(e[3], false)
     elseif e[2] == "snap" then
@@ -236,3 +253,20 @@ if ram_path then
     ami.log("ram", ram_path, "pc", string.format("%06x", ami.reg("pc")), "frame", ami.frame() - base)
 end
 if shots_dir or ram_path or snap_name then ami.quit(0) end
+
+-- inputlog=FILE: play (the window stays) and write every key and mouse event the host processes as "frame kind a b" (frame counted
+-- from the start or the loaded snapshot); replay=FILE plays such a file again.  The file is rewritten every second.
+local input_log_path = args:match("inputlog=(%S+)")
+if input_log_path then
+    local lines = {}
+    local last_saved = 0
+    while true do
+        ami.wait(1)
+        local f = ami.frame() - base
+        for _, ev in ipairs(ami.input()) do lines[#lines + 1] = ("%d %s %d %d"):format(f, ev[1], ev[2], ev[3]) end
+        if f - last_saved >= 50 then
+            ami.save_file(input_log_path, table.concat(lines, "\n") .. "\n")
+            last_saved = f
+        end
+    end
+end

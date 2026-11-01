@@ -25,7 +25,7 @@ import menu_analysis as M  # noqa: E402
 RAM = (PROJECT / "native" / "build" / os.environ.get("MENU_RAM", "menu-ram.bin")).read_bytes()   # e.g. game-ram.bin with MENU_COVERAGE=coverage-game.txt
 COVERAGE = PROJECT / "analysis" / os.environ.get("MENU_COVERAGE", "coverage-menu-handling.txt")   # e.g. coverage-menu.txt, coverage-game-start.txt
 SRC = PROJECT / "native" / "src"
-MENU_C = ["menu", "disk", "alloc", "decrunch", "input", "screen", "draw", "display", "message", "ui", "file", "boot"]
+MENU_C = ["menu", "disk", "alloc", "decrunch", "input", "screen", "draw", "display", "message", "ui", "file", "boot", "game"]
 
 
 def decompiled() -> dict[int, str]:
@@ -35,11 +35,11 @@ def decompiled() -> dict[int, str]:
         text = (SRC / f"{m}.c").read_text()
         for c in re.finditer(r"/\* orig \$([0-9A-Fa-f]+)[^\n]*(?:\n \*[^\n]*)*\*/\n(?:static )?[\w\s\*]*?\b(\w+)\([^)]*\)\n\{", text):
             out[int(c.group(1), 16)] = c.group(2)
-            for extra in re.findall(r"and \$([0-9A-Fa-f]+)", c.group(0).split("\n")[0]):   # `orig $A and $B`: the same function twice
+            for extra in re.findall(r"\$([0-9A-Fa-f]{4,6})", c.group(0).split("\n")[0])[1:]:   # `orig $A, $B and $C`: the same function at more addresses
                 out[int(extra, 16)] = c.group(2)
     # the routines that are the original's instructions in menu_amiga.asm: `; void name(...), orig $ADDR` (or after the name)
     asm = (SRC / "amiga" / "menu_amiga.asm").read_text()
-    for a in re.finditer(r"^; void (\w+)\([^\n]*orig \$([0-9A-Fa-f]+)", asm, re.M):
+    for a in re.finditer(r"^; (?:void|uint\d+_t|int\d+_t) (\w+)\([^\n]*orig \$([0-9A-Fa-f]+)", asm, re.M):
         out[int(a.group(2), 16)] = a.group(1)
     return out
 

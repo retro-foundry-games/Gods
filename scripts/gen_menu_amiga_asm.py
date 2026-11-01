@@ -47,7 +47,7 @@ LABELS = {
 }
 LABELS.update({t: f"cmd_{0x80 + 4 * n:02x}" for n, t in enumerate(COMMAND_TARGETS)})
 SIZES = {"char": 1, "uint8_t": 1, "int8_t": 1, "uint16_t": 2, "int16_t": 2, "uint32_t": 4, "int32_t": 4, "struct Rec6": 6, "struct Rec10": 10,
-         "struct Rec80": 80, "struct Entry8": 8, "struct MemLists": 20, "struct Image": 8, "struct AssetEntry": 8, "struct Voice": 148, "void": 2}
+         "struct Rec80": 80, "struct Entry8": 8, "struct MemLists": 20, "struct Image": 8, "struct AssetEntry": 8, "struct Voice": 148, "void": 2, "struct Slot8": 8, "struct Slot12": 12, "struct SavedByte": 6}
 
 
 def size_of(decl: str) -> int:
@@ -173,7 +173,15 @@ def keyboard() -> list[str]:
     keeps the keys that are down (key_down) and the last key as a request (pending_request)."""
     out = ["", "; ---- the keyboard interrupt (orig $01E2B8-$01E31B) and the key translation it calls (orig $01E50C-$01E5A7)",
            "        xdef _keyboard_irq", ""]
-    out += A.emit(MEM, 0x1E2B8, 0x1E31C)
+    handler = A.emit(MEM, 0x1E2B8, 0x1E31C)
+    # not the original's: it reads the serial flag from the flags it read when it started and skips the key when it is not set;
+    # the flag of a key that came while the handler for the one before was running is cleared by that handler's last read of the
+    # flags, so with two key events close together the second was lost (a key whose release is lost stays down).  Here the key is
+    # always taken (a spurious call reads the byte it wrote itself, 0, a release of an unused key)
+    at = handler.index("        btst.l #$3,d2")
+    assert handler[at + 1].strip().startswith("beq.w")
+    handler[at:at + 2] = ["        ; (the original tests the serial flag here and skips the key without it: it lost the second of two close key events)"]
+    out += handler
     out += [""] + A.emit(MEM, 0x1E50C, 0x1E5A8)
     out += ["", "; void sr_set(uint16_t value): the status register is set (not in the original; the start-up needs it in C)",
             "        xdef _sr_set", "_sr_set:", "        move.w 6(sp),d0", "        move.w d0,sr", "        rts", "",
