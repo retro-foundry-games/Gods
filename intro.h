@@ -1,6 +1,6 @@
-/* Gods: the game's data types and the declarations of its data (defined in data.c).
+/* Gods: the game's data types and the declarations of its data (defined in intro_data.c).
  *
- * The linker script gods.ld places the data at the addresses the original keeps it at, so memory matches the
+ * The linker script intro.ld places the data at the addresses the original keeps it at, so memory matches the
  * original; the C code names none of those addresses. */
 #ifndef GODS_H
 #define GODS_H
@@ -30,7 +30,7 @@ struct Picture {
     uint16_t data[16000];
 };
 
-/* ---- game variables, at their original addresses (gods.ld) ------------------------------------------------------- */
+/* ---- game variables, at their original addresses (intro.ld) ------------------------------------------------------- */
 
 /* Variables that sit next to each other in the original are structs, so memory matches. */
 
@@ -203,7 +203,7 @@ extern struct DisplayData display;
 extern uint16_t glyph_plane_size;        /* non-zero: the size in bytes of one plane of a glyph, otherwise worked out from its height */
 extern const uint16_t blank_plane[513];  /* zeros: the source for the fifth plane when drawing text */
 
-/* ---- amiga.asm: the Amiga-specific routines (blitter work and screen fills), the original's instructions ---------- */
+/* ---- intro_amiga.asm: the Amiga-specific routines (blitter work and screen fills), the original's instructions ---------- */
 
 void blitter_wait(void);                                      /* orig $002F1E */
 void blit_copy(const void *src, void *dst);                   /* orig $001B7C */

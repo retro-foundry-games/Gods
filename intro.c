@@ -1,9 +1,9 @@
 /* Gods (Bitmap Brothers, 1991), PAL original disks: the game, decompiled.
  *
- * Built with m68k-amigaos-gcc for a 68000 A500 (see flake.nix).  The data is in data.c, declared in gods.h, and is
- * placed at the original addresses by gods.ld.  Every function carries its original address as `orig $ADDR` so it can be matched
+ * Built with m68k-amigaos-gcc for a 68000 A500 (see flake.nix).  The data is in intro_data.c, declared in intro.h, and is
+ * placed at the original addresses by intro.ld.  Every function carries its original address as `orig $ADDR` so it can be matched
  * with the original code.  Progress and method: PLAN.md.  Evidence for each recovered fact: analysis/. */
-#include "gods.h"
+#include "intro.h"
 
 /* The original is hand-written 68000 and the intro is timed to the frame, so the code that runs every frame (drawing,
  * the blitter helpers, the interrupt and the music) is compiled for speed; the rest for size. */
