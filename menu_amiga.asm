@@ -189,3 +189,822 @@ blit_image_body:
         add.w d3,d2
         move.w d2,$62(a3)
         bra.w .draw_planes
+
+; ---- the sound system (orig $01F9EA-$02034B): four voices, a sequencer that interprets the command bytes of the
+; tracks, the audio interrupt that feeds each voice its next sample.  Entries for C: audio_irq (the interrupt),
+; sound_tick (once a frame), play_sound(id), random_word (orig $00633E).
+        xdef _audio_irq, _sound_tick, _play_sound, _random_word
+
+; void play_sound(uint8_t id): the sound the id names is started on a free voice (orig $01FAF6)
+_play_sound:
+        move.l 4(sp),d0
+        bra.w play_sound_body
+
+_audio_irq:
+        movem.l d0/a0-a1,-(a7)
+.L1f9ee:
+        lea.l $dff000.l,a0
+        move.w $1e(a0),d0
+        btst.l #$7,d0
+        bne.b .L1fa66
+        btst.l #$8,d0
+        bne.b .L1fa4a
+        btst.l #$9,d0
+        bne.b .L1fa2e
+        btst.l #$a,d0
+        beq.w .L1fa86
+        move.w #$400,$9c(a0)
+        btst.b #$2,$1c(a0)
+        beq.b .L1f9ee
+        lea.l $20508.l,a1
+        jsr (feed_voice).l
+        bra.b .L1f9ee
+.L1fa2e:
+        move.w #$200,$9c(a0)
+        btst.b #$1,$1c(a0)
+        beq.b .L1f9ee
+        lea.l $20474.l,a1
+        jsr (feed_voice).l
+        bra.b .L1f9ee
+.L1fa4a:
+        move.w #$100,$9c(a0)
+        btst.b #$0,$1c(a0)
+        beq.b .L1f9ee
+        lea.l $203e0.l,a1
+        jsr (feed_voice).l
+        bra.b .L1f9ee
+.L1fa66:
+        move.w #$80,$9c(a0)
+        btst.b #$7,$1d(a0)
+        beq.w .L1f9ee
+        lea.l $2034c.l,a1
+        jsr (feed_voice).l
+        bra.w .L1f9ee
+.L1fa86:
+        movem.l (a7)+,d0/a0-a1
+        rte 
+
+stop_sound_of_id:
+        movem.l d0-d2/a0,-(a7)
+        add.w d0,d0
+        move.w d0,d1
+        add.w d0,d0
+        add.w d1,d0
+        lea.l $20bce.l,a0
+        adda.w d0,a0
+        move.b $1(a0),d0
+        lea.l $207a6.l,a0
+        moveq #$3,d2
+        moveq #$ff,d1
+.L1faae:
+        addq.w #$1,d1
+        cmp.b (a0)+,d0
+        dbeq d2,.L1faae
+        bne.b .L1fac4
+        clr.b -$1(a0)
+        moveq #$16,d0
+        jsr (start_voice).l
+.L1fac4:
+        movem.l (a7)+,d0-d2/a0
+        rts 
+
+last_random:
+        dc.b $00,$00
+
+random_in_range:
+        movem.l d1-d3,-(a7)
+        moveq #$0,d1
+        andi.l #$ffff,d0
+        bne.b .L1fadc
+        moveq #$1,d0
+.L1fadc:
+        sub.w d1,d2
+        addq.w #$1,d2
+        move.l #$ffff,d3
+        divu.w d2,d3
+        addq.w #$1,d3
+        divu.w d3,d0
+        add.w d0,d1
+        move.l d1,d0
+        movem.l (a7)+,d1-d3
+        rts 
+
+play_sound_body:
+        movem.l d0-d7/a0-a6,-(a7)
+        move.w d0,d7
+        cmpi.b #$10,d0
+        bne.b .L1fb06
+        moveq #$17,d0
+        bsr.b stop_sound_of_id
+.L1fb06:
+        add.w d7,d7
+        move.w d7,d2
+        add.w d7,d7
+        add.w d2,d7
+        lea.l $20bce.l,a0
+        adda.w d7,a0
+.L1fb16:
+        move.b (a0),d3
+        bpl.b .L1fb38
+        move.w #$7e,d1
+        andi.w #$7f,d3
+        move.b $1(a0),d0
+        lea.l $207a6.l,a1
+        moveq #$3,d5
+.L1fb2e:
+        cmp.b (a1)+,d0
+        beq.w L1fc52
+        dbra d5,.L1fb2e
+.L1fb38:
+        move.b $5(a0),d6
+        beq.b .L1fbaa
+        jsr $633e.w
+        andi.l #$ffff,d0
+        cmpi.b #$5,d6
+        bne.b .L1fb60
+        andi.w #$3,d0
+        move.w d0,d6
+        jsr $633e.w
+        andi.w #$1,d0
+        add.w d6,d0
+        bra.b .L1fbaa
+.L1fb60:
+        cmpi.b #$6,d6
+        bne.b .L1fb88
+        moveq #$5,d2
+        bsr.w random_in_range
+        cmp.b last_random(pc),d0
+        beq.b .L1fb38
+        move.b d0,$1faca.l
+        moveq #$0,d7
+        btst.l #$0,d0
+        bne.b .L1fbac
+        asr.w #$1,d0
+        move.w d0,d7
+        addq.w #$1,d7
+        bra.b .L1fbac
+.L1fb88:
+        cmpi.b #$9,d6
+        bne.b .L1fba4
+        moveq #$2,d2
+        bsr.w random_in_range
+        addq.w #$1,d0
+        add.w d0,d0
+        move.w d0,d7
+        add.w d0,d0
+        add.w d0,d7
+        adda.w d7,a0
+        bra.w .L1fb16
+.L1fba4:
+        andi.w #$7f,d0
+        and.w d6,d0
+.L1fbaa:
+        move.w d0,d7
+.L1fbac:
+        lea.l $207a0.l,a1
+        move.w #$3,d5
+        moveq #$0,d2
+        lea.l $207aa.l,a2
+        move.l d2,(a2)
+.L1fbc0:
+        tst.b (a1)
+        bne.b .L1fbca
+        bsr.w L1fc02
+        beq.b L1fc22
+.L1fbca:
+        addq.w #$1,a1
+        addq.w #$1,a2
+        dbra d5,.L1fbc0
+        lea.l $207a0.l,a1
+        move.w #$3,d5
+        lea.l $207aa.l,a2
+.L1fbe2:
+        tst.b (a1)
+        beq.b .L1fbf8
+        tst.b d1
+        beq.b .L1fbee
+        cmp.b (a1),d1
+        bcs.b .L1fbf8
+.L1fbee:
+        clr.b $6(a1)
+        bsr.w L1fc02
+        beq.b L1fc22
+.L1fbf8:
+        addq.w #$1,a1
+        addq.w #$1,a2
+        dbra d5,.L1fbe2
+        bra.b L1fc52
+L1fc02:
+        move.b $1(a0,d2.w),(a2)
+        tst.b d6
+        beq.w .L1fc1a
+        add.b d7,(a2)
+        bclr.l #$7,d6
+        beq.b .L1fc1a
+        add.w d2,d7
+        move.b $1(a0,d7.w),(a2)
+.L1fc1a:
+        cmp.b d3,d2
+        beq.b .L1fc20
+        addq.w #$1,d2
+.L1fc20:
+        rts 
+L1fc22:
+        lea.l $207a0.l,a1
+        lea.l $207aa.l,a2
+        move.b d1,d6
+        moveq #$0,d1
+        moveq #$3,d2
+.L1fc34:
+        moveq #$0,d0
+        move.b (a2)+,d0
+        beq.b .L1fc4a
+        move.b d6,(a1)
+        tst.b (a0)
+        bpl.b .L1fc44
+        move.b d0,$6(a1)
+.L1fc44:
+        jsr (start_voice).l
+.L1fc4a:
+        addq.w #$1,a1
+        addq.b #$1,d1
+        dbra d2,.L1fc34
+L1fc52:
+        movem.l (a7)+,d0-d7/a0-a6
+        rts 
+feed_voice:
+        movem.l d0-d7/a0-a6,-(a7)
+        movea.l $8(a1),a2
+        subq.w #$1,$e(a1)
+        tst.w $24(a1)
+        bpl.b .L1fc8c
+        moveq #$0,d0
+        move.w $26(a1),d0
+        move.w d0,d1
+        add.l $1c(a1),d0
+        move.l d0,(a2)
+        move.w $28(a1),d0
+        lsr.w #$1,d1
+        sub.w d1,d0
+        move.w d0,$4(a2)
+        move.w $6(a1),$9a(a0)
+        bra.b .L1fcac
+.L1fc8c:
+        tst.w $e(a1)
+        bne.b .L1fca0
+        move.w $6(a1),$9a(a0)
+        move.w $2(a1),$96(a0)
+        bra.b .L1fcac
+.L1fca0:
+        move.l #$21e5e,(a2)
+        move.w #$1,$4(a2)
+.L1fcac:
+        move.w $6(a1),$9c(a0)
+        movem.l (a7)+,d0-d7/a0-a6
+        rts 
+_sound_tick:
+        tst.w $2079c.l
+        bne.b .L1fcda
+        movem.l d0-d7/a0-a6,-(a7)
+        lea.l $dff000.l,a0
+        lea.l $2034c.l,a1
+        movea.l a0,a5
+        bsr.w run_sequencer
+        movem.l (a7)+,d0-d7/a0-a6
+.L1fcda:
+        rts 
+voices_to_hardware:
+        lea.l $2034c.l,a4
+        bsr.b voice_to_hardware
+        lea.l $203e0.l,a4
+        bsr.b voice_to_hardware
+        lea.l $20474.l,a4
+        bsr.b voice_to_hardware
+        lea.l $20508.l,a4
+voice_to_hardware:
+        movea.l $8(a4),a5
+        move.w $48(a4),$6(a5)
+        move.w $2c(a4),$8(a5)
+        tst.w $2e(a4)
+        beq.b .L1fd54
+        clr.w $2e(a4)
+        move.l $1c(a4),(a5)
+        move.w $28(a4),$4(a5)
+        lea.l $dff000.l,a5
+        move.w #$2,$e(a4)
+        move.w (a4),$96(a5)
+        move.w $6(a4),$9c(a5)
+        tst.w $24(a4)
+        bpl.b .L1fd4e
+        tst.w $26(a4)
+        bne.b .L1fd48
+        move.w $6(a4),$9a(a5)
+        rts 
+.L1fd48:
+        move.w #$1,$e(a4)
+.L1fd4e:
+        move.w $4(a4),$9a(a5)
+.L1fd54:
+        rts 
+voices_envelope:
+        lea.l $2034c.l,a4
+        bsr.w voice_envelope
+        lea.l $203e0.l,a4
+        bsr.w voice_envelope
+        lea.l $20474.l,a4
+        bsr.w voice_envelope
+        lea.l $20508.l,a4
+voice_envelope:
+        tst.l $3a(a4)
+        beq.w L1fde8
+        move.l $14(a4),d0
+        beq.b .L1fd9a
+        movea.l d0,a3
+        tst.b $30(a4)
+        beq.b .L1fd96
+        subq.b #$1,$30(a4)
+        bne.b .L1fd9a
+.L1fd96:
+        bsr.w L1fd9c
+.L1fd9a:
+        rts 
+L1fd9c:
+        tst.w $32(a4)
+        beq.b L1fe0c
+        move.w $34(a4),d0
+        bne.b L1fdc8
+        move.b $1(a3),$30(a4)
+        move.w $2c(a4),d0
+        add.b (a3),d0
+        cmp.w $44(a4),d0
+        bcs.b L1fdc2
+        addq.w #$1,$34(a4)
+        move.w $44(a4),d0
+L1fdc2:
+        move.w d0,$2c(a4)
+        rts 
+L1fdc8:
+        cmpi.w #$1,d0
+        beq.b L1fdea
+L1fdce:
+        moveq #$0,d0
+        move.b $4(a3),d0
+        move.w d0,$2c(a4)
+        move.w $3e(a4),d0
+        cmp.b $5(a3),d0
+        bgt.w L1fde8
+        clr.w $32(a4)
+L1fde8:
+        rts 
+L1fdea:
+        move.b $3(a3),$30(a4)
+        move.w $2c(a4),d0
+        sub.b $2(a3),d0
+        cmpi.b #$40,d0
+        bcs.b .L1fe00
+        clr.w d0
+.L1fe00:
+        cmp.b $4(a3),d0
+        bcc.b L1fdc2
+        addq.w #$1,$34(a4)
+        bra.b L1fdce
+L1fe0c:
+        clr.w $34(a4)
+        tst.w $2c(a4)
+        beq.b .L1fe2c
+        move.b $7(a3),$30(a4)
+        move.w $2c(a4),d0
+        sub.b $6(a3),d0
+        bcc.b .L1fe28
+        clr.w d0
+.L1fe28:
+        move.w d0,$2c(a4)
+.L1fe2c:
+        rts 
+
+voice_pointers:
+        dc.l $2034c,$203e0,$20474,$20508
+
+start_voice:
+        st.b $2079c.l
+        movem.l d0-d7/a0-a6,-(a7)
+        lea.l $dff000.l,a5
+        moveq #$0,d4
+        add.w d1,d1
+        move.w d1,d2
+        add.w d1,d1
+        movea.l voice_pointers(pc,d1.w),a4
+        lea.l $10(a4),a3
+        move.w #$1e,d3
+.L1fe62:
+        move.l d4,(a3)+
+        dbra d3,.L1fe62
+        move.w $6(a4),$9a(a5)
+        move.w $6(a4),$9c(a5)
+        move.w $2(a4),$96(a5)
+        movea.l $8(a4),a3
+        move.w d4,$8(a3)
+        move.l #$21e5e,(a3)
+        move.w #$1,$4(a3)
+        move.w #$1,$6(a3)
+        move.w (a4),$96(a5)
+        add.w d0,d0
+        add.w d0,d0
+        movea.l #$21c3a,a0
+        movea.l (a0,d0.w),a0
+        move.l a0,$36(a4)
+        move.l a0,$3a(a4)
+        move.l .voice_stacks(pc,d1.w),$18(a4)
+        movea.l #$3a38a,a0
+        move.w (a0)+,$24(a4)
+        move.w (a0)+,$26(a4)
+        move.w (a0)+,$28(a4)
+        move.l #$21e5e,$1c(a4)
+        move.l $4(a0),d0
+        bsr.w select_period_table
+        move.w #$100,$46(a4)
+        move.w #$100,$48(a4)
+        move.l $1c(a4),(a3)
+        move.w $28(a4),$4(a3)
+        move.w #$100,$6(a3)
+        movem.l (a7)+,d0-d7/a0-a6
+        clr.w $2079c.l
+        rts 
+
+.voice_stacks:
+        dc.l $2061c,$2069c,$2071c,$2079c
+
+run_sequencer:
+        st.b $2079c.l
+        moveq #$3,d1
+        lea.l $2034c.l,a4
+        lea.l $dff000.l,a5
+        lea.l tempo(pc),a6
+L1ff26:
+        move.w d1,-(a7)
+        movea.l $18(a4),a3
+        tst.l $3a(a4)
+        beq.w L20124
+        tst.w $3e(a4)
+        bne.w L20066
+        tst.w $26(a4)
+        bne.b .L1ff74
+        move.w $2(a4),$96(a5)
+        move.w $6(a4),$9a(a5)
+        move.w $6(a4),$9c(a5)
+        movea.l $8(a4),a0
+        move.w #$0,$8(a0)
+        move.l #$3a38a,(a0)
+        move.w #$1,$4(a0)
+        move.w #$1,$6(a0)
+        move.w (a4),$96(a5)
+.L1ff74:
+        move.l $3a(a4),d0
+        beq.w L20102
+        movea.l d0,a2
+L1ff7e:
+        moveq #$0,d0
+        move.b (a2)+,d0
+        bpl.b .L1ffe8
+        subi.w #$80,d0
+        movea.l .command_table(pc,d0.w),a0
+        moveq #$0,d0
+        jmp (a0)
+
+.command_table:
+        dc.l cmd_80
+        dc.l cmd_84
+        dc.l cmd_88
+        dc.l cmd_8c
+        dc.l cmd_90
+        dc.l cmd_94
+        dc.l cmd_98
+        dc.l cmd_9c
+        dc.l cmd_a0
+        dc.l cmd_a4
+        dc.l cmd_a8
+        dc.l cmd_ac
+        dc.l cmd_b0
+        dc.l cmd_b4
+        dc.l cmd_b8
+        dc.l cmd_bc
+        dc.l cmd_c0
+        dc.l cmd_c4
+        dc.l cmd_c8
+        dc.l cmd_cc
+        dc.l cmd_d0
+        dc.l cmd_d4
+
+.L1ffe8:
+        move.w d0,$2a(a4)
+        move.w $2(a4),$96(a5)
+        move.w $6(a4),$9a(a5)
+        move.w $6(a4),$9c(a5)
+        movea.l $8(a4),a0
+        move.w #$0,$8(a0)
+        move.l #$3a38a,(a0)
+        move.w #$1,$4(a0)
+        move.w #$1,$6(a0)
+        tst.l $14(a4)
+        beq.b .L20030
+        st.b $32(a4)
+        clr.w $34(a4)
+        clr.w $2c(a4)
+        clr.b $30(a4)
+.L20030:
+        add.w d0,d0
+        add.w d0,d0
+        add.w $8c(a4),d0
+        add.w d0,d0
+        movea.l $10(a4),a0
+        move.w (a0,d0.w),$46(a4)
+        st.b $2e(a4)
+        bsr.w reset_period_slides
+        clr.w $86(a4)
+        bsr.w reset_volume_slides
+        clr.w $88(a4)
+cmd_90:
+        move.l a2,$3a(a4)
+        move.l a3,$18(a4)
+        move.w $40(a4),$3e(a4)
+L20066:
+        subq.w #$1,$3e(a4)
+        tst.l $14(a4)
+        bne.b .L200ba
+        movea.l a4,a1
+        moveq #$1,d3
+        moveq #$0,d2
+.L20076:
+        tst.w $4a(a1)
+        beq.b .L20084
+        subq.w #$1,$4a(a1)
+        addq.w #$1,d2
+        bra.b .L200a6
+.L20084:
+        tst.w $4e(a1)
+        beq.b .L200a0
+        subq.w #$1,$4e(a1)
+        move.w $68(a1),d0
+        add.w d0,$86(a4)
+        move.w $72(a1),$4a(a1)
+        addq.w #$1,d2
+        bra.b .L200a6
+.L200a0:
+        addq.l #$2,a1
+        dbra d3,.L20076
+.L200a6:
+        tst.w d2
+        bne.b .L200ba
+        clr.w $86(a4)
+        btst.b #$0,$8a(a4)
+        beq.b .L200ba
+        bsr.w reset_period_slides
+.L200ba:
+        movea.l a4,a1
+        moveq #$2,d3
+        moveq #$0,d2
+.L200c0:
+        tst.w $52(a1)
+        beq.b .L200ce
+        subq.w #$1,$52(a1)
+        addq.w #$1,d2
+        bra.b .L200f2
+.L200ce:
+        tst.w $58(a1)
+        beq.b .L200ec
+        subq.w #$1,$58(a1)
+        move.w $6c(a1),d0
+        ext.w d0
+        add.w d0,$88(a4)
+        move.w $76(a1),$52(a1)
+        addq.w #$1,d2
+        bra.b .L200f2
+.L200ec:
+        addq.l #$2,a1
+        dbra d3,.L200c0
+.L200f2:
+        tst.w d2
+        bne.b L20102
+        btst.b #$1,$8a(a4)
+        beq.b L20102
+        bsr.w reset_volume_slides
+L20102:
+        tst.l $14(a4)
+        bne.b .L20118
+        move.w $44(a4),d0
+        add.w $86(a4),d0
+        andi.w #$3f,d0
+        move.w d0,$2c(a4)
+.L20118:
+        move.w $46(a4),d0
+        add.w $88(a4),d0
+        move.w d0,$48(a4)
+L20124:
+        lea.l $94(a4),a4
+        move.w (a7)+,d1
+        dbra d1,L1ff26
+        bsr.w voices_envelope
+        bsr.w voices_to_hardware
+        clr.w $2079c.l
+        rts 
+cmd_80:
+        move.b (a2)+,d0
+        move.w d0,$44(a4)
+        bra.w L1ff7e
+cmd_84:
+        move.b (a2)+,d0
+        bra.w L1ff7e
+cmd_88:
+        movea.l $36(a4),a2
+        move.l a2,$3a(a4)
+        bra.w L1ff7e
+cmd_8c:
+        move.b (a2)+,d0
+        move.w (a6),d1
+        mulu.w d1,d0
+        move.w d0,$40(a4)
+        bra.w L1ff7e
+cmd_94:
+        move.b (a2)+,d0
+        move.l #$2ee,d1
+        divu.w d0,d1
+        move.w d1,(a6)
+        bra.w L1ff7e
+cmd_98:
+        moveq #$0,d1
+        move.b (a2)+,d1
+        subq.w #$1,d1
+        moveq #$0,d2
+        moveq #$0,d0
+.L20182:
+        move.b (a2)+,d0
+        add.w d0,d2
+        dbra d1,.L20182
+        move.w (a6),d0
+        mulu.w d0,d2
+        move.w d2,$40(a4)
+        bra.w L1ff7e
+cmd_9c:
+        andi.b #$fc,$8a(a4)
+        move.b (a2)+,d0
+        mulu.w #$f,d0
+        addi.l #$20d60,d0
+        movea.l d0,a0
+        move.l a4,-(a7)
+        move.w #$e,d1
+.L201b0:
+        move.b (a0)+,d0
+        ext.w d0
+        move.w d0,$5e(a4)
+        addq.l #$2,a4
+        dbra d1,.L201b0
+        movea.l (a7)+,a4
+        moveq #$0,d0
+        move.l d0,$4a(a4)
+        move.l d0,$52(a4)
+        move.w d0,$56(a4)
+        move.w d0,$86(a4)
+        move.w d0,$88(a4)
+        bra.w L1ff7e
+cmd_a0:
+        move.b (a2)+,d0
+        bra.w L1ff7e
+cmd_a4:
+        move.b (a2)+,d0
+        bra.w L1ff7e
+cmd_a8:
+        move.b (a2)+,d0
+        or.b d0,$8a(a4)
+        bra.w L1ff7e
+cmd_ac:
+        move.w d0,$3e(a4)
+        movem.l d0/a4,-(a7)
+        move.w $92(a4),d0
+        movea.l #$207a0,a4
+        clr.b (a4,d0.w)
+        movem.l (a7)+,d0/a4
+        suba.l a2,a2
+        move.l a2,$36(a4)
+        move.w $6(a4),$9a(a5)
+        move.w $6(a4),$9c(a5)
+        move.w $2(a4),$96(a5)
+        clr.w $2e(a4)
+        bra.w cmd_90
+cmd_b0:
+        move.b (a2)+,d0
+        move.l a2,-(a3)
+        add.w d0,d0
+        add.w d0,d0
+        movea.l #$21c3a,a0
+        movea.l (a0,d0.w),a2
+        bra.w L1ff7e
+cmd_b4:
+        movea.l (a3)+,a2
+        bra.w L1ff7e
+cmd_b8:
+        move.b (a2)+,d0
+        beq.b .L20254
+        ext.w d0
+        add.w d0,$8c(a4)
+        bra.w L1ff7e
+.L20254:
+        move.w d0,$8c(a4)
+        bra.w L1ff7e
+cmd_bc:
+        move.b (a2)+,d0
+        ext.w d0
+        move.w d0,$8c(a4)
+        bra.w L1ff7e
+cmd_c0:
+        move.b (a2)+,d0
+        beq.b .L20274
+        move.l a2,-(a3)
+        move.w d0,-(a3)
+        bra.w L1ff7e
+.L20274:
+        move.l d0,-(a3)
+        move.w d0,-(a3)
+        bra.w L1ff7e
+cmd_c4:
+        tst.l $2(a3)
+        beq.w .L20296
+        movea.l $2(a3),a2
+        subq.w #$1,(a3)
+        bne.w L1ff7e
+        move.l d0,$2(a3)
+        bra.w L1ff7e
+.L20296:
+        addq.w #$6,a3
+        bra.w L1ff7e
+cmd_c8:
+        move.b (a2)+,d0
+        asl.w #$3,d0
+        addi.l #$20f5e,d0
+        move.l d0,$14(a4)
+        bra.w L1ff7e
+cmd_cc:
+        move.l d0,$14(a4)
+        bra.w L1ff7e
+cmd_d0:
+        move.b (a2)+,d0
+        mulu.w #$e,d0
+        addi.l #$3a38a,d0
+        movea.l d0,a0
+        move.w (a0)+,$24(a4)
+        move.w (a0)+,$26(a4)
+        move.w (a0)+,$28(a4)
+        move.l (a0)+,$1c(a4)
+        move.l (a0)+,d0
+        bsr.w select_period_table
+        bra.w L1ff7e
+select_period_table:
+        move.l #$2080e,$10(a4)
+        tst.b d0
+        beq.b .L20300
+        move.l #$2086e,$10(a4)
+        cmpi.b #$1,d0
+        beq.b .L20300
+        move.l #$208ce,$10(a4)
+.L20300:
+        rts 
+cmd_d4:
+        move.b (a2)+,d0
+        add.w d0,d0
+        add.w d0,d0
+        movea.l #$21c3a,a0
+        movea.l (a0,d0.w),a2
+        bra.w L1ff7e
+reset_volume_slides:
+        moveq #$2,d0
+        movea.l a4,a1
+.L2031a:
+        move.w $76(a1),$52(a1)
+        move.w $62(a1),$58(a1)
+        addq.l #$2,a1
+        dbra d0,.L2031a
+        rts 
+reset_period_slides:
+        moveq #$1,d0
+        movea.l a4,a1
+.L20332:
+        move.w $72(a1),$4a(a1)
+        move.w $5e(a1),$4e(a1)
+        addq.l #$2,a1
+        dbra d0,.L20332
+        rts 
+
+        dc.w $0000,$0094
+
+tempo:
+        dc.w $0002
+
+; uint16_t random_word(void), orig $00633E: the next word of a table, round and round; only d0 is changed
+_random_word:
+        move.l a0,-(a7)
+        movea.l $cc6.w,a0
+        move.w $2e6.w,d0
+        move.w (a0,d0.w),d0
+        addq.w #$2,$2e6.w
+        andi.w #$1ff,$2e6.w
+        movea.l (a7)+,a0
+        rts 
