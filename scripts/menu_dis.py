@@ -24,7 +24,7 @@ import menu_analysis as M  # noqa: E402
 RAM = (PROJECT / "build" / "menu-ram.bin").read_bytes()
 COVERAGE = PROJECT / "analysis" / "coverage-menu-handling.txt"
 NATIVE = PROJECT / "native"
-MENU_C = ["menu", "disk", "alloc", "decrunch", "input", "screen"]
+MENU_C = ["menu", "disk", "alloc", "decrunch", "input", "screen", "draw"]
 
 
 def decompiled() -> dict[int, str]:
@@ -34,6 +34,10 @@ def decompiled() -> dict[int, str]:
         text = (NATIVE / f"{m}.c").read_text()
         for c in re.finditer(r"/\* orig \$([0-9A-Fa-f]+)[^\n]*(?:\n \*[^\n]*)*\*/\n(?:static )?[\w\s\*]*?\b(\w+)\([^)]*\)\n\{", text):
             out[int(c.group(1), 16)] = c.group(2)
+    # the routines that are the original's instructions in menu_amiga.asm: `; void name(...), orig $ADDR` (or after the name)
+    asm = (NATIVE / "menu_amiga.asm").read_text()
+    for a in re.finditer(r"^; void (\w+)\([^\n]*orig \$([0-9A-Fa-f]+)", asm, re.M):
+        out[int(a.group(2), 16)] = a.group(1)
     return out
 
 

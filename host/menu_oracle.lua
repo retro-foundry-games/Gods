@@ -72,7 +72,7 @@ local function check(case)
     local before = ami.read(0, CHIP)
     local run = {}
     for k, v in pairs(regs) do run[k] = v end
-    run.a7, run.sr = SCRATCH, 0x2700
+    run.a7, run.sr = SCRATCH, case.sr or 0x2700
     -- functions that use the blitter: it goes on after they return, so wait for it (the original's own wait)
     local function settle()
         if case.blitter then ami.call(BLITTER_WAIT, { a7 = SCRATCH, sr = 0x2700 }) end
@@ -80,6 +80,9 @@ local function check(case)
     settle()
     local before_settled = ami.read(0, CHIP)
     if before_settled ~= before then before = before_settled end
+    -- a routine that waits for the vertical blank cannot be run here (a nested call does not get across a frame): the wait
+    -- routines of both versions are made to return at once for this comparison (the memory is put back afterwards)
+    if case.no_wait then ami.write(case.no_wait.orig, "\x4e\x75") end
     local r1 = ami.call(case.orig, run)
     settle()
     local after_orig = ami.read(0, CHIP)
@@ -88,7 +91,8 @@ local function check(case)
     -- buffer while the test runs) and is left out of the comparison
     local run1b = {}
     for k, v in pairs(regs) do run1b[k] = v end
-    run1b.a7, run1b.sr = SCRATCH, 0x2700
+    run1b.a7, run1b.sr = SCRATCH, case.sr or 0x2700
+    if case.no_wait then ami.write(case.no_wait.orig, "\x4e\x75") end
     ami.call(case.orig, run1b)
     settle()
     local noise = differences(after_orig, ami.read(0, CHIP))
@@ -101,8 +105,9 @@ local function check(case)
     end
     local run2 = {}
     for k, v in pairs(regs) do run2[k] = v end
-    run2.a7, run2.sr = SCRATCH, 0x2700
+    run2.a7, run2.sr = SCRATCH, case.sr or 0x2700
     ami.write(syms.base, blob)   -- the program may have used the memory the C code sits in
+    if case.no_wait then ami.write(syms[case.no_wait.c], "\x4e\x75") end
     local r2 = ami.call(syms[case.name], run2)
     settle()
     local after_c = ami.read(0, CHIP)

@@ -1,6 +1,7 @@
 -- The functions of menu.c that host/menu_oracle.lua checks against the original: where the original has it, the registers its
 -- arguments come in (".w": only the low word counts, ".l" or a bare name: the whole register), the register its result is in,
--- and how many calls to compare.  A function is in this list from the moment it is decompiled.
+-- and how many calls to compare.  Not here: wait_vblank and screens_flip (they wait for the vertical blank, which a call from the
+-- oracle cannot get across); they are checked when the whole program runs in lockstep.  A function is in this list from the moment it is decompiled.
 return {
     { name = "clear_work_area",      orig = 0x00f518, args = {} },
     { name = "take_pending_request", orig = 0x01cf26, args = {},                       ret = "d0" },
@@ -35,6 +36,14 @@ return {
     { name = "draw_string_small",    orig = 0x0069e8, args = { "a0", "d0.w", "d1.w", scenario = "idle" }, blitter = true },
     { name = "draw_hex_bytes",       orig = 0x006a1c, args = { "a0", "d0.w", "d1.w", blitter = true, scenario = "idle" }, ret = "d0.w" },
     { name = "draw_string_16",       orig = 0x006a52, args = { "a0", "d0.w", "d1.w", blitter = true, scenario = "idle" }, ret = "d0.w" },
+    { name = "set_scroll",           orig = 0x004d3e, args = { "a0", "d1.b" } },
+    { name = "next_request",         orig = 0x01cef0, args = {}, ret = "d0.w" },
+    { name = "clear_both_screens",   orig = 0x01cfc0, args = {}, scenario = "begin" },
+    { name = "copy_other_screen",    orig = 0x01cfce, args = {} },
+    { name = "copper_fade_up",       orig = 0x01d168, args = {} },
+    { name = "copper_fade_down",     orig = 0x01d1c2, args = {} },
+    { name = "copper_colors_save",   orig = 0x01d1fe, args = { "d7.w" } },
+    { name = "copper_colors_restore",orig = 0x01d216, args = {} },
     { name = "alloc_init",           orig = 0x01d48e, args = {}, scenario = "boot" },
     { name = "input_poll",           orig = 0x01e39c, args = {} },
 }
