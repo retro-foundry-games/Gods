@@ -1,6 +1,7 @@
-# Gods, SDL3 port of the C menu (and later the intro) for a Linux desktop.
+# Gods, SDL3 port of the C intro and menu program for a Linux desktop.
 #
-#   make -C projects/gods/native/src/sdl            build projects/gods/native/build/sdl/gods-sdl
+#   make -C projects/gods/native/src/sdl            build projects/gods/native/build/sdl/gods-sdl (the intro, which starts
+#                                                   gods-sdl-menu, the menu program, when fire is pressed)
 #   make -C projects/gods/native/src/sdl run        build and run (disks from projects/gods/local)
 #   make -C projects/gods/native/src/sdl clean
 #
@@ -37,7 +38,7 @@ HOST_OBJS := $(BUILD)/h_main.o $(BUILD)/h_guest.o $(BUILD)/h_files.o $(BUILD)/h_
              $(BUILD)/h_irq.o $(BUILD)/h_sound.o
 
 .PHONY: all run clean
-all: $(BUILD)/gods-sdl
+all: $(BUILD)/gods-sdl $(BUILD)/gods-sdl-menu
 
 $(BUILD):
 	mkdir -p $@
@@ -62,11 +63,20 @@ $(BUILD)/h_%.o: $(HERE)/%.c $(BUILD)/guest_tables.h | $(BUILD)
 	$(CC) $(HOST_CFLAGS) -I$(BUILD) -MMD -MP -c $< -o $@
 
 # the host objects come first, so their routines are the ones the program calls (the Amiga's asm is not linked)
-$(BUILD)/gods-sdl: $(HOST_OBJS) $(GAME_OBJS) $(BUILD)/guest.ld
+$(BUILD)/gods-sdl-menu: $(HOST_OBJS) $(GAME_OBJS) $(BUILD)/guest.ld
 	$(CC) -m32 -no-pie -Wl,--allow-multiple-definition -o $@ $(HOST_OBJS) $(GAME_OBJS) $(BUILD)/guest.ld $(HOST_LIBS)
 
-run: $(BUILD)/gods-sdl
-	$< --disks $(GODS_DISKS)
+# the intro: its data is C, no guest memory layout is needed
+INTRO_OBJS := $(BUILD)/h_intro_sdl.o $(BUILD)/g_intro_host.o $(BUILD)/g_intro.o $(BUILD)/g_intro_data.o
+$(BUILD)/g_intro_host.o: $(HERE)/intro_host.c $(HERE)/intro_host.h | $(BUILD)
+	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
+$(BUILD)/g_intro_data.o: $(SRC)/intro_data.c | $(BUILD)
+	$(CC) $(GAME_CFLAGS) -w -MMD -MP -c $< -o $@
+$(BUILD)/gods-sdl: $(INTRO_OBJS)
+	$(CC) -m32 -no-pie -o $@ $(INTRO_OBJS) $(HOST_LIBS)
+
+run: $(BUILD)/gods-sdl $(BUILD)/gods-sdl-menu
+	$(BUILD)/gods-sdl --disks $(GODS_DISKS)
 
 clean:
 	rm -rf $(BUILD)

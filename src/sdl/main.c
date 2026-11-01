@@ -115,6 +115,8 @@ int main(int argc, char **argv)
             disks = argv[++i];
         else if (!strcmp(argv[i], "--scale") && i + 1 < argc)
             scale = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--skip-intro"))
+            ;
         else if (!strcmp(argv[i], "--headless"))
             headless = 1;
         else if (!strcmp(argv[i], "--frames") && i + 1 < argc)
