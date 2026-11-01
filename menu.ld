@@ -6,6 +6,8 @@ SECTIONS {
     .data : SUBALIGN(1) {
         . = 0x29da; *(.rodata.param_table) *(.data.param_table)
         . = 0x4cba; *(.rodata.offsets_4cba) *(.data.offsets_4cba)
+        . = 0x16f6e; *(.rodata.message_pairs) *(.data.message_pairs)
+        . = 0x1e7f4; *(.rodata.font_8x8) *(.data.font_8x8)
     }
     .text 0xc0000 : { *(.text .text.*) *(.rodata .rodata.*) }
 }
@@ -61,3 +63,26 @@ _copper_list_a = 0x4d8a;
 _copper_list_b = 0x4dde;
 _screen_1 = 0x6f800;
 _screen_2 = 0x77c00;
+_copper_setup_done = 0x2f2;
+_copper_move_a = 0x4e2e;
+_copper_move_b = 0x4e32;
+_palette_lit = 0x1d3f3;
+_copper_a_scroll = 0x4d90;
+_copper_b_scroll = 0x4de4;
+_scroll_value = 0xe12;
+_sound_enabled = 0x2f6;
+_tick_count = 0xce2;
+_countdown_220 = 0x220;
+_tick_hold_38a = 0x38a;
+_tick_hold_296 = 0x296;
+_tick_hold_26c = 0x26c;
+_message_state = 0xb2a;
+_message_timer = 0xb2c;
+_message_current = 0xb26;
+_message_next = 0xb32;
+_message_text = 0xb2e;
+_message_x = 0xb36;
+_message_wide = 0xb38;
+_message_shown = 0x2f4;
+_message_arg = 0x2f8;
+_message_words = 0x53ee;

@@ -53,3 +53,28 @@ copper_list_a     0x00004d8a  uint8_t %s[]    the copper list of one screen
 copper_list_b     0x00004dde  uint8_t %s[]    ... and of the other
 screen_1          0x0006f800  uint8_t %s[]    the two screens
 screen_2          0x00077c00  uint8_t %s[]
+copper_setup_done 0x000002f2  uint16_t %s     non-zero: the copper list's two moves at copper_move_a / copper_move_b are set already
+copper_move_a     0x00004e2e  uint32_t %s     two words of the copper list (a register move) that fade_in and fade_out set
+copper_move_b     0x00004e32  uint32_t %s
+palette_lit       0x0001d3f3  uint8_t %s      $FF after fade_in (the screen has its colours), 0 after fade_out
+copper_a_scroll   0x00004d90  uint16_t %s     the scroll word in the first copper list (set by the frame tick)
+copper_b_scroll   0x00004de4  uint16_t %s     ... and in the second
+scroll_value      0x00000e12  uint16_t %s     what the frame tick puts in both once the copper list is set up
+sound_enabled     0x000002f6  uint16_t %s     non-zero: the frame tick runs the sound
+tick_count        0x00000ce2  uint32_t %s     frames the tick has run
+countdown_220     0x00000220  uint16_t %s     counted down to 0 by the frame tick
+tick_hold_38a     0x0000038a  uint16_t %s     the frame tick does its message work only while these three are 0
+tick_hold_296     0x00000296  uint16_t %s
+tick_hold_26c     0x0000026c  uint16_t %s
+message_state     0x00000b2a  int16_t %s      0 none, -1 colours fading in, 1 colours fading out
+message_timer     0x00000b2c  int16_t %s      steps left of the fade
+message_current   0x00000b26  const uint8_t *%s   the text to show (0 none), message_start takes it from message_next
+message_next      0x00000b32  const uint8_t *%s
+message_text      0x00000b2e  const uint8_t *%s   the text that was drawn
+message_x         0x00000b36  int16_t %s      where the text starts (in characters, less 8)
+message_wide      0x00000b38  int16_t %s      -1 text fits, 320 it does not
+message_shown     0x000002f4  uint16_t %s     non-zero: the message is on the screen
+message_arg       0x000002f8  uint16_t %s
+message_words     0x000053ee  uint16_t %s[16]   colours of the message (message_words[8..11] the colours it fades to)
+table message_pairs 0x00016f6e uint32_t 8   four pairs of addresses of the two copper lists' colour moves the message fades
+table font_8x8     0x0001e7f4 uint8_t 2048  the text font (8 bytes a character)

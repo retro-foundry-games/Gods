@@ -57,7 +57,32 @@ extern uint8_t copper_list_a[];   /* $04D8A  the copper list of one screen */
 extern uint8_t copper_list_b[];   /* $04DDE  ... and of the other */
 extern uint8_t screen_1[];   /* $6F800  the two screens */
 extern uint8_t screen_2[];   /* $77C00 */
+extern uint16_t copper_setup_done;   /* $002F2  non-zero: the copper list's two moves at copper_move_a / copper_move_b are set already */
+extern uint32_t copper_move_a;   /* $04E2E  two words of the copper list (a register move) that fade_in and fade_out set */
+extern uint32_t copper_move_b;   /* $04E32 */
+extern uint8_t palette_lit;   /* $1D3F3  $FF after fade_in (the screen has its colours), 0 after fade_out */
+extern uint16_t copper_a_scroll;   /* $04D90  the scroll word in the first copper list (set by the frame tick) */
+extern uint16_t copper_b_scroll;   /* $04DE4  ... and in the second */
+extern uint16_t scroll_value;   /* $00E12  what the frame tick puts in both once the copper list is set up */
+extern uint16_t sound_enabled;   /* $002F6  non-zero: the frame tick runs the sound */
+extern uint32_t tick_count;   /* $00CE2  frames the tick has run */
+extern uint16_t countdown_220;   /* $00220  counted down to 0 by the frame tick */
+extern uint16_t tick_hold_38a;   /* $0038A  the frame tick does its message work only while these three are 0 */
+extern uint16_t tick_hold_296;   /* $00296 */
+extern uint16_t tick_hold_26c;   /* $0026C */
+extern int16_t message_state;   /* $00B2A  0 none, -1 colours fading in, 1 colours fading out */
+extern int16_t message_timer;   /* $00B2C  steps left of the fade */
+extern const uint8_t *message_current;   /* $00B26  the text to show (0 none), message_start takes it from message_next */
+extern const uint8_t *message_next;   /* $00B32 */
+extern const uint8_t *message_text;   /* $00B2E  the text that was drawn */
+extern int16_t message_x;   /* $00B36  where the text starts (in characters, less 8) */
+extern int16_t message_wide;   /* $00B38  -1 text fits, 320 it does not */
+extern uint16_t message_shown;   /* $002F4  non-zero: the message is on the screen */
+extern uint16_t message_arg;   /* $002F8 */
+extern uint16_t message_words[16];   /* $053EE  colours of the message (message_words[8..11] the colours it fades to) */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
+extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of the two copper lists' colour moves the message fades */
+extern const uint8_t font_8x8[2048];   /* $1E7F4  the text font (8 bytes a character) */
 
 #endif

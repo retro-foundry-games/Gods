@@ -1,5 +1,5 @@
 /* Gods, the menu program: showing the screens and the colours */
-#include "display.h"
+#include "menu.h"
 #include "screen.h"
 
 /* orig $004D3E: the fine scroll of a copper list for the pixel offset `x` (only the low byte counts): the scroll nibbles
@@ -120,4 +120,88 @@ void copper_colors_restore(void)
 
     for (uint16_t *colour = next_color(copper_colors); colour; colour = next_color(colour))
         *colour = *from++;
+}
+
+/* orig $01D0C0: fade the colours in from black to the palette `target` (words, each colour a half of what it is on the
+ * screen), a step per `delay + 1` frames; the 15 steps change the shadow table, the copper list's colours follow */
+void fade_in(const uint16_t *target, uint16_t delay)
+{
+    copper_colors_save(0);
+    if (copper_setup_done == 0) {
+        wait_vblank();
+        copper_move_a = 0x00840000;
+        copper_move_b = 0x00864e3a;
+    }
+    for (int step = 0; step < 15; step++) {
+        for (int i = 15; i >= 0; i--) {
+            uint16_t colour = shadow_get(i);
+            uint16_t want = target[i] << 1;
+
+            if ((want & 0x00f) != (colour & 0x00f))
+                colour += 0x001;
+            if ((want & 0x0f0) != (colour & 0x0f0))
+                colour += 0x010;
+            if ((want & 0xf00) != (colour & 0xf00))
+                colour += 0x100;
+            shadow_set(i, colour);
+        }
+        copper_fade_up();
+        palette_dirty = 0xffff;
+        for (int frame = 0; frame <= delay; frame++)
+            wait_vblank();
+    }
+    palette_lit = 0xff;
+}
+
+/* orig $016C30: the work of every frame (the vertical blank interrupt calls it): the scroll word of the copper lists, the
+ * sound, the frame count, and the message.  What happens when the message is idle and nothing holds it (the game's own
+ * calls from here) did not run in the menu, so it is not here */
+void frame_tick(void)
+{
+    uint16_t scroll = 0;
+
+    if (copper_setup_done)
+        scroll = scroll_value;
+    copper_a_scroll = scroll;
+    copper_b_scroll = scroll;
+    if (sound_enabled)
+        sound_tick();
+    tick_count++;
+    if (countdown_220)
+        countdown_220--;
+}
+
+/* orig $01D23E: fade the colours out to black, 15 steps of `delay + 1` frames; the message (message.c) goes on while it does,
+ * and starts over (`arg` is what message_start gets); then both screens are cleared and the copper list's colours are as
+ * they were before */
+void fade_out(uint16_t delay, uint16_t arg)
+{
+    message_start(arg);
+    message_current = 0;
+    copper_colors_save(0xffff);
+    for (int step = 0; step < 15; step++) {
+        for (int i = 15; i >= 0; i--) {
+            uint16_t colour = shadow_get(i);
+
+            if (colour & 0x00f)
+                colour -= 0x001;
+            if (colour & 0x0f0)
+                colour -= 0x010;
+            if (colour & 0xf00)
+                colour -= 0x100;
+            shadow_set(i, colour);
+        }
+        copper_fade_down();
+        palette_dirty = 0xffff;
+        for (int frame = 0; frame <= delay; frame++) {
+            message_tick();
+            wait_vblank();
+        }
+    }
+    clear_both_screens();
+    wait_vblank();
+    copper_move_a = 0x00840000;
+    copper_move_b = 0x00865246;
+    copper_colors_restore();
+    palette_lit = 0;
 }
