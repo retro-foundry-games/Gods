@@ -5,7 +5,8 @@ anything older here; see also [AGENTS.md](AGENTS.md).
 
 ## Direction (from the user)
 
-- The game is **one C file**, `native/gods.c`, built with `m68k-amigaos-gcc` from the `native/` flake
+- The game is **one C file per program**: the intro is `native/intro.c` (its data in `intro_data.c`, header `intro.h`, link script
+  `intro.ld`, assembly `intro_amiga.asm`), the menu will be `native/menu.c` the same way.  The intro, built with `m68k-amigaos-gcc` from the `native/` flake
   (`nix develop --command ...`), for the A500 (68000).
 - It is **real decompiled C**: typed structs and globals at the original addresses, real parameters and return
   values. No emulated register file, no flag/`op_` helpers (same architecture: the compiler produces the flags), no
@@ -31,7 +32,7 @@ anything older here; see also [AGENTS.md](AGENTS.md).
 | Reference recording, 100,000 frames, 170 MiB (RAM 84 MiB + screens 83 MiB): per-frame screen hash and chip-RAM CRC, zstd XOR-delta RAM and screens, keyframe every 1,000 frames | `captures/ref100k/` (ignored) |
 | Recorder / comparer / RAM extractor, shared and game-agnostic | `tools/amiga/frame_recorder.py` |
 | Executed-code coverage over the 100,000 frames: 2,104 instructions | `analysis/coverage-100k.txt` |
-| Resident-code analysis: stable instruction set, function partition | `scripts/gods_analysis.py` |
+| Resident-code analysis: stable instruction set, function partition | `scripts/intro_analysis.py` |
 | FTP upload helper (anonymous, writable) | `scripts/ftp.py` (framework level) |
 | `ami.call` oracle skeleton | `host/liftcheck.lua` |
 
@@ -60,7 +61,7 @@ Verified facts:
      copies `$2944` to `$2940`, 10,000 longs).
    - `$1B7C` blitter copy, `$2F1E` blitter wait, `$2CDE` waits for the frame counter to change.
    - `$2CF4` loads the palette and updates the counters; `$1DD6`/`$22E6` run the per-frame work.
-2. **Decompile into `gods.c`**, leaves first, building the structs as they become clear. Each function: address
+2. **Decompile into `intro.c`**, leaves first, building the structs as they become clear. Each function: address
    comment, typed signature, plain C.
 3. **Per-function checking (optional, to confirm).** Compile the C, load it into slow RAM and call it with
    `ami.call` beside the original with identical register/stack inputs, comparing the return value and changed chip
@@ -76,13 +77,13 @@ Verified facts:
 
 ## Build (verified)
 
-- `native/gods.c` (code), `native/gods.h` (data types and declarations), `native/data.c` (the data, C initializers
-  copied from the original's initial image, frame 1746 of the recording) and `native/gods.ld` (generated with
-  `data.c` by `scripts/gen_gods_data.py`).
+- `native/intro.c` (code), `native/intro.h` (data types and declarations), `native/intro_data.c` (the data, C initializers
+  copied from the original's initial image, frame 1746 of the recording) and `native/intro.ld` (generated with
+  `intro_data.c` by `scripts/gen_intro_data.py`).
 - Compile each with `m68k-amigaos-gcc -m68000 -Os -ffreestanding -nostdlib -fdata-sections -c`, link with
-  `m68k-amigaos-ld -m amiga -T gods.ld gods.o data.o`. In a hunk executable an object's offset in the data hunk is its
-  address, so `gods.ld` lays the data hunk out at the original addresses (`. = ADDR;`, `SUBALIGN(1)`); the loader loads
-  it at address 0, copying only the listed objects (`native/gods.objects`) so the rest of the original image stays.
+  `m68k-amigaos-ld -m amiga -T intro.ld intro.o intro_data.o`. In a hunk executable an object's offset in the data hunk is its
+  address, so `intro.ld` lays the data hunk out at the original addresses (`. = ADDR;`, `SUBALIGN(1)`); the loader loads
+  it at address 0, copying only the listed objects (`native/intro.objects`) so the rest of the original image stays.
   The code hunk follows separately. All 23 data objects checked at their original addresses.
 - Hunk sections are rounded up to 4 bytes, so variables that sit next to each other in the original are structs
   (`struct Vblank`, `struct MusicState`, `struct Graphics`, ...) that cover the same bytes.
@@ -98,12 +99,12 @@ game's variables.
 - The C runs from **chip RAM** like the original: the machine is given 1 MB chip RAM (`puae_chipmem_size=2`) and the code
   sits at `$80000`, above the original's 512 KB (which is full).  The C's own stack is at `$90000`; the stack is not
   compared.  The CPU is the normal 7 MHz one.
-- The Amiga-specific routines are the original's instructions in `native/amiga.asm` (the user allowed assembly for them,
+- The Amiga-specific routines are the original's instructions in `native/intro_amiga.asm` (the user allowed assembly for them,
   besides `loader.asm`): the blitter work, screen and bitplane fills, the busy-wait loops, the vertical blank interrupt,
-  `vbl_wait` and the music replayer.  `scripts/gen_amiga_asm.py` generates it from the resident code of the recording; every
+  `vbl_wait` and the music replayer.  `scripts/gen_intro_amiga_asm.py` generates it from the resident code of the recording; every
   instruction is assembled again at its original address and compared with the original bytes.  Struct field offsets in
-  the assembly come from the compiler (`native/offsets.c` -> `native/gods_offsets.i`, which `amiga.asm` includes), so they follow
-  `gods.h`.  Only C-callable
+  the assembly come from the compiler (`native/intro_offsets.c` -> `native/intro_offsets.i`, which `intro_amiga.asm` includes), so they follow
+  `intro.h`.  Only C-callable
   wrappers (arguments on the stack, `d2-d7/a2-a6` preserved) were added.  Two deliberate differences: the interrupt saves
   `d0`/`d1` with `movem.l` (the original's `movem.w` sign-extends them, which C does not survive), and `lea d16(pc),a6` of
   the music code is `lea abs.w,a6` (same cycles, the data is in another hunk).
@@ -119,7 +120,7 @@ game's variables.
   frame for frame), and the C's loader hook reads its blob from disk.  Those frames are reported as not comparable.
 - **Frames:** reference frames 1,728-99,999 (98,272 frames) compared against the C build at the constant boot offset (169
   frames), 0 differ.
-- **Memory:** `scripts/compare_events.py` compares the pinned data objects (sizes from `build/data.o`: the music module,
+- **Memory:** `scripts/compare_events.py` compares the pinned data objects (sizes from `build/intro_data.o`: the music module,
   the graphics, the palette and blitter state, both screens, the music and channel state, the clocks and the frame counter)
   at the program's own points in time, not at the end of each frame.  An event is the entry of `vbl_wait` (the original's
   `$002CDE`), recorded with `gods.lua record=DIR hook=ADDRESS`: the interrupt of the frame has finished and the program has
@@ -129,7 +130,7 @@ game's variables.
   from the original against `captures/events_c`).  Not compared: the stack, the vectors (the C handler's address is in them),
   the loader's buffers and the code.
 - The first pass of the intro had one tick of difference for 31 events until the C kept interrupts masked as the original
-  does: its `sr` stays `$2700` until `move #$2000,sr` at `$000C4A` (`interrupts_on()` in `amiga.asm`), so the vertical blank
+  does: its `sr` stays `$2700` until `move #$2000,sr` at `$000C4A` (`interrupts_on()` in `intro_amiga.asm`), so the vertical blank
   that came in during the start-up delay is pending and is taken as soon as they are enabled.
 - Still to do: the from-scratch ADF (own boot block, only the C and its data), decompile `game_start` (the fire button).
 

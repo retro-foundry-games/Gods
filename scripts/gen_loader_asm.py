@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import gods_analysis as G  # noqa: E402
+import intro_analysis as G  # noqa: E402
 
 NATIVE = G.ROOT / "native"
 BUILD = G.ROOT / "build"

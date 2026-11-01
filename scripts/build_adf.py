@@ -3,7 +3,7 @@
 
     uv run python projects/gods/scripts/build_adf.py
 
-1. compile gods.c and data.c with m68k-amigaos-gcc and link them with m68k-amigaos-ld -m amiga and gods.ld: the data
+1. compile intro.c and intro_data.c with m68k-amigaos-gcc and link them with m68k-amigaos-ld -m amiga and intro.ld: the data
    hunk is laid out at the original addresses, the code hunk follows;
 2. turn the code hunk into a flat blob for slow RAM: apply its relocations (hunk 0, the data, is at address 0);
 3. put a 16-byte trampoline in front of it (a stack in the extra chip RAM, jump to game_main; interrupts stay masked, as in the original, until the game enables them);
@@ -21,11 +21,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gen_loader_asm as L  # noqa: E402
-import gods_analysis as G  # noqa: E402
+import intro_analysis as G  # noqa: E402
 
 NATIVE = G.ROOT / "native"
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import gods_offsets  # noqa: E402
+import intro_offsets  # noqa: E402
 
 BUILD = G.ROOT / "build"
 OUT_ADF = G.ROOT / "local" / "gods-c-disk1.adf"
@@ -83,19 +83,19 @@ def parse_hunks(data: bytes):
 
 def main() -> int:
     BUILD.mkdir(exist_ok=True)
-    gods_offsets.write()   # the struct field offsets amiga.asm includes, from gods.h
+    intro_offsets.write()   # the struct field offsets intro_amiga.asm includes, from intro.h
     flags = os.environ.get("GODS_CFLAGS", "") + " -m68000 " + os.environ.get("GODS_OPT", "-O2") + " -ffreestanding -fno-tree-loop-distribute-patterns -fno-tree-forwprop -fno-ivopts -nostdlib -fdata-sections"
-    r = nix(f"cd {NATIVE} && m68k-amigaos-gcc {flags} -Wall -Wextra -c gods.c -o {BUILD}/gods.o"
-            f" && m68k-amigaos-gcc {flags} -c data.c -o {BUILD}/data.o"
-            f" && vasmm68k_mot -Fhunk -no-opt -quiet -o {BUILD}/amiga.o amiga.asm"
-            f" && m68k-amigaos-ld -m amiga -T gods.ld -Map {BUILD}/gods.map -o {BUILD}/gods.exe {BUILD}/gods.o {BUILD}/amiga.o {BUILD}/data.o"
-            f" && m68k-amigaos-nm {BUILD}/gods.exe > {BUILD}/gods.sym")
+    r = nix(f"cd {NATIVE} && m68k-amigaos-gcc {flags} -Wall -Wextra -c intro.c -o {BUILD}/intro.o"
+            f" && m68k-amigaos-gcc {flags} -c intro_data.c -o {BUILD}/intro_data.o"
+            f" && vasmm68k_mot -Fhunk -no-opt -quiet -o {BUILD}/intro_amiga.o intro_amiga.asm"
+            f" && m68k-amigaos-ld -m amiga -T intro.ld -Map {BUILD}/intro.map -o {BUILD}/intro.exe {BUILD}/intro.o {BUILD}/intro_amiga.o {BUILD}/intro_data.o"
+            f" && m68k-amigaos-nm {BUILD}/intro.exe > {BUILD}/intro.sym")
     if r.returncode:
         print(r.stdout[-2000:], r.stderr[-3000:])
         return 1
     syms = {m.group(3).lstrip("_"): int(m.group(1), 16)
-            for m in re.finditer(r"^([0-9a-f]{8}) (\w) (\S+)$", (BUILD / "gods.sym").read_text(), re.M)}
-    hunks = parse_hunks((BUILD / "gods.exe").read_bytes())
+            for m in re.finditer(r"^([0-9a-f]{8}) (\w) (\S+)$", (BUILD / "intro.sym").read_text(), re.M)}
+    hunks = parse_hunks((BUILD / "intro.exe").read_bytes())
     assert len(hunks) == 2, f"expected a data hunk and a code hunk, got {len(hunks)}"
     (t0, data_hunk, _), (t1, code, relocs) = hunks
     base = L.SLOW_BASE + TRAMPOLINE_SIZE
@@ -120,7 +120,7 @@ def main() -> int:
     tramp = (BUILD / "trampoline.bin").read_bytes()
     assert len(tramp) == TRAMPOLINE_SIZE, f"trampoline is {len(tramp)} bytes"
     blob = tramp + bytes(code)
-    (BUILD / "gods.blob").write_bytes(blob)
+    (BUILD / "intro.blob").write_bytes(blob)
     print(f"code hunk {len(code)} bytes at ${base:x}, {n_rel} relocations; game_main at ${game_main:x}; blob {len(blob)} bytes")
     return L.main(patched=True, adf_out=OUT_ADF, blob=blob)
 

@@ -1,5 +1,5 @@
 """Gods menu analysis: executed-code coverage of the original's main menu + its recording -> the menu's resident code and
-its function structure (the intro's equivalent is gods_analysis.py).
+its function structure (the intro's equivalent is intro_analysis.py).
 
 The recording is `captures/menu_ref` (the original, space/fire pressed at frame 2,700, the menu on show from about frame
 5,700; see PLAN.md for the command); the coverage is `analysis/coverage-menu.txt`.  An instruction is *stable* if its bytes
@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REPO = ROOT.parents[1]
 sys.path.insert(0, str(REPO / "tools" / "amiga"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import gods_analysis as G  # noqa: E402
+import intro_analysis as G  # noqa: E402
 from frame_recorder import RefRam  # noqa: E402
 
 REC = ROOT / "captures" / "menu_ref"
