@@ -36,4 +36,16 @@ void build_table_14cf8(void);                                            /* orig
 void save_slot_words(void);                                              /* orig $01494C */
 void restore_slot_words(void)                                            /* orig $01496A */;
 
+void load_background(void);                                              /* orig $006A82 */
+void background_draw(void);                                              /* orig $006B06 */
+void password_screen_setup(void);                                        /* orig $00659C */
+void leave_load_screen(void);                                            /* orig $0031CE */
+void draw_line_text(void);                                               /* orig $006DEA */
+void cursor_draw(void);                                                  /* orig $006E1C */
+void password_grid_draw(void);                                           /* orig $006E5E */
+void password_slots_draw(void);                                          /* orig $006994 */
+void record_list_draw(void);                                             /* orig $006974 */
+void wait_request(int16_t frames);                                       /* orig $006948 */
+void title_draw(void);                                                   /* orig $006754 */
+
 #endif

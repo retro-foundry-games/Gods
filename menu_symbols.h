@@ -80,6 +80,20 @@ extern int16_t message_wide;   /* $00B38  -1 text fits, 320 it does not */
 extern uint16_t message_shown;   /* $002F4  non-zero: the message is on the screen */
 extern uint16_t message_arg;   /* $002F8 */
 extern uint16_t message_words[16];   /* $053EE  colours of the message (message_words[8..11] the colours it fades to) */
+extern uint8_t *memory_base;   /* $00B56  a block of the program's memory (the background image sits 256 bytes into it) */
+extern uint8_t *background;   /* $00182  where the background image is */
+extern uint16_t background_loaded;   /* $00276  non-zero: the background image has been loaded */
+extern uint16_t screen_prepared;   /* $00398  non-zero: the password screen has been set up */
+extern uint16_t menu_state_25a;   /* $0025A */
+extern const uint8_t *line_text;   /* $003A8  sixteen characters (in the program's numbering) that draw_line_text draws */
+extern uint16_t cursor_pos;   /* $0038E  which cell of the grid the cursor is at (bits 0 to 2 the column, 3 up the row) */
+extern uint16_t cursor_frame;   /* $00AA6  0 to 3: the frame of the cursor's animation */
+extern const char *title_text;   /* $003BE */
+extern int16_t title_x;   /* $003BA */
+extern int16_t title_y;   /* $003BC */
+extern uint32_t password_slots[3];   /* $00D12  the three saved codes (the first byte of each is 0 when there is none) */
+extern uint8_t password_line[];   /* $06A0E  "pass N :" and then room for the three code characters (a line of text in the code that is changed) */
+extern uint8_t record_text[200];   /* $003C2  ten records of 20 bytes: sixteen characters and four bytes */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
 extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of the two copper lists' colour moves the message fades */

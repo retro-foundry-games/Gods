@@ -149,3 +149,151 @@ void restore_slot_words(void)
         object_slots[i].value_1e = saved_slot_words[i * 2 + 1];
     }
 }
+
+/* orig $006A82: the background image is loaded from the disk when it was not (it always was when the menu ran) */
+void load_background(void)
+{
+    if (background_loaded)
+        return;
+    /* the disk load did not run in the menu */
+}
+
+/* orig $006B06: the background image on the screen: 192 rows of 20 words of each of the four planes */
+void background_draw(void)
+{
+    background = memory_base + 256;
+    load_background();
+
+    const uint16_t *src = (const uint16_t *)(background + 34);
+    uint16_t *dst = (uint16_t *)screen_buffer;
+
+    for (int row = 0; row < 192; row++) {
+        for (int col = 0; col < 20; col++) {
+            dst[0] = *src++;
+            dst[4224] = *src++;
+            dst[8448] = *src++;
+            dst[12672] = *src++;
+            dst++;
+        }
+        dst += 2;
+    }
+}
+
+/* orig $00659C: set up the password screen (it was set up whenever the menu ran) */
+void password_screen_setup(void)
+{
+    if (screen_prepared)
+        return;
+    /* the set-up did not run in the menu */
+}
+
+/* orig $0031CE: the load screen is left when the state is 3 (the rest did not run in the menu) */
+void leave_load_screen(void)
+{
+    if (menu_state_25a == 3)
+        return;
+    /* the rest did not run in the menu */
+}
+
+/* orig $006DEA: sixteen characters of line_text in the large font at the bottom, 16 pixels apart */
+void draw_line_text(void)
+{
+    const uint8_t *text = line_text;
+    int16_t x = 32;
+
+    for (int i = 0; i < 16; i++) {
+        int16_t ch = (int8_t)*text++;
+
+        if (ch == 0)
+            ch = 28;
+        glyph_draw(x, 176, ch + 128 - 1);
+        x += 16;
+    }
+}
+
+/* orig $006E1C: the cursor of the grid: a glyph of four frames at the cell cursor_pos names, then the next frame */
+void cursor_draw(void)
+{
+    int16_t x = ((cursor_pos & 7) << 5) + 40;
+    int16_t row = (int16_t)cursor_pos >> 3;
+    int16_t y = row * 24 + 40;
+
+    glyph_draw(x, y, cursor_frame + 87);
+    cursor_frame = (cursor_frame + 1) & 3;
+}
+
+/* orig $006E5E: the password screen's background, its title and the grid of 5 rows of 8 glyphs (numbered on from row to row) */
+void password_grid_draw(void)
+{
+    background_draw();
+    text_draw_at(title_text, title_x, title_y);
+    for (int row = 0; row < 5; row++)
+        for (int col = 0; col < 8; col++)
+            glyph_draw(40 + 32 * col, 40 + 24 * row, 128 + 8 * row + col);
+}
+
+/* orig $006994: the three saved codes on one line each, 100 pixels apart: "pass 2 :" and then the code's characters
+ * (their codes plus 96), the ones that are there */
+void password_slots_draw(void)
+{
+    int16_t x = 10;
+
+    for (int i = 0; i < 3; i++) {
+        uint32_t slot = password_slots[i];
+
+        password_line[5] = '2' + i;
+        if ((slot >> 24) != 0) {
+            password_line[8] = (uint8_t)(slot >> 24) + 96;
+            password_line[9] = (uint8_t)(slot >> 16) + 96;
+            password_line[10] = (uint8_t)(slot >> 8) + 96;
+            password_line[11] = (uint8_t)slot;
+            draw_string_small((const char *)password_line, x, 182);
+        }
+        x += 100;
+    }
+}
+
+/* orig $006974: ten records, one a line 13 pixels below the one before: sixteen characters and the four bytes in hexadecimal */
+void record_list_draw(void)
+{
+    const uint8_t *record = record_text;
+    int16_t y = 40;
+
+    for (int i = 0; i < 10; i++) {
+        int16_t x = draw_string_16(record, 20, y);
+
+        record += 16;
+        draw_hex_bytes(record, x + 40, y);
+        record += 4;
+        y += 13;
+    }
+}
+
+/* orig $006948: wait `frames` frames (for ever when it is negative) for a request or a button; a button must be let go again */
+void wait_request(int16_t frames)
+{
+    for (;;) {
+        if (frames >= 0) {
+            wait_vblank();
+            if (--frames < 0)
+                return;
+        }
+        if ((uint16_t)take_pending_request() != 0)
+            return;
+        if (button_bits[0] != 0) {
+            while (button_bits[0] != 0)
+                ;
+            return;
+        }
+    }
+}
+
+/* orig $006754: the title row: six sprites 32 pixels apart and a glyph after them */
+void title_draw(void)
+{
+    uint16_t index = 123 + glyph_base;
+
+    for (int i = 0; i < 6; i++)
+        sprite_draw(64 + 32 * i, 5, index + i);
+    glyph_draw(256, 5, index + 6);
+}
