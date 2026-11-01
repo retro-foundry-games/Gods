@@ -106,6 +106,7 @@ for f, dirs in (args:match("joy=(%S+)") or ""):gmatch("(%d+):([%a+]+)") do
 end
 local keys = {}   -- keys=F:name:down|up,...
 for f, name, state in (args:match("keys=(%S+)") or ""):gmatch("(%d+):(%a+):(%a+)") do keys[tonumber(f)] = { name, state == "down" } end
+local STEPDUMP = tonumber(args:match("stepdump=(%d+)"))   -- at that frame: the pcs of the next instructions (the main thread)
 local DUMP = tonumber(args:match("dump=(%d+)"))
 local EVENTS = {}
 for name in ((" " .. args):match(" trace=(%S+)") or ""):gmatch("[%w_]+") do
@@ -140,6 +141,11 @@ while ami.frame() - start < UNTIL do
     ami.wait(1)
     settle_flips()
     local f = ami.frame() - start
+    if STEPDUMP and f == STEPDUMP then
+        local ring, n = {}, 0
+        ami.step(function(pc) n = n + 1; ring[#ring + 1] = string.format("%x", pc); if #ring > 400 then table.remove(ring, 1) end; return n < 6000 end)
+        ami.save_file(OUT .. ".steps", table.concat(ring, " "))
+    end
     if joys[f] then ami.joystick(joys[f]) end
     if keys[f] then ami.key(ami.keys[keys[f][1]], keys[f][2]) end
     for _, k in ipairs(game_keys[f] or {}) do ami.key(k[1], k[2]) end
