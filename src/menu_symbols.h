@@ -300,6 +300,21 @@ extern uint16_t score_words[4];   /* $002D2  the score, two decimal digits a wor
 extern uint16_t word_200;   /* $00200 */
 extern uint16_t word_202;   /* $00202 */
 extern void fn_5af6(void);   /* $05AF6 */
+extern uint16_t word_2ae;   /* $002AE */
+extern int16_t word_2c0;   /* $002C0 */
+extern uint16_t word_2bc;   /* $002BC */
+extern uint16_t word_73ce;   /* $073CE  a word in the middle of the code */
+extern uint16_t word_2ce;   /* $002CE */
+extern uint16_t word_2cc;   /* $002CC */
+extern uint16_t word_2de;   /* $002DE  0 to 3: the picture of the energy bar cycles with it (goes on every other frame) */
+extern int32_t high_score_baa;   /* $00BAA  the first high score (two decimal digits a byte, as the score packed by score_packed) */
+extern int32_t high_score_bae;   /* $00BAE  the second */
+extern int16_t fall_x;   /* $07F78  the thing that falls (in the code area): where it is */
+extern int16_t fall_y;   /* $07F7A */
+extern int16_t fall_speed;   /* $07F7C  -6 at the start, up by one a frame; at 4 the thing lands */
+extern int16_t fall_kind;   /* $07F7E  what it is (negative: nothing falls) */
+extern uint16_t word_7c50;   /* $07C50  the immediate of an instruction in walk_pace ($7C4E: add #496): the first picture of the walker (the original sets it) */
+extern int16_t word_2be;   /* $002BE  the way the shutter goes (draw_shutter adds it to word_2c0) */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
 extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of the two copper lists' colour moves the message fades */
@@ -319,5 +334,6 @@ extern const uint32_t fill_longs[14];   /* $05FCA  fourteen longs it repeats ins
 extern const uint16_t zone_limits[28];   /* $09992  seven records of four words: the limits of the zones the player is tested against */
 extern const uint8_t zone_groups[18];   /* $099CA  six groups of three zone numbers */
 extern const uint8_t digit_font[512];   /* $058F0  sixteen digits of 8 rows of 4 bytes (a plane each) */
+extern const uint16_t shutter_masks[12];   /* $0542C  the rows of the shutter a step shows (one bit a row) */
 
 #endif

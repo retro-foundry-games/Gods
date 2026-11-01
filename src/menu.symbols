@@ -314,3 +314,19 @@ score_words        0x000002d2 uint16_t %s[4]   the score, two decimal digits a w
 word_200           0x00000200 uint16_t %s
 word_202           0x00000202 uint16_t %s
 fn_5af6           0x00005af6 void %s(void)
+word_2ae          0x000002ae  uint16_t %s
+word_2c0          0x000002c0  int16_t %s
+word_2bc          0x000002bc  uint16_t %s
+word_73ce         0x000073ce  uint16_t %s   a word in the middle of the code
+word_2ce          0x000002ce  uint16_t %s
+word_2cc          0x000002cc  uint16_t %s
+word_2de          0x000002de  uint16_t %s   0 to 3: the picture of the energy bar cycles with it (goes on every other frame)
+high_score_baa    0x00000baa  int32_t %s    the first high score (two decimal digits a byte, as the score packed by score_packed)
+high_score_bae    0x00000bae  int32_t %s    the second
+fall_x            0x00007f78  int16_t %s    the thing that falls (in the code area): where it is
+fall_y            0x00007f7a  int16_t %s
+fall_speed        0x00007f7c  int16_t %s    -6 at the start, up by one a frame; at 4 the thing lands
+fall_kind         0x00007f7e  int16_t %s    what it is (negative: nothing falls)
+word_7c50         0x00007c50  uint16_t %s   the immediate of an instruction in walk_pace ($7C4E: add #496): the first picture of the walker (the original sets it)
+word_2be          0x000002be  int16_t %s   the way the shutter goes (draw_shutter adds it to word_2c0)
+table shutter_masks 0x0000542c uint16_t 12   the rows of the shutter a step shows (one bit a row)
