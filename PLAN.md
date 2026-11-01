@@ -87,6 +87,31 @@ Verified facts:
 - Hunk sections are rounded up to 4 bytes, so variables that sit next to each other in the original are structs
   (`struct Vblank`, `struct MusicState`, `struct Graphics`, ...) that cover the same bytes.
 
+## Lockstep status (latest)
+
+Run: `python3 scripts/build_adf.py` then
+`ami9000_host host/gods.lua --headless --script-args "rebuilt compare=captures/ref100k [survey] until=N"`
+(or `record=DIR` and compare the per-frame hashes). The rebuilt disk is the original disk with its loader patched to load
+the C (see `scripts/build_adf.py`); its load takes a different time, so the rebuilt run is shifted by a constant number of
+frames (369 at 7 MHz, found by matching screen hashes).
+
+- With that shift the rebuilt game matches the original's screens **exactly for 1,312 consecutive frames** (credits, logo,
+  hero picture and the fades) and then diverges at original frame 3545, the start of the story's text scroll.
+- The C touches the chips as the original does (blitter, BLTPRI, CPU fills, music delays); the first scroll step still ends
+  about 4,000 chipset cycles (6% of a frame) later than the original's, so the flip lands a frame late.
+- `ami.cycles()` (new in the host) counts chipset clock units, 70,937 to a PAL frame. Per-function costs, same window:
+  the C's blit routine takes 1,447 per call against 1,096, `glyph_draw` 304 against 170, the bitplane clear 21,000 against
+  16,000 (gcc will not emit `move.l d,(a0)+` for unrolled stores).
+- The original run on a 14 MHz cycle-exact CPU reproduces the 7 MHz recording frame for frame (2,200 frames, 0 differ), so
+  a faster cycle-exact CPU (`--opt puae_cpu_compatibility=exact --opt puae_cpu_multiplier=4`) is a valid way to absorb the
+  C's extra run time. On it the rebuilt game still diverges at the same place, with an irregular 1-2-3 frame scroll cadence,
+  which points at a timing dependence in the rebuilt flip/scroll loop that the original does not have. Not yet explained.
+- Memory is not compared yet: the compare tool has `--survey` and `--mask`, but the mask (vectors, stack zone, loader buffers,
+  the C blob's neighbourhood) has not been written; the boot phase differs because the disk differs.
+- Next: find the cadence difference at the start of the scroll (trace `scroll_y`, `vblank.saturating` and the flips in both
+  on the fast machine), then the memory mask, then run the full 100,000 frames. The from-scratch ADF (own boot block, only
+  the C and its data) is still to do and would remove the loader-patch offset.
+
 ## Open questions
 
 - Per-function checking against the original (step 3), or only the full lockstep run?
