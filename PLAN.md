@@ -150,6 +150,16 @@ the loader reads and decrunches over the intro.  It is a different program, abou
   disk into memory; the trampoline's second entry (now `jmp $84`) will enter the C menu instead, which uses the data that is
   in memory at the original addresses (pinned by the linker script) and ignores the original code.
 
+### The menu handling (goal: decompile it)
+
+"Menu handling" is the code that runs while the menu is on show and used: the attract screens (menu, top ten), the selection
+moved with the joystick, and the password screen with letters picked: 1,453 instructions in 58 flow components
+(`analysis/coverage-menu-handling.txt`; `scripts/menu_dis.py --todo` lists what is not decompiled).  What runs when Begin Quest
+starts the game is separate (`analysis/coverage-game-start.txt`, the loader and the game's set-up): functions decompiled
+from it are checked in their own scenario.  To use the menu in the emulator the joystick has to be in port 1:
+`--opt puae_joyport_order=2143` (the default puts the pad on the mouse port), and `gods.lua` has `joy=F:DIRS`, `move=`,
+`click=`, `press=` to drive it; the host got `ami.joystick{up=, down=, left=, right=, fire=}`.
+
 ### Decompiling the menu: how it is checked
 
 - The menu program's C is split by what the code does: `disk.c` (the disk layer: MFM, track buffer, sector copy), `alloc.c`

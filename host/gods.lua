@@ -41,6 +41,8 @@ ami.boot()
 --   snap=F[,F...]        save snapshot gods-F.state at frame F (relative to the start or the loaded snapshot)
 --   snapname=NAME        save the snapshots as NAME.state (with one frame in snap=) and quit afterwards
 --   click=F[,...]        press the left mouse button (the fire button the program polls) for 3 frames at frame F
+--   move=F:DX:DY[,...]   move the mouse by DX, DY at frame F (the software pointer of the menu follows the counters)
+--   joy=F:DIRS[,...]     set the joystick (port 1) at frame F: DIRS is up, down, left, right, fire joined by +, or none
 --   press=KEY@F[,...]    press the key (a name from ami.keys, e.g. space) for 3 frames at frame F (to reach the menu with
 --                        space and take a snapshot; the lockstep recordings never press a key)
 --   record=DIR [screen=N]  stream every frame (hash, chip RAM, every Nth screen) to tools/amiga/frame_recorder.py
@@ -104,15 +106,25 @@ local function write_cover()
     ami.log("coverage", #cover_order, "instructions")
 end
 
+local joys = {}   -- frame -> the joystick state from then on
+for f, dirs in (args:match("joy=(%S+)") or ""):gmatch("(%d+):([%a+]+)") do
+    local state = {}
+    for d in dirs:gmatch("%a+") do if d ~= "none" then state[d] = true end end
+    joys[tonumber(f)] = state
+end
 local peer = recorder and ami.peer("recorder")
 local clicks = {}
 for _, f in ipairs(frames_of("click")) do clicks[f] = true; clicks[f + 3] = false end
+local moves = {}
+for f, dx, dy in (args:match("move=(%S+)") or ""):gmatch("(%d+):(-?%d+):(-?%d+)") do moves[tonumber(f)] = { tonumber(dx), tonumber(dy) } end
 local function run_frames()
     local sent = 0
     while not until_frame or sent < until_frame do
         ami.wait(1)
         local f = ami.frame() - base
         if clicks[f] ~= nil then ami.mouse_button(0, clicks[f]) end
+        if moves[f] then ami.mouse_move(moves[f][1], moves[f][2]) end
+        if joys[f] then ami.joystick(joys[f]) end
         if cover_path and f > 0 and f % REARM == 0 then
             for _, pc in ipairs(cover_order) do ami.hook(pc, on_cover) end
         end
@@ -163,6 +175,8 @@ for key, f in (args:match("press=(%S+)") or ""):gmatch("(%w+)@(%d+)") do
     events[#events + 1] = { tonumber(f), "press", key }
     events[#events + 1] = { tonumber(f) + 3, "release", key }
 end
+for f, v in pairs(moves) do events[#events + 1] = { f, "move", v } end
+for f, v in pairs(joys) do events[#events + 1] = { f, "joy", v } end
 for _, f in ipairs(frames_of("click")) do
     events[#events + 1] = { f, "click" }
     events[#events + 1] = { f + 3, "unclick" }
@@ -171,7 +185,11 @@ table.sort(events, function(a, b) return a[1] < b[1] end)
 local snap_name = args:match("snapname=(%S+)")
 for _, e in ipairs(events) do
     ami.wait_until(function() return ami.frame() - base >= e[1] end)
-    if e[2] == "click" then
+    if e[2] == "joy" then
+        ami.joystick(e[3])
+    elseif e[2] == "move" then
+        ami.mouse_move(e[3][1], e[3][2])
+    elseif e[2] == "click" then
         ami.mouse_button(0, true)
     elseif e[2] == "unclick" then
         ami.mouse_button(0, false)

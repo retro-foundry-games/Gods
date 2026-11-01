@@ -20,7 +20,7 @@ NATIVE, BUILD = B.NATIVE, B.BUILD
 FLAGS = "-m68000 -O2 -ffreestanding -fno-tree-loop-distribute-patterns -fno-tree-forwprop -fno-ivopts -nostdlib -fdata-sections -ffunction-sections"
 
 
-MODULES = ['menu', 'disk', 'alloc', 'decrunch', 'input', 'screen']   # native/<name>.c
+MODULES = ['menu', 'disk', 'alloc', 'decrunch', 'input', 'screen', 'menu_data']   # native/<name>.c
 
 
 def main() -> int:
@@ -36,13 +36,15 @@ def main() -> int:
         print(r.stdout[-2000:], r.stderr[-3000:])
         return 1
     hunks = B.parse_hunks((BUILD / "menu.exe").read_bytes())
-    assert len(hunks) == 1, f"expected one code hunk, got {len(hunks)}"
-    _, code, relocs = hunks[0]
+    # the tables (a data hunk at address 0, never loaded: the bytes are in memory already) and the code
+    assert len(hunks) in (1, 2), f"expected the code hunk and perhaps a data hunk, got {len(hunks)}"
+    data = hunks[0] if len(hunks) == 2 else None
+    _, code, relocs = hunks[-1]
     code = bytearray(code)
     for target, offsets in relocs.items():
-        assert target == 0, "the menu code refers to nothing but itself and absolute addresses"
+        add = base if target == len(hunks) - 1 else 0   # code refers to itself (moved to `base`) and to the tables (at their addresses)
         for off in offsets:
-            struct.pack_into(">I", code, off, struct.unpack_from(">I", code, off)[0] + base)
+            struct.pack_into(">I", code, off, struct.unpack_from(">I", code, off)[0] + add)
     (BUILD / "menu.blob").write_bytes(bytes(code))
     funcs = {m.group(3).lstrip("_"): int(m.group(1), 16) + base
              for m in re.finditer(r"^([0-9a-f]{8}) ([tT]) (\S+)$", (BUILD / "menu.sym").read_text(), re.M)}
