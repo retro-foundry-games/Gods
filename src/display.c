@@ -154,8 +154,7 @@ void fade_in(const uint16_t *target, uint16_t delay)
 }
 
 /* orig $016C30: the work of every frame (the vertical blank interrupt calls it): the scroll word of the copper lists, the
- * sound, the frame count, and the message.  What happens when the message is idle and nothing holds it (the game's own
- * calls from here) did not run in the menu, so it is not here */
+ * sound, the frame count, and the message ticker (the line of text that scrolls in) */
 void frame_tick(void)
 {
     uint16_t scroll = 0;
@@ -169,6 +168,18 @@ void frame_tick(void)
     tick_count++;
     if (countdown_220)
         countdown_220--;
+    if (!message_shown)
+        return;
+    if (tick_hold_38a)
+        return;   /* goes on at $16C9E, which did not run */
+    if (tick_hold_296 || (int16_t)message_state < 0 || tick_hold_26c)
+        return;
+    if (message_hold <= 1) {   /* the message scrolls in the work area */
+        work_area_shift_left();
+        message_ticker();
+    }
+    if (--message_hold < 0)
+        message_hold = 0;
 }
 
 /* orig $01D23E: fade the colours out to black, 15 steps of `delay + 1` frames; the message (message.c) goes on while it does,

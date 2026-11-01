@@ -20,4 +20,15 @@ uint8_t *next_message_slot(void);                          /* orig $012A80 */
 
 void game_frame(void);                                     /* orig $002C20 */
 
+void fill_buffer(void);                                    /* orig $006002 */
+void activate_records(void);                               /* orig $003EA4 and $003E8C */
+void count_zones(void);                                    /* orig $009912 */
+
+void draw_effects(void);                                   /* orig $003F8E */
+void update_energy_display(void);                          /* orig $005E02 */
+void draw_item_row(void);                                  /* orig $003806 */
+
+void work_area_shift_left(void);                           /* orig $01700C */
+void message_ticker(void);                                 /* orig $016CA4 */
+
 #endif

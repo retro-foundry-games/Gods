@@ -249,9 +249,9 @@ timer_306         0x00000306  int16_t %s   counted down to 0 once a frame
 demo_mode         0x0000022a  int16_t %s   0 the player plays; negative a demo is played back; positive the input is recorded
 game_stick        0x00000226  uint8_t %s   the joystick byte of this frame (bit 0 up, 1 down, 2 left, 3 right)
 fire_latch        0x00000222  int16_t %s   cleared while fire is up
-camera_x_old      0x00000c98  uint16_t %s   the camera's column of the frame before
-camera_x          0x00000c96  uint16_t %s   the camera's column
-life_state        0x00000216  int16_t %s   0 or less: the player is not alive (the loop goes on elsewhere)
+energy_old      0x00000c98  uint16_t %s   the energy of the frame before
+player_energy          0x00000c96  uint16_t %s   the player's energy (0 to 24)
+energy_shown        0x00000216  int16_t %s   the energy as shown (it goes toward player_energy a step a frame); 0 or less: the player is dead (the loop goes on elsewhere)
 flag_26e          0x0000026e  uint16_t %s
 flag_23a          0x0000023a  uint16_t %s
 callback_4e4      0x000004e4  void (*%s)(void)
@@ -281,3 +281,19 @@ records_19b14     0x00019b14  struct Slot8 %s[200]   two hundred records of 8 by
 dispatch_18be0    0x00018be0  void (*%s[])(void)     the routines a record's kind (0, 1, ...) names
 message_slots     0x00012be6  uint8_t %s[]           the first of the lines of text the messages are made of (88 bytes each)
 message_hold      0x00000264  int16_t %s     frames a message stays once it is in (counted down by the frame tick)
+table fill_words   0x00005fae uint16_t 14  fourteen words that fill_buffer makes longs of (sign extended) and repeats
+table fill_longs   0x00005fca uint32_t 14  fourteen longs it repeats instead when flag_290 is not negative
+table zone_limits  0x00009992 uint16_t 28   seven records of four words: the limits of the zones the player is tested against
+table zone_groups  0x000099ca uint8_t 18   six groups of three zone numbers
+flag_210           0x00000210 uint16_t %s
+word_2aa           0x000002aa int16_t %s    the scroll row at which the records were last looked at
+flag_b24           0x00000b24 uint16_t %s
+flags_39fde        0x00039fde uint8_t %s[200]   one byte for each record of records_19b14: $FF when it has just come near the screen
+player_x           0x000001e0 int16_t %s
+player_y           0x000001e2 int16_t %s
+zone_counts        0x000004b6 uint8_t %s[8]   how many of each group's three zones the player is in
+flag_2e0           0x000002e0 uint16_t %s    set while the energy goes down (the sound of it is played once)
+item_count         0x00000224 int16_t %s     how many of the things the player has (drawn as a row of glyphs at the top, at most 10)
+flag_2ac           0x000002ac uint16_t %s    set while one of the effects is alive
+effects            0x0003a196 int16_t %s[100]   ten effects of five words (x, y, ?, glyph less 80, life): x negative when it is free
+flag_236           0x00000236 uint16_t %s

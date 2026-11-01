@@ -240,9 +240,9 @@ extern int16_t timer_306;   /* $00306  counted down to 0 once a frame */
 extern int16_t demo_mode;   /* $0022A  0 the player plays; negative a demo is played back; positive the input is recorded */
 extern uint8_t game_stick;   /* $00226  the joystick byte of this frame (bit 0 up, 1 down, 2 left, 3 right) */
 extern int16_t fire_latch;   /* $00222  cleared while fire is up */
-extern uint16_t camera_x_old;   /* $00C98  the camera's column of the frame before */
-extern uint16_t camera_x;   /* $00C96  the camera's column */
-extern int16_t life_state;   /* $00216  0 or less: the player is not alive (the loop goes on elsewhere) */
+extern uint16_t energy_old;   /* $00C98  the energy of the frame before */
+extern uint16_t player_energy;   /* $00C96  the player's energy (0 to 24) */
+extern int16_t energy_shown;   /* $00216  the energy as shown (it goes toward player_energy a step a frame); 0 or less: the player is dead (the loop goes on elsewhere) */
 extern uint16_t flag_26e;   /* $0026E */
 extern uint16_t flag_23a;   /* $0023A */
 extern void (*callback_4e4)(void);   /* $004E4 */
@@ -272,6 +272,18 @@ extern struct Slot8 records_19b14[200];   /* $19B14  two hundred records of 8 by
 extern void (*dispatch_18be0[])(void);   /* $18BE0  the routines a record's kind (0, 1, ...) names */
 extern uint8_t message_slots[];   /* $12BE6  the first of the lines of text the messages are made of (88 bytes each) */
 extern int16_t message_hold;   /* $00264  frames a message stays once it is in (counted down by the frame tick) */
+extern uint16_t flag_210;   /* $00210 */
+extern int16_t word_2aa;   /* $002AA  the scroll row at which the records were last looked at */
+extern uint16_t flag_b24;   /* $00B24 */
+extern uint8_t flags_39fde[200];   /* $39FDE  one byte for each record of records_19b14: $FF when it has just come near the screen */
+extern int16_t player_x;   /* $001E0 */
+extern int16_t player_y;   /* $001E2 */
+extern uint8_t zone_counts[8];   /* $004B6  how many of each group's three zones the player is in */
+extern uint16_t flag_2e0;   /* $002E0  set while the energy goes down (the sound of it is played once) */
+extern int16_t item_count;   /* $00224  how many of the things the player has (drawn as a row of glyphs at the top, at most 10) */
+extern uint16_t flag_2ac;   /* $002AC  set while one of the effects is alive */
+extern int16_t effects[100];   /* $3A196  ten effects of five words (x, y, ?, glyph less 80, life): x negative when it is free */
+extern uint16_t flag_236;   /* $00236 */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
 extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of the two copper lists' colour moves the message fades */
@@ -286,5 +298,9 @@ extern const uint8_t asset_names[138];   /* $1ECEC  the names assets_load knows 
 extern const uint8_t keymap[128];   /* $1E5AE  the character a raw key code gives (0 when none) */
 extern const uint8_t background_name[12];   /* $026D2  "backscr.pi1": the file of the menu's background picture */
 extern const uint8_t small_font_name[9];   /* $03232  "smallfnt": the asset set of the small font */
+extern const uint16_t fill_words[14];   /* $05FAE  fourteen words that fill_buffer makes longs of (sign extended) and repeats */
+extern const uint32_t fill_longs[14];   /* $05FCA  fourteen longs it repeats instead when flag_290 is not negative */
+extern const uint16_t zone_limits[28];   /* $09992  seven records of four words: the limits of the zones the player is tested against */
+extern const uint8_t zone_groups[18];   /* $099CA  six groups of three zone numbers */
 
 #endif
