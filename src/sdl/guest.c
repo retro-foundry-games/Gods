@@ -14,6 +14,7 @@
 
 #include "guest.h"
 #include "guest_tables.h"
+#include "guest_fixups.h"
 
 #define IMAGE_BASE 0x84u
 
@@ -96,4 +97,82 @@ void guest_load_image(const uint8_t *image, uint32_t size)
             pairs[i] += GUEST_LOW_BASE;
             *((uint16_t *)(uintptr_t)pairs[i] + 1) = 0;   /* the message starts dark (the copper list's colour of its line) */
         }
+}
+
+/* ---- a RAM image of the original in level 1 (a test of the level on the host: --level1-image) ---------------------------------------
+ * The image is the original's chip RAM (big endian); the tables of menu_data.c stay as they are, the rest is copied in and then the words
+ * and longs of the program's variables (guest_fixups.h, from menu.symbols' types) are made native, and so are the pictures: the two
+ * screens, the sprites of the image table, the background.  What the image has that the C reads in other ways (the level's map, ...) is
+ * not known here and is left as it is. */
+extern uint8_t *image_table, *asset_memory, *memory_base;
+extern uint16_t shadow_table[];
+
+static void swap_image_table(void)
+{
+    uint8_t *p = image_table;
+
+    for (unsigned i = 0; i < 0x1450 / 8; i++, p += 8) {
+        swap16_range((uint32_t)(uintptr_t)p, 4);
+        swap32_range((uint32_t)(uintptr_t)p + 4, 4);
+    }
+}
+
+int guest_load_level_image(const char *path)
+{
+    FILE *f = fopen(path, "rb");
+    uint8_t *image;
+    long size;
+
+    if (!f)
+        return -1;
+    fseek(f, 0, SEEK_END);
+    size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    image = malloc((size_t)size);
+    if (fread(image, 1, (size_t)size, f) != (size_t)size) {
+        fclose(f);
+        free(image);
+        return -1;
+    }
+    fclose(f);
+    for (uint32_t i = IMAGE_BASE; i < (uint32_t)size; i++)
+        if (!in_table(i))
+            *guest_ptr(i) = image[i];
+    free(image);
+    uint8_t *swapped = calloc((size_t)size + 8, 1);
+    for (unsigned i = 0; i < sizeof guest_fixups / sizeof guest_fixups[0]; i++) {
+        if ((long)guest_fixups[i].address + 4 * guest_fixups[i].count > size)
+            continue;
+        for (unsigned j = 0; j < guest_fixups[i].count; j++) {   /* (variables overlap: a byte is swapped once) */
+            uint32_t at = guest_fixups[i].address + guest_fixups[i].width * j;
+            int fresh = 1, width = guest_fixups[i].width == 2 ? 2 : 4;
+
+            at = guest_fixups[i].address + (unsigned)width * j;
+            for (int k = 0; k < width; k++)
+                fresh &= !swapped[at + (unsigned)k];
+            if (!fresh)
+                continue;
+            for (int k = 0; k < width; k++)
+                swapped[at + (unsigned)k] = 1;
+            if (width == 2) {
+                swap16_range(at, 2);
+            } else {
+                uint32_t *p = (uint32_t *)guest_ptr(at);
+
+                swap32_range(at, 4);
+                if (guest_fixups[i].width == 5 && *p != 0 && *p < GUEST_LOW_LIMIT)
+                    *p += GUEST_LOW_BASE;
+            }
+        }
+    }
+    free(swapped);
+    if (size >= 0x80000)
+        swap16_range(0x6f800, 0x80000 - 0x6f800);        /* the two screens */
+    fprintf(stderr, "image_table %p asset_memory %p memory_base %p\n", (void *)image_table, (void *)asset_memory, (void *)memory_base);
+    swap_image_table();
+    for (int i = 0; i < 16; i++)   /* the colours the chip has: the shadow table, as the original's interrupt keeps them */
+        REG16(0x180 + 2 * i) = shadow_table[i];
+    swap16_range((uint32_t)(uintptr_t)asset_memory, 0x21d68);   /* the sprites' planes */
+    swap16_range((uint32_t)(uintptr_t)memory_base, 0x8500);      /* the background */
+    return 0;
 }

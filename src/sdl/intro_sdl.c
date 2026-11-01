@@ -192,7 +192,9 @@ int main(int argc, char **argv)
             SDL_RenderClear(renderer);
             SDL_RenderTexture(renderer, texture, 0, 0);
             SDL_RenderPresent(renderer);
-            next += 20000000ull;
+        }
+        next += 20000000ull;   /* 50 frames a second (also without a window: the program's thread needs its time) */
+        {
             uint64_t now = SDL_GetTicksNS();
 
             if (next > now)

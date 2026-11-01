@@ -8,6 +8,7 @@
 
 uint8_t *guest_ptr(uint32_t address);                        /* the host address of an address of the program's memory */
 void guest_init(void);                                       /* map the chips' pages */
+int guest_load_level_image(const char *path);                  /* a RAM image of the original in level 1 (a test) */
 void guest_load_image(const uint8_t *image, uint32_t size);  /* the menu program's image, at $84 */
 
 /* files.c: the disks */
@@ -35,5 +36,6 @@ void irq_key(int raw_code, int down);
 /* sound.c */
 void sound_open(void);
 void sound_close(void);
+void sound_pump(void);   /* a frame of the sound to the audio device */
 
 #endif

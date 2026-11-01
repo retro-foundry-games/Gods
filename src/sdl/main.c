@@ -18,11 +18,26 @@
 extern void menu_boot(void);    /* boot.c: the start-up (orig $039E50) */
 extern void menu_start(void);   /* ui.c: the menu (orig $006388) */
 extern uint32_t heap_base;
+extern void game_frame(void);   /* game.c: one frame of the level */
+extern void sr_set(uint16_t value);
+extern void play_sound(uint16_t id, uint16_t priority);
+static const char *level_image;   /* --level1-image FILE: a test: the level from a RAM image of the original */
 extern uint8_t *mask_buffer;   /* shares its address with restart_address, which menu_boot sets to its own address: the original blits into the (finished) boot code */
 
 static void *program(void *unused)
 {
     (void)unused;
+    if (level_image) {
+        if (guest_load_level_image(level_image) != 0) {
+            fprintf(stderr, "gods-sdl: cannot read %s\n", level_image);
+            exit(1);
+        }
+        sr_set(0x2000);   /* the interrupts on */
+        if (getenv("GODS_PLAY"))   /* a test: start this sound at once */
+            play_sound((uint16_t)atoi(getenv("GODS_PLAY")), 2);
+        for (;;)
+            { static unsigned n; game_frame(); if (getenv("GODS_DEBUG") && ++n % 25 == 0) fprintf(stderr, "frame %u\n", n); }
+    }
     menu_boot();
     mask_buffer = (uint8_t *)0x39e50;   /* the area of the original's boot code: a buffer now */
     for (;;)
@@ -115,6 +130,8 @@ int main(int argc, char **argv)
             disks = argv[++i];
         else if (!strcmp(argv[i], "--scale") && i + 1 < argc)
             scale = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--level1-image") && i + 1 < argc)
+            level_image = argv[++i];
         else if (!strcmp(argv[i], "--skip-intro"))
             ;
         else if (!strcmp(argv[i], "--headless"))
@@ -181,6 +198,7 @@ int main(int argc, char **argv)
                 k++;
         }
         irq_vbl();
+        sound_pump();
         display_render(pixels);
         if (dump && dump_every && frame % dump_every == 0)
             dump_ppm(dump, frame, pixels);
@@ -189,7 +207,9 @@ int main(int argc, char **argv)
             SDL_RenderClear(renderer);
             SDL_RenderTexture(renderer, texture, 0, 0);
             SDL_RenderPresent(renderer);
-            next += 20000000ull;
+        }
+        next += 20000000ull;   /* 50 frames a second (also without a window: the program's thread needs its time) */
+        {
             uint64_t now = SDL_GetTicksNS();
 
             if (next > now)

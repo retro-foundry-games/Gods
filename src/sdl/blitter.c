@@ -1,6 +1,6 @@
 /* Gods SDL port: the blits.  The chip is not emulated: the program's routine that draws a masked image with the blitter
  * (blit_masked_image of draw.c, orig $017208) is done here directly, and so are the two entries of the asm that call it
- * (blit_image, blit_image_wide, orig $0171E4 and $0171F6).  The blit that follows BLTSIZE (sdl_blit_run) does nothing: the routines of the
+ * (blit_image, blit_image_wide, orig $0171E4 and $0171F6).  The blit that follows BLTSIZE (sdl_blit_run, blitter_regs.c) is the chip's, for the routines of the
  * game proper (game_b.c, game_d.c) that program the chip are not used by the menu.
  *
  * The picture: an image `words` words wide of four planes (`plane` bytes apart, a row `words * 2 + extra_modulo` bytes), its mask the planes
@@ -15,9 +15,6 @@ extern uint8_t *mask_buffer;
 extern uint16_t blit_extra_modulo;
 extern uint32_t blit_plane_stride;
 
-void sdl_blit_run(void)
-{
-}
 
 /* the mask word j of row r (words wide): the four planes ORed; the word after the last one is the first of the next row */
 static uint16_t mask_word(const uint8_t *src, unsigned plane, unsigned stride, unsigned words, unsigned rows, unsigned r, unsigned j)
@@ -46,6 +43,8 @@ void blit_masked_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_
     unsigned shift_bits = shift & 0xff;
     int16_t plane_stride = (int16_t)blit_plane_stride;
 
+    if (src == 0)
+        return;   /* an image the table has no data for: on the Amiga the vectors at address 0 are drawn */
     blit_extra_modulo = extra_modulo;
     if (shift_bits == 0)
         last_mask = 0xffff;
