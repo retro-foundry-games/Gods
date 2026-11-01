@@ -8,6 +8,8 @@ void sr_set(uint16_t value);
 void keyboard_irq(void);
 void audio_irq(void);
 void vbl_irq(void);
+/* the stack is set to `stack` and the code at `address` is entered (it does not come back) */
+void jump_with_stack(void (*address)(void), uint8_t *stack);
 
 /* orig $039FA6: the two screens and the display registers: 320 x 192, four bitplanes */
 void display_setup(void)
@@ -244,4 +246,19 @@ void menu_boot(void)
 
     asset_mem_end = last;
     asset_end_28ec = asset_mem_end;
+}
+
+/* orig $000084: the entry of the menu program (the loader has put its image in memory and runs this): the start-up in C, then the
+ * original's code goes on at $240C on the stack the memory map made.  The original's menu start ($6388, which that code reaches
+ * once the copy protection has run) is made to enter menu_start, so the menu runs in C */
+void menu_entry(void)
+{
+    menu_boot();
+    menu_start_code[0] = 0x4e;   /* jmp menu_start */
+    menu_start_code[1] = 0xf9;
+    menu_start_code[2] = (uint8_t)((uintptr_t)menu_start >> 24);
+    menu_start_code[3] = (uint8_t)((uintptr_t)menu_start >> 16);
+    menu_start_code[4] = (uint8_t)((uintptr_t)menu_start >> 8);
+    menu_start_code[5] = (uint8_t)(uintptr_t)menu_start;
+    jump_with_stack(original_start, stack_top);
 }

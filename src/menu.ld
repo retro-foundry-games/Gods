@@ -5,7 +5,9 @@
 SECTIONS {
     .data : SUBALIGN(1) {
         . = 0xd2e; *(.rodata.asset_extensions) *(.data.asset_extensions)
+        . = 0x26d2; *(.rodata.background_name) *(.data.background_name)
         . = 0x29da; *(.rodata.param_table) *(.data.param_table)
+        . = 0x3232; *(.rodata.small_font_name) *(.data.small_font_name)
         . = 0x4cba; *(.rodata.offsets_4cba) *(.data.offsets_4cba)
         . = 0x635a; *(.rodata.menu_texts) *(.data.menu_texts)
         . = 0x689c; *(.rodata.text_enter_a) *(.data.text_enter_a)
@@ -182,3 +184,9 @@ _word_025c = 0x25c;
 _word_0266 = 0x266;
 _word_0384 = 0x384;
 _flags_0ddd = 0xddd;
+_original_start = 0x240c;
+_original_begin = 0x651e;
+_original_continue = 0x6650;
+_original_after_password = 0x64c2;
+_menu_start_code = 0x6388;
+_drives_present = 0x1d48c;

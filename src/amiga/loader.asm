@@ -194,7 +194,7 @@ L00190:  moveq #$1e,d0                     ; $00190
 L00192:  move.w d2,d3                      ; $00192
 L00194:  beq.w $248                        ; $00194
 L00198:  add.w d1,d3                       ; $00198
-L0019a:  cmp.w #$6e0,d3                    ; $0019a
+        cmp.w #$740,d3   ; PATCH: the limit of the read is 1856 sectors, not 1760
 L0019e:  bgt.w $248                        ; $0019e
 L001a2:  andi.l #$ffff,d1                  ; $001a2
 L001a8:  divu.w #$b,d1                     ; $001a8
@@ -296,40 +296,25 @@ L00318:  beq.b $32e                        ; $00318
         dc.w $51cc,$ff28
 L0032e:  bsr.w $7d4                        ; $0032e
 L00332:  rts                               ; $00332
-        ; ---- hook: read the C blob from free sectors and copy it to slow RAM (replaces unused bytes)
+        ; ---- hook: read the C from the extra cylinders and copy it to where it runs (replaces unused bytes)
         org $334
         movem.l d0-d7/a0-a6,-(a7)
         lea.l $9c0(pc),a1
         movea.l #$10000,a0
         moveq #0,d0
-        move.w #11,d1
-        moveq #11,d2
+        move.w #1760,d1
+        moveq #55,d2
         moveq #0,d3
         bsr.w $15a
-        adda.w #5632,a0
-        moveq #0,d0
-        move.w #23,d1
-        moveq #3,d2
-        moveq #0,d3
-        bsr.w $15a
-        adda.w #1536,a0
-        moveq #0,d0
-        move.w #1332,d1
-        moveq #3,d2
-        moveq #0,d3
-        bsr.w $15a
-        adda.w #1536,a0
-        moveq #0,d0
-        move.w #1344,d1
-        moveq #3,d2
-        moveq #0,d3
-        bsr.w $15a
-        adda.w #1536,a0
         movea.l #$10000,a0
         movea.l #$80000,a1
-        move.w #2559,d0
+        move.w #2329,d0
 .copy:  move.l (a0)+,(a1)+
         dbra d0,.copy
+        movea.l #$c0000,a1
+        move.w #4585,d0
+.copy2: move.l (a0)+,(a1)+
+        dbra d0,.copy2
         movem.l (a7)+,d0-d7/a0-a6
         lea.l $9c0(pc),a1
         rts

@@ -92,13 +92,13 @@ title_x           0x000003ba  int16_t %s
 title_y           0x000003bc  int16_t %s
 password_slots    0x00000d12  uint32_t %s[3]   the three saved codes (the first byte of each is 0 when there is none)
 password_line     0x00006a0e  uint8_t %s[]    "pass N :" and then room for the three code characters (a line of text in the code that is changed)
-record_text       0x000003c2  uint8_t %s[200]   ten records of 20 bytes: sixteen characters and four bytes
+record_text       0x000003c2  uint8_t %s[216]   ten records of 20 bytes (sixteen characters and four bytes) and the three saved codes, 16 bytes in all, scrambled
 key_held          0x00000228  uint16_t %s     non-zero: the button is still down since it picked a cell of the grid
 disk_digit        0x0001d487  uint8_t %s      the digit of the disk's name ("godsd2": the disk the loader asks for)
 has_continue      0x0000027a  uint16_t %s     non-zero: there is a game to continue (the menu has a third line)
 menu_item_count   0x00006384  uint16_t %s     the number of the last line of the menu (1 or 2; a word in the code that is changed)
 table menu_texts      0x0000635a uint8_t 41   the main menu's lines, each ended by a 0: "BEGIN QUEST", "ENTER PASSWORD", "CONTINUE GAME"
-table text_top_ten   0x000068c2 uint8_t 13   "TOP TEN GODS"
+table text_top_ten    0x000068c2 uint8_t 27   "TOP TEN GODS", and 13 bytes on the name of the high score file ("\hiscores.bin")
 table text_enter_a   0x0000689c uint8_t 17   "ENTER A PASSWORD"
 table key_table      0x00006ce0 uint8_t 40   the keys of the grid in the order of its cells (a to z, full stop, space, 0 to 9, backspace), ended by $FF
 table tocache_name 0x000196fe uint8_t 12   "tocache.bin": the file with the directory of the disks (loaded at start)
@@ -174,3 +174,11 @@ word_025c         0x0000025c  uint16_t %s
 word_0266         0x00000266  uint16_t %s
 word_0384         0x00000384  uint16_t %s
 flags_0ddd        0x00000ddd  uint8_t %s
+original_start    0x0000240c  void %s(void)    the original's start-up after the chips are set up: it loads the copy protection's stub and runs it (not in C)
+original_begin    0x0000651e  void %s(void)    the original's Begin Quest (the game; not in C)
+original_continue 0x00006650  void %s(void)    ... and Continue Game
+original_after_password 0x000064c2 void %s(void)   the original's code after the password screen
+menu_start_code   0x00006388  uint8_t %s[6]   the first instruction of the original's menu start: replaced by a jump to menu_start
+table background_name 0x000026d2 uint8_t 12   "backscr.pi1": the file of the menu's background picture
+table small_font_name 0x00003232 uint8_t 9    "smallfnt": the asset set of the small font
+drives_present   0x0001d48c  uint8_t %s      bit n set: drive n is there (the start finds them)

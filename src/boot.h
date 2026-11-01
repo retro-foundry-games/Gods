@@ -12,5 +12,6 @@ void data_pointers_init(void);   /* orig $01AA3C */
 void memory_map_init(void);      /* orig $03A060 */
 void display_state_reset(void);  /* orig $01F5C4 */
 void menu_boot(void);            /* orig $039E50 */
+void menu_entry(void);           /* orig $000084 */            /* orig $039E50 */
 
 #endif

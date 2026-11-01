@@ -150,12 +150,19 @@ void restore_slot_words(void)
     }
 }
 
-/* orig $006A82: the background image is loaded from the disk when it was not (it always was when the menu ran) */
+/* orig $006A82: the background picture is read from the disk (the file is packed: backscr.pi1, to 256 bytes into the memory block
+ * memory_base is), the colours are faded out and the display is reset while it is shown, and the flag says it is there.  The
+ * disk drives are put to rest.  (The original has a path for a failed load too; load_file does not return then) */
 void load_background(void)
 {
     if (background_loaded)
         return;
-    /* the disk load did not run in the menu */
+    background = memory_base + 256;
+    load_unpacked((const char *)background_name, background);
+    fade_out(1, 0xffff);
+    display_reset();
+    background_loaded = 1;
+    drives_idle();
 }
 
 /* orig $006B06: the background image on the screen: 192 rows of 20 words of each of the four planes */
@@ -179,20 +186,56 @@ void background_draw(void)
     }
 }
 
-/* orig $00659C: set up the password screen (it was set up whenever the menu ran) */
+/* orig $00659C: set up the password screen, once: the background is drawn and shown, the colours fade in, the high score file
+ * is read onto the screen buffer and copied to record_text (216 bytes), and the three saved codes at its end are unscrambled
+ * (each long that is not 0 is exclusive-or'ed with a constant) to password_slots; then the colours fade out */
 void password_screen_setup(void)
 {
     if (screen_prepared)
         return;
-    /* the set-up did not run in the menu */
+    background_draw();
+    screens_flip();
+    copper_setup_done = 1;
+    fade_in((const uint16_t *)(background + 2), 0);
+    drives_present &= ~0x40;
+    screen_prepared = 1;
+
+    uint8_t *buffer = screen_buffer + 18048;
+
+    disk_digit = '2';
+    file_read((const char *)(text_top_ten + 13), buffer);
+    for (int i = 0; i < 216; i++)
+        record_text[i] = buffer[i];
+
+    const uint32_t *coded = (const uint32_t *)(record_text + 200);
+    static const uint32_t key[4] = { 0x4d616769, 0x63506f63, 0x6b657473, 0x436f6b65 };
+    uint32_t value;
+
+    value = coded[0];
+    password_slots[0] = value ? value ^ key[0] : 0;
+    value = coded[1];
+    password_slots[0] = value ? value ^ key[1] : 0;   /* the same place again: the original stores both there */
+    value = coded[2];
+    password_slots[1] = value ? value ^ key[2] : 0;
+    value = coded[3];
+    password_slots[2] = value ? value ^ key[3] : 0;
+    fade_out(0, 0xffff);
 }
 
-/* orig $0031CE: the load screen is left when the state is 3 (the rest did not run in the menu) */
+/* orig $0031CE: the small font is loaded once (state 3): the sound is stopped, glyph_base is where the font's images start in
+ * the image table, and the asset set smallfnt is read to the memory the first set ended at */
 void leave_load_screen(void)
 {
     if (menu_state_25a == 3)
         return;
-    /* the rest did not run in the menu */
+    play_sound(0, 0);
+    glyph_base = (uint16_t)(((uint32_t)asset_table_0ca6 - (uint32_t)image_table) >> 3);
+    asset_flag = -1;
+    flags_0ddd |= 0x10;
+    assets_load((const char *)small_font_name, palette_words, asset_end_0ca2, (struct AssetEntry *)asset_table_0ca6);
+    palette_words[0] = 0;
+    menu_state_25a = 3;
+    drives_idle();
 }
 
 /* orig $006DEA: sixteen characters of line_text in the large font at the bottom, 16 pixels apart */

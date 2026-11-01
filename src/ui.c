@@ -173,8 +173,8 @@ void menu_start(void)
 }
 
 /* orig $0063A2: the main menu, from the start until a line is chosen: the three lines, the pointer moved by the joystick, and
- * after 750 frames without a move the top ten (then the menu again).  The first line (Begin Quest) and the third (Continue)
- * go on to the game, which is not in the menu's own part; the second is the password screen */
+ * after 750 frames without a move the top ten (then the menu again).  The second line is the password screen; the first
+ * (Begin Quest), the third (Continue) and what follows the password screen go on in the original's code, which is not in C yet */
 void menu_main(void)
 {
     for (;;) {
@@ -202,13 +202,19 @@ void menu_main(void)
             }
             if (button_bits[0] & 1) {
                 play_sound(33, 2);
-                if ((int16_t)cursor_pos == 1) {
-                    title_text = (const char *)text_enter_a;
-                    title_x = 32;
-                    title_y = 8;
-                    password_screen();
+                if ((int16_t)cursor_pos < 1) {
+                    original_begin();
+                    return;
                 }
-                /* Begin Quest and Continue, and what follows the password screen, are not part of the menu's own run */
+                if ((int16_t)cursor_pos > 1) {
+                    original_continue();
+                    return;
+                }
+                title_text = (const char *)text_enter_a;
+                title_x = 32;
+                title_y = 8;
+                password_screen();
+                original_after_password();
                 return;
             }
             if (joystick & 1) {

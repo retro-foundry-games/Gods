@@ -94,7 +94,7 @@ extern int16_t title_x;   /* $003BA */
 extern int16_t title_y;   /* $003BC */
 extern uint32_t password_slots[3];   /* $00D12  the three saved codes (the first byte of each is 0 when there is none) */
 extern uint8_t password_line[];   /* $06A0E  "pass N :" and then room for the three code characters (a line of text in the code that is changed) */
-extern uint8_t record_text[200];   /* $003C2  ten records of 20 bytes: sixteen characters and four bytes */
+extern uint8_t record_text[216];   /* $003C2  ten records of 20 bytes (sixteen characters and four bytes) and the three saved codes, 16 bytes in all, scrambled */
 extern uint16_t key_held;   /* $00228  non-zero: the button is still down since it picked a cell of the grid */
 extern uint8_t disk_digit;   /* $1D487  the digit of the disk's name ("godsd2": the disk the loader asks for) */
 extern uint16_t has_continue;   /* $0027A  non-zero: there is a game to continue (the menu has a third line) */
@@ -168,17 +168,25 @@ extern uint16_t word_025c;   /* $0025C */
 extern uint16_t word_0266;   /* $00266 */
 extern uint16_t word_0384;   /* $00384 */
 extern uint8_t flags_0ddd;   /* $00DDD */
+extern void original_start(void);   /* $0240C  the original's start-up after the chips are set up: it loads the copy protection's stub and runs it (not in C) */
+extern void original_begin(void);   /* $0651E  the original's Begin Quest (the game; not in C) */
+extern void original_continue(void);   /* $06650  ... and Continue Game */
+extern void original_after_password(void);   /* $064C2  the original's code after the password screen */
+extern uint8_t menu_start_code[6];   /* $06388  the first instruction of the original's menu start: replaced by a jump to menu_start */
+extern uint8_t drives_present;   /* $1D48C  bit n set: drive n is there (the start finds them) */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
 extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of the two copper lists' colour moves the message fades */
 extern const uint8_t font_8x8[1272];   /* $1E7F4  the text font (8 bytes a character) */
 extern const uint8_t menu_texts[41];   /* $0635A  the main menu's lines, each ended by a 0: "BEGIN QUEST", "ENTER PASSWORD", "CONTINUE GAME" */
-extern const uint8_t text_top_ten[13];   /* $068C2  "TOP TEN GODS" */
+extern const uint8_t text_top_ten[27];   /* $068C2  "TOP TEN GODS", and 13 bytes on the name of the high score file ("\hiscores.bin") */
 extern const uint8_t text_enter_a[17];   /* $0689C  "ENTER A PASSWORD" */
 extern const uint8_t key_table[40];   /* $06CE0  the keys of the grid in the order of its cells (a to z, full stop, space, 0 to 9, backspace), ended by $FF */
 extern const uint8_t tocache_name[12];   /* $196FE  "tocache.bin": the file with the directory of the disks (loaded at start) */
 extern const uint8_t asset_extensions[11];   /* $00D2E  the endings of a picture file name (.pi1) and of its table (.dat, 6 bytes on) */
 extern const uint8_t asset_names[138];   /* $1ECEC  the names assets_load knows (each ended by 0, ended by $FF), and from byte 86 on a long for each: the address of its list of file names */
 extern const uint8_t keymap[128];   /* $1E5AE  the character a raw key code gives (0 when none) */
+extern const uint8_t background_name[12];   /* $026D2  "backscr.pi1": the file of the menu's background picture */
+extern const uint8_t small_font_name[9];   /* $03232  "smallfnt": the asset set of the small font */
 
 #endif
