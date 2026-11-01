@@ -40,6 +40,8 @@ ami.boot()
 --   load=NAME            restore snapshot NAME (a file in ../local/save) before running; frames below count from it
 --   snap=F[,F...]        save snapshot gods-F.state at frame F (relative to the start or the loaded snapshot)
 --   record=DIR [screen=N]  stream every frame (hash, chip RAM, every Nth screen) to tools/amiga/frame_recorder.py
+--   record=DIR hook=HEX [maxevents=N]  record at every execution of the instruction at HEX (the entry of the program's
+--                       wait for the vertical blank) instead of every frame: event number, frame and chip RAM
 --   compare=DIR [survey] [mask=FILE]  compare each frame with a recording; stops at the first difference, or with
 --                       survey reports every differing RAM range; mask lists RAM ranges to ignore
 --   until=N             quit after N frames (with record/compare/cover)
@@ -123,6 +125,23 @@ local function run_frames()
     end
     if cover_path then write_cover() end
     if peer then peer:close() end
+    ami.quit(0)
+end
+local hook_at = tonumber(args:match("hook=(%x+)") or "", 16)
+if peer and hook_at then
+    -- a snapshot at a point where the program's own progress is the same in every run: the interrupt has finished (it
+    -- ran at the start of the frame) and the program is about to wait for the next one
+    local n = 0
+    local max_events = tonumber(args:match("maxevents=(%d+)")) or math.huge
+    ami.hook(hook_at, function()
+        n = n + 1
+        local ram = ami.read(0, 0x80000)
+        local msg = "F" .. string.pack("<I4I8I4I4I2I2", n, ami.frame(), #ram, 0, 0, 0) .. ram
+        if not pcall(peer.send, peer, msg) then ami.log("recorder ended at event", n) ami.quit(1) end
+    end)
+    while n < max_events and (not until_frame or ami.frame() - base < until_frame) do ami.wait(1) end
+    peer:close()
+    ami.log("events", n)
     ami.quit(0)
 end
 if peer or cover_path then run_frames() end

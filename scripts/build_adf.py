@@ -6,7 +6,7 @@
 1. compile gods.c and data.c with m68k-amigaos-gcc and link them with m68k-amigaos-ld -m amiga and gods.ld: the data
    hunk is laid out at the original addresses, the code hunk follows;
 2. turn the code hunk into a flat blob for slow RAM: apply its relocations (hunk 0, the data, is at address 0);
-3. put a 16-byte trampoline in front of it (interrupt mask 0, a stack in the extra chip RAM, jump to game_main);
+3. put a 16-byte trampoline in front of it (a stack in the extra chip RAM, jump to game_main; interrupts stay masked, as in the original, until the game enables them);
 4. let gen_loader_asm.py patch the loader and write the disk image with the blob in free sectors.
 The data needs no loading: it is the same as what the original loader decrunches to those addresses.
 """
@@ -26,7 +26,7 @@ import gods_analysis as G  # noqa: E402
 NATIVE = G.ROOT / "native"
 BUILD = G.ROOT / "build"
 OUT_ADF = G.ROOT / "local" / "gods-c-disk1.adf"
-TRAMPOLINE_SIZE = 16
+TRAMPOLINE_SIZE = 12
 STACK_TOP = 0x90000       # the C's own stack, in the extra chip RAM above the code
 
 
@@ -105,7 +105,7 @@ def main() -> int:
     game_main = base + syms["game_main"]
     # the trampoline: interrupt mask 0, the original's stack, then the game
     tramp_src = BUILD / "trampoline.asm"
-    tramp_src.write_text(f"        org ${L.SLOW_BASE:x}\n        move.w #$2000,sr\n        movea.l #${STACK_TOP:x},a7\n        jmp ${game_main:x}.l\n")
+    tramp_src.write_text(f"        org ${L.SLOW_BASE:x}\n        movea.l #${STACK_TOP:x},a7\n        jmp ${game_main:x}.l\n")
     r = subprocess.run(["nix", "develop", str(NATIVE), "--command", "sh", "-c",
                         f"vasmm68k_mot -Fbin -no-opt -quiet -o {BUILD}/trampoline.bin {tramp_src}"], capture_output=True, text=True)
     tramp = (BUILD / "trampoline.bin").read_bytes()

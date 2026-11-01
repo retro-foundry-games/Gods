@@ -197,7 +197,7 @@ def main() -> None:
         "; d2-d7/a2-a6 preserved) is added around them where C calls them.",
         "        xref " + ", ".join(f"_{n}" for n, _, _ in OBJECTS),
         "        xdef _blitter_wait, _blit_copy, _blit_copy_right, _screen_clear, _screen_restore, _plane5_set, _plane5_clear",
-        "        xdef _blit_image, _blit_image_wide, _delay, _startup_delay, _vbl_wait, _irq_level3, _music_init",
+        "        xdef _blit_image, _blit_image_wide, _delay, _startup_delay, _interrupts_on, _vbl_wait, _irq_level3, _music_init",
         "        section .text,code",
         "",
         "; ---- blitter and screens ----",
@@ -239,7 +239,10 @@ def main() -> None:
           "; void delay(void), the music's busy wait (inline at orig $0024F2 and $00250A): 301 rounds of a lone dbra",
           "_delay:", "        move.w #$12c,d0", "dl:", "        dbra d0,dl", "        rts",
           "", "; void startup_delay(void), orig $000C26: a long wait before the program starts (a register loop, 18 cycles a round)",
-          "_startup_delay:", "        move.l #$f4240,d0", "sd:", "        subq.l #1,d0", "        bne.b sd", "        rts"]
+          "_startup_delay:", "        move.l #$f4240,d0", "sd:", "        subq.l #1,d0", "        bne.b sd", "        rts",
+          "", "; void interrupts_on(void), the original's `move #$2000,sr` at orig $000C4A: until here the program runs with all",
+          "; interrupts masked, so the vertical blank that came in the meantime is still pending and is taken at once",
+          "_interrupts_on:", "        move.w #$2000,sr", "        rts"]
 
     if os.environ.get("GODS_ASM_NO_MUSIC"):
         OUT.write_text("\n".join(a) + "\n")

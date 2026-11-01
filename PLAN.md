@@ -91,8 +91,8 @@ Verified facts:
 
 Run: `python3 scripts/build_adf.py` then
 `ami9000_host host/gods.lua --headless --script-args "rebuilt record=captures/rebuilt until=100400 screen=1"` and compare
-the per-frame hashes with the reference at the constant offset the loader's extra disk reads cause (171 frames: found by
-matching screen hashes, see `tools/amiga/frame_recorder.py`); `scripts/compare_memory.py CAPTURE OFFSET` compares the
+the per-frame hashes with the reference at the constant offset the loader's extra disk reads cause (169 frames: found by
+matching screen hashes, see `tools/amiga/frame_recorder.py`); `scripts/compare_events.py` compares the
 game's variables.
 
 - The C runs from **chip RAM** like the original: the machine is given 1 MB chip RAM (`puae_chipmem_size=2`) and the code
@@ -111,11 +111,18 @@ game's variables.
   than that, so one frame flip fell on the other side of an interrupt.  With the original's instructions in chip RAM the
   timing is the same cycle for cycle.
 - **Frames:** 98,100 frames compared (rebuilt frames 2300-100400 against reference frames 2129-100000), 0 differ.
-- **Memory:** `scripts/compare_memory.py` compares the pinned data objects.  Left out: `vblank.count` (counts from boot),
-  the blitter's scratch mask in `display`, and the screen that is being drawn on (the shown one is compared; the frame
-  hashes cover what is displayed anyway).  The interrupt-driven objects (`music`, `channel`, `game_clock`, `vblank`) are
-  compared only in frames where the snapshot (taken at the end of each frame, which is when the vertical blank interrupt
-  begins) did not catch the interrupt half way; a one frame skew is allowed.
+- **Memory:** `scripts/compare_events.py` compares the pinned data objects (sizes from `build/data.o`: the music module,
+  the graphics, the palette and blitter state, both screens, the music and channel state, the clocks and the frame counter)
+  at the program's own points in time, not at the end of each frame.  An event is the entry of `vbl_wait` (the original's
+  `$002CDE`), recorded with `gods.lua record=DIR hook=ADDRESS`: the interrupt of the frame has finished and the program has
+  done its work, so the memory depends on how far the program has got, not on which cycle the end of the frame falls on.
+  (At the end of each frame the recorder catches the interrupt, the fade and the blitter half way; compared there, a few
+  hundred frames of 100,000 differ by that jitter.)  **All 44,258 events of the 100,000 frames match** (`captures/events_ref`
+  from the original against `captures/events_c`).  Not compared: the stack, the vectors (the C handler's address is in them),
+  the loader's buffers and the code.
+- The first pass of the intro had one tick of difference for 31 events until the C kept interrupts masked as the original
+  does: its `sr` stays `$2700` until `move #$2000,sr` at `$000C4A` (`interrupts_on()` in `amiga.asm`), so the vertical blank
+  that came in during the start-up delay is pending and is taken as soon as they are enabled.
 - Still to do: the from-scratch ADF (own boot block, only the C and its data), decompile `game_start` (the fire button).
 
 ## Open questions
