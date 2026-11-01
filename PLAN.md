@@ -6,7 +6,7 @@ anything older here; see also [AGENTS.md](AGENTS.md).
 ## Direction (from the user)
 
 - The game is **one C file per program**: the intro is `native/intro.c` (its data in `intro_data.c`, header `intro.h`, link script
-  `intro.ld`, assembly `intro_amiga.asm`), the menu will be `native/menu.c` the same way.  The intro, built with `m68k-amigaos-gcc` from the `native/` flake
+  `intro.ld`, assembly `intro_amiga.asm`), the menu will be `native/menu.c` the same way.  Each is built with `m68k-amigaos-gcc` from the `native/` flake
   (`nix develop --command ...`), for the A500 (68000).
 - It is **real decompiled C**: typed structs and globals at the original addresses, real parameters and return
   values. No emulated register file, no flag/`op_` helpers (same architecture: the compiler produces the flags), no
