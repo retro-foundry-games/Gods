@@ -4,7 +4,7 @@
 ; d2-d7/a2-a6 preserved) is added around them where C calls them.
         xref _copper_a, _copper_b, _glyph_plane_size, _scroll, _palette_ptr, _flags, _game_clock, _vibrato_table, _period_table, _music, _sample_start, _channel, _screen_front, _screen_back, _display, _draw_flag, _vblank, _blank_plane, _font_offset, _graphics, _module, _screen_b, _screen_a
         xdef _blitter_wait, _blit_copy, _blit_copy_right, _screen_clear, _screen_restore, _plane5_set, _plane5_clear
-        xdef _blit_image, _blit_image_wide, _delay, _startup_delay, _interrupts_on, _vbl_wait, _irq_level3, _music_init
+        xdef _blit_image, _blit_image_wide, _delay, _startup_delay, _interrupts_on, _load_next_stage, _vbl_wait, _irq_level3, _music_init
         section .text,code
 
         include "gods_offsets.i"
@@ -311,6 +311,13 @@ _startup_delay:
 _interrupts_on:
         move.w #$2000,sr
         rts
+
+; void load_next_stage(void), orig $000DC4: interrupts masked, then the loader that is still in memory (its entry at
+; $0150, reached in the original through `jmp $88`, the nops and `jmp $150` at $A2) loads the next part of the game,
+; which runs from $0084 as the first part did.  Does not return.
+_load_next_stage:
+        move.w #$2700,sr
+        jmp ($150).l
 
 ; ---- the vertical blank interrupt and the music ----
 ; void vbl_wait(void), orig $002CDE: wait for the next vertical blank (the interrupt increments the frame count)

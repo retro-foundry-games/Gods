@@ -397,14 +397,6 @@ void intro_setup(void)
     picture_deinterleave(graphics.title.data);
 }
 
-/* orig $000CC8: what follows a fire button (the game itself).  The recording never presses fire, so this has not been
- * decompiled yet. */
-void game_start(void)
-{
-    for (;;)
-        ;
-}
-
 /* ---- text ---------------------------------------------------------------------------------------------------------- */
 
 /* one entry of the image table: the glyphs of both fonts and the title letters */
@@ -715,6 +707,42 @@ void intro_run(void)
 
 /* ---- the program ---------------------------------------------------------------------------------------------------- */
 
+
+/* orig $000CC8: what follows a fire button (or the space bar): the music stops, the title picture comes up with
+ * "LOADING GAME" and the loader is asked for the next part of the game, which replaces this program.  Entered from the
+ * routines that draw (a flip, a glyph, an image), wherever the intro happens to be. */
+void game_start(void)
+{
+    int i;
+
+    flags.fire_pressed = 0;
+    font_offset = 0;
+    flags.music_enabled = 0;
+    custom->dmacon = 0x000f;   /* the four audio channels off */
+    for (i = 0; i < 10; i++)
+        vbl_wait();
+    palette_clear();
+    screen_clear();
+    screens_flip();
+    screen_clear();
+    picture_show_title();
+    plane5_set();
+    screens_flip();
+    palette_ptr += 16;
+    palette_fade_in(graphics.title.palette, 1);
+    palette_ptr -= 16;
+    screen_restore();
+    plane5_set();
+    draw_flag = 1;
+    text_draw("LOADING GAME", 0x50);
+    screens_flip();
+    team_fade(1);
+    if (screen_back != &screen_a) {   /* show the right one of the two screens */
+        screen_restore();
+        screens_flip();
+    }
+    load_next_stage();
+}
 
 /* orig $000B12: the program.  Set up the hardware, start the interrupt, then run the intro over and over.
  *
