@@ -27,6 +27,7 @@ _mouse_counter = 0x1e506;
 _mouse_counter_old = 0x1e508;
 _button_presses = 0x1e50a;
 _pending_request = 0x1e5a8;
+_key_down = 0x1e63a;
 _joystick = 0x1e5ac;
 _heap_base = 0x2c;
 _mem_lists = 0x1d41c;

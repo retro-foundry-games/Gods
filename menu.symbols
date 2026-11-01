@@ -11,6 +11,7 @@ mouse_counter     0x0001e506  volatile uint16_t %s     JOY0DAT as last read: ver
 mouse_counter_old 0x0001e508  volatile uint16_t %s     the value before it
 button_presses    0x0001e50a  volatile uint8_t %s      bits set by input_poll (1 first button, 4 second or the pot lines), cleared by whoever reads them
 pending_request   0x0001e5a8  volatile uint32_t %s     non-zero: something is waiting to be taken (take_pending_request)
+key_down          0x0001e63a  volatile uint8_t %s[128]   $FF for each key (by its raw key code) that is held down, kept by the keyboard interrupt
 joystick          0x0001e5ac  volatile uint8_t %s      bit 0 up, 1 down, 2 left, 3 right, 7 fire
 heap_base         0x0000002c  uint32_t %s     where the program's memory starts (a vector slot the program uses for it)
 mem_lists         0x0001d41c  struct MemLists %s   the allocator's two lists (alloc_init)

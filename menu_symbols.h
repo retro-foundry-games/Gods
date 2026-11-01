@@ -17,6 +17,7 @@ extern volatile uint16_t mouse_counter;   /* $1E506  JOY0DAT as last read: verti
 extern volatile uint16_t mouse_counter_old;   /* $1E508  the value before it */
 extern volatile uint8_t button_presses;   /* $1E50A  bits set by input_poll (1 first button, 4 second or the pot lines), cleared by whoever reads them */
 extern volatile uint32_t pending_request;   /* $1E5A8  non-zero: something is waiting to be taken (take_pending_request) */
+extern volatile uint8_t key_down[128];   /* $1E63A  $FF for each key (by its raw key code) that is held down, kept by the keyboard interrupt */
 extern volatile uint8_t joystick;   /* $1E5AC  bit 0 up, 1 down, 2 left, 3 right, 7 fire */
 extern uint32_t heap_base;   /* $0002C  where the program's memory starts (a vector slot the program uses for it) */
 extern struct MemLists mem_lists;   /* $1D41C  the allocator's two lists (alloc_init) */
