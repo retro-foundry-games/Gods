@@ -299,6 +299,14 @@ extern void (*dispatch_18ba4[])(void);   /* $18BA4  the routines the kind of a f
 extern uint16_t *entry_b92[3];   /* $00B92  the free entry of each of the three units that claim_free_entries found (0: none) */
 extern int16_t entry_id_2ea[3];   /* $002EA  the number of that entry (1, 4, 7 for the first unit, 10, 13, 16 and 19, 22, 25) */
 extern uint16_t word_2f0;   /* $002F0 */
+extern int16_t hit_damage_1cc;   /* $001CC  game_b: the damage the cell hit by check_hit_and_walls does (set by the lookup of $159FC) */
+extern int16_t word_272;   /* $00272  game_b: compared with word_274 by the lookup of $159FC (more than it: the damage grows) */
+extern int16_t word_284;   /* $00284  game_b: non-zero: check_hit_and_walls lets the player's armour take some of the damage (the higher, the less) */
+extern int16_t word_3a4;   /* $003A4  game_b: the strength check_hit_and_walls leaves after a hit on a cell */
+extern int16_t word_8892;   /* $08892  game_b: the damage a cell of type -1 does */
+extern int16_t records_86c[240];   /* $0086C  game_b: eighty records of three words (x, y, two signed speed bytes; negative first word: free), the particles of spawn_particles_15c54 */
+extern int16_t word_a52;   /* $00A52  game_b: counter of the particle burst (spawn_particles_15c54 clears it) */
+extern int16_t word_a54;   /* $00A54  game_b: set to -10 by spawn_particles_15c54 */
 extern int16_t flag_a4c;   /* $00A4C */
 extern uint16_t list_index_a98;   /* $00A98  which of the three shot lists is being run (0 to 2) */
 extern uint16_t shot_lists_raw[219];   /* $006B6  the three lists of shots (struct ShotList, 146 bytes each) */
@@ -442,6 +450,7 @@ extern const uint16_t zone_limits[28];   /* $09992  seven records of four words:
 extern const uint8_t zone_groups[18];   /* $099CA  six groups of three zone numbers */
 extern const uint8_t digit_font[512];   /* $058F0  sixteen digits of 8 rows of 4 bytes (a plane each) */
 extern const uint16_t shutter_masks[12];   /* $0542C  the rows of the shutter a step shows (one bit a row) */
+extern const uint16_t particle_speeds_15b5c[8];   /* $15B5C  game_b: the two speed bytes of each of the eight particles of a burst */
 extern const uint16_t shot_deltas[64];   /* $16BB4  pairs of words: how a shot of direction n moves (x, y) */
 extern const uint16_t jump_deltas[23];   /* $11318  how many rows up the player is in each step (2 bytes a step) of a jump */
 extern const uint16_t frame_map_125ac[6];   /* $125AC  the frame after a frame of the state 5 (five words), then how near the left or right of the screen the player may go before the scroll follows */

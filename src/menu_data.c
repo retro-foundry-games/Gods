@@ -253,6 +253,11 @@ const uint16_t shutter_masks[12] = {
     0xdb70, 0xdf70, 0xff70, 0xfff0,
 };
 
+/* $15B5C  game_b: the two speed bytes of each of the eight particles of a burst */
+const uint16_t particle_speeds_15b5c[8] = {
+    0x08ff, 0x0805, 0x0005, 0xf805, 0xf8ff, 0xf8fa, 0x00fa, 0x08fa,
+};
+
 /* $16BB4  pairs of words: how a shot of direction n moves (x, y) */
 const uint16_t shot_deltas[64] = {
     0x000c, 0xfffd, 0x000c, 0x0000, 0x000c, 0x0003, 0xfff4, 0xfffd,

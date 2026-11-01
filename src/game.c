@@ -153,7 +153,7 @@ void game_frame(void)
     step_836c();
     value_c6c = 3030;
     flag_20e = -1;
-    fn_6ed0();
+    update_creatures();
     if (flag_23a == 0) {
         game_step_73d2();
         game_nothing();

@@ -492,13 +492,224 @@ void redraw_record_images(void)
     stop_sound(52);
 }
 
-/* orig $00D00A and $00D114 (inside the unrolled loop): a hit at (x, y) of the given strength.  damage_player_at first (the result
- * -1 means the player was hit: the sound 4 is played, or 44 when word_3a6 is not 0, and that is all).  Otherwise word_3a0 and
- * word_3a2 keep the size of the box (word_39c, word_39e) and the box is cut to the screen's cells (8 pixels) in x and y; when
- * nothing is left that is all.  The cells of the map (line_text + 100, 48 columns) that the box covers, less a column, are
- * looked at; a cell that is not 0 would take the original to $D130 (not run).  Returns the strength (or -1) */
+/* orig $015C54: up to eight particles of a burst at (x, y) take the free records (first word negative) of records_86c, each with
+ * the next speeds of particle_speeds_15b5c; the sound 34 (priority 45) is played for each.  Nothing is done while the burst
+ * flag_a4c is set and word_a52 is 190 or more.  The first one started sets flag_a4c to -1 (when it was not negative), word_a52 to 0 and
+ * word_a54 to -10 */
+static void spawn_particles_15c54(int16_t x, int16_t y)
+{
+    if (flag_a4c != 0 && word_a52 >= 0xBE)
+        return;
+
+    int16_t *record = records_86c;
+    const uint16_t *speeds = particle_speeds_15b5c;
+    int started = 0;
+
+    for (int n = 0; n < 80; n++, record += 3) {
+        if (record[0] >= 0)
+            continue;
+        play_sound(0x22, 0x2D);
+        record[0] = x;
+        record[1] = y;
+        record[2] = (int16_t)*speeds++;
+        if (flag_a4c >= 0) {
+            word_a52 = 0;
+            flag_a4c = -1;
+            word_a54 = -10;
+        }
+        if (++started == 8)
+            return;
+    }
+}
+
+/* orig $008822: the end of what flag_8890 counts: when it is negative a burst of particles is started at the place
+ * (word_8882 + 4, word_8884 + 4) unless word_0248 is set.  Then flag_8890, word_888e and word_8472 become -1, and word_214
+ * becomes -1 unless one of the three slots holds the object 8 */
+static void end_flag_8890(void)
+{
+    if (flag_8890 < 0 && word_0248 == 0)
+        spawn_particles_15c54((int16_t)(word_8882 + 4), (int16_t)(word_8884 + 4));
+    flag_8890 = -1;
+    word_888e = -1;
+    word_8472 = -1;
+    if (slot_ref_6b6 != 8 && slot_ref_748 != 8 && slot_ref_7da != 8)
+        word_214 = -1;
+}
+
+/* orig $0159FC (inlined): what the map cell before `after` (a byte not 0) does when a hit reaches it.  A positive byte names a shot
+ * (1 to 9 of the first list of shots, 10 to 18 of the second, then the third): the damage word_1cc is the last_value of the
+ * list's object (plus one eighth of word_272 - word_274 when that is positive), the sound 3 is played when flag_23a, and the shot
+ * is cleared when the object's byte +73 is set; returns 0.  The byte -1 does word_8892 and returns 1; -2 does 10000 (0 with
+ * flag_23a), -3 does 0, and a byte below it does 10000 and (as the original goes on at $15AC2) makes a burst of particles at the
+ * cell (or sets the damage to 50 with flag_23a); these return 0 */
+static int16_t cell_effect_159fc(const uint8_t *after)
+{
+    int16_t type = (int8_t)after[-1];
+
+    if (type < 0) {
+        if (type == -1) {
+            hit_damage_1cc = word_8892;
+            return 1;
+        }
+        if (type == -2) {
+            hit_damage_1cc = flag_23a != 0 ? 0 : 10000;
+            return 0;
+        }
+        if (type == -3) {
+            hit_damage_1cc = 0;
+            return 0;
+        }
+        hit_damage_1cc = 10000;
+
+        int32_t offset = (int32_t)(after - line_text) - 100;
+        int16_t row = 0;
+        int16_t column;
+
+        while (offset >= 48) {   /* divs.w #48 (no division in the C runtime) */
+            offset -= 48;
+            row++;
+        }
+        column = (int16_t)offset;
+        int16_t x = (int16_t)((column << 3) + scroll_x);
+        int16_t y = (int16_t)((row << 3) + scroll_y);
+
+        if (flag_23a != 0)
+            hit_damage_1cc = 50;
+        else
+            spawn_particles_15c54(x, y);
+        return 0;
+    }
+
+    int list_number = 0;
+
+    if (type > 9) {
+        list_number = 1;
+        type -= 9;
+        if (type > 9) {
+            list_number = 2;
+            type -= 9;
+        }
+    }
+
+    struct ShotList *list = &((struct ShotList *)shot_lists_raw)[list_number];
+    const struct Object *object = &((const struct Object *)object_slots)[list->object];
+
+    hit_damage_1cc = object->last_value;
+
+    int16_t more = (int16_t)(word_272 - word_274);
+
+    if (more > 0)
+        hit_damage_1cc = (int16_t)(hit_damage_1cc + (more >> 3));
+    if (flag_23a != 0)
+        play_sound(3, 4);
+    if (((const uint8_t *)object)[73] != 0)
+        *(int16_t *)((uint8_t *)list + 2 + (int16_t)((type - 1) * 8)) = 0;
+    return 0;
+}
+
+/* orig $018560 (with d2 = d3 = 0): the first free record of records_3a0a6 (first word negative) is started at the place (x, y)
+ * of the level with no speed and a count of 58 */
+static void start_debris(int16_t x, int16_t y)
+{
+    for (int i = 0; i < 20; i++) {
+        int16_t *record = &records_3a0a6[i * 6];
+
+        if (record[0] < 0) {
+            record[0] = 0;
+            record[1] = x;
+            record[2] = y;
+            record[3] = 0;
+            record[4] = 0;
+            record[5] = 58;
+            flag_2a8++;
+            return;
+        }
+    }
+}
+
+/* the part of check_hit_and_walls at $D130: the cell before `after` is not 0, so its effect (cell_effect_159fc) is looked at.  The
+ * type -1 takes the damage off flag_8890 (end_flag_8890 when it goes negative).  With word_284 the damage is 1, less its
+ * eighth, quarter ... by word_284 (a shift 3 - word_284), otherwise the cell's damage; when nothing is left of the strength the
+ * player is hit (the sounds 4/44) and -1 comes back.  Otherwise word_3a4 is the strength left; with damage left the debris
+ * flies off near the hit at (x, y) (levels coordinates) and word_3a4 comes back, without damage the strength as it was */
+static int16_t hit_marked_cell(const uint8_t *after, int16_t x, int16_t y, int16_t strength)
+{
+    int16_t flag = cell_effect_159fc(after);
+    int16_t damage = hit_damage_1cc;
+    int16_t left;
+
+    if (flag != 0) {
+        flag_8890 = (int16_t)(flag_8890 - strength);
+        if (flag_8890 < 0)
+            end_flag_8890();
+    }
+    if (word_284 != 0) {
+        /* the original loads the long $4B79C278 and does moveq #1 when it is not 0, which it never is */
+        uint16_t one = 1;
+        int16_t shift = (int16_t)(3 - word_284);
+        uint16_t reduced;
+
+        left = (int16_t)(strength - one);
+        if (shift < 0)
+            shift = 0;
+        shift &= 63;
+        reduced = shift >= 16 ? 0 : (uint16_t)(one >> shift);
+        if (reduced == one) {
+            int16_t half = (int16_t)(reduced >> 1);
+            int16_t rest = (int16_t)(reduced - half);
+
+            reduced = (uint16_t)(half + (rest >> 1));
+        }
+        left = (int16_t)(left + reduced);
+        if (left > 0)
+            damage = (int16_t)(strength - left);
+    } else {
+        left = (int16_t)(strength - damage);
+    }
+    if (left <= 0) {
+        if (word_3a6 == 0) {
+            play_sound(4, 15);
+        } else {
+            play_sound(44, 15);
+            play_sound(4, 14);
+        }
+        return -1;
+    }
+    word_3a4 = left;
+    if (damage == 0)
+        return strength;
+
+    int16_t half_width = (int16_t)(word_3a0 >> 1);
+    int16_t spread = (int16_t)(half_width & 0xFFF0);
+    int16_t random;
+
+    x = (int16_t)(x + half_width);
+    spread = (int16_t)((spread != 0 ? spread : 16) - 1);
+    random = (int16_t)random_word();
+    x = (int16_t)(random < 0 ? x - (random & spread) : x + (random & spread));
+
+    int16_t half_height = (int16_t)(word_3a2 >> 1);
+
+    spread = (int16_t)(half_height & 0xFFF0);
+    y = (int16_t)(y + half_height);
+    spread = (int16_t)((spread != 0 ? spread : 16) - 1);
+    random = (int16_t)random_word();
+    y = (int16_t)(random < 0 ? y - (random & spread) : y + (random & spread));
+    start_debris((int16_t)(x - 8), (int16_t)(y - 8));
+    return word_3a4;
+}
+
+/* orig $00D00A and $00D114 (inside the unrolled loop) and the continuation at $D130: a hit at (x, y) of the given strength.
+ * damage_player_at first (the result -1 means the player was hit: the sound 4 is played, or 44 when word_3a6 is not 0, and
+ * that is all).  Otherwise word_3a0 and word_3a2 keep the size of the box (word_39c, word_39e) and the box is cut to the
+ * screen's cells (8 pixels) in x and y; when nothing is left that is all.  The cells of the map (line_text + 100, 48 columns)
+ * that the box covers, less a column, are looked at; the first cell that is not 0 is dealt with by hit_marked_cell and ends the
+ * routine.  Returns the strength (or -1, or the strength left after a hit on a cell) */
 int16_t check_hit_and_walls(int16_t x, int16_t y, int16_t strength)
 {
+    int16_t hit_x = x;
+    int16_t hit_y = y;
+
     strength = damage_player_at(x, y, strength);
     if (strength < 0) {
         play_sound(word_3a6 == 0 ? 4 : 44, 15);
@@ -564,7 +775,7 @@ int16_t check_hit_and_walls(int16_t x, int16_t y, int16_t strength)
     for (int16_t r = 0; r <= rows; r++) {
         for (int16_t c = 0; c < columns; c++)
             if (*cell++ != 0)
-                return strength;   /* goes on at $D130, which did not run */
+                return hit_marked_cell(cell, hit_x, hit_y, strength);
         cell += 48 - columns;
     }
     return strength;

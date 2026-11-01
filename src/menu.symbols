@@ -314,6 +314,15 @@ dispatch_18ba4    0x00018ba4 void (*%s[])(void)   the routines the kind of a fin
 entry_b92          0x00000b92 uint16_t *%s[3]  the free entry of each of the three units that claim_free_entries found (0: none)
 entry_id_2ea       0x000002ea int16_t %s[3]    the number of that entry (1, 4, 7 for the first unit, 10, 13, 16 and 19, 22, 25)
 word_2f0           0x000002f0 uint16_t %s
+hit_damage_1cc    0x000001cc int16_t %s    game_b: the damage the cell hit by check_hit_and_walls does (set by the lookup of $159FC)
+word_272          0x00000272 int16_t %s    game_b: compared with word_274 by the lookup of $159FC (more than it: the damage grows)
+word_284          0x00000284 int16_t %s    game_b: non-zero: check_hit_and_walls lets the player's armour take some of the damage (the higher, the less)
+word_3a4          0x000003a4 int16_t %s    game_b: the strength check_hit_and_walls leaves after a hit on a cell
+word_8892         0x00008892 int16_t %s    game_b: the damage a cell of type -1 does
+records_86c       0x0000086c int16_t %s[240]  game_b: eighty records of three words (x, y, two signed speed bytes; negative first word: free), the particles of spawn_particles_15c54
+word_a52          0x00000a52 int16_t %s    game_b: counter of the particle burst (spawn_particles_15c54 clears it)
+word_a54          0x00000a54 int16_t %s    game_b: set to -10 by spawn_particles_15c54
+table particle_speeds_15b5c 0x00015b5c uint16_t 8   game_b: the two speed bytes of each of the eight particles of a burst
 # game_c.c (the routines at $10000-$167FF)
 flag_a4c          0x00000a4c  int16_t %s
 list_index_a98    0x00000a98  uint16_t %s    which of the three shot lists is being run (0 to 2)
