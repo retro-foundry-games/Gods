@@ -429,3 +429,30 @@ word_22c          0x0000022c  uint16_t %s
 ptrs_10a20        0x00010a20  uint32_t %s[5]   five texts (set when the level loads; word_22c names one)
 table text_10a34  0x00010a34  uint8_t 8     the first eight bytes of the message fn_10976 makes
 word_2e4          0x000002e4  int16_t %s    the speed of the enemy shot being made (negative: to the left)
+list_count_1294   0x00001294  uint16_t %s    game_d: how many things were put in the list at $121C this frame (the list holds 20 of three words)
+flag_25e          0x0000025e  uint16_t %s    game_d: set when a thing of kind 45 was met (the list was cut at 20 entries)
+counter_204       0x00000204  uint16_t %s    game_d: counts 0 to 31 each frame (the bat's flap)
+counter_20c       0x0000020c  uint16_t %s    game_d: counts 0 to 3 each frame while frame_toggle is set
+counter_2b4       0x000002b4  uint16_t %s    game_d: counts 0 to 3 each frame while frame_toggle is set
+counter_24a       0x0000024a  uint16_t %s    game_d: counts 0 to 4 each frame while frame_toggle is clear
+counter_262       0x00000262  uint16_t %s    game_d: counts 0 to 5 each frame
+counter_260       0x00000260  uint16_t %s    game_d: counts 0 to 7 each frame
+ptr_0ba6          0x00000ba6  struct Slot8 *%s   game_d: the record of records_19b14 that is being looked at
+ptr_0ba2          0x00000ba2  uint16_t *%s   game_d: a record whose third word the thing of kinds 232, 288, 290 and 292 toggles
+byte_2b6          0x000002b6  uint8_t %s    game_d: the byte of flags_39fde of the record that is being looked at
+word_2b2          0x000002b2  uint16_t %s    game_d: the id of the thing the player touched
+score_total_1fc   0x000001fc  uint32_t %s    game_d: the points won, as one number (the score itself is in score_words)
+word_2ba          0x000002ba  int16_t %s     game_d: -1, or the step (0 to 4) of the thing of kinds 232, 288, 290 and 292
+table fall_steps_f2   0x000000f2 uint8_t 62    game_d: signed bytes: how far a thing falls (added to y) at each step 0 to 23 of its flag byte (steps 24 to 37 read on into the next 38 bytes, the sounds)
+table frames_44b4 0x000044b4 uint16_t 4   game_d: the four glyphs of the sprite 280, by counter_2b4
+table frames_44bc 0x000044bc uint16_t 4   game_d: ... of the sprite 279
+table frames_44c4 0x000044c4 uint16_t 4   game_d: ... of the glyph 253, by counter_24a
+table frames_493a 0x0000493a uint16_t 4   game_d: the second glyph of glyph 225, by the column
+table frames_4942 0x00004942 uint16_t 4   game_d: ... of glyph 251
+table frames_494a 0x0000494a uint16_t 4   game_d: ... of glyph 252
+table frames_4af4 0x00004af4 uint16_t 4   game_d: the glyphs of the thing 220, by counter_20c
+table frames_4afc 0x00004afc uint16_t 4   game_d: ... of the thing 287, by counter_262
+table frames_4b08 0x00004b08 uint16_t 6   game_d: ... of the thing 300, by counter_262
+table frames_4ba8 0x00004ba8 uint16_t 20  game_d: five glyphs for each of the four values of param_index (kinds 232, 288, 290, 292)
+fn_10976          0x00010976  void %s(void)  game_d: the pick-up handler 18 of the table at $1067A (game_e writes it in C)
+word_26a          0x0000026a  uint16_t %s    game_d: the glyph the pick-ups of records_19334 are drawn with (sprite, two words wide)

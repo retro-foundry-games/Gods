@@ -406,6 +406,22 @@ extern uint8_t *ptr_0364;   /* $00364  the entry of the list at ptr_0cf2 + 80 th
 extern uint16_t word_22c;   /* $0022C */
 extern uint32_t ptrs_10a20[5];   /* $10A20  five texts (set when the level loads; word_22c names one) */
 extern int16_t word_2e4;   /* $002E4  the speed of the enemy shot being made (negative: to the left) */
+extern uint16_t list_count_1294;   /* $01294  game_d: how many things were put in the list at $121C this frame (the list holds 20 of three words) */
+extern uint16_t flag_25e;   /* $0025E  game_d: set when a thing of kind 45 was met (the list was cut at 20 entries) */
+extern uint16_t counter_204;   /* $00204  game_d: counts 0 to 31 each frame (the bat's flap) */
+extern uint16_t counter_20c;   /* $0020C  game_d: counts 0 to 3 each frame while frame_toggle is set */
+extern uint16_t counter_2b4;   /* $002B4  game_d: counts 0 to 3 each frame while frame_toggle is set */
+extern uint16_t counter_24a;   /* $0024A  game_d: counts 0 to 4 each frame while frame_toggle is clear */
+extern uint16_t counter_262;   /* $00262  game_d: counts 0 to 5 each frame */
+extern uint16_t counter_260;   /* $00260  game_d: counts 0 to 7 each frame */
+extern struct Slot8 *ptr_0ba6;   /* $00BA6  game_d: the record of records_19b14 that is being looked at */
+extern uint16_t *ptr_0ba2;   /* $00BA2  game_d: a record whose third word the thing of kinds 232, 288, 290 and 292 toggles */
+extern uint8_t byte_2b6;   /* $002B6  game_d: the byte of flags_39fde of the record that is being looked at */
+extern uint16_t word_2b2;   /* $002B2  game_d: the id of the thing the player touched */
+extern uint32_t score_total_1fc;   /* $001FC  game_d: the points won, as one number (the score itself is in score_words) */
+extern int16_t word_2ba;   /* $002BA  game_d: -1, or the step (0 to 4) of the thing of kinds 232, 288, 290 and 292 */
+extern void fn_10976(void);   /* $10976  game_d: the pick-up handler 18 of the table at $1067A (game_e writes it in C) */
+extern uint16_t word_26a;   /* $0026A  game_d: the glyph the pick-ups of records_19334 are drawn with (sprite, two words wide) */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
 extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of the two copper lists' colour moves the message fades */
@@ -433,5 +449,16 @@ extern const uint32_t state_table[58];   /* $10280  29 states of the player, two
 extern const uint8_t text_power[12];   /* $12CEE  "Power", 0, "Value", 0 (text_power + 6 is "Value") */
 extern const uint32_t table_18714[3];   /* $18714  the routines (take_record_to_199ac, finish_record_1895a, ...) the cell kinds' states name */
 extern const uint8_t text_10a34[8];   /* $10A34  the first eight bytes of the message fn_10976 makes */
+extern const uint8_t fall_steps_f2[62];   /* $000F2  game_d: signed bytes: how far a thing falls (added to y) at each step 0 to 23 of its flag byte (steps 24 to 37 read on into the next 38 bytes, the sounds) */
+extern const uint16_t frames_44b4[4];   /* $044B4  game_d: the four glyphs of the sprite 280, by counter_2b4 */
+extern const uint16_t frames_44bc[4];   /* $044BC  game_d: ... of the sprite 279 */
+extern const uint16_t frames_44c4[4];   /* $044C4  game_d: ... of the glyph 253, by counter_24a */
+extern const uint16_t frames_493a[4];   /* $0493A  game_d: the second glyph of glyph 225, by the column */
+extern const uint16_t frames_4942[4];   /* $04942  game_d: ... of glyph 251 */
+extern const uint16_t frames_494a[4];   /* $0494A  game_d: ... of glyph 252 */
+extern const uint16_t frames_4af4[4];   /* $04AF4  game_d: the glyphs of the thing 220, by counter_20c */
+extern const uint16_t frames_4afc[4];   /* $04AFC  game_d: ... of the thing 287, by counter_262 */
+extern const uint16_t frames_4b08[6];   /* $04B08  game_d: ... of the thing 300, by counter_262 */
+extern const uint16_t frames_4ba8[20];   /* $04BA8  game_d: five glyphs for each of the four values of param_index (kinds 232, 288, 290, 292) */
 
 #endif

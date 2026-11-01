@@ -4,10 +4,21 @@
  * is linked at the address it will run at ($c0000), so it needs no relocation. */
 SECTIONS {
     .data : SUBALIGN(1) {
+        . = 0xf2; *(.rodata.fall_steps_f2) *(.data.fall_steps_f2)
         . = 0xd2e; *(.rodata.asset_extensions) *(.data.asset_extensions)
         . = 0x26d2; *(.rodata.background_name) *(.data.background_name)
         . = 0x29da; *(.rodata.param_table) *(.data.param_table)
         . = 0x3232; *(.rodata.small_font_name) *(.data.small_font_name)
+        . = 0x44b4; *(.rodata.frames_44b4) *(.data.frames_44b4)
+        . = 0x44bc; *(.rodata.frames_44bc) *(.data.frames_44bc)
+        . = 0x44c4; *(.rodata.frames_44c4) *(.data.frames_44c4)
+        . = 0x493a; *(.rodata.frames_493a) *(.data.frames_493a)
+        . = 0x4942; *(.rodata.frames_4942) *(.data.frames_4942)
+        . = 0x494a; *(.rodata.frames_494a) *(.data.frames_494a)
+        . = 0x4af4; *(.rodata.frames_4af4) *(.data.frames_4af4)
+        . = 0x4afc; *(.rodata.frames_4afc) *(.data.frames_4afc)
+        . = 0x4b08; *(.rodata.frames_4b08) *(.data.frames_4b08)
+        . = 0x4ba8; *(.rodata.frames_4ba8) *(.data.frames_4ba8)
         . = 0x4cba; *(.rodata.offsets_4cba) *(.data.offsets_4cba)
         . = 0x542c; *(.rodata.shutter_masks) *(.data.shutter_masks)
         . = 0x58f0; *(.rodata.digit_font) *(.data.digit_font)
@@ -435,3 +446,19 @@ _ptr_0364 = 0x364;
 _word_22c = 0x22c;
 _ptrs_10a20 = 0x10a20;
 _word_2e4 = 0x2e4;
+_list_count_1294 = 0x1294;
+_flag_25e = 0x25e;
+_counter_204 = 0x204;
+_counter_20c = 0x20c;
+_counter_2b4 = 0x2b4;
+_counter_24a = 0x24a;
+_counter_262 = 0x262;
+_counter_260 = 0x260;
+_ptr_0ba6 = 0xba6;
+_ptr_0ba2 = 0xba2;
+_byte_2b6 = 0x2b6;
+_word_2b2 = 0x2b2;
+_score_total_1fc = 0x1fc;
+_word_2ba = 0x2ba;
+_fn_10976 = 0x10976;
+_word_26a = 0x26a;
