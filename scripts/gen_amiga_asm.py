@@ -278,6 +278,52 @@ def scratch(lines: list[str]) -> list[str]:
     return [re.sub(r"\bd6\b", "d0", re.sub(r"\bd7\b", "d1", ln)) for ln in lines]
 
 
+SPACE_FIRE = True   # patch the interrupt so that the space bar sets fire_pressed as the fire buttons do
+
+
+def space_fire(irq: list[str]) -> list[str]:
+    """The original polls the two fire buttons in every interrupt until one is down.  Patched: when no button is down, a
+    keyboard byte that has arrived is read, and the space bar (key down, raw code $40) counts as a fire button.  The keyboard
+    sends one byte at a time and waits for the computer to acknowledge it with a pulse of the CIA's serial line (at least
+    85 microseconds, set in control register A); without that it stops sending."""
+    out = []
+    for ln in irq:
+        s = ln.strip()
+        if s == "bne.b irq_buttons_done":
+            out.append("        bne.b space_check   ; no button down: look at the keyboard (patch)")
+        elif s == "move.w #$1,(_flags+Flags_fire_pressed).l":
+            out.append("button_down:")
+            out.append(ln)
+        elif s.startswith("movem.l (a7)+,d0-d1"):
+            out.append("irq_buttons_done:")
+            out.append(ln)
+        elif s == "irq_buttons_done:":
+            continue
+        else:
+            out.append(ln)
+    # the keyboard code goes after the button code, before the label the button code ends at
+    at = next(n for n, ln in enumerate(out) if ln.strip() == "irq_buttons_done:")
+    patch = [
+        "        bra.b irq_buttons_done",
+        "; patch: the space bar counts as a fire button",
+        "space_check:",
+        "        move.b $bfed01.l,d0         ; CIA-A interrupt flags (reading clears them); bit 3: a keyboard byte has arrived",
+        "        btst #$3,d0",
+        "        beq.b irq_buttons_done",
+        "        move.b $bfec01.l,d0         ; the byte: the key code rotated left, inverted",
+        "        ori.b #$40,$bfee01.l        ; acknowledge it: pull the serial line low (control register A, SPMODE) ...",
+        "        moveq #$3c,d1",
+        "keyboard_acknowledge:",
+        "        dbra d1,keyboard_acknowledge   ; ... for 61 rounds, 85 microseconds or more",
+        "        andi.b #$bf,$bfee01.l",
+        "        not.b d0",
+        "        ror.b #$1,d0                ; the key code, bit 7 set for a key that goes up",
+        "        cmpi.b #$40,d0              ; space down",
+        "        beq.b button_down",
+    ]
+    return out[:at] + patch + out[at:]
+
+
 LABEL_DEF = re.compile(r"^([A-Za-z_]\w*):\s*$")
 CALL = re.compile(r"^\s+(bsr|jsr|jmp)\b")
 
@@ -405,6 +451,8 @@ def main() -> None:
     # only uses them as words, but not for C.  Save the whole registers (16 cycles more).
     irq = [ln.replace("movem.w d0-d1,-(a7)", "movem.l d0-d1,-(a7)   ; the original: movem.w")
              .replace("movem.w (a7)+,d0-d1", "movem.l (a7)+,d0-d1   ; the original: movem.w") for ln in irq]
+    if SPACE_FIRE:
+        irq = space_fire(irq)
     a += irq
     a += emit(mem, 0x2CF4, 0x2D4C)
     a += ["", "; void music_init(void), orig $002242: find the sample data, record each sample's address, silence the channels",
