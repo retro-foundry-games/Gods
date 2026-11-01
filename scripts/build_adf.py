@@ -24,6 +24,9 @@ import gen_loader_asm as L  # noqa: E402
 import gods_analysis as G  # noqa: E402
 
 NATIVE = G.ROOT / "native"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gods_offsets  # noqa: E402
+
 BUILD = G.ROOT / "build"
 OUT_ADF = G.ROOT / "local" / "gods-c-disk1.adf"
 TRAMPOLINE_SIZE = 12
@@ -79,6 +82,7 @@ def parse_hunks(data: bytes):
 
 def main() -> int:
     BUILD.mkdir(exist_ok=True)
+    gods_offsets.write()   # the struct field offsets amiga.asm includes, from gods.h
     flags = os.environ.get("GODS_CFLAGS", "") + " -m68000 " + os.environ.get("GODS_OPT", "-O2") + " -ffreestanding -fno-tree-loop-distribute-patterns -fno-tree-forwprop -fno-ivopts -nostdlib -fdata-sections"
     r = nix(f"cd {NATIVE} && m68k-amigaos-gcc {flags} -Wall -Wextra -c gods.c -o {BUILD}/gods.o"
             f" && m68k-amigaos-gcc {flags} -c data.c -o {BUILD}/data.o"

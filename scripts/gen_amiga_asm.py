@@ -17,6 +17,9 @@ from pathlib import Path
 
 from capstone import CS_ARCH_M68K, CS_MODE_M68K_000, Cs
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gods_offsets  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[3]
 PROJECT = ROOT / "projects" / "gods"
 NATIVE = PROJECT / "native"
@@ -94,15 +97,71 @@ def objects() -> list[tuple[str, int, int]]:
 OBJECTS = objects()
 
 
+# which struct each pinned object is; the fields and their offsets come from the compiler (scripts/gods_offsets.py), so they
+# follow gods.h and the assembly names them as `_flags+Flags_fire_pressed`
+OBJECT_STRUCT = {"flags": "Flags", "game_clock": "GameClock", "vblank": "Vblank", "music": "MusicState",
+                 "display": "DisplayData", "module": "Module"}
+OFFSETS = gods_offsets.write()
+
+
+def fields(struct: str) -> dict[int, str]:
+    """offset -> field name of the constants `Struct_field` in gods_offsets.i (the first name for an offset)."""
+    out: dict[int, str] = {}
+    for name, value in OFFSETS.items():
+        if name.startswith(struct + "_") and name != "Channel_size":
+            out.setdefault(value, name[len(struct) + 1:])
+    return out
+
+
+CHANNEL_SIZE = OFFSETS["Channel_size"]
+
+
 def data_symbol(addr: int) -> str | None:
-    """`_name+offset` for an address inside one of the pinned objects, preferring the object that starts there."""
-    for name, a, _ in OBJECTS:
-        if a == addr:
-            return f"_{name}"
+    """`_name+Struct_field` for an address inside one of the pinned objects, preferring the object that starts there."""
     for name, a, size in OBJECTS:
-        if a < addr < a + size:
-            return f"_{name}+${addr - a:x}"
+        if a <= addr < a + size or a == addr:
+            off = addr - a
+            if name in OBJECT_STRUCT:
+                struct = OBJECT_STRUCT[name]
+                if off in fields(struct):
+                    return f"_{name}+{struct}_{fields(struct)[off]}"
+            return f"_{name}" if off == 0 else f"_{name}+${off:x}"
     return None
+
+
+def short_symbol(addr: int) -> str:
+    """The name of a pinned table's address for absolute short addressing (an equate, as the symbol is in another hunk)."""
+    for name, a, size in OBJECTS:
+        if name == "channel" and a <= addr < a + size:
+            return f"Addr_channel+Channel_size*{(addr - a) // CHANNEL_SIZE}" if addr != a else "Addr_channel"
+        if a == addr and name in ("sample_start", "period_table", "vibrato_table"):
+            return f"Addr_{name}"
+    return f"${addr:x}"
+
+
+def channel_fields(lines: list[str]) -> list[str]:
+    """In the replayer a6 is the channel's state and a5 the chip's audio channel: name the offsets."""
+    cf, af = fields("Channel"), fields("AudioChannel")
+
+    def six(m):
+        off = int(m.group(1), 16)
+        if off in cf:
+            return f"Channel_{cf[off]}(a6)"
+        if 0 < off < 4:   # the bytes of the pattern cell
+            return f"Channel_{cf[0]}+{off}(a6)"
+        return m.group(0)
+
+    def five(m):
+        off = int(m.group(1), 16)
+        return f"AudioChannel_{af[off]}(a5)" if off in af else m.group(0)
+    out = []
+    for ln in lines:
+        head, sep, comment = ln.partition(";")
+        head = re.sub(r"\$([0-9a-f]+)\(a6\)", six, head)
+        if "$dff000" not in head:
+            head = re.sub(r"\$([0-9a-f]+)\(a5\)", five, head)
+        out.append(head + sep + comment)
+    return out
 
 
 class Ins:
@@ -166,7 +225,7 @@ def text(i: Ins, targets: dict[int, str], final: bool) -> str:
     m = re.match(r"\$([0-9a-f]+)\(pc\),(.*)$", op.replace(", ", ","))
     if m and final:
         # pc-relative to data: the data is in another hunk, so use absolute short (8 cycles as well, no relocation)
-        return f"{mn} (${m.group(1)}).w,{m.group(2)}"
+        return f"{mn} ({short_symbol(int(m.group(1), 16))}).w,{m.group(2)}"
     return f"{mn} {op}".replace(", ", ",")
 
 
@@ -288,6 +347,8 @@ def main() -> None:
         "        xdef _blit_image, _blit_image_wide, _delay, _startup_delay, _interrupts_on, _vbl_wait, _irq_level3, _music_init",
         "        section .text,code",
         "",
+        '        include "gods_offsets.i"',
+        "",
         "; ---- blitter and screens ----",
         "; void blitter_wait(void), orig $002F1E: wait until the blitter has finished (and give it priority while waiting)",
     ]
@@ -352,7 +413,7 @@ def main() -> None:
     split = next(n for n, ln in enumerate(music) if ln.strip() == "music_step:")
     init = entry_label(music[:split])
     init = [x for ln in init for x in (["        movem.l (sp)+,d2-d7/a2-a6", "        rts"] if ln.strip() == "rts" else [ln])]   # also the channel silencing that follows
-    a += init + ["", "; orig $0022E6: advance the music by one tick (called by the interrupt)"] + music[split:]
+    a += init + ["", "; orig $0022E6: advance the music by one tick (called by the interrupt)"] + channel_fields(music[split:])
     a = localize(a)
     OUT.write_text("\n".join(a) + "\n")
     print(f"wrote {OUT} ({len(a)} lines)")

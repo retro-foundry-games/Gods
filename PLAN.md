@@ -101,7 +101,9 @@ game's variables.
 - The Amiga-specific routines are the original's instructions in `native/amiga.asm` (the user allowed assembly for them,
   besides `loader.asm`): the blitter work, screen and bitplane fills, the busy-wait loops, the vertical blank interrupt,
   `vbl_wait` and the music replayer.  `scripts/gen_amiga_asm.py` generates it from the resident code of the recording; every
-  instruction is assembled again at its original address and compared with the original bytes.  Only C-callable
+  instruction is assembled again at its original address and compared with the original bytes.  Struct field offsets in
+  the assembly come from the compiler (`native/offsets.c` -> `native/gods_offsets.i`, which `amiga.asm` includes), so they follow
+  `gods.h`.  Only C-callable
   wrappers (arguments on the stack, `d2-d7/a2-a6` preserved) were added.  Two deliberate differences: the interrupt saves
   `d0`/`d1` with `movem.l` (the original's `movem.w` sign-extends them, which C does not survive), and `lea d16(pc),a6` of
   the music code is `lea abs.w,a6` (same cycles, the data is in another hunk).
