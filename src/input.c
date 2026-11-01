@@ -53,12 +53,18 @@ void input_poll(void)
         joy |= 1;
     if (stick & 0x0001)   /* down */
         joy |= 2;
-    /* the keyboard as a second joystick: the cursor keys (raw key codes $4C up and $4D down) move the selection as the stick does;
+    /* the keyboard as a second joystick: the cursor keys (raw key codes $4C up and $4D down) move the selection as the stick does and the space bar is fire;
      * this is not in the original program */
     if (key_down[0x4c])
         joy |= 1;
     if (key_down[0x4d])
         joy |= 2;
+    /* the space bar is the first fire button (raw key code $40); not in the original */
+    if (key_down[0x40]) {
+        joy |= 0x80;
+        button_bits[0] |= 1;
+        button_presses |= 1;
+    }
     joystick = joy;
 
     mouse_counter = custom->joy0dat;
