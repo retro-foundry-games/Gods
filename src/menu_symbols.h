@@ -390,6 +390,22 @@ extern void fn_54c4(void);   /* $054C4 */
 extern void fn_5608(void);   /* $05608 */
 extern void fn_5d76(void);   /* $05D76 */
 extern void fn_7faa(void);   /* $07FAA */
+extern int16_t word_1da;   /* $001DA  the x of the creature update_creatures is at */
+extern int16_t word_6ebc;   /* $06EBC  in the code area: how many of the ten creature records are still to look at (counted down to -1) */
+extern int16_t word_6ebe;   /* $06EBE  in the code area: how many creatures of the record are dying */
+extern int16_t word_7f74;   /* $07F74  in the code area: where the last creature that died was (x) */
+extern int16_t word_7f76;   /* $07F76  ... (y) */
+extern uint16_t word_274;   /* $00274  the sum of the first_value of the objects in the slots (pick_up_object) */
+extern uint16_t word_232;   /* $00232  scratch: a digit (the remainder of a division by 10) of a number put into a message */
+extern uint16_t word_234;   /* $00234 */
+extern uint16_t word_2fc;   /* $002FC */
+extern uint16_t word_2fe;   /* $002FE */
+extern uint8_t bits_1970a[];   /* $1970A  a bit for each item (index of table_14cf8): set when its message was shown */
+extern uint16_t word_fb2c;   /* $0FB2C  in the code area: a word pick_up_object sets to 18 for the item 2 */
+extern uint8_t *ptr_0364;   /* $00364  the entry of the list at ptr_0cf2 + 80 that fn_10976 found */
+extern uint16_t word_22c;   /* $0022C */
+extern uint32_t ptrs_10a20[5];   /* $10A20  five texts (set when the level loads; word_22c names one) */
+extern int16_t word_2e4;   /* $002E4  the speed of the enemy shot being made (negative: to the left) */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
 extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of the two copper lists' colour moves the message fades */
@@ -414,5 +430,8 @@ extern const uint16_t shot_deltas[64];   /* $16BB4  pairs of words: how a shot o
 extern const uint16_t jump_deltas[23];   /* $11318  how many rows up the player is in each step (2 bytes a step) of a jump */
 extern const uint16_t frame_map_125ac[6];   /* $125AC  the frame after a frame of the state 5 (five words), then how near the left or right of the screen the player may go before the scroll follows */
 extern const uint32_t state_table[58];   /* $10280  29 states of the player, two longs each: the first sprite and the routine (the C does not use the second) */
+extern const uint8_t text_power[12];   /* $12CEE  "Power", 0, "Value", 0 (text_power + 6 is "Value") */
+extern const uint32_t table_18714[3];   /* $18714  the routines (take_record_to_199ac, finish_record_1895a, ...) the cell kinds' states name */
+extern const uint8_t text_10a34[8];   /* $10A34  the first eight bytes of the message fn_10976 makes */
 
 #endif

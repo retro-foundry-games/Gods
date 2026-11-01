@@ -295,3 +295,18 @@ const uint32_t state_table[58] = {
     0x00000034, 0x0001039e, 0x00000033, 0x000104e0,
     0x00000035, 0x000104ec,
 };
+
+/* $12CEE  "Power", 0, "Value", 0 (text_power + 6 is "Value") */
+const uint8_t text_power[12] __attribute__((aligned(1))) = {
+    0x50, 0x6f, 0x77, 0x65, 0x72, 0x00, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x00,
+};
+
+/* $18714  the routines (take_record_to_199ac, finish_record_1895a, ...) the cell kinds' states name */
+const uint32_t table_18714[3] = {
+    0x00018900, 0x00018890, 0x0001895a,
+};
+
+/* $10A34  the first eight bytes of the message fn_10976 makes */
+const uint8_t text_10a34[8] __attribute__((aligned(1))) = {
+    0x11, 0x20, 0x48, 0x69, 0x6e, 0x74, 0x20, 0x11,
+};

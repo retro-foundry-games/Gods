@@ -410,3 +410,22 @@ fn_54c4           0x000054c4  void %s(void)
 fn_5608           0x00005608  void %s(void)
 fn_5d76           0x00005d76  void %s(void)
 fn_7faa           0x00007faa  void %s(void)
+word_1da          0x000001da  int16_t %s    the x of the creature update_creatures is at
+word_6ebc         0x00006ebc  int16_t %s    in the code area: how many of the ten creature records are still to look at (counted down to -1)
+word_6ebe         0x00006ebe  int16_t %s    in the code area: how many creatures of the record are dying
+word_7f74         0x00007f74  int16_t %s    in the code area: where the last creature that died was (x)
+word_7f76         0x00007f76  int16_t %s    ... (y)
+word_274          0x00000274  uint16_t %s   the sum of the first_value of the objects in the slots (pick_up_object)
+word_232          0x00000232  uint16_t %s   scratch: a digit (the remainder of a division by 10) of a number put into a message
+word_234          0x00000234  uint16_t %s
+word_2fc          0x000002fc  uint16_t %s
+word_2fe          0x000002fe  uint16_t %s
+bits_1970a        0x0001970a  uint8_t %s[]  a bit for each item (index of table_14cf8): set when its message was shown
+table text_power  0x00012cee  uint8_t 12    "Power", 0, "Value", 0 (text_power + 6 is "Value")
+word_fb2c         0x0000fb2c  uint16_t %s   in the code area: a word pick_up_object sets to 18 for the item 2
+table table_18714 0x00018714  uint32_t 3    the routines (take_record_to_199ac, finish_record_1895a, ...) the cell kinds' states name
+ptr_0364          0x00000364  uint8_t *%s   the entry of the list at ptr_0cf2 + 80 that fn_10976 found
+word_22c          0x0000022c  uint16_t %s
+ptrs_10a20        0x00010a20  uint32_t %s[5]   five texts (set when the level loads; word_22c names one)
+table text_10a34  0x00010a34  uint8_t 8     the first eight bytes of the message fn_10976 makes
+word_2e4          0x000002e4  int16_t %s    the speed of the enemy shot being made (negative: to the left)
