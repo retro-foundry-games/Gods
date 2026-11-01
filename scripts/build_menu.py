@@ -1,6 +1,6 @@
 """Build the menu program's C (native/src/menu.c) as a blob at an address, for checking it against the original.
 
-Makes native/build/menu.exe (the Makefile compiles the modules of native/src/ and links them with menu.ld, the data names at their
+Makes native/build/menu (the Makefile compiles the modules of native/src/ and links them with menu.ld, the data names at their
 addresses), relocates the code hunk to BASE and writes
 native/build/menu.blob (the bytes), native/build/menu.sym (nm) and native/build/menu_syms.lua (function name -> address, for host/menu_oracle.lua).
 
@@ -29,11 +29,11 @@ def main() -> int:
     BUILD.mkdir(exist_ok=True)
     gen_menu_symbols.main(base)
     gen_menu_amiga_asm.main()
-    r = subprocess.run(["make", "-C", str(B.G.ROOT / "native"), "--no-print-directory", "native/build/menu.exe"], capture_output=True, text=True)
+    r = subprocess.run(["make", "-C", str(B.G.ROOT / "native"), "--no-print-directory", "native/build/menu"], capture_output=True, text=True)
     if r.returncode:
         print(r.stdout[-2000:], r.stderr[-3000:])
         return 1
-    hunks = B.parse_hunks((BUILD / "menu.exe").read_bytes())
+    hunks = B.parse_hunks((BUILD / "menu").read_bytes())
     # the tables (a data hunk at address 0, never loaded: the bytes are in memory already) and the code, linked at `base`
     assert len(hunks) in (1, 2), f"expected the code hunk and perhaps a data hunk, got {len(hunks)}"
     _, code, relocs = hunks[-1]

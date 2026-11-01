@@ -84,13 +84,13 @@ def parse_hunks(data: bytes):
 def main() -> int:
     BUILD.mkdir(exist_ok=True)
     intro_offsets.write()   # the struct field offsets intro_amiga.asm includes, from intro.h
-    r = subprocess.run(["make", "-C", str(G.ROOT / "native"), "--no-print-directory", "native/build/intro.exe"], capture_output=True, text=True)
+    r = subprocess.run(["make", "-C", str(G.ROOT / "native"), "--no-print-directory", "native/build/intro"], capture_output=True, text=True)
     if r.returncode:
         print(r.stdout[-2000:], r.stderr[-3000:])
         return 1
     syms = {m.group(3).lstrip("_"): int(m.group(1), 16)
             for m in re.finditer(r"^([0-9a-f]{8}) (\w) (\S+)$", (BUILD / "intro.sym").read_text(), re.M)}
-    hunks = parse_hunks((BUILD / "intro.exe").read_bytes())
+    hunks = parse_hunks((BUILD / "intro").read_bytes())
     assert len(hunks) == 2, f"expected a data hunk and a code hunk, got {len(hunks)}"
     (t0, data_hunk, _), (t1, code, relocs) = hunks
     base = L.SLOW_BASE + TRAMPOLINE_SIZE
