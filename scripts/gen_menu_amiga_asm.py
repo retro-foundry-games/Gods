@@ -23,6 +23,7 @@ ENTRIES = {
     0x1F9EA: "_audio_irq", 0x1FA8C: "stop_sound_of_id", 0x1FACC: "random_in_range", 0x1FAF6: "play_sound_body",
     0x1FC58: "feed_voice", 0x1FCB8: "_sound_tick", 0x1FCDC: "voices_to_hardware", 0x1FCFA: "voice_to_hardware",
     0x1FD56: "voices_envelope", 0x1FD7A: "voice_envelope", 0x1FE3E: "start_voice", 0x1FF0E: "run_sequencer",
+    0x1CFF8: "_vbl_irq", 0x1E39C: "_input_poll", 0x16C30: "_frame_tick",
     0x202DE: "select_period_table", 0x20316: "reset_volume_slides", 0x2032E: "reset_period_slides", 0x633E: "_random_word",
 }
 # the command table of the sequencer: the opcode $80 + 4 n runs the handler of entry n
@@ -83,7 +84,7 @@ SOUND = [(0x1F9EA, 0x1FA8C, "code"), (0x1FA8C, 0x1FACA, "code"), (0x1FACA, 0x1FA
          (0x20346, 0x2034A, "words"), (0x2034A, 0x2034C, "words")]
 
 
-A.CODE_RANGES += [(lo, hi) for lo, hi, kind in SOUND if kind == "code"]
+A.CODE_RANGES += [(lo, hi) for lo, hi, kind in SOUND if kind == "code"] + [(0x1CFF8, 0x1D058)]
 
 
 def sound_system() -> list[str]:
@@ -93,8 +94,8 @@ def sound_system() -> list[str]:
            "; tracks, the audio interrupt that feeds each voice its next sample.  Entries for C: audio_irq (the interrupt),",
            "; sound_tick (once a frame), play_sound(id), random_word (orig $00633E).",
            "        xdef _audio_irq, _sound_tick, _play_sound, _random_word", "",
-           "; void play_sound(uint8_t id): the sound the id names is started on a free voice (orig $01FAF6)",
-           "_play_sound:", "        move.l 4(sp),d0", "        bra.w play_sound_body", ""]
+           "; void play_sound(uint16_t id, uint16_t priority): the sound the id names is started on a free voice (orig $01FAF6)",
+           "_play_sound:", "        move.l 4(sp),d0", "        move.l 8(sp),d1", "        bra.w play_sound_body", ""]
     # every address that a branch of any piece goes to gets its label, in the piece that has the address
     force = set(COMMAND_TARGETS)
     for lo, hi, kind in SOUND:
@@ -119,6 +120,14 @@ def sound_system() -> list[str]:
     out += ["; uint16_t random_word(void), orig $00633E: the next word of a table, round and round; only d0 is changed"]
     out += A.emit(MEM, 0x633E, 0x635A)
     return out
+
+
+def interrupt() -> list[str]:
+    """The vertical blank interrupt (level 3): acknowledge, poll the input, copy the colour shadow table to the chip when
+    it changed, count the frames and run the frame tick."""
+    out = ["", "; ---- the vertical blank interrupt (orig $01CFF8-$01D056): the vector of level 3.  It calls input_poll and frame_tick (C).",
+           "        xref _input_poll, _frame_tick", "        xdef _vbl_irq", ""]
+    return out + [l.replace("jsr $16c30(pc)", "jsr _frame_tick") for l in A.emit(MEM, 0x1CFF8, 0x1D058)]
 
 
 def main() -> None:
@@ -148,6 +157,7 @@ def main() -> None:
     rest[idx:idx + 1] = ["        movem.l (sp)+,d2-d7/a2-a4", "        rts"]
     lines += rest
     lines += sound_system()
+    lines += interrupt()
     OUT.write_text("\n".join(A.localize(lines)) + "\n")
     print(f"wrote {OUT}")
 

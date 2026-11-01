@@ -68,7 +68,7 @@ def main(code_base: int = 0xC0000) -> None:
             vals = [int.from_bytes(ram[addr + i * w:addr + (i + 1) * w], "big") for i in range(count)]
             per = 16 // w if w > 1 else 16
             c.append(f"/* ${addr:05X}" + (f"  {comment}" if comment else "") + " */")
-            c.append(f"const {ctype} {name}[{count}] = {{")
+            c.append(f"const {ctype} {name}[{count}]" + (" __attribute__((aligned(1)))" if ctype == "uint8_t" else "") + " = {")
             for i in range(0, count, per):
                 c.append("    " + ", ".join(f"0x{v:0{2 * w}x}" for v in vals[i:i + per]) + ",")
             c += ["};", ""]
