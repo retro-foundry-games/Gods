@@ -15,7 +15,8 @@ PROJECT = Path(__file__).resolve().parents[1]
 NATIVE = PROJECT / "native"
 OUT = NATIVE / "menu_amiga.asm"
 
-MEM = (PROJECT / "build" / "menu-ram.bin").read_bytes()
+# the program as the loader leaves it (host/menu_image.lua): the initial values of the data in the code (frame 8000 has them used)
+MEM = (PROJECT / "build" / "menu-image.bin").read_bytes()
 
 ENTRIES = {
     0x171E4: "orig_blit_image", 0x171F6: "orig_blit_image_wide", 0x17208: "blit_image_body",
@@ -24,13 +25,17 @@ ENTRIES = {
     0x1FC58: "feed_voice", 0x1FCB8: "_sound_tick", 0x1FCDC: "voices_to_hardware", 0x1FCFA: "voice_to_hardware",
     0x1FD56: "voices_envelope", 0x1FD7A: "voice_envelope", 0x1FE3E: "start_voice", 0x1FF0E: "run_sequencer",
     0x1CFF8: "_vbl_irq", 0x1E39C: "_input_poll", 0x16C30: "_frame_tick",
+    # the file layer: the entries the C code and the stubs use (the rest get labels from their addresses)
+    0x1D536: "load_body", 0x1D966: "drives_idle_body", 0x1E254: "drive_bits",
+    0xF518: "stub_clear_work_area", 0x1D05C: "stub_wait_vblank", 0x12D5C: "stub_text_draw_centered_other",
+    0x1CF64: "stub_wait_frames_or_button", 0x16D76: "stub_message_request", 0x16E42: "stub_message_tick",
     0x202DE: "select_period_table", 0x20316: "reset_volume_slides", 0x2032E: "reset_period_slides", 0x633E: "_random_word",
 }
 # the command table of the sequencer: the opcode $80 + 4 n runs the handler of entry n
 COMMAND_TABLE = 0x1FF90
 COMMAND_TARGETS = [int.from_bytes(MEM[COMMAND_TABLE + 4 * n:COMMAND_TABLE + 4 * n + 4], "big") for n in range(22)]
 # the data the sound code reaches pc-relative, inside the code
-DATA_LABELS = {0x1FACA: "last_random", 0x1FE2E: "voice_pointers", 0x1FEFE: "voice_stacks", COMMAND_TABLE: "command_table",
+DATA_LABELS = {0x1E254: "drive_bits", 0x1FACA: "last_random", 0x1FE2E: "voice_pointers", 0x1FEFE: "voice_stacks", COMMAND_TABLE: "command_table",
                0x2034A: "tempo"}
 # the labels inside the blit: a mask is made of the image's planes (three ORed, then the fourth), then each plane is drawn
 # through it over the screen; with a pixel shift the blitter's B channel does the shifting
@@ -40,8 +45,8 @@ LABELS = {
     0x17346: "wait_shifted_draw", 0x1736A: "shifted_modulo", 0x17372: "shifted_set_modulos",
 }
 LABELS.update({t: f"cmd_{0x80 + 4 * n:02x}" for n, t in enumerate(COMMAND_TARGETS)})
-SIZES = {"uint8_t": 1, "int8_t": 1, "uint16_t": 2, "int16_t": 2, "uint32_t": 4, "int32_t": 4, "struct Rec6": 6, "struct Rec10": 10,
-         "struct Rec80": 80, "struct Entry8": 8, "struct MemLists": 20, "struct Image": 8}
+SIZES = {"char": 1, "uint8_t": 1, "int8_t": 1, "uint16_t": 2, "int16_t": 2, "uint32_t": 4, "int32_t": 4, "struct Rec6": 6, "struct Rec10": 10,
+         "struct Rec80": 80, "struct Entry8": 8, "struct MemLists": 20, "struct Image": 8, "struct AssetEntry": 8}
 
 
 def size_of(decl: str) -> int:
@@ -84,7 +89,8 @@ SOUND = [(0x1F9EA, 0x1FA8C, "code"), (0x1FA8C, 0x1FACA, "code"), (0x1FACA, 0x1FA
          (0x20346, 0x2034A, "words"), (0x2034A, 0x2034C, "words")]
 
 
-A.CODE_RANGES += [(lo, hi) for lo, hi, kind in SOUND if kind == "code"] + [(0x1CFF8, 0x1D058)]
+FILE_LAYER = (0x1D4CA, 0x1E254)   # the disk drives and the file reading, as the original has them (a few of the C functions twice)
+A.CODE_RANGES += [(lo, hi) for lo, hi, kind in SOUND if kind == "code"] + [(0x1CFF8, 0x1D058), FILE_LAYER]
 
 
 def sound_system() -> list[str]:
@@ -130,6 +136,37 @@ def interrupt() -> list[str]:
     return out + [l.replace("jsr $16c30(pc)", "jsr _frame_tick") for l in A.emit(MEM, 0x1CFF8, 0x1D058)]
 
 
+STUBS = [   # the original's routines that are C now, called from the file layer with their registers: (address, C name, arguments)
+    (0xF518, "clear_work_area", []), (0x1D05C, "wait_vblank", []), (0x12D5C, "text_draw_centered_other", ["a0"]),
+    (0x1CF64, "wait_frames_or_button", ["d0"]), (0x16D76, "message_request", ["d7"]), (0x16E42, "message_tick", []),
+]
+
+
+def file_layer() -> list[str]:
+    """The disk layer: the drive control, track reading and writing with the MFM coding and the directory search, from the
+    original (the Amiga's disk hardware), with the stubs it calls C through and the entries C calls it by."""
+    out = ["", "; ---- the file layer (orig $01D4CA-$01E253): drive selection and motor, track reads and writes through the disk DMA,",
+           "; the MFM decoding, the directory and the loading of a file.  It keeps its registers' meaning (a5 the track buffer,",
+           "; a6 the drive's frame); only these entries are for C:",
+           "        xref " + ", ".join(f"_{n}" for _, n, _ in STUBS),
+           "        xdef _file_read, _drives_idle", ""]
+    out += ["; uint32_t file_read(const char *name, void *dest): load the file; the result is -1 when it failed (orig $01D536 with",
+            "; the name in d0 and the destination in a0; the original reports by the negative flag)",
+            "_file_read:", "        movem.l d2-d7/a2-a6,-(sp)", "        move.l 48(sp),d0", "        movea.l 52(sp),a0",
+            "        jsr load_body", "        smi d0", "        ext.w d0", "        ext.l d0", "        movem.l (sp)+,d2-d7/a2-a6", "        rts", "",
+            "; void drives_idle(void), orig $01D966: the drives that are present are deselected",
+            "_drives_idle:", "        movem.l d2-d7/a2-a6,-(sp)", "        jsr drives_idle_body", "        movem.l (sp)+,d2-d7/a2-a6", "        rts", ""]
+    for addr, name, regs in STUBS:
+        out += [f"; the original's routine at ${addr:x} is C: {name}", f"{ENTRIES[addr]}:", "        movem.l d0-d7/a0-a6,-(sp)"]
+        for r in reversed(regs):
+            out.append(f"        move.l {r},-(sp)")
+        out += [f"        jsr _{name}", f"        lea {4 * len(regs)}(sp),sp" if regs else "", "        movem.l (sp)+,d0-d7/a0-a6", "        rts", ""]
+    out = [ln for ln in out if ln != "" or True]
+    out += A.emit(MEM, FILE_LAYER[0], FILE_LAYER[1])
+    out += ["drive_bits:", "        dc.w " + ",".join(f"${int.from_bytes(MEM[a:a + 2], 'big'):04x}" for a in range(0x1E254, 0x1E260, 2)), ""]
+    return out
+
+
 def main() -> None:
     lines = [
         "; Gods, the menu program: its hardware routines, generated by scripts/gen_menu_amiga_asm.py from the original's code.",
@@ -158,6 +195,7 @@ def main() -> None:
     lines += rest
     lines += sound_system()
     lines += interrupt()
+    lines += file_layer()
     OUT.write_text("\n".join(A.localize(lines)) + "\n")
     print(f"wrote {OUT}")
 

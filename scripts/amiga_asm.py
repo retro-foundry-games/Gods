@@ -54,9 +54,31 @@ def branch_target(i: Ins) -> int:
     return int(m.group(1), 16)
 
 
+def jump_target(i: Ins) -> int | None:
+    """The address of a `jsr`/`jmp` with an absolute long operand, or None."""
+    m = re.fullmatch(r"\$([0-9a-f]+)\.l", fix_operand(i))
+    return int(m.group(1), 16) if m and i.mn.split(".")[0] in ("jsr", "jmp") else None
+
+
+def in_code(t: int) -> bool:
+    return any(a <= t < b for a, b in CODE_RANGES)
+
+
 def fix_operand(i: Ins) -> str:
     """capstone prints some absolute operands as $aaaaaaaa; read them from the instruction's bytes instead."""
     op = i.op
+    m = re.search(r"\$([0-9a-f]+)\(pc\)", op)
+    if m:   # capstone's pc-relative address is off by 2 for some forms: take the displacement word from the bytes
+        t = int(m.group(1), 16)
+        best = None
+        for p in range(2, i.size, 2):
+            w = int.from_bytes(i.raw[p:p + 2], "big")
+            w -= 0x10000 if w & 0x8000 else 0
+            cand = i.address + p + w
+            if abs(cand - t) <= 4 and (best is None or abs(cand - t) < abs(best - t)):
+                best = cand
+        if best is not None and best != t:
+            op = op.replace(m.group(0), f"${best:x}(pc)")
     if "$aaaa" not in op:
         return op
     if "$aaaaaaaa.l" in op:
@@ -74,10 +96,15 @@ def text(i: Ins, targets: dict[int, str], final: bool) -> str:
     mn = i.mn
     if mn.split(".")[0] in ("btst", "bset", "bclr", "bchg") and re.search(r", d\d$", op):
         mn = mn.split(".")[0] + ".l"   # capstone prints a bit operation on a data register as a byte one; it is a long
+    elif mn.split(".")[0] in ("btst", "bset", "bclr", "bchg") and not re.search(r", d\d$", op):
+        mn = mn.split(".")[0] + ".b"   # ... and on memory a byte one (capstone may call it a long)
     if is_branch(i):
         tgt = branch_target(i)
         lab = targets.get(tgt) or ENTRIES.get(tgt) or f"${tgt:x}"
         return f"{mn} {op[:op.rindex('$')]}{lab}".replace(", ", ",")
+    jt = jump_target(i)
+    if jt is not None and final and jt not in ENTRIES and in_code(jt):
+        return f"{mn} {targets.get(jt) or LABELS.get(jt, f'L{jt:x}')}"
     m = re.search(r"\$([0-9a-f]+)\.l", op)
     if m and final:
         sym = data_symbol(int(m.group(1), 16)) or ENTRIES.get(int(m.group(1), 16))
@@ -96,6 +123,10 @@ def text(i: Ins, targets: dict[int, str], final: bool) -> str:
         sym = short_symbol(int(m.group(1), 16))
         if not sym.startswith("$"):
             op = op.replace(m.group(0), f"({sym}).w")
+    m = re.search(r"\$([0-9a-f]+)\(pc\)", op)
+    if m and final and int(m.group(1), 16) >= 0x8000 and not in_code(int(m.group(1), 16)):
+        a = int(m.group(1), 16)
+        return f"{mn} {op.replace(m.group(0), '(' + (data_symbol(a) or f'${a:x}') + ').l')}".replace(", ", ",")
     m = re.match(r"\$([0-9a-f]+)\(pc\),(.*)$", op.replace(", ", ","))
     if m and final:
         # pc-relative to data: the data is in another hunk, so use absolute short (8 cycles as well, no relocation)
@@ -112,6 +143,10 @@ def emit(mem: bytes, lo: int, hi: int, force: set[int] = frozenset()) -> list[st
         return lo <= t < hi or any(a <= t < b for a, b in CODE_RANGES)
     all_targets = {branch_target(i): LABELS.get(branch_target(i), f"L{branch_target(i):x}") for i in ins
                    if is_branch(i) and in_code(branch_target(i)) and branch_target(i) not in ENTRIES}
+    for i in ins:
+        jt = jump_target(i)
+        if jt is not None and in_code(jt) and jt not in ENTRIES:
+            all_targets[jt] = LABELS.get(jt, f"L{jt:x}")
     for a in force:
         if in_code(a) and a not in ENTRIES:
             all_targets[a] = LABELS.get(a, f"L{a:x}")

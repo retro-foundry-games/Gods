@@ -22,9 +22,10 @@ import intro_analysis as G  # noqa: E402
 import menu_analysis as M  # noqa: E402
 
 RAM = (PROJECT / "build" / "menu-ram.bin").read_bytes()
-COVERAGE = PROJECT / "analysis" / "coverage-menu-handling.txt"
+import os
+COVERAGE = PROJECT / "analysis" / os.environ.get("MENU_COVERAGE", "coverage-menu-handling.txt")   # e.g. coverage-menu.txt, coverage-game-start.txt
 NATIVE = PROJECT / "native"
-MENU_C = ["menu", "disk", "alloc", "decrunch", "input", "screen", "draw", "display", "message", "ui"]
+MENU_C = ["menu", "disk", "alloc", "decrunch", "input", "screen", "draw", "display", "message", "ui", "file"]
 
 
 def decompiled() -> dict[int, str]:
