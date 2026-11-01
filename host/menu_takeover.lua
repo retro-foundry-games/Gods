@@ -68,6 +68,8 @@ for f, dirs in (args:match("joy=(%S+)") or ""):gmatch("(%d+):([%a+]+)") do
     for d in dirs:gmatch("%a+") do if d ~= "none" then st[d] = true end end
     joys[tonumber(f)] = st
 end
+local keys = {}   -- keys=F:name:down|up,...
+for f, name, state in (args:match("keys=(%S+)") or ""):gmatch("(%d+):(%a+):(%a+)") do keys[tonumber(f)] = { name, state == "down" } end
 local DUMP = tonumber(args:match("dump=(%d+)"))
 local EVENTS = {}
 for name in ((" " .. args):match(" trace=(%S+)") or ""):gmatch("[%w_]+") do
@@ -103,6 +105,7 @@ while ami.frame() - start < UNTIL do
     settle_flips()
     local f = ami.frame() - start
     if joys[f] then ami.joystick(joys[f]) end
+    if keys[f] then ami.key(ami.keys[keys[f][1]], keys[f][2]) end
     if DUMP and f == DUMP then ami.save_file(OUT .. ".ram", ami.read(0, 0x80000)) end
     local line = { tostring(f) }
     PCS = PCS or {}
