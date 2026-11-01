@@ -4,6 +4,8 @@
 
 #include <stdint.h>
 
+#include "menu_types.h"
+
 extern uint32_t *work_area;   /* $00CAA  pointer to a buffer of 80 longs that clear_work_area clears */
 extern uint16_t shadow_table[];   /* $00E10  a table of words indexed by shadow_set / shadow_get (colour register shadows) */
 extern uint16_t mouse_x;   /* $1E4FC  pointer position, 0 to $200 (moved by input_poll) */
@@ -16,5 +18,7 @@ extern uint16_t mouse_counter_old;   /* $1E508  the value before it */
 extern uint8_t button_presses;   /* $1E50A  bits set by input_poll (1 first button, 4 second or the pot lines), cleared by whoever reads them */
 extern uint32_t pending_request;   /* $1E5A8  non-zero: something is waiting to be taken (take_pending_request) */
 extern uint8_t joystick;   /* $1E5AC  bit 0 up, 1 down, 2 left, 3 right, 7 fire */
+extern uint32_t heap_base;   /* $0002C  where the program's memory starts (a vector slot the program uses for it) */
+extern struct MemLists mem_lists;   /* $1D41C  the allocator's two lists (alloc_init) */
 
 #endif
