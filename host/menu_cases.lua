@@ -2,6 +2,14 @@
 -- arguments come in (".w": only the low word counts, ".l" or a bare name: the whole register), the register its result is in,
 -- and how many calls to compare.  Not here: wait_vblank and screens_flip (they wait for the vertical blank, which a call from the
 -- oracle cannot get across); they are checked when the whole program runs in lockstep.  A function is in this list from the moment it is decompiled.
+-- true for a call whose x (d0 + x_offset, a word) is from `low` to `high`: the edge variants of the blit
+local function edge_call(low, high)
+    return function(ami)
+        local x = (ami.reg("d0") + string.unpack(">i2", ami.read(0x1d3a4, 2))) & 0xffff
+        if x >= 0x8000 then x = x - 0x10000 end
+        return x >= low and x <= high
+    end
+end
 return {
     { name = "clear_work_area",      orig = 0x00f518, args = {} },
     { name = "take_pending_request", orig = 0x01cf26, args = {},                       ret = "d0" },
@@ -28,8 +36,17 @@ return {
     { name = "build_table_14cf8",    orig = 0x004c90, args = {}, scenario = "begin" },
     { name = "save_slot_words",      orig = 0x01494c, args = {}, scenario = "begin" },
     { name = "restore_slot_words",   orig = 0x01496a, args = {}, scenario = "begin" },
-    { name = "glyph_draw",           orig = 0x017686, args = { "d0.w", "d1.w", "d2.w" }, blitter = true },
-    { name = "sprite_draw",          orig = 0x0173c4, args = { "d0.w", "d1.w", "d2.w" }, blitter = true },
+    { name = "glyph_draw",           orig = 0x017686, args = { "d0.w", "d1.w", "d2.w" }, blitter = true, scenario = "game" },
+    { name = "sprite_draw",          orig = 0x0173c4, args = { "d0.w", "d1.w", "d2.w" }, blitter = true, scenario = "game" },
+    -- the calls at the screen edges (x + x_offset outside 0..336 / 0..320), which the evenly spread samples above seldom hit; one case for each variant
+    { name = "glyph_draw_left", c = "glyph_draw", orig = 0x017686, args = { "d0.w", "d1.w", "d2.w" }, blitter = true, scenario = "game", where = edge_call(-15, -1) },
+    { name = "glyph_draw_right", c = "glyph_draw", orig = 0x017686, args = { "d0.w", "d1.w", "d2.w" }, blitter = true, scenario = "game", where = edge_call(337, 351) },
+    { name = "sprite_draw_left_far", c = "sprite_draw", orig = 0x0173c4, args = { "d0.w", "d1.w", "d2.w" }, blitter = true, scenario = "game", where = edge_call(-31, -17) },
+    { name = "sprite_draw_left", c = "sprite_draw", orig = 0x0173c4, args = { "d0.w", "d1.w", "d2.w" }, blitter = true, scenario = "game", where = edge_call(-16, -1) },
+    { name = "sprite_draw_right", c = "sprite_draw", orig = 0x0173c4, args = { "d0.w", "d1.w", "d2.w" }, blitter = true, scenario = "game", where = edge_call(321, 335) },
+    { name = "sprite_draw_right_far", c = "sprite_draw", orig = 0x0173c4, args = { "d0.w", "d1.w", "d2.w" }, blitter = true, scenario = "game", where = edge_call(336, 351) },
+    { name = "sprite_draw_left_x16", c = "sprite_draw", orig = 0x0173c4, args = { "d0.w", "d1.w", "d2.w" }, blitter = true, scenario = "game", where = edge_call(-16, -16) },
+    { name = "sprite_draw_right_x336", c = "sprite_draw", orig = 0x0173c4, args = { "d0.w", "d1.w", "d2.w" }, blitter = true, scenario = "game", where = edge_call(336, 336) },
     { name = "text_draw_at",         orig = 0x003bf8, args = { "a0", "d0.w", "d1.w" }, blitter = true },
     { name = "text_draw_centered",   orig = 0x012d90, args = { "a0" }, blitter = true },
     { name = "draw_digit",           orig = 0x006a3a, args = { "d0.w", "d1.w", "d2.w", blitter = true, scenario = "idle" }, ret = "d0.w" },

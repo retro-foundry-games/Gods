@@ -64,6 +64,7 @@ local busy = false
 local function check(case)
     if busy then return end   -- the hook fires inside the calls this function makes
     if case.refire then case.refire = false; return end   -- and once more as the program goes on after a comparison
+    if case.where and not case.where(ami) then return end   -- a case for a part of the calls (`where`, see menu_cases.lua)
     case.calls = (case.calls or 0) + 1
     if case.done >= SAMPLES or (case.calls - 1) % STRIDE ~= 0 then return end
     busy = true
@@ -108,7 +109,7 @@ local function check(case)
     run2.a7, run2.sr = SCRATCH, case.sr or 0x2700
     ami.write(syms.base, blob)   -- the program may have used the memory the C code sits in
     if case.no_wait then ami.write(syms[case.no_wait.c], "\x4e\x75") end
-    local r2 = ami.call(syms[case.name], run2)
+    local r2 = ami.call(syms[case.c or case.name], run2)
     settle()
     local after_c = ami.read(0, CHIP)
     ami.write(0, before)
@@ -147,12 +148,12 @@ end
 
 local active = {}
 for _, case in ipairs(cases) do
-    if (next(only) == nil or only[case.name]) and syms[case.name] then
+    if (next(only) == nil or only[case.name]) and syms[case.c or case.name] then
         case.done = 0
         active[#active + 1] = case
         ami.hook(case.orig, function() check(case) end)
     elseif not syms[case.name] then
-        say("missing in native/build/menu_syms.lua: %s", case.name)
+        say("missing in native/build/menu_syms.lua: %s", case.c or case.name)
     end
 end
 

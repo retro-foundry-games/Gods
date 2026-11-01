@@ -100,9 +100,11 @@ def sound_system() -> list[str]:
     out = ["", "; ---- the sound system (orig $01F9EA-$02034B): four voices, a sequencer that interprets the command bytes of the",
            "; tracks, the audio interrupt that feeds each voice its next sample.  Entries for C: audio_irq (the interrupt),",
            "; sound_tick (once a frame), play_sound(id), random_word (orig $00633E).",
-           "        xdef _audio_irq, _sound_tick, _play_sound, _random_word", "        xdef last_random, voice_pointers, voice_stacks, tempo   ; the sound code's own state (the takeover test copies it)", "",
+           "        xdef _audio_irq, _sound_tick, _play_sound, _random_word, _voice_start", "        xdef last_random, voice_pointers, voice_stacks, tempo   ; the sound code's own state (the takeover test copies it)", "",
            "; void play_sound(uint16_t id, uint16_t priority): the sound the id names is started on a free voice (orig $01FAF6)",
-           "_play_sound:", "        move.l 4(sp),d0", "        move.l 8(sp),d1", "        bra.w play_sound_body", ""]
+           "_play_sound:", "        move.l 4(sp),d0", "        move.l 8(sp),d1", "        bra.w play_sound_body", "",
+           "; void voice_start(uint16_t sound, uint16_t voice): the routine at orig $01FE3E (d0 the sound, d1 the voice) that stop_sound calls with 22", "_voice_start:",
+           "        move.l 4(sp),d0", "        move.l 8(sp),d1", "        jmp (start_voice).l", ""]
     # every address that a branch of any piece goes to gets its label, in the piece that has the address
     force = set(COMMAND_TARGETS)
     for lo, hi, kind in SOUND:
