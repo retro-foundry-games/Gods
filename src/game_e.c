@@ -489,13 +489,59 @@ void object_message(const struct Object *object)
     message_request(30);
 }
 
+/* orig $012CFC: the level is over (flag_230 set) when word_22e is the count in the first word of ptr_0bc6; otherwise, when
+ * param_index is 3, word_0266 is 0 and the player is at x 1104 or more and y 768 to 784, word_22e is cleared and the level is over.
+ * (The original loses the caller's a6 here: it leaves ptr_0bc6 in it and the saved a6 in a0) */
+static void level_over_check(void)
+{
+    if (ptr_0bc6[0] != word_22e) {
+        if (param_index != 3 || word_0266 != 0 || player_x < 0x450 || player_y > 0x310 || player_y < 0x300)
+            return;
+        word_22e = 0;
+    }
+    flag_230 = 1;
+}
+
+/* orig $0187B8 (state 6 of the entries run by run_cell_entry): the player position is copied to words_2a2; when it is not within 64
+ * (in x and in y) of any of the six spots of points_b3a, word_22c and word_22e count up, the spots move on one (the oldest is
+ * lost), the player position is the first and level_over_check runs */
+void remember_visited_spot(void)
+{
+    int16_t x = player_x, y = player_y;
+
+    words_2a2[0] = x;
+    words_2a2[1] = y;
+    for (int i = 0; i < 12; i += 2) {
+        int16_t sx = points_b3a[i], sy = points_b3a[i + 1];
+
+        if (!(sx - 0x40 > x || sy - 0x40 > y || sx + 0x40 < x || sy + 0x40 < y))
+            return;
+    }
+    word_22c++;
+    word_22e++;
+    for (int i = 11; i >= 2; i--)
+        points_b3a[i] = points_b3a[i - 2];
+    points_b3a[0] = x;
+    points_b3a[1] = y;
+    level_over_check();
+}
+
 /* orig $012796 (inlined: the table at $18714; a0 is the map cell `cell`): a cell of the map whose byte is above 2 names an entry of
  * the table at ptr_0cbe (4 bytes: a state, a number).  A negative or 0 state does nothing; otherwise the creature types that
  * have byte 13 set to 1 are switched off (status 0) and the routine the state names in table_18714 is called with the entry:
- * 2 is take_record_to_199ac, 3 is finish_record_1895a; 1 ($18900) and the rest ($8898, $88DC, ...) did not run */
+ * 1 is take_record_to_18740, 2 is take_record_to_199ac, 3 is finish_record_1895a, 6 is remember_visited_spot (the entries
+ * 4 and 5, $8898 and $88DC, and 7 to 10, $17E0A to $17E16, are not written: 8 ran once in the human replay, in 3128 calls, and is the
+ * one call the oracle still sees differ: it finishes the entry and moves a creature along its path with the code at $1813C and
+ * $182C4, which is self-modifying) */
 void cell_entry_runs(const uint8_t *cell)
 {
-    uint16_t *entry = (uint16_t *)(ptr_0cbe + (int16_t)(((uint8_t)*cell - 3) << 2));
+    run_cell_entry((int16_t)((uint8_t)*cell - 3));
+}
+
+/* orig $0127A0: the entry `index` (4 bytes each) of the table at ptr_0cbe is run as cell_entry_runs says */
+void run_cell_entry(int16_t index)
+{
+    uint16_t *entry = (uint16_t *)(ptr_0cbe + (int16_t)(index << 2));
 
     if ((int16_t)entry[0] <= 0)
         return;
@@ -508,11 +554,14 @@ void cell_entry_runs(const uint8_t *cell)
 
     uint32_t routine = table_18714[(int16_t)(entry[0] - 1)];
 
-    if (routine == 0x18890)
+    if (routine == 0x18900)
+        take_record_to_18740(entry);
+    else if (routine == 0x18890)
         take_record_to_199ac(entry);
     else if (routine == 0x1895A)
         finish_record_1895a(entry);
-    /* goes on at $18900 and the others */
+    else if (routine == 0x187B8)
+        remember_visited_spot();
 }
 
 /* orig $010976: the message of the hint found at the player.  The list of 40 words at ptr_0cf2 is searched for the x of the player's

@@ -430,6 +430,17 @@ extern uint32_t score_total_1fc;   /* $001FC  game_d: the points won, as one num
 extern int16_t word_2ba;   /* $002BA  game_d: -1, or the step (0 to 4) of the thing of kinds 232, 288, 290 and 292 */
 extern void fn_10976(void);   /* $10976  game_d: the pick-up handler 18 of the table at $1067A (game_e writes it in C) */
 extern uint16_t word_26a;   /* $0026A  game_d: the glyph the pick-ups of records_19334 are drawn with (sprite, two words wide) */
+extern uint16_t bcd_346[4];   /* $00346  the number call_by_kind makes of five thousand times its argument, a BCD byte a word, the low digits first */
+extern uint8_t flags_1c056[];   /* $1C056  entries of 6 bytes; bit 0 of the byte +5 is a flag call_by_kind tests */
+extern int16_t words_34e[3];   /* $0034E  x, y and number of the last thing dropped (then word_354 is cleared) */
+extern uint8_t tile_24d;   /* $0024D  the first tile number of the blocks kind 2 of finish_record_1895a sets */
+extern int16_t word_314;   /* $00314  how many marks kind 6 of finish_record_1895a has made */
+extern uint8_t *ptr_0b7e;   /* $00B7E */
+extern uint8_t records_18740[120];   /* $18740  five records of 24 bytes (a state word, 0 free) take_record_to_18740 fills */
+extern uint16_t word_22e;   /* $0022E  counts the spots remembered in points_b3a (like word_22c); the level ends (flag_230) when it reaches the count at ptr_0bc6 */
+extern const uint16_t *ptr_0bc6;   /* $00BC6  its first word is how many spots end the level */
+extern int16_t words_2a2[2];   /* $002A2  a copy of the player position (player_x, player_y) made by remember_visited_spot */
+extern int16_t points_b3a[12];   /* $00B3A  the six spots (x, y; the latest first) remember_visited_spot keeps */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
 extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of the two copper lists' colour moves the message fades */

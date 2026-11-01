@@ -400,6 +400,40 @@ void take_record_to_199ac(uint16_t *a0)
 }
 
 
+/* orig $018900: like take_record_to_199ac, but the entry's record (its word +2 numbers 8 bytes of ptr_0cb2) is made into the first
+ * free one of the five records of 24 bytes of records_18740 (a state 0): state 2, the 8 bytes (the byte +6 split into two
+ * nibbles), and 14 bytes copied from the table ptr_0b7e + 2 (16 bytes for each of the signed byte +5); when none is free that is
+ * all */
+void take_record_to_18740(uint16_t *a0)
+{
+    a0[0] = 0xFFFF;
+
+    const uint8_t *s = ptr_0cb2 + (int16_t)(a0[1] << 3);
+    uint8_t *slot = records_18740;
+    int i;
+
+    for (i = 0; i < 5; i++, slot += 24)
+        if (*(uint16_t *)slot == 0)
+            break;
+    if (i == 5)
+        return;
+    uint8_t *out = slot;
+    *(uint16_t *)out = 2;
+    out[2] = s[0];
+    out[3] = s[1];
+    out[4] = s[2];
+    out[5] = s[3];
+    out[6] = s[4];
+    out[7] = s[6] >> 4;
+    out[8] = s[6] & 15;
+    const uint8_t *src = ptr_0b7e + 2 + (int16_t)((int8_t)s[5] << 4);
+
+    out[9] = src[1];
+    for (int k = 0; k < 12; k++)
+        out[10 + k] = src[2 + k];
+    out[22] = s[7];
+}
+
 /* orig $01FA8C: the sound `id` is stopped when a voice plays it: the voice whose entry in voice_ids_207a6 equals the byte +1 of the
  * sound's record in sound_table_20bce.  When none does that is all; when one does its entry is cleared and $1FE3E runs
  * (d0 = 22, d1 = the voice) */
@@ -781,26 +815,225 @@ int16_t check_hit_and_walls(int16_t x, int16_t y, int16_t strength)
     return strength;
 }
 
-/* orig $018AAE: whether the kind of the record a1 (its word +16 without the top bit) is one of 2, 3, 4, 7 and 8; the original
- * then goes on at $18AD6 (not run), otherwise it returns */
-int record_kind_special(const uint16_t *a1)
+/* orig $018B6C: the slot of item_slots that holds the item is emptied (-1); the first one only */
+static void empty_first_slot_with(int16_t item)
+{
+    for (int i = 0; i < 4; i++)
+        if (item_slots[i] == item) {
+            item_slots[i] = -1;
+            return;
+        }
+}
+
+/* orig $018AAE and $018AD6: a record whose kind (the word +16 without the top bit) is 2, 3, 4, 7 or 8 empties the slot that holds
+ * the item each of its three pairs of words names, when the pair's first word is 1 and the item is 18 to 23 or 127 to 129 */
+static void empty_slots_of_record(const uint16_t *a1)
 {
     uint16_t kind = a1[8] & 0x7FFF;
 
-    return kind == 2 || kind == 3 || kind == 4 || kind == 7 || kind == 8;
+    if (!(kind == 2 || kind == 3 || kind == 4 || kind == 7 || kind == 8))
+        return;
+    for (int p = 0; p < 6; p += 2) {
+        int16_t item = (int16_t)a1[p + 1];
+
+        if (a1[p] == 1 && ((item >= 0x12 && item <= 0x17) || (item >= 0x7F && item <= 0x81)))
+            empty_first_slot_with(item);
+    }
 }
 
-/* orig $018A22: whether the top bit of the record's word +16 is set; the original then goes on at $18A2C (not run) */
-int record_kind_flagged(const uint8_t *a1)
+/* orig $018A22, $018A2C and $018A5C: a record whose word +16 has the top bit set empties every slot of item_slots that holds the
+ * item each of its pairs of words names (the pair's first word 1) when the item's table_14cf8 entry has the word +4 at 0 or 2 */
+static void empty_slots_of_flagged_record(const uint16_t *a1)
 {
-    return (a1[16] & 0x80) != 0;
+    if (!(a1[8] & 0x8000))
+        return;
+    for (int p = 0; p < 6; p += 2) {
+        if (a1[p] != 1)
+            continue;
+        int16_t item = (int16_t)a1[p + 1];
+        uint16_t state = table_14cf8[item].w[2];
+
+        if (state != 2 && state != 0)
+            continue;
+        for (int i = 0; i < 4; i++)
+            if (item_slots[i] == item)
+                item_slots[i] = -1;
+    }
 }
 
-/* orig $01895A: the record a0 (its word +2 numbers a record of 24 bytes of buffer_cb6) is looked at by call_by_kind for its three
- * pairs of words; when all three results (words_300) are still -1 the record a0 is finished: its first word becomes -1, a
- * message of the record's word +20 is requested when it has one (priority 50), and the routine the record's kind names in
- * dispatch_18ba4 is entered (in the original with the records in a0 and a1, which a C call cannot pass).  Nothing is done while
- * flag_230.  The original goes on at $18AD6 and $18A2C (neither ran) when record_kind_special or record_kind_flagged */
+/* the first of the `count` records of 8 bytes in `list` whose word +4 is negative (free), or 0 */
+static struct Slot8 *first_free_slot8(struct Slot8 *list, int count)
+{
+    for (int i = 0; i < count; i++)
+        if (list[i].w[2] < 0)
+            return &list[i];
+    return 0;
+}
+
+/* orig $018E38 (kind 0 of dispatch_18ba4; a1 the record): a free record of records_19b14 gets the position (words +12, +14) and the
+ * number in the record's word +18 and the state 1; its byte in flags_39fde is set.  For the numbers 64 to 68 that is all; 83 sets
+ * bit 2 of flags_3b0; the position and number are kept in words_34e (word_354 cleared) and the sound 48 is played (priority 30)
+ * unless offsets_4cba says 4 for the number */
+static void kind_drop_item(const uint16_t *a1)
+{
+    int16_t x = (int16_t)a1[6], y = (int16_t)a1[7], number = (int16_t)a1[9];
+    struct Slot8 *record = first_free_slot8(records_19b14, 200);
+
+    if (record == 0)
+        return;
+    record->w[0] = x;
+    record->w[1] = y;
+    record->w[2] = number;
+    record->w[3] = 1;
+    flags_39fde[record - records_19b14] = 0xFF;
+    if (number >= 0x40 && number <= 0x44)
+        return;
+    if (number == 0x53)
+        flags_3b0 |= 4;
+    words_34e[0] = x;
+    words_34e[1] = y;
+    words_34e[2] = number;
+    word_354 = 0;
+    if (offsets_4cba[number] != 4)
+        play_sound(0x30, 0x1E);
+}
+
+/* orig $018EB6 (kind 1): as kind 0 but the number is the word +18 plus 192 and no sound is played */
+static void kind_drop_192(const uint16_t *a1)
+{
+    int16_t x = (int16_t)a1[6], y = (int16_t)a1[7], number = (int16_t)(a1[9] + 0xC0);
+    struct Slot8 *record = first_free_slot8(records_19b14, 200);
+
+    if (record == 0)
+        return;
+    record->w[0] = x;
+    record->w[1] = y;
+    record->w[2] = number;
+    record->w[3] = 1;
+    flags_39fde[record - records_19b14] = 0xFF;
+    words_34e[0] = x;
+    words_34e[1] = y;
+    words_34e[2] = number;
+    word_354 = 0;
+}
+
+/* orig $019280: whether one of the first ten records of records_19334 is at (x, y) already */
+static int record_19334_at(int16_t x, int16_t y)
+{
+    for (int i = 0; i < 10; i++)
+        if (records_19334[i].w[0] == x && records_19334[i].w[1] == y)
+            return 1;
+    return 0;
+}
+
+/* orig $018D64 (kind 4: looks in the first ten records of records_19334 for a free one) and $018DE4 (kind 3: in all twenty, and
+ * then plays the sound 7, priority 5): a free record gets the position of the record a1 (word +12 less 16 and rounded down to 32,
+ * word +14 plus 8 rounded down to 16), the state 3 (kind 4) or 1 (kind 3) and the number of the word +18.  When a record is at the
+ * position already ($019280) nothing is done */
+static void kind_place_19334(const uint16_t *a1, int twenty)
+{
+    struct Slot8 *record = first_free_slot8(records_19334, twenty ? 20 : 10);
+
+    if (record == 0)
+        return;
+    int16_t x = (int16_t)((a1[6] & 0xFFE0) - 0x10);
+    int16_t y = (int16_t)((a1[7] + 8) & 0xFFF0);
+
+    if (record_19334_at(x, y))
+        return;
+    record->w[0] = x;
+    record->w[1] = y;
+    record->w[2] = twenty ? 1 : 3;
+    record->w[3] = (int16_t)a1[9];
+    if (twenty)
+        play_sound(7, 5);
+}
+
+/* orig $0192A4 and $0192D6 (kind 2): the block of the tile map (ptr_0b86) at the record a1's position (x rounded to 32, y 8
+ * further and rounded to 16) is set to six tiles counted up from tile_24d and the three cells of the second plane (+8192)
+ * cleared; the sound 7 is played (priority 5) */
+static void kind_set_tiles(const uint16_t *a1)
+{
+    int16_t x = (int16_t)(((a1[6] & 0xFFE0) + 12) & 0xFFE0);
+    int16_t y = (int16_t)((a1[7] + 8) & 0xFFF0);
+    uint8_t *cell = ptr_0b86 + (int16_t)(x >> 5) + (int16_t)(y << 3);
+    uint8_t base = tile_24d;
+
+    cell[0] = base;
+    cell[1] = (uint8_t)(base + 1);
+    cell[0x80] = (uint8_t)(base + 10);
+    cell[0x81] = (uint8_t)(base + 11);
+    cell[0x100] = (uint8_t)(base + 20);
+    cell[0x101] = (uint8_t)(base + 21);
+    cell += 0x2000;
+    cell[0] = 0;
+    cell[0x80] = 0;
+    cell[0x100] = 0;
+    play_sound(7, 5);
+}
+
+/* orig $018C30 (kind 6): every record of records_19b14 within 12 of the record a1's position (words +12, +14) whose number's
+ * table_14cf8 entry has the word +4 at 4 is taken out (word +4 -1, +6 0) and makes a mark in records_316 (state 0, x less 8, y
+ * (8 less for the number 96)), at most two, each with the sound 4 (priority 15); the marks go to the first free entry and on
+ * from there (this may pass the end of the four, as in the original) */
+static void kind_burst(const uint16_t *a1)
+{
+    int16_t x0 = (int16_t)(a1[6] - 12), y0 = (int16_t)(a1[7] - 12);
+    int16_t x1 = (int16_t)(a1[6] + 12), y1 = (int16_t)(a1[7] + 12);
+    int16_t *mark = records_316;
+    int16_t hits = 0;
+
+    word_314 = 0;
+    for (int i = 0; i < 4 && mark[0] >= 0; i++)
+        mark += 3;
+    if (mark >= records_316 + 12)
+        mark = records_316 + 9;
+    for (int i = 0; i < 200; i++) {
+        struct Slot8 *record = &records_19b14[i];
+
+        if (record->w[2] < 0)
+            continue;
+        if (table_14cf8[record->w[2]].w[2] != 4)
+            continue;
+        int16_t x = record->w[0], y = record->w[1];
+
+        if (x0 > x || x1 < x || y0 > y || y1 < y)
+            continue;
+        int is_96 = record->w[2] == 0x60;
+
+        record->w[2] = -1;
+        record->w[3] = 0;
+        mark[0] = 0;
+        mark[1] = (int16_t)(x - 8);
+        mark[2] = is_96 ? (int16_t)(y - 8) : y;
+        mark += 3;
+        play_sound(4, 15);
+        word_314 = ++hits;
+        if (hits == 2)
+            return;
+    }
+}
+
+/* orig $018F16 (kind 10): the slot_ref (6b6, 748, 7da) that equals the word +18 of the record a1 becomes -1; the first only */
+static void kind_free_slot_ref(const uint16_t *a1)
+{
+    int16_t number = (int16_t)a1[9];
+
+    if (slot_ref_6b6 == number)
+        slot_ref_6b6 = -1;
+    else if (slot_ref_748 == number)
+        slot_ref_748 = -1;
+    else if (slot_ref_7da == number)
+        slot_ref_7da = -1;
+}
+
+/* orig $01895A: the record a0 (its word +2 numbers a record of 24 bytes of buffer_cb6) is looked at by call_by_kind (kind and
+ * argument: its three pairs of words; the result of each into words_300); when all three results (words_300) are still -1 the
+ * record a0 is finished: its first word becomes -1, a message of the record's word +20 is requested when it has one (priority
+ * 50), the slots its items are in are emptied (empty_slots_of_record, empty_slots_of_flagged_record) and the routine its kind
+ * (word +16 without the top bit) names in dispatch_18ba4 does its part (written in here: 0 to 6, 10 to 15; 11 to 13 and 15 do
+ * nothing, 14 clears tick_count; 7, 8 and 9 ($19618, $19658, $193D4) did not run and are left out).  Nothing is done while
+ * flag_230 */
 void finish_record_1895a(uint16_t *a0)
 {
     if (flag_230)
@@ -810,9 +1043,9 @@ void finish_record_1895a(uint16_t *a0)
 
     *(int32_t *)words_300 = -1;
     words_300[2] = -1;
-    call_by_kind(a1[0]);
-    call_by_kind(a1[2]);
-    call_by_kind(a1[4]);
+    call_by_kind((int16_t)a1[0], (int16_t)a1[1], &words_300[0]);
+    call_by_kind((int16_t)a1[2], (int16_t)a1[3], &words_300[1]);
+    call_by_kind((int16_t)a1[4], (int16_t)a1[5], &words_300[2]);
     if ((int16_t)(words_300[0] & words_300[1] & words_300[2]) >= 0)
         return;
     a0[0] = 0xFFFF;
@@ -824,11 +1057,39 @@ void finish_record_1895a(uint16_t *a0)
         if (*message_next != 0)
             message_request(50);
     }
-    if (record_kind_special((const uint16_t *)a1))
-        return;   /* goes on at $18AD6 */
-    if (record_kind_flagged((const uint8_t *)a1))
-        return;   /* goes on at $18A2C */
-    dispatch_18ba4[a1[8] & 0x7FFF]();
+    empty_slots_of_record(a1);
+    empty_slots_of_flagged_record(a1);
+    switch (a1[8] & 0x7FFF) {
+    case 0:
+        kind_drop_item(a1);
+        break;
+    case 1:
+        kind_drop_192(a1);
+        break;
+    case 2:
+        kind_set_tiles(a1);
+        break;
+    case 3:
+        kind_place_19334(a1, 1);
+        break;
+    case 4:
+        kind_place_19334(a1, 0);
+        break;
+    case 5:
+        run_cell_entry((int16_t)(a1[9] - 1));
+        break;
+    case 6:
+        kind_burst(a1);
+        break;
+    case 10:
+        kind_free_slot_ref(a1);
+        break;
+    case 14:
+        tick_count = 0;
+        break;
+    default:
+        break;   /* 7, 8 and 9 go to $19618, $19658 and $193D4, which did not run */
+    }
 }
 
 /* (the three copies of one piece of $00FDBA) the first of up to three entries of 24 bytes of a unit (the first at `entry`,

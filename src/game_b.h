@@ -32,14 +32,13 @@ void draw_background(void);                 /* orig $0178C6 */
 void step_18072(const uint8_t *a1, const uint8_t *a2);   /* orig $018072 */
 void draw_record_image(int16_t x, int16_t y, const uint8_t *a2);   /* orig $017FA0 */
 struct SavedByte *mark_record_cells(int16_t x, int16_t y, const uint8_t *a2, struct SavedByte *list);   /* orig $018014 */
+void take_record_to_18740(uint16_t *a0);       /* orig $018900 */
 void take_record_to_199ac(uint16_t *a0);    /* orig $018890 */
 void stop_sound(uint16_t id);               /* orig $01FA8C */
 void spawn_debris_at_cell(int16_t x, int16_t y, const uint8_t *record, int16_t *flag);   /* orig $01695E */
 void redraw_record_images(void);            /* orig $017E9C */
 
 int16_t check_hit_and_walls(int16_t x, int16_t y, int16_t strength);   /* orig $00D00A and $00D114 */
-int record_kind_special(const uint16_t *a1);   /* orig $018AAE */
-int record_kind_flagged(const uint8_t *a1);    /* orig $018A22 */
 void finish_record_1895a(uint16_t *a0);        /* orig $01895A */
 
 uint16_t claim_free_entries(void);   /* orig $00FDBA */

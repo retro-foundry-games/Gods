@@ -466,3 +466,14 @@ table frames_4ba8 0x00004ba8 uint16_t 20  game_d: five glyphs for each of the fo
 fn_10976          0x00010976  void %s(void)  game_d: the pick-up handler 18 of the table at $1067A (game_e writes it in C)
 word_26a          0x0000026a  uint16_t %s    game_d: the glyph the pick-ups of records_19334 are drawn with (sprite, two words wide)
 table mask_table    0x00017380 uint16_t 32   draw: the masks of the screen edges, two words for each shift (16 less the shift, times two): the first-word mask of a right edge, the first-word mask of a left edge
+bcd_346           0x00000346  uint16_t %s[4]  the number call_by_kind makes of five thousand times its argument, a BCD byte a word, the low digits first
+flags_1c056       0x0001c056  uint8_t %s[]   entries of 6 bytes; bit 0 of the byte +5 is a flag call_by_kind tests
+words_34e         0x0000034e  int16_t %s[3]   x, y and number of the last thing dropped (then word_354 is cleared)
+tile_24d          0x0000024d  uint8_t %s      the first tile number of the blocks kind 2 of finish_record_1895a sets
+word_314          0x00000314  int16_t %s      how many marks kind 6 of finish_record_1895a has made
+ptr_0b7e          0x00000b7e  uint8_t *%s
+records_18740     0x00018740  uint8_t %s[120]   five records of 24 bytes (a state word, 0 free) take_record_to_18740 fills
+word_22e          0x0000022e  uint16_t %s   counts the spots remembered in points_b3a (like word_22c); the level ends (flag_230) when it reaches the count at ptr_0bc6
+ptr_0bc6          0x00000bc6  const uint16_t *%s   its first word is how many spots end the level
+words_2a2         0x000002a2  int16_t %s[2]   a copy of the player position (player_x, player_y) made by remember_visited_spot
+points_b3a        0x00000b3a  int16_t %s[12]   the six spots (x, y; the latest first) remember_visited_spot keeps

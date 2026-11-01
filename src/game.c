@@ -84,10 +84,98 @@ struct SavedByte *restore_saved_bytes(struct SavedByte *list, int16_t count)
     return list;
 }
 
-/* orig $018A10: the routine the kind (0, 1, ...) names in dispatch_18be0 is called */
-void call_by_kind(int16_t kind)
+/* orig $018A10 (d5 the kind, d6 the argument, a3 the result word `result`; the routines of dispatch_18be0, $18C24 to $1906C, are
+ * written in here): a condition of a record is looked at: when it does not hold, *result is cleared (it is left alone when it
+ * holds).  Kind 0 is no condition; 1 and 2: the argument is not / is an item of the four slots (item_slots); 3 and 4: it is not /
+ * is one of the three slot_refs; 5 and 6: the entry (4 bytes) of the table at ptr_0cbe numbered argument - 1 has a state that is
+ * not / is negative; 7 and 8: the argument is at least / at most the player's energy; 9 and 10: five times the argument is at
+ * least / at most the seconds (tick_count / 50, a quotient that does not fit a word leaves the low word of tick_count); 11 and 12:
+ * bit 0 of the byte +5 of the 6-byte entry numbered argument of the table at $1C056 is set / not set; 13 and 14: five thousand
+ * times the argument (as digits, kept in bcd_346, which sets flag_2d0 as score_add does) is at least / at most the score; 15 and
+ * 16: the argument is at least / at most item_count.  Kinds 13 and 14 are only done for the arguments 0 to 65 (the original
+ * divides the number in a word) */
+void call_by_kind(int16_t kind, int16_t arg, int16_t *result)
 {
-    dispatch_18be0[kind]();
+    int clear = 0;
+
+    switch (kind) {
+    case 0:
+        break;
+    case 1:
+    case 2: {
+        int16_t found = arg == item_slots[0] || arg == item_slots[1] || arg == item_slots[2] || arg == item_slots[3];
+
+        clear = kind == 1 ? !found : found;
+        break;
+    }
+    case 3:
+    case 4: {
+        int16_t found = arg == slot_ref_6b6 || arg == slot_ref_748 || arg == slot_ref_7da;
+
+        clear = kind == 3 ? !found : found;
+        break;
+    }
+    case 5:
+    case 6: {
+        int16_t state = *(int16_t *)(ptr_0cbe + (int16_t)((arg - 1) << 2));
+
+        clear = kind == 5 ? state >= 0 : state < 0;
+        break;
+    }
+    case 7:
+        clear = arg >= (int16_t)player_energy;
+        break;
+    case 8:
+        clear = arg <= (int16_t)player_energy;
+        break;
+    case 9:
+    case 10: {
+        uint32_t ticks = tick_count;
+        uint32_t seconds = 0;
+        uint16_t rest = 0;
+
+        for (int shift = 24; shift >= 0; shift -= 8) {   /* ticks / 50 a byte at a time: the compiler has no 32-bit division */
+            rest = (uint16_t)((rest << 8) | ((ticks >> shift) & 255));
+            seconds = (seconds << 8) | (uint16_t)(rest / 50);
+            rest = (uint16_t)(rest % 50);
+        }
+        int16_t low = (seconds <= 32767) ? (int16_t)seconds : (int16_t)ticks;   /* (ticks are not negative) */
+        int16_t five = (int16_t)(arg + (int16_t)(arg << 2));
+
+        clear = kind == 9 ? five >= low : five <= low;
+        break;
+    }
+    case 11:
+    case 12: {
+        int set = flags_1c056[(uint16_t)(arg * 6) + 5] & 1;
+
+        clear = kind == 11 ? !set : set;
+        break;
+    }
+    case 13:
+    case 14: {
+        int16_t m5 = (int16_t)(arg * 5);   /* the number is m5 * 1000 */
+        int cmp = 0;
+
+        flag_2d0 = 1;
+        bcd_346[0] = 0;
+        bcd_346[1] = (uint16_t)((m5 % 10) << 4);
+        bcd_346[2] = (uint16_t)(((m5 / 10) % 10) | (((m5 / 100) % 10) << 4));
+        bcd_346[3] = (uint16_t)(((m5 / 1000) % 10) | (((m5 / 10000) % 10) << 4));
+        for (int i = 3; i >= 0 && cmp == 0; i--)
+            cmp = (int16_t)bcd_346[i] < (int16_t)score_words[i] ? -1 : (int16_t)bcd_346[i] > (int16_t)score_words[i] ? 1 : 0;
+        clear = kind == 13 ? cmp >= 0 : cmp <= 0;
+        break;
+    }
+    case 15:
+        clear = arg >= item_count;
+        break;
+    case 16:
+        clear = arg <= item_count;
+        break;
+    }
+    if (clear)
+        *result = 0;
 }
 
 /* orig $012A80: the first message line, or the one after it when it is the one on show (message_text or message_current) */
