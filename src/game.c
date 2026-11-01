@@ -131,7 +131,7 @@ void game_frame(void)
     energy_old = player_energy;
     if ((int16_t)energy_shown <= 0)
         return;   /* goes on at $3A6C */
-    fn_6002();
+    fill_buffer();
     if (flag_26e)
         fn_30c6();
     fn_178c6();
@@ -141,16 +141,16 @@ void game_frame(void)
     fn_ba34();
     if (flag_23a)
         callback_4e4();
-    fn_17e9c();
+    redraw_record_images();
     if (param_index == 2 || flag_23a != 1) {
-        fn_3ea4();
+        activate_records();
         fn_417c();
         update_falling_thing();
         game_step_4070();
     }
     fn_15b04();
-    fn_15cc4();
-    fn_836c();
+    fn_15cc4_c();
+    step_836c();
     value_c6c = 3030;
     flag_20e = -1;
     fn_6ed0();
@@ -158,8 +158,8 @@ void game_frame(void)
         game_step_73d2();
         game_nothing();
         game_nothing();
-        fn_3f8e();
-        fn_18d14();
+        draw_effects();
+        draw_marks_316();
     }
     scroll_x_a = scroll_x;
     scroll_y_a = scroll_y;
@@ -167,32 +167,32 @@ void game_frame(void)
         fn_33d4();
     else
         fn_10368();
-    fn_9912();
+    count_zones();
     scroll_x_b = scroll_x;
     scroll_y_b = scroll_y;
     scroll_x = scroll_x_a;
     scroll_y = scroll_y_a;
-    fn_16aee();
+    step_16aee();
     if (flag_23a == 0) {
         fn_db04();
-        fn_190f2();
+        step_190f2();
         fn_e142();
         fn_de54();
-        fn_9ae6();
+        update_records_12a0();
         game_nothing();
-        fn_3c56();
-        fn_8a54();
-        fn_7292();
+        mark_player_cells();
+        update_records_1354();
+        draw_sprites_721e();
         fn_e3a2();
-        fn_e486();
-        fn_e76c();
-        fn_ea52();
-        fn_ed38();
-        fn_f01e();
-        fn_d47e();
+        unit0_update();
+        unit1_update();
+        unit2_update();
+        unit3_update();
+        unit4_update();
+        next_table_entry();
         fn_d314();
         fn_d6b8();
-        fn_d898();
+        step_d898();
     } else {
         callback_4e0();
         fn_c58e();
@@ -200,18 +200,18 @@ void game_frame(void)
         fn_c406();
     }
     fn_bc1a();
-    fn_3dfc();
-    fn_8452();
+    move_records_3a0a6();
+    draw_sprite_8472();
     fn_6136();
-    fn_1843e();
+    step_1843e();
     fn_c374();
-    fn_5842();
+    update_score_display();
     fn_57fc();
     update_item_panel();
     draw_shutter();
-    fn_5e02();
+    update_energy_display();
     draw_energy_bar();
-    fn_3806();
+    draw_item_row();
     if (flag_268) {
         int16_t d = (int16_t)energy_old;
 

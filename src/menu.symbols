@@ -182,57 +182,14 @@ table background_name 0x000026d2 uint8_t 12   "backscr.pi1": the file of the men
 table small_font_name 0x00003232 uint8_t 9    "smallfnt": the asset set of the small font
 drives_present   0x0001d48c  uint8_t %s      bit n set: drive n is there (the start finds them)
 # the game's own routines, not decompiled yet: provisional names by address (a name is changed when the routine is written in C)
-fn_6002           0x00006002  void %s(void)
 fn_30c6           0x000030c6  void %s(void)
-fn_178c6          0x000178c6  void %s(void)
-fn_1924c          0x0001924c  void %s(void)
-fn_194d0          0x000194d0  void %s(void)
-fn_17cc0          0x00017cc0  void %s(void)
-fn_ba34           0x0000ba34  void %s(void)
-fn_17e9c          0x00017e9c  void %s(void)
-fn_3ea4           0x00003ea4  void %s(void)
 fn_417c           0x0000417c  void %s(void)
-fn_15b04          0x00015b04  void %s(void)
-fn_15cc4          0x00015cc4  void %s(void)
-fn_836c           0x0000836c  void %s(void)
 fn_6ed0           0x00006ed0  void %s(void)
-fn_3f8e           0x00003f8e  void %s(void)
-fn_18d14          0x00018d14  void %s(void)
 fn_33d4           0x000033d4  void %s(void)
-fn_10368          0x00010368  void %s(void)
-fn_9912           0x00009912  void %s(void)
-fn_16aee          0x00016aee  void %s(void)
-fn_db04           0x0000db04  void %s(void)
-fn_190f2          0x000190f2  void %s(void)
-fn_e142           0x0000e142  void %s(void)
-fn_de54           0x0000de54  void %s(void)
-fn_9ae6           0x00009ae6  void %s(void)
-fn_3c56           0x00003c56  void %s(void)
-fn_8a54           0x00008a54  void %s(void)
-fn_7292           0x00007292  void %s(void)
-fn_e3a2           0x0000e3a2  void %s(void)
-fn_e486           0x0000e486  void %s(void)
-fn_e76c           0x0000e76c  void %s(void)
-fn_ea52           0x0000ea52  void %s(void)
-fn_ed38           0x0000ed38  void %s(void)
-fn_f01e           0x0000f01e  void %s(void)
-fn_d47e           0x0000d47e  void %s(void)
-fn_d314           0x0000d314  void %s(void)
-fn_d6b8           0x0000d6b8  void %s(void)
-fn_d898           0x0000d898  void %s(void)
 fn_c58e           0x0000c58e  void %s(void)
 fn_cb0e           0x0000cb0e  void %s(void)
 fn_c406           0x0000c406  void %s(void)
-fn_bc1a           0x0000bc1a  void %s(void)
-fn_3dfc           0x00003dfc  void %s(void)
-fn_8452           0x00008452  void %s(void)
-fn_6136           0x00006136  void %s(void)
-fn_1843e          0x0001843e  void %s(void)
-fn_c374           0x0000c374  void %s(void)
-fn_5842           0x00005842  void %s(void)
 fn_57fc           0x000057fc  void %s(void)
-fn_5e02           0x00005e02  void %s(void)
-fn_3806           0x00003806  void %s(void)
 fn_12e08          0x00012e08  void %s(void)
 frame_toggle       0x00000196  uint16_t %s   flipped every frame of the game loop
 frame_phase       0x000001e4  uint16_t %s   0, 1, 0, 1 ...: counts the frames of the loop in twos
@@ -357,3 +314,99 @@ dispatch_18ba4    0x00018ba4 void (*%s[])(void)   the routines the kind of a fin
 entry_b92          0x00000b92 uint16_t *%s[3]  the free entry of each of the three units that claim_free_entries found (0: none)
 entry_id_2ea       0x000002ea int16_t %s[3]    the number of that entry (1, 4, 7 for the first unit, 10, 13, 16 and 19, 22, 25)
 word_2f0           0x000002f0 uint16_t %s
+# game_c.c (the routines at $10000-$167FF)
+flag_a4c          0x00000a4c  int16_t %s
+list_index_a98    0x00000a98  uint16_t %s    which of the three shot lists is being run (0 to 2)
+shot_lists_raw    0x000006b6  uint16_t %s[219]    the three lists of shots (struct ShotList, 146 bytes each)
+shot_prev_x       0x000001f4  int16_t %s     where the shot being moved was
+shot_prev_y       0x000001f6  int16_t %s
+table shot_deltas 0x00016bb4  uint16_t 64    pairs of words: how a shot of direction n moves (x, y)
+word_19a          0x0000019a  int16_t %s     the player's animation frame (d7 of the player's state machine)
+player_state      0x0000019c  int16_t %s     which routine of the state table at $10280 runs the player
+word_1e6          0x000001e6  int16_t %s     counts frames after a landing
+fall_distance     0x000001e8  int16_t %s     how far the player has fallen (a count)
+fall_rows_36a        0x0000036a  int16_t %s     rows the player falls a frame (to 10)
+air_steps         0x0000021e  int16_t %s     sideways steps in the air (3 at most)
+jump_step         0x0000036c  int16_t %s     where in the jump (in bytes of jump_deltas, to 46)
+jump_start_x      0x00000218  int16_t %s     the player's x where the jump began
+word_370          0x00000370  int16_t %s
+word_376          0x00000376  int16_t %s
+word_360          0x00000360  int16_t %s
+word_362          0x00000362  int16_t %s
+word_378          0x00000378  int16_t %s
+word_37a          0x0000037a  int16_t %s
+word_19e          0x0000019e  int16_t %s
+word_35e          0x0000035e  int16_t %s
+word_35c          0x0000035c  int16_t %s
+word_368          0x00000368  int16_t %s
+word_36e          0x0000036e  int16_t %s
+word_1fa          0x000001fa  int16_t %s
+code_3436         0x00003436  uint16_t %s    the first word of fn_3436 (a NOP, 20081, there disables the player's control)
+table jump_deltas 0x00011318  uint16_t 23    how many rows up the player is in each step (2 bytes a step) of a jump
+table frame_map_125ac 0x000125ac uint16_t 6  the frame after a frame of the state 5 (five words), then how near the left or right of the screen the player may go before the scroll follows
+table state_table 0x00010280 uint32_t 58     29 states of the player, two longs each: the first sprite and the routine (the C does not use the second)
+word_2ea          0x000002ea  int16_t %s
+word_2ec          0x000002ec  int16_t %s
+word_2ee          0x000002ee  int16_t %s
+shot_slot_b92     0x00000b92  struct Shot *%s
+shot_slot_b96     0x00000b96  struct Shot *%s
+shot_slot_b9a     0x00000b9a  struct Shot *%s
+word_8882         0x00008882  int16_t %s
+word_8884         0x00008884  int16_t %s
+fn_5496           0x00005496  void %s(void)
+fn_3c94           0x00003c94  void %s(void)
+fn_fdba           0x0000fdba  int16_t %s(void)
+fn_12710          0x00012710  void %s(void)
+slots_30c         0x0000030c  int16_t %s[4]    four words, negative when the slot is empty
+fn_6002           0x00006002  void %s(void)
+fn_178c6          0x000178c6  void %s(void)
+fn_1924c          0x0001924c  void %s(void)
+fn_194d0          0x000194d0  void %s(void)
+fn_17cc0          0x00017cc0  void %s(void)
+fn_ba34           0x0000ba34  void %s(void)
+fn_17e9c          0x00017e9c  void %s(void)
+fn_3ea4           0x00003ea4  void %s(void)
+fn_15b04          0x00015b04  void %s(void)
+fn_15cc4          0x00015cc4  void %s(void)
+fn_836c           0x0000836c  void %s(void)
+fn_3f8e           0x00003f8e  void %s(void)
+fn_18d14          0x00018d14  void %s(void)
+fn_10368          0x00010368  void %s(void)
+fn_9912           0x00009912  void %s(void)
+fn_16aee          0x00016aee  void %s(void)
+fn_db04           0x0000db04  void %s(void)
+fn_190f2          0x000190f2  void %s(void)
+fn_e142           0x0000e142  void %s(void)
+fn_de54           0x0000de54  void %s(void)
+fn_9ae6           0x00009ae6  void %s(void)
+fn_3c56           0x00003c56  void %s(void)
+fn_8a54           0x00008a54  void %s(void)
+fn_7292           0x00007292  void %s(void)
+fn_e3a2           0x0000e3a2  void %s(void)
+fn_e486           0x0000e486  void %s(void)
+fn_e76c           0x0000e76c  void %s(void)
+fn_ea52           0x0000ea52  void %s(void)
+fn_ed38           0x0000ed38  void %s(void)
+fn_f01e           0x0000f01e  void %s(void)
+fn_d47e           0x0000d47e  void %s(void)
+fn_d314           0x0000d314  void %s(void)
+fn_d6b8           0x0000d6b8  void %s(void)
+fn_d898           0x0000d898  void %s(void)
+fn_bc1a           0x0000bc1a  void %s(void)
+fn_3dfc           0x00003dfc  void %s(void)
+fn_8452           0x00008452  void %s(void)
+fn_6136           0x00006136  void %s(void)
+fn_1843e          0x0001843e  void %s(void)
+fn_c374           0x0000c374  void %s(void)
+fn_5842           0x00005842  void %s(void)
+fn_5e02           0x00005e02  void %s(void)
+fn_3806           0x00003806  void %s(void)
+fn_3436           0x00003436  void %s(void)
+fn_77e6           0x000077e6  void %s(void)
+fn_7906           0x00007906  void %s(void)
+fn_4070           0x00004070  void %s(void)
+fn_73d2           0x000073d2  void %s(void)
+fn_54c4           0x000054c4  void %s(void)
+fn_5608           0x00005608  void %s(void)
+fn_5d76           0x00005d76  void %s(void)
+fn_7faa           0x00007faa  void %s(void)

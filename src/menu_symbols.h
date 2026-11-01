@@ -173,57 +173,14 @@ extern void original_continue(void);   /* $06650  ... and Continue Game */
 extern void original_after_password(void);   /* $064C2  the original's code after the password screen */
 extern uint8_t menu_start_code[6];   /* $06388  the first instruction of the original's menu start: replaced by a jump to menu_start */
 extern uint8_t drives_present;   /* $1D48C  bit n set: drive n is there (the start finds them) */
-extern void fn_6002(void);   /* $06002 */
 extern void fn_30c6(void);   /* $030C6 */
-extern void fn_178c6(void);   /* $178C6 */
-extern void fn_1924c(void);   /* $1924C */
-extern void fn_194d0(void);   /* $194D0 */
-extern void fn_17cc0(void);   /* $17CC0 */
-extern void fn_ba34(void);   /* $0BA34 */
-extern void fn_17e9c(void);   /* $17E9C */
-extern void fn_3ea4(void);   /* $03EA4 */
 extern void fn_417c(void);   /* $0417C */
-extern void fn_15b04(void);   /* $15B04 */
-extern void fn_15cc4(void);   /* $15CC4 */
-extern void fn_836c(void);   /* $0836C */
 extern void fn_6ed0(void);   /* $06ED0 */
-extern void fn_3f8e(void);   /* $03F8E */
-extern void fn_18d14(void);   /* $18D14 */
 extern void fn_33d4(void);   /* $033D4 */
-extern void fn_10368(void);   /* $10368 */
-extern void fn_9912(void);   /* $09912 */
-extern void fn_16aee(void);   /* $16AEE */
-extern void fn_db04(void);   /* $0DB04 */
-extern void fn_190f2(void);   /* $190F2 */
-extern void fn_e142(void);   /* $0E142 */
-extern void fn_de54(void);   /* $0DE54 */
-extern void fn_9ae6(void);   /* $09AE6 */
-extern void fn_3c56(void);   /* $03C56 */
-extern void fn_8a54(void);   /* $08A54 */
-extern void fn_7292(void);   /* $07292 */
-extern void fn_e3a2(void);   /* $0E3A2 */
-extern void fn_e486(void);   /* $0E486 */
-extern void fn_e76c(void);   /* $0E76C */
-extern void fn_ea52(void);   /* $0EA52 */
-extern void fn_ed38(void);   /* $0ED38 */
-extern void fn_f01e(void);   /* $0F01E */
-extern void fn_d47e(void);   /* $0D47E */
-extern void fn_d314(void);   /* $0D314 */
-extern void fn_d6b8(void);   /* $0D6B8 */
-extern void fn_d898(void);   /* $0D898 */
 extern void fn_c58e(void);   /* $0C58E */
 extern void fn_cb0e(void);   /* $0CB0E */
 extern void fn_c406(void);   /* $0C406 */
-extern void fn_bc1a(void);   /* $0BC1A */
-extern void fn_3dfc(void);   /* $03DFC */
-extern void fn_8452(void);   /* $08452 */
-extern void fn_6136(void);   /* $06136 */
-extern void fn_1843e(void);   /* $1843E */
-extern void fn_c374(void);   /* $0C374 */
-extern void fn_5842(void);   /* $05842 */
 extern void fn_57fc(void);   /* $057FC */
-extern void fn_5e02(void);   /* $05E02 */
-extern void fn_3806(void);   /* $03806 */
 extern void fn_12e08(void);   /* $12E08 */
 extern uint16_t frame_toggle;   /* $00196  flipped every frame of the game loop */
 extern uint16_t frame_phase;   /* $001E4  0, 1, 0, 1 ...: counts the frames of the loop in twos */
@@ -306,6 +263,133 @@ extern int16_t fall_kind;   /* $07F7E  what it is (negative: nothing falls) */
 extern uint16_t word_7c50;   /* $07C50  the immediate of an instruction in walk_pace ($7C4E: add #496): the first picture of the walker (the original sets it) */
 extern int16_t word_2be;   /* $002BE  the way the shutter goes (draw_shutter adds it to word_2c0) */
 extern int16_t item_slots[4];   /* $0030C  the item (index of table_14cf8, -1 none) of each of the four slots */
+extern void fn_5af6(void);   /* $05AF6 */
+extern int16_t flag_8890;   /* $08890  negative: the routines that look at it end at once (at the start of a level?) */
+extern int16_t word_888e;   /* $0888E  the choice update_choice_888e makes (-1 none, else 0 to 2) */
+extern int16_t word_8472;   /* $08472  the glyph draw_sprite_8472 draws (negative: none) */
+extern int16_t word_846e;   /* $0846E  its x */
+extern int16_t word_8470;   /* $08470  its y */
+extern uint16_t word_10ae;   /* $010AE */
+extern uint8_t unit_flags_18741[];   /* $18741  five records of 24 bytes; bit 1 of the first byte is set while the record is in use */
+extern uint16_t flag_aa8;   /* $00AA8 */
+extern uint16_t word_186be;   /* $186BE */
+extern int16_t word_354;   /* $00354 */
+extern int16_t word_39c;   /* $0039C  added (half of it) to the width of the box the player is hit in */
+extern int16_t word_39e;   /* $0039E  the same for its height */
+extern int16_t word_19c;   /* $0019C */
+extern uint16_t word_3436;   /* $03436  the first word of the original's routine at $3436 (an rts, $4E75) */
+extern int16_t word_214;   /* $00214 */
+extern int16_t slot_ref_6b6;   /* $006B6  first word of the first of three records of 146 bytes: negative none, else the number of a record of object_slots */
+extern int16_t slot_ref_748;   /* $00748  the second */
+extern int16_t slot_ref_7da;   /* $007DA  the third */
+extern int16_t records_316[12];   /* $00316  four records of three words (a state that counts up from 0 to 6, x, y; negative: free) */
+extern int16_t word_185bc;   /* $185BC */
+extern uint8_t *ptr_0b82;   /* $00B82 */
+extern uint8_t *ptr_0c70;   /* $00C70  the graphics of the background tiles (256 bytes for each) */
+extern uint16_t word_4a2;   /* $004A2 */
+extern uint8_t sound_table_20bce[];   /* $20BCE  records of 6 bytes for each sound (the second byte names its voice entry) */
+extern uint8_t voice_ids_207a6[4];   /* $207A6  the sound each of the four voices plays */
+extern uint16_t word_17e9c;   /* $17E9C  the first word of the routine at $17E9C (a nop; the routine makes it an rts, $4E75) */
+extern int16_t word_3a0;   /* $003A0  the width word_39c had before check_hit_and_walls cut it */
+extern int16_t word_3a2;   /* $003A2  the height word_39e had */
+extern uint16_t word_3a6;   /* $003A6 */
+extern uint8_t *ptr_0b66;   /* $00B66  the base the message offsets (words) point from */
+extern int16_t words_300[3];   /* $00300  the three results of the calls of finish_record_1895a (-1: yes) */
+extern void (*dispatch_18ba4[])(void);   /* $18BA4  the routines the kind of a finished record names */
+extern uint16_t *entry_b92[3];   /* $00B92  the free entry of each of the three units that claim_free_entries found (0: none) */
+extern int16_t entry_id_2ea[3];   /* $002EA  the number of that entry (1, 4, 7 for the first unit, 10, 13, 16 and 19, 22, 25) */
+extern uint16_t word_2f0;   /* $002F0 */
+extern int16_t flag_a4c;   /* $00A4C */
+extern uint16_t list_index_a98;   /* $00A98  which of the three shot lists is being run (0 to 2) */
+extern uint16_t shot_lists_raw[219];   /* $006B6  the three lists of shots (struct ShotList, 146 bytes each) */
+extern int16_t shot_prev_x;   /* $001F4  where the shot being moved was */
+extern int16_t shot_prev_y;   /* $001F6 */
+extern int16_t word_19a;   /* $0019A  the player's animation frame (d7 of the player's state machine) */
+extern int16_t player_state;   /* $0019C  which routine of the state table at $10280 runs the player */
+extern int16_t word_1e6;   /* $001E6  counts frames after a landing */
+extern int16_t fall_distance;   /* $001E8  how far the player has fallen (a count) */
+extern int16_t fall_rows_36a;   /* $0036A  rows the player falls a frame (to 10) */
+extern int16_t air_steps;   /* $0021E  sideways steps in the air (3 at most) */
+extern int16_t jump_step;   /* $0036C  where in the jump (in bytes of jump_deltas, to 46) */
+extern int16_t jump_start_x;   /* $00218  the player's x where the jump began */
+extern int16_t word_370;   /* $00370 */
+extern int16_t word_376;   /* $00376 */
+extern int16_t word_360;   /* $00360 */
+extern int16_t word_362;   /* $00362 */
+extern int16_t word_378;   /* $00378 */
+extern int16_t word_37a;   /* $0037A */
+extern int16_t word_19e;   /* $0019E */
+extern int16_t word_35e;   /* $0035E */
+extern int16_t word_35c;   /* $0035C */
+extern int16_t word_368;   /* $00368 */
+extern int16_t word_36e;   /* $0036E */
+extern int16_t word_1fa;   /* $001FA */
+extern uint16_t code_3436;   /* $03436  the first word of fn_3436 (a NOP, 20081, there disables the player's control) */
+extern int16_t word_2ea;   /* $002EA */
+extern int16_t word_2ec;   /* $002EC */
+extern int16_t word_2ee;   /* $002EE */
+extern struct Shot *shot_slot_b92;   /* $00B92 */
+extern struct Shot *shot_slot_b96;   /* $00B96 */
+extern struct Shot *shot_slot_b9a;   /* $00B9A */
+extern int16_t word_8882;   /* $08882 */
+extern int16_t word_8884;   /* $08884 */
+extern void fn_5496(void);   /* $05496 */
+extern void fn_3c94(void);   /* $03C94 */
+extern int16_t fn_fdba(void);   /* $0FDBA */
+extern void fn_12710(void);   /* $12710 */
+extern int16_t slots_30c[4];   /* $0030C  four words, negative when the slot is empty */
+extern void fn_6002(void);   /* $06002 */
+extern void fn_178c6(void);   /* $178C6 */
+extern void fn_1924c(void);   /* $1924C */
+extern void fn_194d0(void);   /* $194D0 */
+extern void fn_17cc0(void);   /* $17CC0 */
+extern void fn_ba34(void);   /* $0BA34 */
+extern void fn_17e9c(void);   /* $17E9C */
+extern void fn_3ea4(void);   /* $03EA4 */
+extern void fn_15b04(void);   /* $15B04 */
+extern void fn_15cc4(void);   /* $15CC4 */
+extern void fn_836c(void);   /* $0836C */
+extern void fn_3f8e(void);   /* $03F8E */
+extern void fn_18d14(void);   /* $18D14 */
+extern void fn_10368(void);   /* $10368 */
+extern void fn_9912(void);   /* $09912 */
+extern void fn_16aee(void);   /* $16AEE */
+extern void fn_db04(void);   /* $0DB04 */
+extern void fn_190f2(void);   /* $190F2 */
+extern void fn_e142(void);   /* $0E142 */
+extern void fn_de54(void);   /* $0DE54 */
+extern void fn_9ae6(void);   /* $09AE6 */
+extern void fn_3c56(void);   /* $03C56 */
+extern void fn_8a54(void);   /* $08A54 */
+extern void fn_7292(void);   /* $07292 */
+extern void fn_e3a2(void);   /* $0E3A2 */
+extern void fn_e486(void);   /* $0E486 */
+extern void fn_e76c(void);   /* $0E76C */
+extern void fn_ea52(void);   /* $0EA52 */
+extern void fn_ed38(void);   /* $0ED38 */
+extern void fn_f01e(void);   /* $0F01E */
+extern void fn_d47e(void);   /* $0D47E */
+extern void fn_d314(void);   /* $0D314 */
+extern void fn_d6b8(void);   /* $0D6B8 */
+extern void fn_d898(void);   /* $0D898 */
+extern void fn_bc1a(void);   /* $0BC1A */
+extern void fn_3dfc(void);   /* $03DFC */
+extern void fn_8452(void);   /* $08452 */
+extern void fn_6136(void);   /* $06136 */
+extern void fn_1843e(void);   /* $1843E */
+extern void fn_c374(void);   /* $0C374 */
+extern void fn_5842(void);   /* $05842 */
+extern void fn_5e02(void);   /* $05E02 */
+extern void fn_3806(void);   /* $03806 */
+extern void fn_3436(void);   /* $03436 */
+extern void fn_77e6(void);   /* $077E6 */
+extern void fn_7906(void);   /* $07906 */
+extern void fn_4070(void);   /* $04070 */
+extern void fn_73d2(void);   /* $073D2 */
+extern void fn_54c4(void);   /* $054C4 */
+extern void fn_5608(void);   /* $05608 */
+extern void fn_5d76(void);   /* $05D76 */
+extern void fn_7faa(void);   /* $07FAA */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
 extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of the two copper lists' colour moves the message fades */
@@ -326,5 +410,9 @@ extern const uint16_t zone_limits[28];   /* $09992  seven records of four words:
 extern const uint8_t zone_groups[18];   /* $099CA  six groups of three zone numbers */
 extern const uint8_t digit_font[512];   /* $058F0  sixteen digits of 8 rows of 4 bytes (a plane each) */
 extern const uint16_t shutter_masks[12];   /* $0542C  the rows of the shutter a step shows (one bit a row) */
+extern const uint16_t shot_deltas[64];   /* $16BB4  pairs of words: how a shot of direction n moves (x, y) */
+extern const uint16_t jump_deltas[23];   /* $11318  how many rows up the player is in each step (2 bytes a step) of a jump */
+extern const uint16_t frame_map_125ac[6];   /* $125AC  the frame after a frame of the state 5 (five words), then how near the left or right of the screen the player may go before the scroll follows */
+extern const uint32_t state_table[58];   /* $10280  29 states of the player, two longs each: the first sprite and the routine (the C does not use the second) */
 
 #endif

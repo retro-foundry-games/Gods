@@ -67,4 +67,29 @@ struct Image {
     const uint16_t *data;
 };
 
+/* game_c.c: the records of the objects (80 bytes each, eleven at 0x14988) and of the lists of shots they own */
+struct Object {
+    int16_t w0;             /* +0 */
+    int16_t draw_type;      /* +2 how a shot is drawn (0 a glyph, 1 a sprite, 2 and 3 two of them) */
+    int16_t frame;          /* +4 */
+    int16_t first_value;    /* +6 */
+    int16_t last_value;     /* +8 */
+    int16_t w10;
+    int16_t base_frame;     /* +12 */
+    int16_t anim_mode;      /* +14 negative: no animation */
+    uint8_t pad_16[4];
+    uint32_t fire_kind;     /* +20 which routine of the table at $15220 the object calls */
+    uint32_t handler;       /* +24 which routine of the table at $15260 runs its list */
+    int16_t max_frame;      /* +28 */
+    int16_t alt_frame;      /* +30 */
+    uint8_t name1[16];      /* +32 */
+    uint8_t name2[24];      /* +48 */
+    uint8_t hits_tiles;     /* +72 */
+    uint8_t pad_73;
+    int16_t w74;            /* +74 */
+    uint8_t pad_76[4];
+};
+struct Shot { int16_t active; int16_t x; int16_t y; int16_t direction; };
+struct ShotList { int16_t object; struct Shot shot[18]; };   /* 146 bytes: the number of the object (negative: none) and its shots */
+
 #endif
