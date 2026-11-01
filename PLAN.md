@@ -133,6 +133,22 @@ game's variables.
   that came in during the start-up delay is pending and is taken as soon as they are enabled.
 - Still to do: the from-scratch ADF (own boot block, only the C and its data), decompile `game_start` (the fire button).
 
+## The menu (next part of the game)
+
+After a fire button (here the space bar too) the intro asks the loader for the next part: the original menu program, which
+the loader reads and decrunches over the intro.  It is a different program, about twice the size of the intro.
+
+- Recorded: `captures/menu_ref` (the original, left mouse button pressed at frame 2,700, 14,000 frames, RAM per frame; the
+  menu is on show from about frame 5,700), `analysis/coverage-menu.txt` (executed instructions, 5,381 of them with the intro's
+  and the loader's).  Make it again with `gods.lua --headless --script-args "click=2700 until=14000 record=DIR screen=500 cover=PATH"`.
+- `scripts/menu_analysis.py` -> `analysis/menu-functions.txt`: 2,858 stable instructions (resident and unchanged while the menu
+  is on show), 107 flow components, 128 entry points; none of it equals the intro's code at the same address.  The largest
+  pieces: `$0500-$6440` (413 instructions, its own region of low memory), the screens' code around `$16DF8` and `$1CF26-$1E4FA`
+  (about a thousand instructions), `$1FAF6-$20344`, `$39F0A-$3A376`.
+- How it will run in the C build: the same way as the intro.  The loader still reads the menu program (code and data) from
+  disk into memory; the trampoline's second entry (now `jmp $84`) will enter the C menu instead, which uses the data that is
+  in memory at the original addresses (pinned by the linker script) and ignores the original code.
+
 ## Open questions
 
 - Per-function checking against the original (step 3), or only the full lockstep run?

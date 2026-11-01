@@ -40,6 +40,7 @@ ami.boot()
 --   load=NAME            restore snapshot NAME (a file in ../local/save) before running; frames below count from it
 --   snap=F[,F...]        save snapshot gods-F.state at frame F (relative to the start or the loaded snapshot)
 --   snapname=NAME        save the snapshots as NAME.state (with one frame in snap=) and quit afterwards
+--   click=F[,...]        press the left mouse button (the fire button the program polls) for 3 frames at frame F
 --   press=KEY@F[,...]    press the key (a name from ami.keys, e.g. space) for 3 frames at frame F (to reach the menu with
 --                        space and take a snapshot; the lockstep recordings never press a key)
 --   record=DIR [screen=N]  stream every frame (hash, chip RAM, every Nth screen) to tools/amiga/frame_recorder.py
@@ -104,11 +105,14 @@ local function write_cover()
 end
 
 local peer = recorder and ami.peer("recorder")
+local clicks = {}
+for _, f in ipairs(frames_of("click")) do clicks[f] = true; clicks[f + 3] = false end
 local function run_frames()
     local sent = 0
     while not until_frame or sent < until_frame do
         ami.wait(1)
         local f = ami.frame() - base
+        if clicks[f] ~= nil then ami.mouse_button(0, clicks[f]) end
         if cover_path and f > 0 and f % REARM == 0 then
             for _, pc in ipairs(cover_order) do ami.hook(pc, on_cover) end
         end
@@ -159,11 +163,19 @@ for key, f in (args:match("press=(%S+)") or ""):gmatch("(%w+)@(%d+)") do
     events[#events + 1] = { tonumber(f), "press", key }
     events[#events + 1] = { tonumber(f) + 3, "release", key }
 end
+for _, f in ipairs(frames_of("click")) do
+    events[#events + 1] = { f, "click" }
+    events[#events + 1] = { f + 3, "unclick" }
+end
 table.sort(events, function(a, b) return a[1] < b[1] end)
 local snap_name = args:match("snapname=(%S+)")
 for _, e in ipairs(events) do
     ami.wait_until(function() return ami.frame() - base >= e[1] end)
-    if e[2] == "press" then
+    if e[2] == "click" then
+        ami.mouse_button(0, true)
+    elseif e[2] == "unclick" then
+        ami.mouse_button(0, false)
+    elseif e[2] == "press" then
         ami.key(e[3], true)
     elseif e[2] == "release" then
         ami.key(e[3], false)
