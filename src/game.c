@@ -251,7 +251,7 @@ void game_frame(void)
     if (flag_290 >= 0)
         fn_33d4();
     else
-        fn_10368();
+        player_control();
     count_zones();
     scroll_x_b = scroll_x;
     scroll_y_b = scroll_y;

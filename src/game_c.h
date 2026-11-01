@@ -15,6 +15,6 @@ void draw_player_sprite(uint16_t index);                    /* orig $01290C */
 void run_object_list(struct ShotList *list);                /* orig $015B36 */
 void run_object_lists(void);                                /* orig $015B04 */
 void spawn_player_shots(void);                              /* orig $0153A2 */
-void player_control(void);                                  /* orig $010368 */
+
 
 #endif

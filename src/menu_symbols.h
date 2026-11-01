@@ -322,9 +322,13 @@ extern int16_t jump_step;   /* $0036C  where in the jump (in bytes of jump_delta
 extern int16_t jump_start_x;   /* $00218  the player's x where the jump began */
 extern int16_t word_370;   /* $00370 */
 extern int16_t word_376;   /* $00376 */
+extern int16_t word_372;   /* $00372  the player's y when a ladder shot began (state 24 or 25 gives it back) */
+extern int16_t word_374;   /* $00374  the ladder frame when a ladder shot began */
+extern int16_t word_378;   /* $00378 */
+extern int16_t word_37e;   /* $0037E  where the scroll is eased to (x), while word_037c is not 0 */
+extern int16_t word_380;   /* $00380  the same for y */
 extern int16_t word_360;   /* $00360 */
 extern int16_t word_362;   /* $00362 */
-extern int16_t word_378;   /* $00378 */
 extern int16_t word_37a;   /* $0037A */
 extern int16_t word_19e;   /* $0019E */
 extern int16_t word_35e;   /* $0035E */

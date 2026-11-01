@@ -103,14 +103,15 @@ void draw_shutter(void)
     play_sound(22, 2);
 }
 
-/* orig $005496: word_2bc is set to 1 unless word_2c0 is 12 (the original goes on at $54A6 then, which did not run) */
+/* orig $005496: word_2bc is set to 1 unless word_2c0 is 12 (then sound 57, priority 40, is played and the shutter's way word_2be is -1) */
 void game_step_5496(void)
 {
     if (word_2c0 != 12) {
         word_2bc = 1;
         return;
     }
-    /* goes on at $54A6 */
+    play_sound(57, 40);
+    word_2be = -1;
 }
 
 /* orig $0073D2: nothing is done while word_73ce is 0; the original goes on at $73D8 otherwise, which did not run */
@@ -187,7 +188,7 @@ static void panel_item(uint8_t *to, int16_t glyph)
 }
 
 /* orig $0056BE: a slot picture of item `item` (index of table_14cf8; negative: none) */
-static void panel_slot_plain(uint8_t *to, int16_t item)
+void panel_slot_plain(uint8_t *to, int16_t item)
 {
     panel_blank(to);
     if ((int16_t)(item << 1) < 0)
@@ -197,7 +198,7 @@ static void panel_slot_plain(uint8_t *to, int16_t item)
 
 /* orig $0056D8: the same with the slot picture's part cut away first (the words at +96+12 and on, 18 rows: all but the three top bits of the
  * first word and bits 8 to 10 of the second) */
-static void panel_slot_cut(uint8_t *to, int16_t item)
+void panel_slot_cut(uint8_t *to, int16_t item)
 {
     panel_blank(to);
     for (int i = 0; i < 18; i++) {

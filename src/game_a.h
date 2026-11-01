@@ -12,6 +12,8 @@ void draw_shutter(void);                               /* orig $0054C4 */
 void game_step_5496(void);                                 /* orig $005496 */
 void game_step_73d2(void);                                 /* orig $0073D2 */
 void update_item_panel(void);                               /* orig $005608 */
+void panel_slot_plain(uint8_t *to, int16_t item);          /* orig $0056BE */
+void panel_slot_cut(uint8_t *to, int16_t item);            /* orig $0056D8 */
 uint8_t *map_cell(int16_t x, int16_t y);                   /* orig $007E90 */
 void check_high_scores(void);                              /* orig $005AF6 */
 void score_add_carry(int16_t points, int carry_in);      /* orig $004718, the carry (X flag) the caller left is carry_in */

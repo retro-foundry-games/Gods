@@ -29,6 +29,7 @@
 #include "game_d.h"
 #include "game_e.h"
 #include "game_g.h"
+#include "game_f.h"
 #include "ui.h"
 #include "screen.h"
 
