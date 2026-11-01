@@ -769,6 +769,7 @@ void game_main(void)
         CIAA_PRA |= 0x02;
         flags.music_enabled = 1;
         game_clock.ticks = 0;
+        interrupts_on();
         screen_clear();
         intro_run();
         while ((int32_t)game_clock.ticks < 0x1dd0)

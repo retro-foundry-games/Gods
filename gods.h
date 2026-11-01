@@ -213,6 +213,7 @@ void blit_image_wide(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t 
 void vbl_wait(void);                                          /* orig $002CDE */
 void music_init(void);                                        /* orig $002242 */
 void irq_level3(void);                                        /* orig $001DD6: the vertical blank interrupt */
+void interrupts_on(void);                                     /* orig $000C4A: move #$2000,sr */
 void delay(void);                                             /* the music's busy wait, orig $0024F2 */
 void startup_delay(void);                                     /* orig $000C26 */
 
