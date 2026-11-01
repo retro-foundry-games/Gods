@@ -70,8 +70,10 @@ void draw_player_sprite(uint16_t index)
  * is 109 on the first map and param_index is 3 or more the original calls $17B98, which did not run. */
 static void shot_hit_tile(const struct Object *object, struct Shot *shot, int16_t x, int16_t y)
 {
-    if (object->hits_tiles == 0)
-        return;   /* goes on at $16A08 */
+    if (object->hits_tiles == 0) {
+        mark_shot_cells(x, y, &shot->active);
+        return;
+    }
 
     int16_t tx = (int16_t)((x + scroll_x + 8) & -32);
     int16_t ty = (int16_t)((y + scroll_y + 8) & -16);
@@ -79,8 +81,10 @@ static void shot_hit_tile(const struct Object *object, struct Shot *shot, int16_
 
     tile += tx >> 5;
     tile += (int16_t)(ty << 3);
-    if (*tile != 1)
-        return;   /* goes on at $16A08 */
+    if (*tile != 1) {
+        mark_shot_cells(x, y, &shot->active);
+        return;
+    }
     play_sound(3, 4);
     if (tile[-8192] == 109 && param_index >= 3)
         return;   /* goes on at $169BE: calls $17B98 (did not run) */

@@ -449,6 +449,30 @@ void stop_sound(uint16_t id)
         }
 }
 
+/* orig $016A08: the cells of the map at line_text + 100 (48 columns of 8 pixels, rows of 8) under the point (x, y) are marked with the
+ * low byte of *flag when the first of them is in the map (from line_text + 48 to + 1500): two cells side by side, or when bit 2 of y is set
+ * the two cells a row down and the two a row further.  Used where a shot did not end in a tile */
+void mark_shot_cells(int16_t x, int16_t y, const int16_t *flag)
+{
+    const uint8_t *map = line_text;
+    uint8_t *cell = (uint8_t *)(map + 100) + (x >> 3) + (((y & -8) * 2) + ((y & -8) * 4));
+    uint8_t value = (uint8_t)*flag;
+
+    if (cell < map + 48 || cell >= map + 1500)
+        return;
+    if ((y & 4) == 0) {
+        cell[0] = value;
+        cell[48] = value;
+        cell[1] = value;
+        cell[49] = value;
+    } else {
+        cell[48] = value;
+        cell[96] = value;
+        cell[49] = value;
+        cell[97] = value;
+    }
+}
+
 /* orig $01695E: a hit at (x, y) on the screen (record: an object record whose byte +72 is not 0): the cell of the tile map
  * (ptr_0b86 + 8192) under the point is looked at; when it is 1 the sound 3 is played and a free one of the twenty records of
  * records_3a0a6 is started there (a flag 0, the position in the level, no speed and a count of 58), and *flag is cleared.  The
@@ -456,14 +480,18 @@ void stop_sound(uint16_t id)
  * tile under the cell is 109 and param_index is 3 or more (also not run) */
 void spawn_debris_at_cell(int16_t x, int16_t y, const uint8_t *record, int16_t *flag)
 {
-    if (record[72] == 0)
-        return;   /* goes on at $16A08 */
+    if (record[72] == 0) {
+        mark_shot_cells(x, y, flag);
+        return;
+    }
     int16_t col = (int16_t)(x + scroll_x + 8) & -32;
     int16_t row = (int16_t)(y + scroll_y + 8) & -16;
     const uint8_t *cell = ptr_0b86 + 8192 + (col >> 5) + (int16_t)(row << 3);
 
-    if (*cell != 1)
-        return;   /* goes on at $16A08 */
+    if (*cell != 1) {
+        mark_shot_cells(x, y, flag);
+        return;
+    }
     play_sound(3, 4);
     if (cell[-8192] == 109 && (int16_t)param_index >= 3)
         return;   /* calls $17B98 here and goes on */

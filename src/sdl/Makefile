@@ -16,6 +16,7 @@ SRC    := $(NATIVE)/src
 BUILD  := $(NATIVE)/build/sdl
 GODS_DISKS ?= $(abspath $(NATIVE)/../local)
 PYTHON ?= python3
+CC := gcc   # the host compiler, not the Amiga cross compiler the flake shell also has
 
 ifeq ($(IN_NIX_SHELL),)
 .PHONY: all $(MAKECMDGOALS)

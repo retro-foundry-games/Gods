@@ -5,6 +5,7 @@
 #   make menu-blob    the menu as a blob at $(MENU_BASE) for the checks against the original (build/menu.blob, menu_syms.lua)
 #   make adf          the disk whose game is the intro's C (build/..., local/gods-c-disk1.adf); needs the original disks in local/
 #   make regen        write the generated sources in src/ again (needs the recordings in build/, see ../PLAN.md)
+#   make sdl          the SDL3 port (src/sdl/), build/sdl/gods-sdl; make sdl-run builds and runs it
 #   make clean
 #
 # The toolchain is in the flake of this directory: outside its shell every target is run again inside it.  Variables:
@@ -39,7 +40,7 @@ MENU_MODULES := menu disk alloc decrunch input screen draw message ui file boot 
 MENU_OBJS := $(MENU_MODULES:%=$(BUILD)/menu_%.o) $(BUILD)/menu_display.o $(BUILD)/menu_amiga.o
 INTRO_OBJS := $(BUILD)/intro.o $(BUILD)/intro_amiga.o $(BUILD)/intro_data.o
 
-.PHONY: all intro menu menu-blob adf regen clean
+.PHONY: all intro menu menu-blob adf regen clean sdl sdl-run
 all: intro menu
 intro: $(BUILD)/intro
 menu: $(BUILD)/menu
@@ -83,6 +84,12 @@ regen:
 	$(PYTHON) ../scripts/gen_intro_amiga_asm.py
 	$(PYTHON) ../scripts/gen_menu_symbols.py
 	$(PYTHON) ../scripts/gen_menu_amiga_asm.py
+
+# the SDL3 port for a Linux desktop (src/sdl/): make sdl builds build/sdl/gods-sdl, make sdl-run runs it
+sdl:
+	$(MAKE) --no-print-directory -C $(SRC)/sdl
+sdl-run:
+	$(MAKE) --no-print-directory -C $(SRC)/sdl run
 
 clean:
 	rm -f $(BUILD)/*.o $(BUILD)/*.d $(BUILD)/intro $(BUILD)/menu $(BUILD)/intro.map $(BUILD)/menu.map $(BUILD)/intro.sym $(BUILD)/menu.sym
