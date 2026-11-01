@@ -318,13 +318,13 @@ void draw_background(void)
 }
 
 /* orig $018072: the entry a2 is looked at (word_185bc gets its byte at +5, plus one); when the record a1 has its byte at +5
- * negative that is all; otherwise the original goes on at $1808E (which calls $182B0 and sets the record's first two words),
- * which did not run */
-void step_18072(const uint8_t *a1, const uint8_t *a2)
+ * negative that is all; otherwise it goes on along its line (path_continue, $01808E) */
+void step_18072(uint8_t *a1, const uint8_t *a2)
 {
     word_185bc = (int16_t)(int8_t)a2[5] + 1;
     if ((int8_t)a1[5] < 0)
         return;
+    path_continue(a1, a2);
 }
 
 /* orig $017FA0: the picture of a record (a2: byte +4 is the number of a 256-byte block of the background, +26 and +27 the size
@@ -536,12 +536,36 @@ void spawn_debris_at_cell(int16_t x, int16_t y, const uint8_t *record, int16_t *
     *flag = 0;
 }
 
-/* orig $017E9C: the pictures of the 25 records of ptr_0c9e (24 bytes) and ptr_0c9a (28 bytes) are redrawn: the cells marked
+/* orig $017F46: a record that moved is looked at for being near the screen: on it (the screen's terms: -32 to 320 across and -16 to 192
+ * down) or, when it is to the left of it or above, with its image's size (a2: the columns +26 and the rows +27) reaching it: bit 7 of
+ * flags_3b0 is set */
+static void record_seen(const uint8_t *a1, const uint8_t *a2)
+{
+    int16_t sx = (int16_t)(*(const int16_t *)a1 - scroll_x);
+    int16_t sy = (int16_t)(*(const int16_t *)(a1 + 2) - scroll_y);
+
+    if (sx > -32) {
+        if (sx > 320)
+            return;
+        if (sy > -16) {
+            if (sy <= 192)
+                flags_3b0 |= 0x80;
+            return;
+        }
+    }
+    int16_t wide = (int16_t)(((int8_t)a2[27] << 5) + sx);
+    int16_t high = (int16_t)(((a2[26] & 7) << 4) + sy);
+
+    if (wide > -32 && high > -16)
+        flags_3b0 |= 0x80;
+}
+
+/* orig $017E9C (with $017E9E and $017F46): the pictures of the 25 records of ptr_0c9e (24 bytes) and ptr_0c9a (28 bytes) are redrawn: the cells marked
  * last frame are given back (entry_table), and each record that is not turned off (byte +4 not negative) is looked at
- * ($18072), has its cells marked in the tile map (entry_table) and its image drawn.  The sound 52 is stopped at the end
- * unless bit 7 of flags_3b0 got set.  The routine patches itself into an rts when word_4a2 is 0 (the first word of it is
- * then $4E75).  Goes on at $17F46 (not run) when $18072 changed the first long of a record, and at $17F22 (not run) when the
- * bit is set at the end */
+ * ($18072), has its cells marked in the tile map (entry_table) and its image drawn; one that moved (its first long changed) is
+ * looked at once more for being on the screen or within 32 by 16 pixels of it (bit 7 of flags_3b0, $17F46).  The sound 52 is played
+ * (priority 8) at the end when bit 7 of flags_3b0 got set, otherwise stopped.  The routine patches itself into an rts when word_4a2 is
+ * 0 (the first word of it is then $4E75) */
 void redraw_record_images(void)
 {
     if (word_17e9c == 0x4E75)
@@ -557,6 +581,8 @@ void redraw_record_images(void)
     struct SavedByte *list = (struct SavedByte *)entry_table;
     uint8_t *a1 = ptr_0c9e;
     uint8_t *a2 = ptr_0c9a;
+    int16_t x;
+    int16_t y;
 
     for (int16_t n = 24; n >= 0; n--, a1 += 24, a2 += 28) {
         if ((int8_t)a1[4] < 0)
@@ -564,17 +590,19 @@ void redraw_record_images(void)
         uint32_t before = *(uint32_t *)a1;
 
         step_18072(a1, a2);
-        if (*(uint32_t *)a1 != before)
-            return;   /* goes on at $17F46 */
-        int16_t x = *(int16_t *)a1;
-        int16_t y = *(int16_t *)(a1 + 2);
+        if (*(uint32_t *)a1 != before) {
+            record_seen(a1, a2);
+        }
+        x = *(int16_t *)a1;
+        y = *(int16_t *)(a1 + 2);
 
         list = mark_record_cells(x, y, a2, list);
         draw_record_image(x, y, a2);
     }
     if (flags_3b0 & 0x80)
-        return;   /* goes on at $17F22 */
-    stop_sound(52);
+        play_sound(52, 8);
+    else
+        stop_sound(52);
 }
 
 /* orig $015C54: up to eight particles of a burst at (x, y) take the free records (first word negative) of records_86c, each with
@@ -610,7 +638,7 @@ static void spawn_particles_15c54(int16_t x, int16_t y)
 /* orig $008822: the end of what flag_8890 counts: when it is negative a burst of particles is started at the place
  * (word_8882 + 4, word_8884 + 4) unless word_0248 is set.  Then flag_8890, word_888e and word_8472 become -1, and word_214
  * becomes -1 unless one of the three slots holds the object 8 */
-static void end_flag_8890(void)
+void end_flag_8890(void)
 {
     if (flag_8890 < 0 && word_0248 == 0)
         spawn_particles_15c54((int16_t)(word_8882 + 4), (int16_t)(word_8884 + 4));

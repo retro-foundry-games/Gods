@@ -174,7 +174,7 @@ word_0266         0x00000266  uint16_t %s
 word_0384         0x00000384  uint16_t %s
 flags_0ddd        0x00000ddd  uint8_t %s
 original_start    0x0000240c  void %s(void)    the original's start-up after the chips are set up: it loads the copy protection's stub and runs it (not in C)
-original_begin    0x0000651e  void %s(void)    the original's Begin Quest (the game; not in C)
+original_begin    0x0000651e  void %s(void)    the original's Begin Quest (replaced by begin_quest in game_h.c, no longer called)
 original_continue 0x00006650  void %s(void)    ... and Continue Game
 original_after_password 0x000064c2 void %s(void)   the original's code after the password screen
 menu_start_code   0x00006388  uint8_t %s[6]   the first instruction of the original's menu start: replaced by a jump to menu_start
@@ -256,7 +256,6 @@ flag_721c          0x0000721c uint16_t %s    non-zero while a record of records_
 records_721e       0x0000721e int16_t %s[30]    ten records of three words (x, y, a count that goes down; negative: free)
 flag_2a8           0x000002a8 uint16_t %s    how many of the records of records_3a0a6 are in use
 records_3a0a6      0x0003a0a6 int16_t %s[120]   twenty records of six words (a flag, x, y, speeds in x and y, a count that goes up to 69)
-table digit_font   0x000058f0 uint8_t 512   sixteen digits of 8 rows of 4 bytes (a plane each)
 flag_2d0           0x000002d0 uint16_t %s    set when the score is to be drawn again
 score_words        0x000002d2 uint16_t %s[4]   the score, two decimal digits a word, the low digits first
 word_200           0x00000200 uint16_t %s
@@ -482,3 +481,97 @@ ptr_0bc6          0x00000bc6  const uint16_t *%s   its first word is how many sp
 words_2a2         0x000002a2  int16_t %s[2]   a copy of the player position (player_x, player_y) made by remember_visited_spot
 points_b3a        0x00000b3a  int16_t %s[12]   the six spots (x, y; the latest first) remember_visited_spot keeps
 shot_offsets_6a4 0x000006a4 int16_t %s[9]    per-column counters handler 1 of the object lists (update_shots_sliding) adds to the shots of a column
+
+# --- Begin Quest (game_h.c): the level's set-up ---
+level_names       0x00002816  uint8_t %s[196]   the level's file names: the template at $2752 with the level's number and letter put in
+table level_name_template 0x00002752 uint8_t 196   file names of a level: `?` is the level's number, `*` its letter (a or b)
+table level_starts 0x000028da uint32_t 4   where the player starts each level: the x in the high word, the y in the low
+table shift_tables 0x00002a0a uint32_t 40   for each level (ten longs): the first is the shift register's start, the others its source
+table table_17a6e  0x00017a6e uint16_t 8   for each level two words (by word_0266): how many 32 by 16 pixel blocks its background tiles have
+table table_fa5c   0x0000fa5c uint16_t 4   the glyph of the pick-ups of each level (word_26a)
+table table_143b8  0x000143b8 uint32_t 4   for each level the list of spots that ptr_0bc6 points to
+table table_1527a  0x0001527a uint16_t 4   for each level the value word_272 takes
+table table_1077a  0x0001077a uint32_t 4   for each level the list that ptr_0b76 points to
+table table_5b9e   0x00005b9e uint32_t 4   for each level the first high score
+table table_5bb2   0x00005bb2 uint32_t 4   ... and the second
+table table_1c678  0x0001c678 uint32_t 8   for each level two pointers (ptr_0b7e, ptr_0b82)
+table sound1_name  0x0001d3d2 uint8_t 11   "sound1.bin"
+table objects_name 0x000196de uint8_t 8   "objects": the asset set of the objects
+block_16bb4       0x00016bb4  uint8_t %s[24]   twenty-four bytes of data the game changes (put back from block_16bcc)
+digit_font        0x000058f0  uint8_t %s[512]   sixteen digits of 8 rows of 4 bytes (a plane each); hud_digits_load makes the first ten from the picture of the digits
+start_x           0x0000021a  int16_t %s      where the player starts the level
+start_y           0x0000021c  int16_t %s
+seed_282          0x00000282  uint32_t %s     a seed set at the start of the game
+flag_286          0x00000286  int16_t %s      -1: the level's files were read
+word_226          0x00000226  uint16_t %s     the word game_stick is the high byte of
+word_228          0x00000228  uint16_t %s     the word game_buttons is the high byte of
+word_1ec          0x000001ec  uint16_t %s     how many colours the level's copper list has
+word_1ee          0x000001ee  uint16_t %s     the spacing of the lines of the level's colours
+word_1f2          0x000001f2  uint16_t %s
+word_1f8          0x000001f8  uint16_t %s
+word_1ba          0x000001ba  uint16_t %s
+word_1de          0x000001de  uint16_t %s
+word_238          0x00000238  uint16_t %s
+word_268          0x00000268  uint16_t %s
+word_276          0x00000276  uint16_t %s
+word_27c          0x0000027c  uint16_t %s
+word_27e          0x0000027e  uint16_t %s
+word_280          0x00000280  uint16_t %s
+word_294          0x00000294  uint16_t %s
+word_2a6          0x000002a6  int16_t %s
+word_2e6          0x000002e6  uint16_t %s
+word_2fa          0x000002fa  uint16_t %s     how many blocks the first picture of background tiles was cut into, less one
+word_356          0x00000356  uint16_t %s
+flags_3b1         0x000003b1  uint8_t %s      the byte after flags_3b0
+ptr_0168          0x00000168  uint8_t *%s     where the next background tile block goes
+ptr_0b62          0x00000b62  uint8_t *%s     the end of the pool of texts
+ptr_0b76          0x00000b76  const uint8_t *%s
+ptr_0b8a          0x00000b8a  uint8_t *%s     the level's map file name
+ptr_0de0          0x00000de0  const int16_t *%s   the clip rectangles (x0, x1, y0, y1; ended by a negative x0) of image_draw_clipped
+ptr_26de          0x000026de  uint8_t *%s     a place in the original's code that the start of a level stores a pointer to the sprites' name in
+text_pool         0x00000cf6  uint8_t *%s     where the pool of texts ends (the texts of the level are put there)
+word_a4e          0x00000a4e  int16_t %s
+word_a68          0x00000a68  int16_t %s
+word_a9a          0x00000a9a  int16_t %s
+word_3a1fa        0x0003a1fa  uint16_t %s
+word_d82          0x00000d82  uint16_t %s     image_draw_clipped: negative when the image is mirrored
+word_d86          0x00000d86  uint16_t %s     ... the shift in the bits of x
+word_d88          0x00000d88  uint16_t %s     ... 1 left side clipped, 2 right side clipped
+word_dd2          0x00000dd2  uint16_t %s     the bytes of a row of the screen the image goes to, in the draw routines
+word_dd4          0x00000dd4  uint16_t %s
+word_dd6          0x00000dd6  uint16_t %s
+long_dd8          0x00000dd8  uint32_t %s     the bytes of one plane of the image
+word_ddc          0x00000ddc  uint16_t %s
+word_dde          0x00000dde  uint16_t %s     which draw routine of the table at $0D9A image_draw_clipped uses
+sound_busy_207a0  0x000207a0  volatile uint32_t %s   not 0 while the sound system has something to play
+records_1036      0x00001036  uint8_t %s[120]   ten records of 12 bytes
+slots_fd0         0x00000fd0  int16_t %s[50]    ten records of 10 bytes, the first word -1 when free
+slots_11b4        0x000011b4  int16_t %s[50]    ... the same
+bytes_10b0        0x000010b0  uint8_t %s[140]
+records_737e      0x0000737e  uint32_t %s[20]   ten records of two longs
+records_7544      0x00007544  int16_t %s[210]   forty-two records of 10 bytes
+table_1a30c       0x0001a30c  uint16_t %s[120]  forty records of 6 bytes
+records_1a154     0x0001a154  uint8_t %s[440]   twenty records of 22 bytes
+table_1c28a       0x0001c28a  uint16_t %s[60]   twenty entries of three words (x, y, kind) of the level's pick-ups
+table_19456       0x00019456  uint16_t %s[60]   ... copied by place_pickups
+bytes_fbf2        0x0000fbf2  uint8_t %s[64]    thirty-two pairs of bytes made by make_pairs_fb9a
+table_7a6e        0x00007a6e  uint16_t %s[4]
+code_d6b8         0x0000d6b8  uint16_t %s     the first word of the routine at $D6B8 (rts: off)
+code_e3a2         0x0000e3a2  uint16_t %s
+code_de54         0x0000de54  uint16_t %s
+code_e142         0x0000e142  uint16_t %s
+code_db04         0x0000db04  uint16_t %s
+code_77e6         0x000077e6  uint16_t %s
+code_7906         0x00007906  uint16_t %s
+code_c374         0x0000c374  uint16_t %s
+code_ba34         0x0000ba34  uint16_t %s
+code_c58e         0x0000c58e  uint16_t %s
+code_cb0e         0x0000cb0e  uint16_t %s
+code_c406         0x0000c406  uint16_t %s
+code_bc1a         0x0000bc1a  uint16_t %s
+code_8a54         0x00008a54  uint16_t %s     the first word of the routine at $8A54 (a nop: on)
+code_9ae6         0x00009ae6  uint16_t %s
+code_6ed0         0x00006ed0  uint16_t %s
+level_text       0x000028f8  uint8_t %s[16]   "LOADING LEVEL " and the level's number (plus 93): the text of the loading screen
+table table_1c9e4 0x0001c9e4 uint8_t 1024   two tables of 256 words (the first and the second word of each of 32 pairs, 32 bytes apart) make_pairs_fb9a reads
+copy_1cde4        0x0001cde4  uint8_t %s[256]   a copy of the first 256 bytes of table_1c9e4 that make_pairs_fb9a makes

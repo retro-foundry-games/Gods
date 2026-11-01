@@ -23,6 +23,7 @@ void game_frame(void);                                     /* orig $002C20 */
 
 void fill_buffer(void);                                    /* orig $006002 */
 void activate_records(void);                               /* orig $003EA4 and $003E8C */
+void activate_records_now(void);                           /* orig $003EB4 */
 void count_zones(void);                                    /* orig $009912 */
 
 void draw_effects(void);                                   /* orig $003F8E */

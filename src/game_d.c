@@ -136,7 +136,7 @@ int16_t record_check_walls(int16_t x, int16_t y, int16_t *record)
 static void pickup_player_end(int16_t frame)
 {
     word_19a = frame;
-    fn_12710();
+    player_tile_scan();
 
     int16_t x = player_x - scroll_x;
     int16_t y = player_y - scroll_y;

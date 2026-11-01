@@ -12,6 +12,7 @@ void draw_shutter(void);                               /* orig $0054C4 */
 void game_step_5496(void);                                 /* orig $005496 */
 void game_step_73d2(void);                                 /* orig $0073D2 */
 void update_item_panel(void);                               /* orig $005608 */
+void panel_blank(uint8_t *to);                             /* orig $0057E0 */
 void panel_slot_plain(uint8_t *to, int16_t item);          /* orig $0056BE */
 void panel_slot_cut(uint8_t *to, int16_t item);            /* orig $0056D8 */
 uint8_t *map_cell(int16_t x, int16_t y);                   /* orig $007E90 */

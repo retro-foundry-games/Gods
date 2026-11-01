@@ -530,9 +530,7 @@ void remember_visited_spot(void)
  * the table at ptr_0cbe (4 bytes: a state, a number).  A negative or 0 state does nothing; otherwise the creature types that
  * have byte 13 set to 1 are switched off (status 0) and the routine the state names in table_18714 is called with the entry:
  * 1 is take_record_to_18740, 2 is take_record_to_199ac, 3 is finish_record_1895a, 6 is remember_visited_spot (the entries
- * 4 and 5, $8898 and $88DC, and 7 to 10, $17E0A to $17E16, are not written: 8 ran once in the human replay, in 3128 calls, and is the
- * one call the oracle still sees differ: it finishes the entry and moves a creature along its path with the code at $1813C and
- * $182C4, which is self-modifying) */
+ * 4 and 5, $8898 and $88DC, are not written; 7 to 10, $17E0A to $17E16, start a thing on its path: start_record_path in game_h.c) */
 void cell_entry_runs(const uint8_t *cell)
 {
     run_cell_entry((int16_t)((uint8_t)*cell - 3));
@@ -562,6 +560,8 @@ void run_cell_entry(int16_t index)
         finish_record_1895a(entry);
     else if (routine == 0x187B8)
         remember_visited_spot();
+    else if (routine >= 0x17E0A && routine <= 0x17E16)
+        start_record_path(entry, (int16_t)((routine - 0x17E0A) >> 2));
 }
 
 /* orig $010976: the message of the hint found at the player.  The list of 40 words at ptr_0cf2 is searched for the x of the player's

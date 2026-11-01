@@ -30,6 +30,7 @@
 #include "game_e.h"
 #include "game_g.h"
 #include "game_f.h"
+#include "game_h.h"
 #include "ui.h"
 #include "screen.h"
 

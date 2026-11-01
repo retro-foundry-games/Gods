@@ -204,7 +204,7 @@ void menu_main(void)
                 play_sound(33, 2);
                 if ((int16_t)cursor_pos < 1) {
                     game_loop_install();
-                    original_begin();
+                    begin_quest();
                     return;
                 }
                 if ((int16_t)cursor_pos > 1) {

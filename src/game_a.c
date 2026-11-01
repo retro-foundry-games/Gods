@@ -123,7 +123,7 @@ void game_step_73d2(void)
 }
 
 /* orig $0057E0: a blank slot picture (image 119, 384 bytes: 24 rows, four planes of 96 bytes... as four longs a row) is copied to `to` */
-static void panel_blank(uint8_t *to)
+void panel_blank(uint8_t *to)
 {
     const uint8_t *from = (const uint8_t *)image_table[119].data;
 

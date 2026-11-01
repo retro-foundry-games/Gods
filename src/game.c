@@ -381,14 +381,20 @@ void activate_records(void)
     if ((scroll_x & 31) != 0) {
         flag_b24 = 0;
     } else if (flag_b24 == 0) {
-        goto activate;
+        activate_records_now();
+        return;
     }
     d0 = scroll_y - word_2aa;
     if (d0 < 0)
         d0 = -d0;
     if (!(d0 & 0x20))
         return;
-activate:
+    activate_records_now();
+}
+
+/* orig $003EB4: the part of activate_records that marks the records (also called at the start of a level) */
+void activate_records_now(void)
+{
     flag_b24 = 1;
     word_2aa = scroll_y;
 

@@ -168,7 +168,7 @@ extern uint16_t word_0266;   /* $00266 */
 extern uint16_t word_0384;   /* $00384 */
 extern uint8_t flags_0ddd;   /* $00DDD */
 extern void original_start(void);   /* $0240C  the original's start-up after the chips are set up: it loads the copy protection's stub and runs it (not in C) */
-extern void original_begin(void);   /* $0651E  the original's Begin Quest (the game; not in C) */
+extern void original_begin(void);   /* $0651E  the original's Begin Quest (replaced by begin_quest in game_h.c, no longer called) */
 extern void original_continue(void);   /* $06650  ... and Continue Game */
 extern void original_after_password(void);   /* $064C2  the original's code after the password screen */
 extern uint8_t menu_start_code[6];   /* $06388  the first instruction of the original's menu start: replaced by a jump to menu_start */
@@ -446,6 +446,84 @@ extern const uint16_t *ptr_0bc6;   /* $00BC6  its first word is how many spots e
 extern int16_t words_2a2[2];   /* $002A2  a copy of the player position (player_x, player_y) made by remember_visited_spot */
 extern int16_t points_b3a[12];   /* $00B3A  the six spots (x, y; the latest first) remember_visited_spot keeps */
 extern int16_t shot_offsets_6a4[9];   /* $006A4  per-column counters handler 1 of the object lists (update_shots_sliding) adds to the shots of a column */
+extern uint8_t level_names[196];   /* $02816  the level's file names: the template at $2752 with the level's number and letter put in */
+extern uint8_t block_16bb4[24];   /* $16BB4  twenty-four bytes of data the game changes (put back from block_16bcc) */
+extern uint8_t digit_font[512];   /* $058F0  sixteen digits of 8 rows of 4 bytes (a plane each); hud_digits_load makes the first ten from the picture of the digits */
+extern int16_t start_x;   /* $0021A  where the player starts the level */
+extern int16_t start_y;   /* $0021C */
+extern uint32_t seed_282;   /* $00282  a seed set at the start of the game */
+extern int16_t flag_286;   /* $00286  -1: the level's files were read */
+extern uint16_t word_226;   /* $00226  the word game_stick is the high byte of */
+extern uint16_t word_228;   /* $00228  the word game_buttons is the high byte of */
+extern uint16_t word_1ec;   /* $001EC  how many colours the level's copper list has */
+extern uint16_t word_1ee;   /* $001EE  the spacing of the lines of the level's colours */
+extern uint16_t word_1f2;   /* $001F2 */
+extern uint16_t word_1f8;   /* $001F8 */
+extern uint16_t word_1ba;   /* $001BA */
+extern uint16_t word_1de;   /* $001DE */
+extern uint16_t word_238;   /* $00238 */
+extern uint16_t word_268;   /* $00268 */
+extern uint16_t word_276;   /* $00276 */
+extern uint16_t word_27c;   /* $0027C */
+extern uint16_t word_27e;   /* $0027E */
+extern uint16_t word_280;   /* $00280 */
+extern uint16_t word_294;   /* $00294 */
+extern int16_t word_2a6;   /* $002A6 */
+extern uint16_t word_2e6;   /* $002E6 */
+extern uint16_t word_2fa;   /* $002FA  how many blocks the first picture of background tiles was cut into, less one */
+extern uint16_t word_356;   /* $00356 */
+extern uint8_t flags_3b1;   /* $003B1  the byte after flags_3b0 */
+extern uint8_t *ptr_0168;   /* $00168  where the next background tile block goes */
+extern uint8_t *ptr_0b62;   /* $00B62  the end of the pool of texts */
+extern const uint8_t *ptr_0b76;   /* $00B76 */
+extern uint8_t *ptr_0b8a;   /* $00B8A  the level's map file name */
+extern const int16_t *ptr_0de0;   /* $00DE0  the clip rectangles (x0, x1, y0, y1; ended by a negative x0) of image_draw_clipped */
+extern uint8_t *ptr_26de;   /* $026DE  a place in the original's code that the start of a level stores a pointer to the sprites' name in */
+extern uint8_t *text_pool;   /* $00CF6  where the pool of texts ends (the texts of the level are put there) */
+extern int16_t word_a4e;   /* $00A4E */
+extern int16_t word_a68;   /* $00A68 */
+extern int16_t word_a9a;   /* $00A9A */
+extern uint16_t word_3a1fa;   /* $3A1FA */
+extern uint16_t word_d82;   /* $00D82  image_draw_clipped: negative when the image is mirrored */
+extern uint16_t word_d86;   /* $00D86  ... the shift in the bits of x */
+extern uint16_t word_d88;   /* $00D88  ... 1 left side clipped, 2 right side clipped */
+extern uint16_t word_dd2;   /* $00DD2  the bytes of a row of the screen the image goes to, in the draw routines */
+extern uint16_t word_dd4;   /* $00DD4 */
+extern uint16_t word_dd6;   /* $00DD6 */
+extern uint32_t long_dd8;   /* $00DD8  the bytes of one plane of the image */
+extern uint16_t word_ddc;   /* $00DDC */
+extern uint16_t word_dde;   /* $00DDE  which draw routine of the table at $0D9A image_draw_clipped uses */
+extern volatile uint32_t sound_busy_207a0;   /* $207A0  not 0 while the sound system has something to play */
+extern uint8_t records_1036[120];   /* $01036  ten records of 12 bytes */
+extern int16_t slots_fd0[50];   /* $00FD0  ten records of 10 bytes, the first word -1 when free */
+extern int16_t slots_11b4[50];   /* $011B4  ... the same */
+extern uint8_t bytes_10b0[140];   /* $010B0 */
+extern uint32_t records_737e[20];   /* $0737E  ten records of two longs */
+extern int16_t records_7544[210];   /* $07544  forty-two records of 10 bytes */
+extern uint16_t table_1a30c[120];   /* $1A30C  forty records of 6 bytes */
+extern uint8_t records_1a154[440];   /* $1A154  twenty records of 22 bytes */
+extern uint16_t table_1c28a[60];   /* $1C28A  twenty entries of three words (x, y, kind) of the level's pick-ups */
+extern uint16_t table_19456[60];   /* $19456  ... copied by place_pickups */
+extern uint8_t bytes_fbf2[64];   /* $0FBF2  thirty-two pairs of bytes made by make_pairs_fb9a */
+extern uint16_t table_7a6e[4];   /* $07A6E */
+extern uint16_t code_d6b8;   /* $0D6B8  the first word of the routine at $D6B8 (rts: off) */
+extern uint16_t code_e3a2;   /* $0E3A2 */
+extern uint16_t code_de54;   /* $0DE54 */
+extern uint16_t code_e142;   /* $0E142 */
+extern uint16_t code_db04;   /* $0DB04 */
+extern uint16_t code_77e6;   /* $077E6 */
+extern uint16_t code_7906;   /* $07906 */
+extern uint16_t code_c374;   /* $0C374 */
+extern uint16_t code_ba34;   /* $0BA34 */
+extern uint16_t code_c58e;   /* $0C58E */
+extern uint16_t code_cb0e;   /* $0CB0E */
+extern uint16_t code_c406;   /* $0C406 */
+extern uint16_t code_bc1a;   /* $0BC1A */
+extern uint16_t code_8a54;   /* $08A54  the first word of the routine at $8A54 (a nop: on) */
+extern uint16_t code_9ae6;   /* $09AE6 */
+extern uint16_t code_6ed0;   /* $06ED0 */
+extern uint8_t level_text[16];   /* $028F8  "LOADING LEVEL " and the level's number (plus 93): the text of the loading screen */
+extern uint8_t copy_1cde4[256];   /* $1CDE4  a copy of the first 256 bytes of table_1c9e4 that make_pairs_fb9a makes */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
 extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of the two copper lists' colour moves the message fades */
@@ -464,7 +542,6 @@ extern const uint16_t fill_words[14];   /* $05FAE  fourteen words that fill_buff
 extern const uint32_t fill_longs[14];   /* $05FCA  fourteen longs it repeats instead when flag_290 is not negative */
 extern const uint16_t zone_limits[28];   /* $09992  seven records of four words: the limits of the zones the player is tested against */
 extern const uint8_t zone_groups[18];   /* $099CA  six groups of three zone numbers */
-extern const uint8_t digit_font[512];   /* $058F0  sixteen digits of 8 rows of 4 bytes (a plane each) */
 extern const uint16_t shutter_masks[12];   /* $0542C  the rows of the shutter a step shows (one bit a row) */
 extern const uint16_t particle_speeds_15b5c[8];   /* $15B5C  game_b: the two speed bytes of each of the eight particles of a burst */
 extern const uint16_t shot_deltas[64];   /* $16BB4  pairs of words: how a shot of direction n moves (x, y) */
@@ -486,5 +563,19 @@ extern const uint16_t frames_4afc[4];   /* $04AFC  game_d: ... of the thing 287,
 extern const uint16_t frames_4b08[6];   /* $04B08  game_d: ... of the thing 300, by counter_262 */
 extern const uint16_t frames_4ba8[20];   /* $04BA8  game_d: five glyphs for each of the four values of param_index (kinds 232, 288, 290, 292) */
 extern const uint16_t mask_table[32];   /* $17380  draw: the masks of the screen edges, two words for each shift (16 less the shift, times two): the first-word mask of a right edge, the first-word mask of a left edge */
+extern const uint8_t level_name_template[196];   /* $02752  file names of a level: `?` is the level's number, `*` its letter (a or b) */
+extern const uint32_t level_starts[4];   /* $028DA  where the player starts each level: the x in the high word, the y in the low */
+extern const uint32_t shift_tables[40];   /* $02A0A  for each level (ten longs): the first is the shift register's start, the others its source */
+extern const uint16_t table_17a6e[8];   /* $17A6E  for each level two words (by word_0266): how many 32 by 16 pixel blocks its background tiles have */
+extern const uint16_t table_fa5c[4];   /* $0FA5C  the glyph of the pick-ups of each level (word_26a) */
+extern const uint32_t table_143b8[4];   /* $143B8  for each level the list of spots that ptr_0bc6 points to */
+extern const uint16_t table_1527a[4];   /* $1527A  for each level the value word_272 takes */
+extern const uint32_t table_1077a[4];   /* $1077A  for each level the list that ptr_0b76 points to */
+extern const uint32_t table_5b9e[4];   /* $05B9E  for each level the first high score */
+extern const uint32_t table_5bb2[4];   /* $05BB2  ... and the second */
+extern const uint32_t table_1c678[8];   /* $1C678  for each level two pointers (ptr_0b7e, ptr_0b82) */
+extern const uint8_t sound1_name[11];   /* $1D3D2  "sound1.bin" */
+extern const uint8_t objects_name[8];   /* $196DE  "objects": the asset set of the objects */
+extern const uint8_t table_1c9e4[1024];   /* $1C9E4  two tables of 256 words (the first and the second word of each of 32 pairs, 32 bytes apart) make_pairs_fb9a reads */
 
 #endif
