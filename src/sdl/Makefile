@@ -1,7 +1,6 @@
 # Gods, SDL3 port of the C intro and menu program for a Linux desktop.
 #
-#   make -C projects/gods/native/src/sdl            build projects/gods/native/build/sdl/gods-sdl (the intro, which starts
-#                                                   gods-sdl-menu, the menu program, when fire is pressed)
+#   make -C projects/gods/native/src/sdl            build projects/gods/native/build/sdl/gods-sdl (intro, menu and game in one program)
 #   make -C projects/gods/native/src/sdl run        build and run (disks from projects/gods/local)
 #   make -C projects/gods/native/src/sdl clean
 #
@@ -38,7 +37,7 @@ HOST_OBJS := $(BUILD)/h_main.o $(BUILD)/h_guest.o $(BUILD)/h_files.o $(BUILD)/h_
              $(BUILD)/h_irq.o $(BUILD)/h_sound.o
 
 .PHONY: all run clean
-all: $(BUILD)/gods-sdl $(BUILD)/gods-sdl-menu
+all: $(BUILD)/gods-sdl
 
 $(BUILD):
 	mkdir -p $@
@@ -64,20 +63,24 @@ $(BUILD)/g_%.o: $(SRC)/%.c | $(BUILD)
 $(BUILD)/h_%.o: $(HERE)/%.c $(BUILD)/guest_tables.h $(BUILD)/guest_fixups.h | $(BUILD)
 	$(CC) $(HOST_CFLAGS) -I$(BUILD) -MMD -MP -c $< -o $@
 
-# the host objects come first, so their routines are the ones the program calls (the Amiga's asm is not linked)
-$(BUILD)/gods-sdl-menu: $(HOST_OBJS) $(GAME_OBJS) $(BUILD)/guest.ld
-	$(CC) -m32 -no-pie -Wl,--allow-multiple-definition -o $@ $(HOST_OBJS) $(GAME_OBJS) $(BUILD)/guest.ld $(HOST_LIBS)
-
-# the intro: its data is C, no guest memory layout is needed
-INTRO_OBJS := $(BUILD)/h_intro_sdl.o $(BUILD)/g_intro_host.o $(BUILD)/g_intro.o $(BUILD)/g_intro_data.o
+# the intro: its C and its data are compiled with the program's flags and linked into one object, in which every symbol but the few entry
+# points is made local (the intro's names are those of the menu program's: glyph_draw, screens_flip, blit_image ...)
+INTRO_OBJS := $(BUILD)/g_intro_host.o $(BUILD)/g_intro.o $(BUILD)/g_intro_data.o
+INTRO_EXPORTS := game_main ih_vbl ih_set_fire ih_shown_screen ih_color ih_music_mix
 $(BUILD)/g_intro_host.o: $(HERE)/intro_host.c $(HERE)/intro_host.h | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/g_intro_data.o: $(SRC)/intro_data.c | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -w -MMD -MP -c $< -o $@
-$(BUILD)/gods-sdl: $(INTRO_OBJS)
-	$(CC) -m32 -no-pie -o $@ $(INTRO_OBJS) $(HOST_LIBS)
+$(BUILD)/intro_program.o: $(INTRO_OBJS)
+	ld -m elf_i386 -r -o $(BUILD)/intro_all.o $(INTRO_OBJS)
+	nm --defined-only -g $(BUILD)/intro_all.o | awk '{print $$3}' | grep -v '^__x86' $(foreach s,$(INTRO_EXPORTS),| grep -vx $(s)) > $(BUILD)/intro_local.txt
+	objcopy --localize-symbols=$(BUILD)/intro_local.txt $(BUILD)/intro_all.o $@
 
-run: $(BUILD)/gods-sdl $(BUILD)/gods-sdl-menu
+# one program: the intro, the menu and the game, and the machine around them
+$(BUILD)/gods-sdl: $(HOST_OBJS) $(BUILD)/h_intro_view.o $(BUILD)/intro_program.o $(GAME_OBJS) $(BUILD)/guest.ld
+	$(CC) -m32 -no-pie -Wl,--allow-multiple-definition -o $@ $(HOST_OBJS) $(BUILD)/h_intro_view.o $(BUILD)/intro_program.o $(GAME_OBJS) $(BUILD)/guest.ld $(HOST_LIBS)
+
+run: $(BUILD)/gods-sdl
 	$(BUILD)/gods-sdl --disks $(GODS_DISKS)
 
 clean:

@@ -1,6 +1,8 @@
 /* Gods SDL port: routines of the program whose behaviour depends on the Amiga's memory, replaced here (this object is linked before
  * the program's, whose own copies are not used).  Each is the program's routine with the one difference said.  Compiled with the
  * program's headers and flags. */
+#include <stdio.h>
+
 #include "menu.h"
 
 /* orig $016ECA (message.c): draw message_text in the work area, 40 characters at most, centred, and start the colours fading in.
@@ -52,4 +54,43 @@ void message_draw(void)
  * (the game itself is not started on the host: Begin Quest is the original's code) */
 void game_loop(void)
 {
+}
+
+/* ---- Begin Quest on the host -------------------------------------------------------------------------------------------------------
+ * The menu's lines call the original's code (original_begin, original_continue, original_after_password), which has no C yet.  On the
+ * host they call host_begin_quest(): with --level1-image the level is started from that RAM image of the original (a test) and the game
+ * frame runs for ever; without it the call is logged and the menu goes on.  The functions are weak: the C ones, when they exist and
+ * keep these names, take their place; when the menu calls another name this hook is not used. */
+const char *host_level_image;   /* set by main.c: --level1-image */
+extern int guest_load_level_image(const char *path);
+extern void sr_set(uint16_t value);
+
+void host_begin_quest(void)
+{
+    if (!host_level_image) {
+        fprintf(stderr, "gods-sdl: Begin Quest: the C is not there yet (try --level1-image)\n");
+        return;
+    }
+    if (guest_load_level_image(host_level_image) != 0) {
+        fprintf(stderr, "gods-sdl: cannot read %s\n", host_level_image);
+        return;
+    }
+    sr_set(0x2000);   /* the interrupts on */
+    for (;;)
+        game_frame();
+}
+
+__attribute__((weak)) void original_begin(void)
+{
+    host_begin_quest();
+}
+
+__attribute__((weak)) void original_continue(void)
+{
+    host_begin_quest();
+}
+
+__attribute__((weak)) void original_after_password(void)
+{
+    host_begin_quest();
 }

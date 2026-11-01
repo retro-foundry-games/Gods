@@ -64,6 +64,15 @@ void guest_init(void)
     map_page(GUEST_LOW_BASE, GUEST_LOW_LIMIT);
     map_page(0xbfd000, 0x2000);   /* the CIAs */
     map_page(0xdff000, 0x1000);   /* the custom chips */
+    guest_reset();
+}
+
+/* what the loader leaves when a program is loaded over the other: the memory and the chips' registers cleared, the tables in */
+void guest_reset(void)
+{
+    memset((void *)0x10000, 0, GUEST_END - 0x10000);
+    memset((void *)GUEST_LOW_BASE, 0, GUEST_LOW_LIMIT);
+    memset((void *)0xdff000, 0, 0x1000);
     for (unsigned i = 0; i < sizeof guest_tables / sizeof guest_tables[0]; i++)
         memcpy(guest_ptr(guest_tables[i].address), guest_tables[i].data, guest_tables[i].size);
     *(volatile uint8_t *)0xbfe001 = 0xff;   /* CIA A port A: no fire button down */
@@ -168,7 +177,6 @@ int guest_load_level_image(const char *path)
     free(swapped);
     if (size >= 0x80000)
         swap16_range(0x6f800, 0x80000 - 0x6f800);        /* the two screens */
-    fprintf(stderr, "image_table %p asset_memory %p memory_base %p\n", (void *)image_table, (void *)asset_memory, (void *)memory_base);
     swap_image_table();
     for (int i = 0; i < 16; i++)   /* the colours the chip has: the shadow table, as the original's interrupt keeps them */
         REG16(0x180 + 2 * i) = shadow_table[i];

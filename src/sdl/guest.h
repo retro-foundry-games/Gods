@@ -7,7 +7,8 @@
 #define GUEST_LOW_BASE_ 0x01000000u
 
 uint8_t *guest_ptr(uint32_t address);                        /* the host address of an address of the program's memory */
-void guest_init(void);                                       /* map the chips' pages */
+void guest_init(void);                                       /* map the memory and the chips' pages (once) */
+void guest_reset(void);                                      /* the memory as the loader leaves it for a program: cleared, the tables in */                                       /* map the chips' pages */
 int guest_load_level_image(const char *path);                  /* a RAM image of the original in level 1 (a test) */
 void guest_load_image(const uint8_t *image, uint32_t size);  /* the menu program's image, at $84 */
 
@@ -34,8 +35,7 @@ void irq_vbl(void);
 void irq_key(int raw_code, int down);
 
 /* sound.c */
-void sound_open(void);
-void sound_close(void);
-void sound_pump(void);   /* a frame of the sound to the audio device */
+void sound_mix(int16_t *out);   /* a frame of the sound effects: 882 stereo samples */
+void sound_reset(void);
 
 #endif

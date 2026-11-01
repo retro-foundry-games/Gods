@@ -19,13 +19,6 @@
 static volatile int interrupts_enabled;
 static volatile int fire_key;
 
-void ih_map_chips(void)
-{
-    mmap((void *)0xbfd000, 0x2000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
-    mmap((void *)0xdff000, 0x1000, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
-    CIAA_PRA = 0xff;
-}
-
 void sdl_blit_run(void)
 {
 }

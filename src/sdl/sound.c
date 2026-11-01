@@ -8,7 +8,6 @@
  * Not done: the volume envelopes (a note plays at its full volume), the period and volume slides, the random variations of some sounds.
  * The data is the Amiga's (big endian): in the RAM of the original's level run (--level1-image); the menu program on its own has no instrument
  * records (the original's start-up writes them), so the menu is silent. */
-#include <SDL3/SDL.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -56,7 +55,6 @@ struct SoundVoice {
 static struct SoundVoice voice[VOICES];
 static unsigned tempo = 1;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static SDL_AudioStream *stream;
 
 /* the track of a sound number: the pointer in the table at $21C3A */
 static uint32_t track_of(unsigned number)
@@ -205,17 +203,13 @@ static void start_voice(struct SoundVoice *v, unsigned number, unsigned id, unsi
     v->volume = v->max_volume = 63;
 }
 
-void sound_open(void)
+/* the voices are silent again (the menu program starts over) */
+void sound_reset(void)
 {
-    SDL_AudioSpec spec = { SDL_AUDIO_S16, 2, 44100 };
-
-    stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, 0, 0);
-    if (stream)
-        SDL_ResumeAudioStreamDevice(stream);
-}
-
-void sound_close(void)
-{
+    pthread_mutex_lock(&lock);
+    memset(voice, 0, sizeof voice);
+    tempo = 1;
+    pthread_mutex_unlock(&lock);
 }
 
 /* orig $01FAF6: start the sound `id` with the priority `priority` */
@@ -284,18 +278,11 @@ void sound_tick(void)
     pthread_mutex_unlock(&lock);
 }
 
-/* mix one frame of the sound (882 samples at 44100 Hz) and give it to the audio device */
-void sound_pump(void)
+/* mix one frame of the sound (882 stereo samples, signed 16 bit, at 44100 Hz) */
+void sound_mix(int16_t *out)
 {
-    int16_t out[882 * 2];
     int32_t mix[882 * 2];
 
-    const char *capture = getenv("GODS_WAV");   /* a test: the sound as raw signed 16 bit stereo 44100 Hz to this file */
-
-    if (!stream && !capture)
-        return;
-    if (stream && SDL_GetAudioStreamQueued(stream) > 44100 / 5 * 4)
-        return;
     memset(mix, 0, sizeof mix);
     pthread_mutex_lock(&lock);
     for (int i = 0; i < VOICES; i++) {
@@ -324,14 +311,4 @@ void sound_pump(void)
     pthread_mutex_unlock(&lock);
     for (int n = 0; n < 882 * 2; n++)
         out[n] = (int16_t)(mix[n] > 32767 ? 32767 : mix[n] < -32768 ? -32768 : mix[n]);
-    if (stream)
-        SDL_PutAudioStreamData(stream, out, sizeof out);
-    if (capture) {
-        FILE *f = fopen(capture, "ab");
-
-        if (f) {
-            fwrite(out, 1, sizeof out, f);
-            fclose(f);
-        }
-    }
 }

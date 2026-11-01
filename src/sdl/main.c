@@ -1,48 +1,86 @@
 #define _GNU_SOURCE
-/* Gods SDL port: the program.  The menu program (menu.c ...) runs on a thread of its own; this thread is the machine around it: it
- * raises the vertical blank interrupt 50 times a second, makes the picture from the chips' registers, and takes the keys.
+/* Gods SDL port: the program.  One process runs the game as the real one does, intro, menu, level, one program after the other:
+ * the program that is on runs on a thread of its own; this thread is the machine around it: it raises the vertical blank interrupt 50
+ * times a second, makes the picture and the sound, and takes the keys.  When a program asks for the next one (the intro, on a fire button)
+ * its thread ends, the memory is reset as the loader leaves it, and the next program is started on a new thread; the window and the audio
+ * stream stay.
  *
- *   gods-sdl [--disks FOLDER] [--scale N] [--headless --frames N [--dump PREFIX] [--dump-every N] [--keys FRAME:RAW:1|0,...]] */
+ *   gods-sdl [--disks FOLDER] [--scale N] [--start intro|menu|level] [--skip-intro] [--level1-image FILE]
+ *            [--headless --frames N [--dump PREFIX] [--dump-every N] [--keys FRAME:RAW:1|0,...]] */
 #include <SDL3/SDL.h>
 #include <execinfo.h>
 #include <pthread.h>
 #include <signal.h>
-#include <ucontext.h>
-#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ucontext.h>
+#include <unistd.h>
 
 #include "guest.h"
+#include "intro_host.h"
 
 extern void menu_boot(void);    /* boot.c: the start-up (orig $039E50) */
 extern void menu_start(void);   /* ui.c: the menu (orig $006388) */
 extern uint32_t heap_base;
-extern void game_frame(void);   /* game.c: one frame of the level */
 extern void sr_set(uint16_t value);
-extern void play_sound(uint16_t id, uint16_t priority);
-static const char *level_image;   /* --level1-image FILE: a test: the level from a RAM image of the original */
-extern uint8_t *mask_buffer;   /* shares its address with restart_address, which menu_boot sets to its own address: the original blits into the (finished) boot code */
+extern uint8_t *mask_buffer;    /* shares its address with restart_address, which menu_boot sets to its own address: the original blits into the (finished) boot code */
+extern void host_begin_quest(void);   /* shims.c: the menu's Begin Quest */
+extern const char *host_level_image;  /* shims.c: --level1-image */
+void intro_render(uint32_t *pixels);   /* intro_view.c */
 
-static void *program(void *unused)
+enum { PHASE_INTRO, PHASE_MENU, PHASE_LEVEL };
+
+static volatile int next_phase = -1;   /* set by a program that asks for the next one */
+static pthread_t program_thread;
+
+static void *intro_program(void *unused)
 {
     (void)unused;
-    if (level_image) {
-        if (guest_load_level_image(level_image) != 0) {
-            fprintf(stderr, "gods-sdl: cannot read %s\n", level_image);
-            exit(1);
-        }
-        sr_set(0x2000);   /* the interrupts on */
-        if (getenv("GODS_PLAY"))   /* a test: start this sound at once */
-            play_sound((uint16_t)atoi(getenv("GODS_PLAY")), 2);
-        for (;;)
-            { static unsigned n; game_frame(); if (getenv("GODS_DEBUG") && ++n % 25 == 0) fprintf(stderr, "frame %u\n", n); }
-    }
+    game_main();
+    return 0;
+}
+
+static void *menu_program(void *unused)
+{
+    (void)unused;
     menu_boot();
     mask_buffer = (uint8_t *)0x39e50;   /* the area of the original's boot code: a buffer now */
     for (;;)
-        menu_start();   /* a menu line that starts the game (original code) comes back here */
+        menu_start();   /* a menu line that starts the game comes back here when the game is not there */
     return 0;
+}
+
+static void *level_program(void *unused)
+{
+    (void)unused;
+    host_begin_quest();
+    return 0;
+}
+
+/* orig $000DC4 (the intro): the loader brings the next part of the game: the menu program.  This thread ends here. */
+void ih_start_menu(void)
+{
+    next_phase = PHASE_MENU;
+    pthread_exit(0);
+}
+
+/* start a program: the memory as the loader leaves it, then the program on a thread of its own */
+static void start_phase(int phase)
+{
+    void *(*entry)(void *) = intro_program;
+
+    guest_reset();
+    sr_set(0x2700);
+    sound_reset();
+    ih_set_fire(0);
+    if (phase != PHASE_INTRO) {
+        if (files_load_menu_image() != 0)
+            exit(1);
+        heap_base = 0x80400;   /* the memory the program hands out (the boot block leaves it in the vector slot at $2C) */
+        entry = phase == PHASE_LEVEL ? level_program : menu_program;
+    }
+    pthread_create(&program_thread, 0, entry, 0);
 }
 
 static int raw_code(SDL_Scancode s)
@@ -110,31 +148,45 @@ static void crash(int sig, siginfo_t *info, void *context)
     _exit(3);
 }
 
+/* a key: the intro takes the fire buttons, the menu and the game the keyboard */
+static void key(int phase, int code, int down)
+{
+    if (phase == PHASE_INTRO) {
+        if (code == 0x40 || code == 0x44)
+            ih_set_fire(down);
+    } else {
+        irq_key(code, down);
+    }
+}
+
 int main(int argc, char **argv)
 {
     struct sigaction sa = { .sa_sigaction = crash, .sa_flags = SA_SIGINFO };
-
-    sigaction(SIGSEGV, &sa, 0);
     const char *disks = "projects/gods/local";
-    const char *dump = 0;
-    int headless = 0, frames = 0, scale = 3, dump_every = 50;
+    const char *dump = 0, *wav = getenv("GODS_WAV");
+    int headless = 0, frames = 0, scale = 3, dump_every = 50, phase = PHASE_INTRO;
     const char *keys = 0;   /* a scripted run: "frame:raw code (hex):1 pressed or 0 released", comma separated */
     static uint32_t pixels[SCREEN_W * SCREEN_H];
     SDL_Window *window = 0;
     SDL_Renderer *renderer = 0;
     SDL_Texture *texture = 0;
-    pthread_t thread;
+    SDL_AudioStream *audio = 0;
 
+    sigaction(SIGSEGV, &sa, 0);
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--disks") && i + 1 < argc)
             disks = argv[++i];
         else if (!strcmp(argv[i], "--scale") && i + 1 < argc)
             scale = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--level1-image") && i + 1 < argc)
-            level_image = argv[++i];
+            host_level_image = argv[++i];
         else if (!strcmp(argv[i], "--skip-intro"))
-            ;
-        else if (!strcmp(argv[i], "--headless"))
+            phase = PHASE_MENU;
+        else if (!strcmp(argv[i], "--start") && i + 1 < argc) {
+            const char *what = argv[++i];
+
+            phase = !strcmp(what, "menu") ? PHASE_MENU : !strcmp(what, "level") ? PHASE_LEVEL : PHASE_INTRO;
+        } else if (!strcmp(argv[i], "--headless"))
             headless = 1;
         else if (!strcmp(argv[i], "--frames") && i + 1 < argc)
             frames = atoi(argv[++i]);
@@ -145,16 +197,22 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--dump-every") && i + 1 < argc)
             dump_every = atoi(argv[++i]);
         else {
-            fprintf(stderr, "usage: gods-sdl [--disks FOLDER] [--scale N] [--headless --frames N [--dump PREFIX] [--dump-every N]]\n");
+            fprintf(stderr, "usage: gods-sdl [--disks FOLDER] [--scale N] [--start intro|menu|level] [--skip-intro] [--level1-image FILE]\n"
+                            "                [--headless --frames N [--dump PREFIX] [--dump-every N] [--keys FRAME:RAW:1|0,...]]\n");
             return 2;
         }
     }
+    if (phase == PHASE_LEVEL && !host_level_image) {
+        fprintf(stderr, "gods-sdl: --start level needs --level1-image FILE\n");
+        return 2;
+    }
     guest_init();
-    if (files_open(disks) != 0 || files_load_menu_image() != 0)
+    if (files_open(disks) != 0)
         return 1;
-    heap_base = 0x80400;   /* the memory the program hands out (the boot block leaves it in the vector slot at $2C) */
 
     if (!headless) {
+        SDL_AudioSpec spec = { SDL_AUDIO_S16, 2, 44100 };
+
         if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_EVENTS)) {
             fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
             return 1;
@@ -168,14 +226,23 @@ int main(int argc, char **argv)
         }
         SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
         SDL_SetRenderLogicalPresentation(renderer, SCREEN_W, SCREEN_H * 5 / 6, SDL_LOGICAL_PRESENTATION_LETTERBOX);
-        sound_open();
+        audio = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, 0, 0);
+        if (audio)
+            SDL_ResumeAudioStreamDevice(audio);
     }
-    pthread_create(&thread, 0, program, 0);
+    start_phase(phase);
 
     uint64_t next = SDL_GetTicksNS();
     for (int frame = 0; !frames || frame < frames; frame++) {
         SDL_Event event;
+        int16_t samples[882 * 2];
 
+        if (next_phase >= 0) {   /* the program on asked for the next one */
+            pthread_join(program_thread, 0);
+            phase = next_phase;
+            next_phase = -1;
+            start_phase(phase);
+        }
         while (!headless && SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT)
                 exit(0);
@@ -184,25 +251,43 @@ int main(int argc, char **argv)
 
                 if (event.type == SDL_EVENT_KEY_DOWN && event.key.scancode == SDL_SCANCODE_F10)
                     exit(0);
+                if (event.key.scancode == SDL_SCANCODE_LCTRL && phase == PHASE_INTRO)
+                    code = 0x40;
                 if (code >= 0)
-                    irq_key(code, event.type == SDL_EVENT_KEY_DOWN);
+                    key(phase, code, event.type == SDL_EVENT_KEY_DOWN);
             }
         }
         for (const char *k = keys; k && *k;) {   /* the scripted keys of this frame */
             int at, code, down, used = 0;
 
             if (sscanf(k, "%d:%x:%d%n", &at, &code, &down, &used) >= 3 && at == frame)
-                irq_key(code, down);
+                key(phase, code, down);
             k += used ? used : strlen(k);
             if (*k == ',')
                 k++;
         }
-        irq_vbl();
-        sound_pump();
-        display_render(pixels);
+        if (phase == PHASE_INTRO) {
+            ih_vbl();
+            ih_music_mix(samples, 882, 44100);
+            intro_render(pixels);
+        } else {
+            irq_vbl();
+            sound_mix(samples);
+            display_render(pixels);
+        }
+        if (wav) {   /* a test: the sound as raw signed 16 bit stereo 44100 Hz */
+            FILE *f = fopen(wav, "ab");
+
+            if (f) {
+                fwrite(samples, 1, sizeof samples, f);
+                fclose(f);
+            }
+        }
         if (dump && dump_every && frame % dump_every == 0)
             dump_ppm(dump, frame, pixels);
         if (!headless) {
+            if (audio && SDL_GetAudioStreamQueued(audio) < 44100 / 5 * 4)
+                SDL_PutAudioStreamData(audio, samples, sizeof samples);
             SDL_UpdateTexture(texture, 0, pixels, SCREEN_W * 4);
             SDL_RenderClear(renderer);
             SDL_RenderTexture(renderer, texture, 0, 0);
@@ -220,6 +305,5 @@ int main(int argc, char **argv)
     }
     if (dump)
         dump_ppm(dump, 99999, pixels);
-    sound_close();
     return 0;
 }
