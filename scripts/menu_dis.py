@@ -24,7 +24,7 @@ import menu_analysis as M  # noqa: E402
 RAM = (PROJECT / "build" / "menu-ram.bin").read_bytes()
 COVERAGE = PROJECT / "analysis" / "coverage-menu-handling.txt"
 NATIVE = PROJECT / "native"
-MENU_C = ["menu", "disk", "alloc", "decrunch", "input", "screen", "draw", "display"]
+MENU_C = ["menu", "disk", "alloc", "decrunch", "input", "screen", "draw", "display", "message"]
 
 
 def decompiled() -> dict[int, str]:
