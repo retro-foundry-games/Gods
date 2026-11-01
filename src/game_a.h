@@ -14,6 +14,7 @@ void game_step_73d2(void);                                 /* orig $0073D2 */
 void update_item_panel(void);                               /* orig $005608 */
 uint8_t *map_cell(int16_t x, int16_t y);                   /* orig $007E90 */
 void check_high_scores(void);                              /* orig $005AF6 */
+void score_add_carry(int16_t points, int carry_in);      /* orig $004718, the carry (X flag) the caller left is carry_in */
 void score_add(int16_t points);                            /* orig $004718 */
 void spawn_puff(int16_t *object);                          /* orig $0071E6 */
 void drop_thing(int16_t x, int16_t y, int16_t kind);       /* orig $007F88 */

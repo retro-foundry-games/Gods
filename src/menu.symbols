@@ -456,3 +456,4 @@ table frames_4b08 0x00004b08 uint16_t 6   game_d: ... of the thing 300, by count
 table frames_4ba8 0x00004ba8 uint16_t 20  game_d: five glyphs for each of the four values of param_index (kinds 232, 288, 290, 292)
 fn_10976          0x00010976  void %s(void)  game_d: the pick-up handler 18 of the table at $1067A (game_e writes it in C)
 word_26a          0x0000026a  uint16_t %s    game_d: the glyph the pick-ups of records_19334 are drawn with (sprite, two words wide)
+table mask_table    0x00017380 uint16_t 32   draw: the masks of the screen edges, two words for each shift (16 less the shift, times two): the first-word mask of a right edge, the first-word mask of a left edge

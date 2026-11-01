@@ -271,10 +271,10 @@ static uint8_t bcd_add(uint8_t a, uint8_t b, int *carry)
 /* orig $004718 (and inlined: $0047C8, $0047CC, $0047D0, $0047D4): `points` is added to the score, a decimal digit at a time (the
  * low digit of the remainder of division by 10 to the low digit of the first word, the next to its high digit, then the second
  * word and so on, four words of two digits) and flag_2d0 says the score is to be drawn again.  The original begins with the carry
- * the caller left; the caller (at $4654) leaves it clear */
-void score_add(int16_t points)
+ * (X flag) the caller left: the pick-up at $4654 comes from `asr.w #3,d0`, so it is the last bit shifted out */
+void score_add_carry(int16_t points, int carry_in)
 {
-    int carry = 0;
+    int carry = carry_in;
 
     for (int i = 0; i < 8; i++) {
         int digit = (points % 10) << ((i & 1) ? 4 : 0);   /* the odd digits are the high digits of a byte */
@@ -289,6 +289,12 @@ void score_add(int16_t points)
         if (points == 0)
             return;
     }
+}
+
+/* the same with the carry clear */
+void score_add(int16_t points)
+{
+    score_add_carry(points, 0);
 }
 
 /* orig $0071E6 (and inlined: $007272): a puff is started where the object (five words: x, y, ...; a5) is: sound 18 plays, the first

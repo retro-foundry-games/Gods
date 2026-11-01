@@ -31,9 +31,168 @@ static int rows_to_draw(int16_t y, const struct Image *img, int skip_bytes, cons
     return height + 1;
 }
 
-/* orig $017686: draw glyph or image `index` of the table at pixel (x, y), one word wide.  The part of the screen from
- * x = 0 to 336 is decompiled; the original has three more variants of the blit for x from -31 to -1 and from 337 to 351,
- * which the recording does not use (not decompiled yet: nothing is drawn there) */
+/* orig $017208 (the common part of the masked blit of $017100-$0171FC, the entries that do not start at its beginning are the
+ * functions below): draw an image `words` words wide (`rows` rows, its four planes `plane` bytes apart from `src`, shifted `shift`
+ * pixels to the right) to the screen at `dst`.  The mask of the image (its planes ORed) is made in mask_buffer first.
+ * `first_mask` and `last_mask` are the blitter's masks of the first and the last word of a row (the last one counts when the
+ * shift is not 0).  `extra_modulo` (what the original keeps in blit_extra_modulo): the bytes of a row of the image that are not
+ * drawn (2 when only the first word of an image two words wide is, or when the second is, on the screen); negative: the
+ * shifted image gets no extra word on the right */
+static void blit_masked_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows, uint16_t words,
+                              uint16_t extra_modulo, uint16_t first_mask, uint16_t last_mask)
+{
+    uint16_t size = (uint16_t)((rows << 6) | words);
+    uint16_t dst_mod = (uint16_t)(44 - words * 2);
+    uint16_t con1, a_mod, b_mod, mod;
+    uint8_t *mask = (uint8_t *)mask_buffer;
+    const uint8_t *s = src;
+    uint8_t *d = dst, *dd = dst;
+    int16_t stride;
+    int i;
+
+    blit_extra_modulo = extra_modulo;
+    shift &= 0xff;
+
+    custom->dmacon = 0x8400;
+    while (custom->dmaconr & DMAF_BLTBUSY)
+        ;
+    /* the mask: the planes 0, 1 and 2 ORed ... */
+    custom->bltapt = ADDR(s);
+    s += (int16_t)plane;
+    custom->bltbpt = ADDR(s);
+    s += (int16_t)plane;
+    custom->bltcpt = ADDR(s);
+    s += (int16_t)plane;
+    custom->bltdpt = ADDR(mask);
+    custom->bltafwm = 0xffff;
+    custom->bltalwm = 0xffff;
+    custom->bltdmod = 0;
+    custom->bltcon1 = 0;
+    custom->bltcon0 = 0x0ffe;
+    mod = (int16_t)extra_modulo < 0 ? 0 : extra_modulo;
+    custom->bltamod = mod;
+    custom->bltbmod = mod;
+    custom->bltcmod = mod;
+    custom->bltsize = size;
+    /* ... and the plane 3 */
+    while (custom->dmaconr & DMAF_BLTBUSY)
+        ;
+    custom->bltbmod = 0;
+    custom->bltcon0 = 0x0dfc;
+    custom->bltapt = ADDR(s);
+    custom->bltbpt = ADDR(mask);
+    custom->bltdpt = ADDR(mask);
+    custom->bltsize = size;
+    while (custom->dmaconr & DMAF_BLTBUSY)
+        ;
+    custom->bltafwm = first_mask;
+    custom->bltalwm = last_mask;
+    if (shift == 0) {
+        custom->bltcon0 = 0x0fca;
+        custom->bltalwm = 0xffff;
+        a_mod = 0;
+        custom->bltamod = a_mod;
+        custom->bltcon1 = 0;
+        b_mod = (uint16_t)(a_mod + extra_modulo);
+        custom->bltbmod = b_mod;
+    } else {
+        while (custom->dmaconr & DMAF_BLTBUSY)
+            ;
+        con1 = (uint16_t)(shift << 12);
+        custom->bltcon1 = con1;
+        custom->bltcon0 = con1 | 0x0fca;
+        if ((int16_t)extra_modulo < 0) {
+            a_mod = 0;
+            b_mod = 0;
+        } else {   /* one word wider, the destination modulo less 2 */
+            dst_mod -= 2;
+            size++;
+            a_mod = (uint16_t)-2;
+            b_mod = (uint16_t)(a_mod + extra_modulo);
+        }
+        custom->bltamod = a_mod;
+        custom->bltbmod = b_mod;
+    }
+    custom->bltcmod = dst_mod;
+    custom->bltdmod = dst_mod;
+
+    /* the four planes of the image: the plane (B), the mask (A) and the screen (C and D) */
+    stride = (int16_t)blit_plane_stride;
+    s = src;
+    for (i = 0; i < 4; i++) {
+        if (i != 0) {
+            d += stride;
+            dd += stride;
+            s += (int16_t)plane;
+            while (custom->dmaconr & DMAF_BLTBUSY)
+                ;
+        }
+        custom->bltcpt = ADDR(d);
+        custom->bltbpt = ADDR(s);
+        custom->bltapt = ADDR(mask);
+        custom->bltdpt = ADDR(dd);
+        if (i == 3)
+            custom->dmacon = 0x0400;
+        custom->bltsize = size;
+    }
+}
+
+/* the first-word mask of a right edge (the word of mask_table at $017380 + 4 * (16 - shift)) and of a left edge (the next word) */
+static uint16_t right_edge_mask(uint16_t shift)
+{
+    return mask_table[(16 - shift) * 2];
+}
+
+static uint16_t left_edge_mask(uint16_t shift)
+{
+    return mask_table[(16 - shift) * 2 + 1];
+}
+
+/* orig $017140: an image two words wide that starts 1 to 16 pixels left of the screen (x from -16 to -1, `shift` is x & 15; `dst` is the
+ * start of the row): with a shift the image is drawn from two bytes left of the row, the first word masked to the pixels that
+ * are on the screen; without (x = -16) only its second word is drawn */
+static void blit_image_wide_left(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows)
+{
+    if ((shift & 0xff) == 0)
+        blit_masked_image(dst, src + 2, plane, shift, rows, 1, 2, 0xffff, 0);
+    else
+        blit_masked_image(dst - 2, src, plane, shift, rows, 2, 0, left_edge_mask(shift), 0);
+}
+
+/* orig $01718C: the same for x from -31 to -17: only the second word of the image is on the screen */
+static void blit_image_wide_left_far(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows)
+{
+    blit_masked_image(dst - 2, src + 2, plane, shift, rows, 1, 2, left_edge_mask(shift), 0);
+}
+
+/* orig $017116: an image two words wide at x from 321 to 335 (`shift` is x & 15, not 0): drawn two words wide, no extra word
+ * on the right, the last word masked to the pixels that are on the screen */
+static void blit_image_wide_right(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows)
+{
+    blit_masked_image(dst, src, plane, shift, rows, 2, 0xffff, 0xffff, right_edge_mask(shift));
+}
+
+/* orig $017162: the same at x from 336 to 351: only the first word of the image is on the screen */
+static void blit_image_wide_right_far(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows)
+{
+    blit_masked_image(dst, src, plane, shift, rows, 1, 2, shift != 0 ? right_edge_mask(shift) : 0xffff, 0);   /* (with no shift the last mask is not used) */
+}
+
+/* orig $0171BA: an image one word wide at x from 337 to 351: the first word masked to the pixels that are on the screen */
+static void blit_image_right(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows)
+{
+    blit_masked_image(dst, src, plane, shift, rows, 1, 0, right_edge_mask(shift), 0);
+}
+
+/* orig $0171CE: an image one word wide at x from -15 to -1: drawn from two bytes left of the row, the first word masked to the
+ * pixels that are on the screen */
+static void blit_image_left(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows)
+{
+    blit_masked_image(dst - 2, src, plane, shift, rows, 1, 0, left_edge_mask(shift), 0);
+}
+
+/* orig $017686: draw glyph or image `index` of the table at pixel (x, y), one word wide.  From x = 0 to 336 the blit is the
+ * plain one; from 337 to 351 and from -15 to -1 the original has two variants that draw the part that is on the screen */
 void glyph_draw(int16_t x, int16_t y, uint16_t index)
 {
     const struct Image *img = &image_table[index];
@@ -43,32 +202,53 @@ void glyph_draw(int16_t x, int16_t y, uint16_t index)
     int rows;
 
     x += x_offset;
-    if (x < 0 || x > 336)
+    if (x <= -16 || x >= 352)
         return;
-    dst = screen_buffer + ((x & -16) >> 3) + y * SCREEN_ROW;
+    dst = screen_buffer + y * SCREEN_ROW;
+    if (x >= 0)
+        dst += (x & -16) >> 3;
     rows = rows_to_draw(y, img, 2, &data, &dst);
     if (rows == 0)
         return;
     plane = glyph_plane_size != 0 ? glyph_plane_size : (img->height + 1) * 2;
-    blit_image(dst, data, plane, x & 15, rows);
+    if (x < 0)
+        blit_image_left(dst, data, plane, x & 15, rows);
+    else if (x > 336)
+        blit_image_right(dst, data, plane, x & 15, rows);
+    else
+        blit_image(dst, data, plane, x & 15, rows);
 }
 
-/* orig $0173C4: the same for an image two words wide (x from 0 to 320; the variants for the edges are not decompiled) */
+/* orig $0173C4: the same for an image two words wide: plain blit from x = 0 to 320; the variants for x from 321 to 351 and
+ * from -31 to -1 draw the part that is on the screen */
 void sprite_draw(int16_t x, int16_t y, uint16_t index)
 {
     const struct Image *img = &image_table[index];
     const uint8_t *data = (const uint8_t *)img->data;
     uint8_t *dst;
+    uint16_t plane;
     int rows;
 
     x += x_offset;
-    if (x < 0 || x > 320)
+    if (x <= -32 || x >= 352)
         return;
-    dst = screen_buffer + ((x & -16) >> 3) + y * SCREEN_ROW;
+    dst = screen_buffer + y * SCREEN_ROW;
+    if (x >= 0)
+        dst += (x & -16) >> 3;
     rows = rows_to_draw(y, img, 4, &data, &dst);
     if (rows == 0)
         return;
-    blit_image_wide(dst, data, (img->height + 1) * 4, x & 15, rows);
+    plane = (img->height + 1) * 4;
+    if (x < -16)
+        blit_image_wide_left_far(dst, data, plane, x & 15, rows);
+    else if (x < 0)
+        blit_image_wide_left(dst, data, plane, x & 15, rows);
+    else if (x > 335)
+        blit_image_wide_right_far(dst, data, plane, x & 15, rows);
+    else if (x > 320)
+        blit_image_wide_right(dst, data, plane, x & 15, rows);
+    else
+        blit_image_wide(dst, data, plane, x & 15, rows);
 }
 
 /* orig $003BF8: draw `text` in the large font, 16 pixels a character, from pixel column x; the glyph of a character is its

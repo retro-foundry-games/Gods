@@ -37,6 +37,7 @@ SECTIONS {
         . = 0x12cee; *(.rodata.text_power) *(.data.text_power)
         . = 0x16bb4; *(.rodata.shot_deltas) *(.data.shot_deltas)
         . = 0x16f6e; *(.rodata.message_pairs) *(.data.message_pairs)
+        . = 0x17380; *(.rodata.mask_table) *(.data.mask_table)
         . = 0x18714; *(.rodata.table_18714) *(.data.table_18714)
         . = 0x196fe; *(.rodata.tocache_name) *(.data.tocache_name)
         . = 0x1e5ae; *(.rodata.keymap) *(.data.keymap)

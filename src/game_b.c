@@ -401,15 +401,18 @@ void take_record_to_199ac(uint16_t *a0)
 
 
 /* orig $01FA8C: the sound `id` is stopped when a voice plays it: the voice whose entry in voice_ids_207a6 equals the byte +1 of the
- * sound's record in sound_table_20bce.  When none does that is all; when one does the original clears its entry and calls
- * $1FE3E (d0 = 22), which did not run */
+ * sound's record in sound_table_20bce.  When none does that is all; when one does its entry is cleared and $1FE3E runs
+ * (d0 = 22, d1 = the voice) */
 void stop_sound(uint16_t id)
 {
     uint8_t wanted = sound_table_20bce[(uint16_t)(id * 6) + 1];
 
     for (int i = 0; i < 4; i++)
-        if (voice_ids_207a6[i] == wanted)
+        if (voice_ids_207a6[i] == wanted) {
+            voice_ids_207a6[i] = 0;
+            voice_start(22, (uint16_t)i);
             return;
+        }
 }
 
 /* orig $01695E: a hit at (x, y) on the screen (record: an object record whose byte +72 is not 0): the cell of the tile map

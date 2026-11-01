@@ -295,7 +295,7 @@ int16_t player_touch_record(int16_t x, int16_t y, struct Slot8 *record, int16_t 
         int16_t points = (int16_t)info->w[3];
 
         score_total_1fc += points;
-        score_add(points >> 3);
+        score_add_carry(points >> 3, (points >> 2) & 1);   /* asr.w #3 leaves the last bit out in X */
         spawn_effect(x, y, word_2b2 + 170);
         return 0;
     }

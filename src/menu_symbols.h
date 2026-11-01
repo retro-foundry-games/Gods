@@ -460,5 +460,6 @@ extern const uint16_t frames_4af4[4];   /* $04AF4  game_d: the glyphs of the thi
 extern const uint16_t frames_4afc[4];   /* $04AFC  game_d: ... of the thing 287, by counter_262 */
 extern const uint16_t frames_4b08[6];   /* $04B08  game_d: ... of the thing 300, by counter_262 */
 extern const uint16_t frames_4ba8[20];   /* $04BA8  game_d: five glyphs for each of the four values of param_index (kinds 232, 288, 290, 292) */
+extern const uint16_t mask_table[32];   /* $17380  draw: the masks of the screen edges, two words for each shift (16 less the shift, times two): the first-word mask of a right edge, the first-word mask of a left edge */
 
 #endif

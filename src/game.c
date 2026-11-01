@@ -144,7 +144,7 @@ void game_frame(void)
     redraw_record_images();
     if (param_index == 2 || flag_23a != 1) {
         activate_records();
-        fn_417c();
+        update_records();
         update_falling_thing();
         game_step_4070();
     }
