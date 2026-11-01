@@ -206,7 +206,7 @@ void game_frame(void)
     step_1843e();
     fn_c374();
     update_score_display();
-    fn_57fc();
+    draw_score_panel();
     update_item_panel();
     draw_shutter();
     update_energy_display();
