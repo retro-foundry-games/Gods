@@ -152,7 +152,10 @@ the loader reads and decrunches over the intro.  It is a different program, abou
 
 ### Decompiling the menu: how it is checked
 
-- `native/menu.c` / `menu.h` are the menu program's C; its data is declared from `native/menu.symbols` (name, address, type;
+- The menu program's C is split by what the code does: `disk.c` (the disk layer: MFM, track buffer, sector copy), `alloc.c`
+  (memory), `decrunch.c` (the unpacker), `input.c` (buttons, joystick, mouse), `screen.c` (buffers, colour shadow table, copper
+  list search, blitter wait); `menu.c` has what is not placed yet.  Each module has its header, `menu.h` includes them all and
+  `menu_types.h` has the types of the data.  Its its data is declared from `native/menu.symbols` (name, address, type;
   `scripts/gen_menu_symbols.py` writes `menu_symbols.h` and `menu.ld`, so the C names no address).  `scripts/build_menu.py`
   builds the C into a blob at an address in the RAM above the original's 512 KB.
 - `host/menu_oracle.lua` (driven by `scripts/check_menu.py`) checks each decompiled function against the original **on the

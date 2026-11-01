@@ -16,5 +16,6 @@ return {
     { name = "mfm_encode_long",      orig = 0x01e03a, args = { "d0", "a0" },           ret = "a0" },
     { name = "unpack",               orig = 0x01e260, args = { "a0", "a2" },           ret = "a0" },
     { name = "blitter_wait",         orig = 0x01dfd8, args = {} },
+    { name = "alloc_init",           orig = 0x01d48e, args = {} },
     { name = "input_poll",           orig = 0x01e39c, args = {} },
 }

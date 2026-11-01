@@ -20,12 +20,17 @@ NATIVE, BUILD = B.NATIVE, B.BUILD
 FLAGS = "-m68000 -O2 -ffreestanding -fno-tree-loop-distribute-patterns -fno-tree-forwprop -fno-ivopts -nostdlib -fdata-sections -ffunction-sections"
 
 
+MODULES = ['menu', 'disk', 'alloc', 'decrunch', 'input', 'screen']   # native/<name>.c
+
+
 def main() -> int:
     base = int(sys.argv[1], 16) if len(sys.argv) > 1 else 0xC0000
     BUILD.mkdir(exist_ok=True)
     gen_menu_symbols.main()
-    r = B.nix(f"cd {NATIVE} && m68k-amigaos-gcc {FLAGS} -Wall -Wextra -c menu.c -o {BUILD}/menu.o"
-              f" && m68k-amigaos-ld -m amiga -T menu.ld -Map {BUILD}/menu.map -o {BUILD}/menu.exe {BUILD}/menu.o"
+    compile_all = " && ".join(f"m68k-amigaos-gcc {FLAGS} -Wall -Wextra -c {m}.c -o {BUILD}/menu_{m}.o" for m in MODULES)
+    objects = " ".join(f"{BUILD}/menu_{m}.o" for m in MODULES)
+    r = B.nix(f"cd {NATIVE} && {compile_all}"
+              f" && m68k-amigaos-ld -m amiga -T menu.ld -Map {BUILD}/menu.map -o {BUILD}/menu.exe {objects}"
               f" && m68k-amigaos-nm {BUILD}/menu.exe > {BUILD}/menu.sym")
     if r.returncode:
         print(r.stdout[-2000:], r.stderr[-3000:])
