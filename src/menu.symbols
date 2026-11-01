@@ -321,3 +321,39 @@ word_7c50         0x00007c50  uint16_t %s   the immediate of an instruction in w
 word_2be          0x000002be  int16_t %s   the way the shutter goes (draw_shutter adds it to word_2c0)
 table shutter_masks 0x0000542c uint16_t 12   the rows of the shutter a step shows (one bit a row)
 item_slots 0x0000030c int16_t %s[4]   the item (index of table_14cf8, -1 none) of each of the four slots
+fn_5af6           0x00005af6 void %s(void)
+flag_8890         0x00008890 int16_t %s    negative: the routines that look at it end at once (at the start of a level?)
+word_888e         0x0000888e int16_t %s    the choice update_choice_888e makes (-1 none, else 0 to 2)
+word_8472         0x00008472 int16_t %s    the glyph draw_sprite_8472 draws (negative: none)
+word_846e         0x0000846e int16_t %s    its x
+word_8470         0x00008470 int16_t %s    its y
+word_10ae         0x000010ae uint16_t %s
+unit_flags_18741  0x00018741 uint8_t %s[]  five records of 24 bytes; bit 1 of the first byte is set while the record is in use
+flag_aa8          0x00000aa8 uint16_t %s
+word_186be        0x000186be uint16_t %s
+word_354          0x00000354 int16_t %s
+word_39c          0x0000039c int16_t %s    added (half of it) to the width of the box the player is hit in
+word_39e          0x0000039e int16_t %s    the same for its height
+word_19c          0x0000019c int16_t %s
+word_3436         0x00003436 uint16_t %s   the first word of the original's routine at $3436 (an rts, $4E75)
+word_214          0x00000214 int16_t %s
+slot_ref_6b6      0x000006b6 int16_t %s    first word of the first of three records of 146 bytes: negative none, else the number of a record of object_slots
+slot_ref_748      0x00000748 int16_t %s    the second
+slot_ref_7da      0x000007da int16_t %s    the third
+records_316       0x00000316 int16_t %s[12]  four records of three words (a state that counts up from 0 to 6, x, y; negative: free)
+word_185bc        0x000185bc int16_t %s
+ptr_0b82          0x00000b82 uint8_t *%s
+ptr_0c70          0x00000c70 uint8_t *%s    the graphics of the background tiles (256 bytes for each)
+word_4a2          0x000004a2 uint16_t %s
+sound_table_20bce 0x00020bce uint8_t %s[]   records of 6 bytes for each sound (the second byte names its voice entry)
+voice_ids_207a6   0x000207a6 uint8_t %s[4]   the sound each of the four voices plays
+word_17e9c        0x00017e9c uint16_t %s   the first word of the routine at $17E9C (a nop; the routine makes it an rts, $4E75)
+word_3a0           0x000003a0 int16_t %s    the width word_39c had before check_hit_and_walls cut it
+word_3a2           0x000003a2 int16_t %s    the height word_39e had
+word_3a6           0x000003a6 uint16_t %s
+ptr_0b66           0x00000b66 uint8_t *%s    the base the message offsets (words) point from
+words_300          0x00000300 int16_t %s[3]  the three results of the calls of finish_record_1895a (-1: yes)
+dispatch_18ba4    0x00018ba4 void (*%s[])(void)   the routines the kind of a finished record names
+entry_b92          0x00000b92 uint16_t *%s[3]  the free entry of each of the three units that claim_free_entries found (0: none)
+entry_id_2ea       0x000002ea int16_t %s[3]    the number of that entry (1, 4, 7 for the first unit, 10, 13, 16 and 19, 22, 25)
+word_2f0           0x000002f0 uint16_t %s
