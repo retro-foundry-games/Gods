@@ -188,7 +188,12 @@ def keyboard() -> list[str]:
     out += ["", "; void sr_set(uint16_t value): the status register is set (not in the original; the start-up needs it in C)",
             "        xdef _sr_set", "_sr_set:", "        move.w 6(sp),d0", "        move.w d0,sr", "        rts", "",
             "; void jump_with_stack(void (*address)(void), uint8_t *stack): the stack is changed and the code entered (not in the original)",
-            "        xdef _jump_with_stack", "_jump_with_stack:", "        movea.l 4(sp),a0", "        movea.l 8(sp),a1", "        movea.l a1,sp", "        jmp (a0)", ""]
+            "        xdef _jump_with_stack", "_jump_with_stack:", "        movea.l 4(sp),a0", "        movea.l 8(sp),a1", "        movea.l a1,sp", "        jmp (a0)", "",
+            "; game_loop: where the original's game loop at $2C20 is sent (game_loop_install patches a jmp there): the loop's body is the C game_frame,",
+            "; run on a stack of its own (the original's is in memory that files are loaded to) with every register kept; then the loop goes on at its top",
+            "        xref _game_frame", "        xdef _game_loop", "_game_loop:", "        movem.l d0-d7/a0-a6,-(sp)",
+            "        lea.l game_loop_sp(pc),a0", "        move.l sp,(a0)", "        lea.l $eb000.l,sp", "        jsr _game_frame", "        movea.l game_loop_sp(pc),sp",
+            "        movem.l (sp)+,d0-d7/a0-a6", "        jmp $2c20.l", "game_loop_sp: dc.l 0", ""]
     return out
 
 

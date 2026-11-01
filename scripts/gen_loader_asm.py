@@ -41,7 +41,7 @@ HOOK = 0x334                    # 126 unused bytes of the stage
 HOOK_SIZE = 126
 
 
-EXTRA_SECTOR = 1760   # the first sector of cylinder 80: the disk image gets extra cylinders after the 80 of a normal disk, for the C
+EXTRA_SECTOR = 1400   # the C is stored in sectors after the last file of disk 1 (tocache.bin ends at 1332; the directory names nothing after it): an emulated drive takes at most 83 cylinders, so there are no extra cylinders
 
 
 def hook_asm(sectors: int, intro_longs: int, menu_longs: int, menu_base: int) -> list[str]:
@@ -91,7 +91,8 @@ def main(patched: bool = False, adf_out: Path | None = None, blob: bytes = b"", 
         sectors = -(-(intro_bytes + len(menu_blob)) // 512)
         patches[("stage", HOOK)] = (hook_asm(sectors, intro_bytes // 4, -(-len(menu_blob) // 4), menu_base), HOOK_SIZE)
         # the read routine refuses sectors beyond the 1760 of a disk: the limit is raised for the extra cylinders (the C is read from there)
-        patches[("stage", 0x19a)] = (["        cmp.w #$740,d3   ; PATCH: the limit of the read is 1856 sectors, not 1760"], 4)
+        limit = 1760   # the read routine's own limit: the C is inside the disk
+        patches[("stage", 0x19a)] = ([f"        cmp.w #${limit:x},d3   ; PATCH: the limit of the read is {limit} sectors (the cylinders of the C), not 1760"], 4)
         allowed["stage"] = [(0x19a - 0xb4, 0x19a - 0xb4 + 4), (0xb8 - 0xb4, 0xb8 - 0xb4 + 8), (0xf6 - 0xb4, 0xf6 - 0xb4 + 4), (HOOK - 0xb4, HOOK - 0xb4 + HOOK_SIZE)]
     for name, start, length, base, comment in PIECES:
         data = disk[start : start + length]
@@ -165,8 +166,8 @@ def main(patched: bool = False, adf_out: Path | None = None, blob: bytes = b"", 
         for start, built in new_pieces.values():
             image[start : start + len(built)] = built
         packed = blob + bytes(intro_bytes - len(blob)) + menu_blob
-        cylinders = -(-sectors // 22)
-        image += bytes(cylinders * 22 * 512)
+        cylinders = max(0, -(-(EXTRA_SECTOR + sectors) // 22) - 80)
+        assert cylinders == 0, "the C does not fit in bm.1's sectors"
         image[EXTRA_SECTOR * 512 : EXTRA_SECTOR * 512 + len(packed)] = packed
         if menu_entry:   # the menu program's image is raw on the disk: its first code jumps to the start-up ($39E50), which becomes the C entry
             start = bytes.fromhex("2e7c000780002f3c0000240c4ef9")

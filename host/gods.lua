@@ -173,6 +173,16 @@ local function run_frames()
     if peer then peer:close() end
     ami.quit(0)
 end
+-- count=ADDR[,ADDR...] (hex): how many times the program reaches each address (reported at the start and at the end of the shots/frames)
+local counts = {}
+for a in (args:match("count=([%x,]+)") or ""):gmatch("%x+") do
+    local addr = tonumber(a, 16)
+    counts[addr] = 0
+    ami.hook(addr, function() counts[addr] = counts[addr] + 1 end)
+end
+local function report_counts()
+    for addr, n in pairs(counts) do ami.log(("count $%x: %d"):format(addr, n)) end
+end
 local hook_at = tonumber(args:match("hook=(%x+)") or "", 16)
 if peer and hook_at then
     -- a snapshot at a point where the program's own progress is the same in every run: the interrupt has finished (it
@@ -252,7 +262,7 @@ if ram_path then
     ami.save_file(ram_path, ami.read(0, 0x80000))
     ami.log("ram", ram_path, "pc", string.format("%06x", ami.reg("pc")), "frame", ami.frame() - base)
 end
-if shots_dir or ram_path or snap_name then ami.quit(0) end
+if shots_dir or ram_path or snap_name then report_counts() ami.quit(0) end
 
 -- inputlog=FILE: play (the window stays) and write every key and mouse event the host processes as "frame kind a b" (frame counted
 -- from the start or the loaded snapshot); replay=FILE plays such a file again.  The file is rewritten every second.
