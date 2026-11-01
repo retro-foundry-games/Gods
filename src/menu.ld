@@ -337,3 +337,4 @@ _fall_speed = 0x7f7c;
 _fall_kind = 0x7f7e;
 _word_7c50 = 0x7c50;
 _word_2be = 0x2be;
+_item_slots = 0x30c;

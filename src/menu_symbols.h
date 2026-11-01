@@ -315,6 +315,7 @@ extern int16_t fall_speed;   /* $07F7C  -6 at the start, up by one a frame; at 4
 extern int16_t fall_kind;   /* $07F7E  what it is (negative: nothing falls) */
 extern uint16_t word_7c50;   /* $07C50  the immediate of an instruction in walk_pace ($7C4E: add #496): the first picture of the walker (the original sets it) */
 extern int16_t word_2be;   /* $002BE  the way the shutter goes (draw_shutter adds it to word_2c0) */
+extern int16_t item_slots[4];   /* $0030C  the item (index of table_14cf8, -1 none) of each of the four slots */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
 extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of the two copper lists' colour moves the message fades */

@@ -330,3 +330,4 @@ fall_kind         0x00007f7e  int16_t %s    what it is (negative: nothing falls)
 word_7c50         0x00007c50  uint16_t %s   the immediate of an instruction in walk_pace ($7C4E: add #496): the first picture of the walker (the original sets it)
 word_2be          0x000002be  int16_t %s   the way the shutter goes (draw_shutter adds it to word_2c0)
 table shutter_masks 0x0000542c uint16_t 12   the rows of the shutter a step shows (one bit a row)
+item_slots 0x0000030c int16_t %s[4]   the item (index of table_14cf8, -1 none) of each of the four slots

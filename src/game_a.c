@@ -121,12 +121,106 @@ void game_step_73d2(void)
     /* goes on at $73D8 */
 }
 
-/* orig $005608: nothing is done while word_2ce and word_2cc are equal; the original goes on at $5612 otherwise, which did not run */
-void game_step_5608(void)
+/* orig $0057E0: a blank slot picture (image 119, 384 bytes: 24 rows, four planes of 96 bytes... as four longs a row) is copied to `to` */
+static void panel_blank(uint8_t *to)
 {
-    if (word_2ce == word_2cc)
+    const uint8_t *from = (const uint8_t *)image_table[119].data;
+
+    for (int i = 0; i < 384; i++)
+        to[i] = from[i];
+}
+
+static uint32_t ror4(uint32_t value)
+{
+    return (value >> 4) | (value << 28);
+}
+
+/* orig $00570A: the glyph (the picture of the item; 279 and 280 are the small pictures 204 and 183) is put into the slot picture `to` (24 rows
+ * of 32 pixels, four planes 96 bytes apart), 16 pixels in and centred in height, moved 4 pixels right: the pixels of the
+ * glyph are cut in over the blank (its mask is all four planes or'ed).  The original keeps the words of its four colour planes
+ * in registers whose upper halves stay from the row before (the move 4 to the right rotates the whole long), and so does this */
+static void panel_item(uint8_t *to, int16_t glyph)
+{
+    uint32_t d0 = 0, d1 = 0, d2 = 0, d3 = 0;
+
+    if (glyph >= 279 && glyph <= 280)
+        glyph = (glyph == 280) ? 183 : 204;
+
+    const struct Image *image = &image_table[glyph];
+    int16_t height = (int16_t)image->height;
+    const uint8_t *source = (const uint8_t *)image->data;
+    int16_t stride = (int16_t)((height + 1) * 2);
+    uint16_t *dst = (uint16_t *)(to + 16 + (((16 - height) >> 1) << 2));
+    const uint16_t *p0 = (const uint16_t *)source;
+    const uint16_t *p1 = (const uint16_t *)(source + stride);
+    const uint16_t *p2 = (const uint16_t *)(source + 2 * stride);
+    const uint16_t *p3 = (const uint16_t *)(source + 3 * stride);
+    const uint32_t keep = 0xf000ffff;
+
+    for (int row = 0; row <= height; row++) {
+        d0 = (d0 & 0xffff0000) | *p0++;
+        d1 = (d1 & 0xffff0000) | *p1++;
+        d2 = (d2 & 0xffff0000) | *p2++;
+        d3 = (d3 & 0xffff0000) | *p3++;
+        d0 = ror4(d0) & keep;
+        d1 = ror4(d1) & keep;
+        d2 = ror4(d2) & keep;
+        d3 = ror4(d3) & keep;
+
+        uint32_t d4 = ~(d0 | d1 | d2 | d3);
+
+        dst[0] = (uint16_t)((dst[0] & d4) | d0);
+        dst[48] = (uint16_t)((dst[48] & d4) | d1);
+        dst[96] = (uint16_t)((dst[96] & d4) | d2);
+        dst[144] = (uint16_t)((dst[144] & d4) | d3);
+        d0 = (d0 << 16) | (d0 >> 16);
+        d1 = (d1 << 16) | (d1 >> 16);
+        d2 = (d2 << 16) | (d2 >> 16);
+        d3 = (d3 << 16) | (d3 >> 16);
+        d4 = (d4 << 16) | (d4 >> 16);
+        dst[1] = (uint16_t)((dst[1] & d4) | d0);
+        dst[49] = (uint16_t)((dst[49] & d4) | d1);
+        dst[97] = (uint16_t)((dst[97] & d4) | d2);
+        dst[145] = (uint16_t)((dst[145] & d4) | d3);
+        dst += 2;
+    }
+}
+
+/* orig $0056BE: a slot picture of item `item` (index of table_14cf8; negative: none) */
+static void panel_slot_plain(uint8_t *to, int16_t item)
+{
+    panel_blank(to);
+    if ((int16_t)(item << 1) < 0)
         return;
-    /* goes on at $5612 */
+    panel_item(to, (int16_t)table_14cf8[item].w[0]);
+}
+
+/* orig $0056D8: the same with the slot picture's part cut away first (the words at +96+12 and on, 18 rows: all but the three top bits of the
+ * first word and bits 8 to 10 of the second) */
+static void panel_slot_cut(uint8_t *to, int16_t item)
+{
+    panel_blank(to);
+    for (int i = 0; i < 18; i++) {
+        *(uint16_t *)(to + 12 + 4 * i + 96) &= 0xe000;
+        *(uint16_t *)(to + 12 + 4 * i + 98) &= 0x0700;
+    }
+    if ((int16_t)(item << 1) < 0)
+        return;
+    panel_item(to, (int16_t)table_14cf8[item].w[0]);
+}
+
+/* orig $005608 (with $0056BE, $0056D8, $00570A and $0057E0 inlined): when the slot that is chosen (word_2ce) is another than the one
+ * shown (word_2cc) the picture of the old one (image 115 and the slot's number) is made plain and the new one's cut, and the new
+ * is the one shown */
+void update_item_panel(void)
+{
+    int16_t chosen = (int16_t)word_2ce;
+
+    if (chosen == (int16_t)word_2cc)
+        return;
+    panel_slot_plain((uint8_t *)image_table[115 + (int16_t)word_2cc].data, item_slots[(int16_t)word_2cc]);
+    panel_slot_cut((uint8_t *)image_table[115 + chosen].data, item_slots[chosen]);
+    word_2cc = word_2ce;
 }
 
 /* orig $007E90: where in the map of the level (ptr_0b86 + 8192, a byte for each cell of 32 by 16 pixels, 128 bytes a row of
@@ -396,4 +490,14 @@ int16_t walk_pace_x(const uint8_t *type, int16_t *obj, int16_t x, int16_t y)
 int16_t walk_pace_frame(const uint8_t *type, int16_t *obj, int16_t x, int16_t y)
 {
     return walk_pace(type, obj, &x, y);
+}
+
+/* orig $00717E: a routine of a creature's type record (a3) for the object (a5): nothing is done while byte 19 of the type is 0; the original
+ * goes on at $7184 otherwise, which did not run */
+void creature_step_717e(const uint8_t *type, int16_t *object)
+{
+    (void)object;
+    if (type[19] == 0)
+        return;
+    /* goes on at $7184 */
 }
