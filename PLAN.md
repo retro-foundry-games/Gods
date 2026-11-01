@@ -176,6 +176,21 @@ from it are checked in their own scenario.  To use the menu in the emulator the 
   listed in `host/menu_cases.lua` (the registers the arguments and the result are in).
 - The first batch, 15 leaf functions of the engine layer (MFM decode and encode, the unpacker, mouse and joystick polling,
   buffer copies, the colour shadow table, ...), match on 24 calls each spread over the first 9,000 frames.
+- The menu handling is decompiled completely (`menu_dis.py --todo` lists nothing): the screens are in `ui.c` (`menu_main` $63A2,
+  `menu_screen_draw`, `top_ten_screen`, `password_screen`), the message fade in `message.c`, the fades and the frame tick in
+  `display.c`, the sound system (Paula driver, sequencer) and the vertical blank interrupt are generated asm in
+  `menu_amiga.asm`.  Code that did not run in the menu (the disk load of the background, the rest of the password route,
+  Begin Quest and Continue) is not there; the first two are `load_background` and `password_screen_setup` guards.
+- What waits for the vertical blank cannot be checked by the oracle.  `host/menu_takeover.lua` (compared by
+  `scripts/compare_takeover.py`) runs the original from the savestate, and in the other modes hands the main thread to
+  the C `menu_main` when the original reaches $63A2 (`mode=c`), or also the interrupt vectors (`mode=irq`: C `vbl_irq`,
+  `audio_irq`, `frame_tick`, `input_poll`, the sound code), and records per frame the checksums of the screens, the copper
+  lists, variables and sound state, and per `screens_flip` the finished screen.  Result for the idle run (menu, 750 frames,
+  fade, top ten, fade, menu): the screens drawn at all 381 flips are the same as the original's, and the sound state is
+  the same each frame.  The C code needs 4 frames for what the original does in 3 (the same draw, flip, wait loop), so the
+  runs are compared flip by flip, not frame by frame; the palette checksum differs at the flips next to a fade (4 of 381).
+  A joystick run (down, fire, then the password screen) gives the same first picks; later picks depend on how many loop
+  iterations a held direction gets, which differs with the speed.
 - What the program turned out to be: the menu is the game's whole engine (memory, disk and file layer, input, blitter and
   copper helpers) with the menu screens on top, so many leaves are library routines.
 

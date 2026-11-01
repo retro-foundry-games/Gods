@@ -50,7 +50,7 @@ return {
     { name = "draw_line_text",       orig = 0x006dea, args = {}, blitter = true, scenario = "menu" },
     { name = "cursor_draw",          orig = 0x006e1c, args = {}, blitter = true, scenario = "menu" },
     { name = "password_grid_draw",   orig = 0x006e5e, args = {}, blitter = true, scenario = "menu" },
-    { name = "password_slots_draw",  orig = 0x006994, args = {}, blitter = true, scenario = "menu" },
-    { name = "record_list_draw",     orig = 0x006974, args = {}, blitter = true, scenario = "menu" },
+    { name = "password_slots_draw",  orig = 0x006994, args = {}, blitter = true, scenario = "idle" },
+    { name = "record_list_draw",     orig = 0x006974, args = {}, blitter = true, scenario = "idle" },
     { name = "title_draw",           orig = 0x006754, args = {}, blitter = true, scenario = "menu" },
 }

@@ -46,7 +46,7 @@ SIZES = {"uint8_t": 1, "int8_t": 1, "uint16_t": 2, "int16_t": 2, "uint32_t": 4, 
 
 def size_of(decl: str) -> int:
     """The size in bytes of a declaration such as `uint16_t %s[22]` or `uint8_t *%s`."""
-    base = decl.split("%s")[0].replace("const ", "").strip()
+    base = decl.split("%s")[0].replace("const ", "").replace("volatile ", "").strip()
     count = re.search(r"\[(\d+)\]", decl)
     if "*" in base:
         return 4 * (int(count.group(1)) if count else 1)
@@ -93,7 +93,7 @@ def sound_system() -> list[str]:
     out = ["", "; ---- the sound system (orig $01F9EA-$02034B): four voices, a sequencer that interprets the command bytes of the",
            "; tracks, the audio interrupt that feeds each voice its next sample.  Entries for C: audio_irq (the interrupt),",
            "; sound_tick (once a frame), play_sound(id), random_word (orig $00633E).",
-           "        xdef _audio_irq, _sound_tick, _play_sound, _random_word", "",
+           "        xdef _audio_irq, _sound_tick, _play_sound, _random_word", "        xdef last_random, voice_pointers, voice_stacks, tempo   ; the sound code's own state (the takeover test copies it)", "",
            "; void play_sound(uint16_t id, uint16_t priority): the sound the id names is started on a free voice (orig $01FAF6)",
            "_play_sound:", "        move.l 4(sp),d0", "        move.l 8(sp),d1", "        bra.w play_sound_body", ""]
     # every address that a branch of any piece goes to gets its label, in the piece that has the address
