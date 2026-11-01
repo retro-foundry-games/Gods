@@ -343,9 +343,26 @@ _irq_level3:
         andi.w #$40,d1
         lsl.w #$1,d1
         and.w d0,d1
-        bne.b .irq_buttons_done
+        bne.b .space_check   ; no button down: look at the keyboard (patch)
+.button_down:
         move.w #$1,(_flags+Flags_fire_pressed).l
         move.w #$1,(_game_clock+GameClock_input_seen).l
+        bra.b .irq_buttons_done
+; patch: the space bar counts as a fire button
+.space_check:
+        move.b $bfed01.l,d0         ; CIA-A interrupt flags (reading clears them); bit 3: a keyboard byte has arrived
+        btst #$3,d0
+        beq.b .irq_buttons_done
+        move.b $bfec01.l,d0         ; the byte: the key code rotated left, inverted
+        ori.b #$40,$bfee01.l        ; acknowledge it: pull the serial line low (control register A, SPMODE) ...
+        moveq #$3c,d1
+.keyboard_acknowledge:
+        dbra d1,.keyboard_acknowledge   ; ... for 61 rounds, 85 microseconds or more
+        andi.b #$bf,$bfee01.l
+        not.b d0
+        ror.b #$1,d0                ; the key code, bit 7 set for a key that goes up
+        cmpi.b #$40,d0              ; space down
+        beq.b .button_down
 .irq_buttons_done:
         movem.l (a7)+,d0-d1   ; the original: movem.w
 .irq_to_housekeeping:
