@@ -35,6 +35,15 @@ extern struct Rec10 table_14cf8[132];   /* $14CF8  built by build_table_14cf8 */
 extern uint32_t marker_table[100];   /* $1A3FC  set to -1 by reset_marker_table */
 extern struct Rec6 record_table[200];   /* $1A58C  copied in by copy_record_table */
 extern struct Rec6 entry_table[50];   /* $3A25E  cleared by clear_entry_table */
+extern uint16_t blit_extra_modulo;   /* $003B4  the blitter's extra modulo for the masked blit (0 unless set) */
+extern uint32_t blit_plane_stride;   /* $003B6  bytes from one plane of the screen to the next */
+extern uint16_t *mask_buffer;   /* $00E48  the buffer the blit makes its mask in */
+extern uint8_t *screen_buffer;   /* $00E60  the screen that is drawn to */
+extern struct Image *image_table;   /* $00E3C  the images (and glyphs) of the program */
+extern uint16_t glyph_plane_size;   /* $00280  non-zero: bytes of one plane of a glyph, otherwise worked out from its height */
+extern int16_t x_offset;   /* $1D3A4  added to the x of everything that is drawn */
+extern uint16_t glyph_base;   /* $00270  added to the index of what draw_string_small and the digit printer draw (the small font) */
+extern uint16_t text_y;   /* $12D5A  the row text_draw_centered draws at (a word in the middle of the code) */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
 

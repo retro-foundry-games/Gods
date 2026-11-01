@@ -31,3 +31,12 @@ record_table      0x0001a58c  struct Rec6 %s[200]   copied in by copy_record_tab
 entry_table       0x0003a25e  struct Rec6 %s[50]   cleared by clear_entry_table
 table param_table  0x000029da uint16_t 24   four rows of 12 bytes (two longs, two words) that select_params takes
 table offsets_4cba 0x00004cba uint8_t 132   signed bytes that build_table_14cf8 puts in the table
+blit_extra_modulo 0x000003b4  uint16_t %s     the blitter's extra modulo for the masked blit (0 unless set)
+blit_plane_stride 0x000003b6  uint32_t %s     bytes from one plane of the screen to the next
+mask_buffer       0x00000e48  uint16_t *%s    the buffer the blit makes its mask in
+screen_buffer     0x00000e60  uint8_t *%s     the screen that is drawn to
+image_table       0x00000e3c  struct Image *%s   the images (and glyphs) of the program
+glyph_plane_size  0x00000280  uint16_t %s     non-zero: bytes of one plane of a glyph, otherwise worked out from its height
+x_offset          0x0001d3a4  int16_t %s      added to the x of everything that is drawn
+glyph_base        0x00000270  uint16_t %s     added to the index of what draw_string_small and the digit printer draw (the small font)
+text_y            0x00012d5a  uint16_t %s     the row text_draw_centered draws at (a word in the middle of the code)

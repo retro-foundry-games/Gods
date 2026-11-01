@@ -28,4 +28,11 @@ struct Entry8 {
     uint32_t size;
 };
 
+/* an image of the table of images, as the intro has it: the data of one image is its planes, one after the other */
+struct Image {
+    int16_t neg_width;     /* minus the width in pixels */
+    uint16_t height;       /* in rows, less one */
+    const uint16_t *data;
+};
+
 #endif
