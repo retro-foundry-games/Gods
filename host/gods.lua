@@ -32,12 +32,19 @@ ami.machine{
     files = "..",
     content = script_args:match("rebuilt") and "../local/gods-c.m3u" or "../local/gods.m3u",
     roms = { { "kick34005.A500", 0xc4f0f55f } },
-    opt = script_args:match("rebuilt") and { puae_chipmem_size = 2 } or nil,   -- the C runs from chip RAM above 512 KB
+    opt = (function()
+        local o = {}
+        if script_args:match("rebuilt") or script_args:match("onemb") then o.puae_chipmem_size = 2 end   -- the C runs from chip RAM above 512 KB
+        if script_args:match("joy1") then o.puae_joyport_order = "2143" end   -- the joystick in port 1, where the program polls it
+        return next(o) and o or nil
+    end)(),
     peers = recorder and { recorder = recorder } or nil,
 }
 ami.boot()
 
 -- Script flags (--script-args "..."):
+--   onemb               1 MB chip RAM (the state files gods-*-1m.state)
+--   joy1                the joystick in port 1 (puae_joyport_order=2143): needed for joy= to reach the program
 --   keyboard            the original menu with the keyboard: cursor up/down, space = fire (native/src/amiga/keyboard_patch.asm; build it with scripts/build_keyboard_patch.py)
 --   load=NAME            restore snapshot NAME (a file in ../local/save) before running; frames below count from it
 --   snap=F[,F...]        save snapshot gods-F.state at frame F (relative to the start or the loaded snapshot)

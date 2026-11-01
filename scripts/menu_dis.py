@@ -11,6 +11,7 @@ a start of Begin Quest); what is decompiled is read from the `orig $ADDR` commen
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -21,8 +22,7 @@ sys.path.insert(0, str(PROJECT / "scripts"))
 import intro_analysis as G  # noqa: E402
 import menu_analysis as M  # noqa: E402
 
-RAM = (PROJECT / "native" / "build" / "menu-ram.bin").read_bytes()
-import os
+RAM = (PROJECT / "native" / "build" / os.environ.get("MENU_RAM", "menu-ram.bin")).read_bytes()   # e.g. game-ram.bin with MENU_COVERAGE=coverage-game.txt
 COVERAGE = PROJECT / "analysis" / os.environ.get("MENU_COVERAGE", "coverage-menu-handling.txt")   # e.g. coverage-menu.txt, coverage-game-start.txt
 SRC = PROJECT / "native" / "src"
 MENU_C = ["menu", "disk", "alloc", "decrunch", "input", "screen", "draw", "display", "message", "ui", "file", "boot"]
@@ -125,7 +125,7 @@ def todo(st, names) -> None:
         rows.append((len(callees.get(root, [])), len(pcs), min(pcs), entry_of[root]))
     done_n = sum(1 for p in st if p in names)
     print(f"{len(comps)} components, {len(rows)} not decompiled; leaves first:")
-    for ncallee, n, a, e in sorted(rows)[:60]:
+    for ncallee, n, a, e in sorted(rows)[:int(os.environ.get("MENU_TODO_LIMIT", "60"))]:
         print(f"{a:06x} {n:4d} instr  calls {ncallee}  entries {[hex(x) for x in e[:3]]}")
 
 
