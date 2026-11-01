@@ -6,6 +6,10 @@ SECTIONS {
     .data : SUBALIGN(1) {
         . = 0x29da; *(.rodata.param_table) *(.data.param_table)
         . = 0x4cba; *(.rodata.offsets_4cba) *(.data.offsets_4cba)
+        . = 0x635a; *(.rodata.menu_texts) *(.data.menu_texts)
+        . = 0x689c; *(.rodata.text_enter_a) *(.data.text_enter_a)
+        . = 0x68c2; *(.rodata.text_top_ten) *(.data.text_top_ten)
+        . = 0x6ce0; *(.rodata.key_table) *(.data.key_table)
         . = 0x16f6e; *(.rodata.message_pairs) *(.data.message_pairs)
         . = 0x1e7f4; *(.rodata.font_8x8) *(.data.font_8x8)
     }
@@ -100,3 +104,7 @@ _title_y = 0x3bc;
 _password_slots = 0xd12;
 _password_line = 0x6a0e;
 _record_text = 0x3c2;
+_key_held = 0x228;
+_disk_digit = 0x1d487;
+_has_continue = 0x27a;
+_menu_item_count = 0x6384;

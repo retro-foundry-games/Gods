@@ -94,9 +94,17 @@ extern int16_t title_y;   /* $003BC */
 extern uint32_t password_slots[3];   /* $00D12  the three saved codes (the first byte of each is 0 when there is none) */
 extern uint8_t password_line[];   /* $06A0E  "pass N :" and then room for the three code characters (a line of text in the code that is changed) */
 extern uint8_t record_text[200];   /* $003C2  ten records of 20 bytes: sixteen characters and four bytes */
+extern uint16_t key_held;   /* $00228  non-zero: the button is still down since it picked a cell of the grid */
+extern uint8_t disk_digit;   /* $1D487  the digit of the disk's name ("godsd2": the disk the loader asks for) */
+extern uint16_t has_continue;   /* $0027A  non-zero: there is a game to continue (the menu has a third line) */
+extern uint16_t menu_item_count;   /* $06384  the number of the last line of the menu (1 or 2; a word in the code that is changed) */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
 extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of the two copper lists' colour moves the message fades */
 extern const uint8_t font_8x8[2048];   /* $1E7F4  the text font (8 bytes a character) */
+extern const uint8_t menu_texts[41];   /* $0635A  the main menu's lines, each ended by a 0: "BEGIN QUEST", "ENTER PASSWORD", "CONTINUE GAME" */
+extern const uint8_t text_top_ten[13];   /* $068C2  "TOP TEN GODS" */
+extern const uint8_t text_enter_a[17];   /* $0689C  "ENTER A PASSWORD" */
+extern const uint8_t key_table[40];   /* $06CE0  the keys of the grid in the order of its cells (a to z, full stop, space, 0 to 9, backspace), ended by $FF */
 
 #endif

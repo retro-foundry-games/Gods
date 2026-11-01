@@ -23,4 +23,6 @@ void frame_tick(void);                                         /* orig $016C30 *
 
 void fade_out(uint16_t delay, uint16_t arg);                  /* orig $01D23E */
 
+void vbl_irq(void);                                            /* orig $01CFF8, menu_amiga.asm: the level 3 interrupt */
+
 #endif

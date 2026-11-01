@@ -20,6 +20,7 @@
 #include "input.h"
 #include "menu_symbols.h"
 #include "message.h"
+#include "ui.h"
 #include "screen.h"
 
 void clear_work_area(void);                                              /* orig $00F518 */
