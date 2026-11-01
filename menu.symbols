@@ -40,3 +40,16 @@ glyph_plane_size  0x00000280  uint16_t %s     non-zero: bytes of one plane of a 
 x_offset          0x0001d3a4  int16_t %s      added to the x of everything that is drawn
 glyph_base        0x00000270  uint16_t %s     added to the index of what draw_string_small and the digit printer draw (the small font)
 text_y            0x00012d5a  uint16_t %s     the row text_draw_centered draws at (a word in the middle of the code)
+last_request      0x0000049e  uint16_t %s     the request next_request returned last time
+repeat_delay      0x0000049c  int16_t %s      frames before next_request repeats a request that is held; counted down elsewhere
+screen_other      0x00000e64  uint8_t *%s     the other screen: the one that is shown while screen_buffer is drawn on
+copper_save       0x00000e50  uint16_t *%s    where copper_colors_save puts the colours of the copper list, and the fades take their target from
+palette_dirty     0x00000e0e  uint16_t %s     non-zero: the vertical blank copies the shadow table to the colour registers
+buffer_state      0x00000de4  struct Rec6 %s[2]   what is kept for each of the two screens; swapped when they are
+vbl_saturating    0x0001d058  uint16_t %s     frames since the last flip, stops at $7FFF
+vbl_count         0x0001d05a  uint16_t %s     frames, wraps
+copper_colors     0x00004e3a  uint16_t %s[]   the part of the copper list that has the moves to COLOR01 (the colour of each band)
+copper_list_a     0x00004d8a  uint8_t %s[]    the copper list of one screen
+copper_list_b     0x00004dde  uint8_t %s[]    ... and of the other
+screen_1          0x0006f800  uint8_t %s[]    the two screens
+screen_2          0x00077c00  uint8_t %s[]

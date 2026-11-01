@@ -71,3 +71,25 @@ void input_poll(void)
     }
     custom->potgo = 0xffff;
 }
+
+/* orig $01CEF0: the next request, as a debounce: nothing waiting is 0; a request that is new is returned at once and starts
+ * a delay of 10; one that is held is returned again only when the delay (counted down elsewhere) has run out, and
+ * then it is returned and the delay is 1 */
+uint16_t next_request(void)
+{
+    uint16_t request = (uint16_t)take_pending_request();
+
+    if (request == 0) {
+        last_request = 0;
+        return 0;
+    }
+    if (request != last_request) {
+        last_request = request;
+        repeat_delay = 10;
+        return request;
+    }
+    if (repeat_delay >= 0)
+        return 0;
+    repeat_delay = 1;
+    return last_request;
+}

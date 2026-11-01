@@ -48,3 +48,16 @@ void blitter_wait(void)
     while (custom->dmaconr & DMAF_BLTBUSY)
         ;
 }
+
+/* orig $01CFC0: clear both screens */
+void clear_both_screens(void)
+{
+    clear_screen_buffer((uint32_t *)screen_buffer);
+    clear_screen_buffer((uint32_t *)screen_other);
+}
+
+/* orig $01CFCE: copy the other screen over the one that is drawn on */
+void copy_other_screen(void)
+{
+    copy_screen_buffer((const uint32_t *)screen_other, (uint32_t *)screen_buffer);
+}
