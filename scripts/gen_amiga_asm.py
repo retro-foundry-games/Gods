@@ -30,7 +30,38 @@ ENTRIES = {
     0x30D4: "_screen_clear", 0x30EE: "_screen_restore", 0x1D54: "_plane5_set", 0x1D7E: "_plane5_clear",
     0x32B6: "orig_blit_image", 0x32CA: "orig_blit_image_wide", 0x32DE: "blit_image_body",
     0x2CDE: "_vbl_wait", 0x1DD6: "_irq_level3", 0x2242: "orig_music_init", 0x22E6: "music_step",
-    0x2CF4: "irq_tail",
+    0x2CF4: "irq_housekeeping", 0x22C4: "music_stop",
+}
+# names for the labels inside the routines, by the original's address (any other branch target is called L<address>)
+LABELS = {
+    0x2F26: "blitter_wait_loop", 0x30E2: "screen_clear_loop", 0x3102: "screen_restore_loop",
+    0x1D64: "plane5_set_loop", 0x1D8E: "plane5_clear_loop",
+    # blit_image: a mask is made of the image's planes (the first three ORed, then the fourth), then each plane is drawn
+    # through it over the screen; with a pixel shift the blitter's B channel does the shifting
+    0x32FC: "wait_mask_or3", 0x333E: "mask_modulo_ready", 0x334E: "wait_mask_or4", 0x3378: "wait_before_draw",
+    0x33BC: "draw_planes", 0x33DC: "wait_second_plane", 0x33F4: "wait_third_plane", 0x340C: "wait_fourth_plane",
+    0x3430: "wait_fifth_plane", 0x343E: "blit_image_done",
+    0x344A: "wait_shifted_draw", 0x3470: "shifted_modulo", 0x3478: "shifted_set_modulos",
+    0x2CE6: "vbl_wait_loop",
+    0x1DF2: "irq_clear_request", 0x1E32: "irq_buttons_done", 0x1E36: "irq_to_housekeeping",
+    0x2D2E: "irq_count_frames", 0x2D40: "irq_count_vblanks",
+    # music_init
+    0x2254: "find_last_pattern", 0x2258: "scan_order_table", 0x2278: "locate_samples",
+    # music_step and what it calls: per row (every `speed` ticks) the four channels start their next cell
+    0x230E: "tick_effects", 0x2598: "step_done", 0x256A: "next_order", 0x23A4: "new_row",
+    0x2412: "channel_row", 0x2480: "sample_without_loop", 0x2496: "row_effect", 0x24B6: "start_note",
+    0x24F2: "start_dma", 0x24F6: "start_dma_wait1", 0x250E: "start_dma_wait2",
+    0x25A6: "tone_portamento_target", 0x25C6: "portamento_target_reached", 0x25CA: "portamento_done",
+    0x25CC: "tone_portamento", 0x25DA: "tone_portamento_step", 0x2604: "portamento_set_period",
+    0x260C: "tone_portamento_down",
+    0x262C: "vibrato", 0x2636: "vibrato_apply", 0x2664: "vibrato_subtract", 0x2666: "vibrato_set_period",
+    0x267A: "set_period", 0x2682: "channel_tick",
+    0x234A: "arpeggio", 0x236E: "arpeggio_low_nibble", 0x237A: "arpeggio_base", 0x2380: "arpeggio_offset",
+    0x238E: "arpeggio_find_period", 0x239E: "arpeggio_set_period",
+    0x26C6: "volume_slide", 0x26E4: "volume_slide_write", 0x26EC: "volume_slide_down", 0x2700: "volume_slide_down_write",
+    0x2708: "portamento_up", 0x272C: "portamento_up_write", 0x273A: "portamento_down", 0x275E: "portamento_down_write",
+    0x276C: "row_command", 0x2794: "command_extended", 0x2796: "command_pattern_break", 0x279E: "command_position_jump",
+    0x27B2: "command_volume", 0x27C0: "command_volume_write", 0x27C8: "command_speed", 0x27DE: "command_done",
 }
 SKIP_OBJECTS = {"vectors"}
 
@@ -142,7 +173,7 @@ def text(i: Ins, targets: dict[int, str], final: bool) -> str:
 def emit(mem: bytes, lo: int, hi: int) -> list[str]:
     """The original instructions in [lo, hi) as vasm source, verified against the original bytes."""
     ins = disassemble(mem, lo, hi)
-    targets = {branch_target(i): f"L{branch_target(i):x}" for i in ins
+    targets = {branch_target(i): LABELS.get(branch_target(i), f"L{branch_target(i):x}") for i in ins
                if is_branch(i) and lo <= branch_target(i) < hi and branch_target(i) not in ENTRIES}
     check = [f"{name} = ${addr:x}" for addr, name in ENTRIES.items() if not lo <= addr < hi]
     check.append(f"        org ${lo:x}")
@@ -237,9 +268,9 @@ def main() -> None:
 
     a += ["", "; ---- timing loops ----",
           "; void delay(void), the music's busy wait (inline at orig $0024F2 and $00250A): 301 rounds of a lone dbra",
-          "_delay:", "        move.w #$12c,d0", "dl:", "        dbra d0,dl", "        rts",
+          "_delay:", "        move.w #$12c,d0", "delay_loop:", "        dbra d0,delay_loop", "        rts",
           "", "; void startup_delay(void), orig $000C26: a long wait before the program starts (a register loop, 18 cycles a round)",
-          "_startup_delay:", "        move.l #$f4240,d0", "sd:", "        subq.l #1,d0", "        bne.b sd", "        rts",
+          "_startup_delay:", "        move.l #$f4240,d0", "startup_delay_loop:", "        subq.l #1,d0", "        bne.b startup_delay_loop", "        rts",
           "", "; void interrupts_on(void), the original's `move #$2000,sr` at orig $000C4A: until here the program runs with all",
           "; interrupts masked, so the vertical blank that came in the meantime is still pending and is taken at once",
           "_interrupts_on:", "        move.w #$2000,sr", "        rts"]
