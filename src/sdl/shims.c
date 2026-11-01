@@ -50,10 +50,15 @@ void message_draw(void)
     message_timer = 10;
 }
 
-/* the Amiga's game_loop is the original's loop at $2C20 sent to game_frame: on the host there is no original code, so nothing is sent
- * (the game itself is not started on the host: Begin Quest is the original's code) */
+/* the Amiga's game_loop is the original's loop at $2C20 sent to game_frame (begin_quest ends by entering it): on the host it is the
+ * loop of game_frame, for ever, with the interrupts on */
+extern void sr_set(uint16_t value);
+
 void game_loop(void)
 {
+    sr_set(0x2000);
+    for (;;)
+        game_frame();
 }
 
 /* ---- Begin Quest on the host -------------------------------------------------------------------------------------------------------

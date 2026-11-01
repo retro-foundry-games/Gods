@@ -33,13 +33,59 @@ static uint32_t argb(uint16_t color)
     return 0xff000000u | r << 16 | g << 8 | b;
 }
 
+/* the colours of every line of the picture: what the colour registers hold, changed by the MOVEs to COLOR00..COLOR15 of the copper
+ * list that COP1LC names (a WAIT puts the following moves at its line; the horizontal position is not looked at).  The list is
+ * as the program made it: words of the machine, or (the lists that are in the program's image) big-endian ones; the one in which
+ * the list ends with $FFFF,$FFFE is read. */
+static void line_palettes(uint16_t colors[][16], int lines)
+{
+    const uint16_t *list = (const uint16_t *)(uintptr_t)REG32(0x080);
+    uint16_t current[16];
+    int line = 0, swapped = 0, count = 0;
+
+    for (int i = 0; i < 16; i++)
+        current[i] = REG16(0x180 + 2 * i);
+    if (list) {
+        for (int i = 0; i < 2048 && !count; i += 2) {
+            if (list[i] == 0xffff && list[i + 1] == 0xfffe)
+                count = i + 2;
+            else if (list[i] == 0xffff && list[i + 1] == 0xfeff)
+                count = i + 2, swapped = 1;
+        }
+    }
+    for (int i = 0; i + 1 < count; i += 2) {
+        uint16_t first = list[i], second = list[i + 1];
+
+        if (swapped) {
+            first = (uint16_t)(first >> 8 | first << 8);
+            second = (uint16_t)(second >> 8 | second << 8);
+        }
+        if (first & 1) {   /* WAIT */
+            int wait = first >> 8;
+
+            if (wait < (line & 255))
+                wait += 256 * ((line >> 8) + 1);
+            else
+                wait += 256 * (line >> 8);
+            while (line < wait && line < lines)
+                memcpy(colors[line++], current, sizeof current);
+        } else if ((first & 0x1fe) >= 0x180 && (first & 0x1fe) < 0x1a0) {
+            current[((first & 0x1fe) - 0x180) / 2] = second;
+        }
+    }
+    while (line < lines)
+        memcpy(colors[line++], current, sizeof current);
+}
+
 void display_render(uint32_t *pixels)
 {
+    static uint16_t colors[320][16];
     uint32_t palette[16];
     const uint8_t *first_list = (const uint8_t *)(uintptr_t)REG32(0x080);
     const uint8_t *screen = first_list == copper_list_a ? screen_1 : screen_2;
     int scroll = x_offset & 31;
 
+    line_palettes(colors, 320);
     for (int i = 0; i < 16; i++)
         palette[i] = argb(REG16(0x180 + 2 * i));
     for (int i = 0; i < SCREEN_W * SCREEN_H; i++)
@@ -48,6 +94,8 @@ void display_render(uint32_t *pixels)
     for (int row = 0; row < SCREEN_ROWS; row++) {
         uint32_t *out = pixels + (SCREEN_TOP - FIRST_LINE + row) * SCREEN_W;
 
+        for (int i = 0; i < 16; i++)
+            palette[i] = argb(colors[SCREEN_TOP + row][i]);
         for (int x = 0; x < SCREEN_W; x++) {
             int bx = x + scroll;
             const uint8_t *word = screen + row * 44 + (bx >> 4) * 2;

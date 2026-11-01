@@ -20,4 +20,47 @@ static inline void blit_start(uint16_t size)
     sdl_blit_run();
 }
 
+/* a word and a long of the data of a loaded file (the files are big-endian) */
+static inline uint16_t file_word(const void *p)
+{
+    const uint8_t *b = p;
+
+    return (uint16_t)(b[0] << 8 | b[1]);
+}
+
+static inline uint32_t file_long(const void *p)
+{
+    const uint8_t *b = p;
+
+    return (uint32_t)b[0] << 24 | (uint32_t)b[1] << 16 | (uint32_t)b[2] << 8 | b[3];
+}
+
+/* `count` words and longs of a loaded file's data are made the machine's own */
+static inline void file_words(void *p, uint32_t count)
+{
+    uint8_t *b = p;
+
+    for (uint32_t i = 0; i < count; i++, b += 2) {
+        uint8_t t = b[0];
+
+        b[0] = b[1];
+        b[1] = t;
+    }
+}
+
+static inline void file_longs(void *p, uint32_t count)
+{
+    uint8_t *b = p;
+
+    for (uint32_t i = 0; i < count; i++, b += 4) {
+        uint8_t t = b[0];
+
+        b[0] = b[3];
+        b[3] = t;
+        t = b[1];
+        b[1] = b[2];
+        b[2] = t;
+    }
+}
+
 #endif

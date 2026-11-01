@@ -425,6 +425,7 @@ void load_pattern_data(const uint8_t *names)
 {
     if (word_0266 == 0) {
         load_unpacked((const char *)names + NAME_PATTERN, entry_list);
+        file_longs(entry_list, 100);
         assign_addresses();
     }
     if (flag_286 == 0) {
@@ -451,7 +452,7 @@ void read_text_table_14852(const uint16_t *table, uint16_t *to)
     uint16_t offset = (uint16_t)((uint32_t)(uintptr_t)pool - (uint32_t)(uintptr_t)ptr_0b66);
 
     for (int i = 0; i < 40; i++) {
-        int16_t value = (int16_t)*table++;
+        int16_t value = (int16_t)file_word(table++);
 
         *to = (uint16_t)value;
         if (value >= 0) {
@@ -482,7 +483,7 @@ const uint8_t *read_text_table_14814(const uint8_t *table)
     const int32_t *longs = (const int32_t *)table;
 
     for (int i = 0; i < 40; i++) {
-        int32_t value = longs[i];
+        int32_t value = (int32_t)file_long(&longs[i]);
 
         *to++ = offset;
         if (value <= 0) {
@@ -523,8 +524,8 @@ void load_objects_file(const uint8_t *names)
         uint8_t *record = to_start + i * 10;
         const uint8_t *name1 = from + 8;
 
-        *(uint32_t *)record = *(const uint32_t *)from;
-        *(uint32_t *)(record + 4) = *(const uint32_t *)(from + 4);
+        for (int k = 0; k < 8; k += 2)
+            *(uint16_t *)(record + k) = file_word(from + k);
         *(uint16_t *)(record + 8) = offset;
         {
             uint16_t length = 0;
@@ -563,6 +564,14 @@ void load_weapons_file(const uint8_t *names)
     for (int i = 0; i < 11; i++)
         kept[i] = objects[i].last_value;
     load_unpacked((const char *)names + NAME_WEAPONS, object_slots);
+    for (int i = 0; i < 11; i++) {
+        uint8_t *o = (uint8_t *)&objects[i];
+
+        file_words(o, 8);
+        file_longs(o + 20, 2);
+        file_words(o + 28, 2);
+        file_words(o + 74, 1);
+    }
     restore_slot_words();
     for (int i = 10; i >= 0; i--)
         objects[i].last_value = kept[i];
@@ -620,14 +629,14 @@ void load_level_map(void)
 
     load_unpacked((const char *)ptr_0b8a, background);
     p = (const uint16_t *)background;
-    word_1ec = *p++;
-    word_1ee = *p++;
+    word_1ec = file_word(p++);
+    word_1ee = file_word(p++);
     to = (uint16_t *)ptr_0cda;
     {
         uint16_t n = (uint16_t)(word_1ec - 1);
 
         do {
-            *to++ = *p++;
+            *to++ = file_word(p++);
         } while (n-- != 0);
     }
     to = (uint16_t *)ptr_0b86;
@@ -1740,8 +1749,8 @@ void begin_quest(void)
         ptr_03ac = ptr_0b5e;
         asset_directory = ptr_0b52;
         if (param_index == 4) {
-            line_text = (const uint8_t *)(uintptr_t)226236;
-            ptr_03ac = (uint8_t *)(uintptr_t)227836;
+            line_text = (const uint8_t *)GUEST(226236);
+            ptr_03ac = (uint8_t *)GUEST(227836);
             asset_directory = (uint8_t *)entry_list + 2820;
         }
         asset_mem_end = asset_end_28ec;
@@ -1766,7 +1775,7 @@ void begin_quest(void)
     flags_0ddd = 0;
     flags_0ddd |= 2;
     flags_0ddd |= 8;
-    ptr_0de0 = (const int16_t *)(uintptr_t)296;
+    ptr_0de0 = (const int16_t *)GUEST(296);
     if (word_0384 != 0)
         return;   /* goes on at $013568 */
 

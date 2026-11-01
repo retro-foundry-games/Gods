@@ -41,8 +41,11 @@ void copy_record_table(const struct Rec6 *from)
 {
     int i;
 
-    for (i = 0; i < 200; i++)
-        record_table[i] = from[i];
+    for (i = 0; i < 200; i++) {
+        record_table[i].w[0] = file_word(&from[i].w[0]);
+        record_table[i].w[1] = file_word(&from[i].w[1]);
+        record_table[i].w[2] = file_word(&from[i].w[2]);
+    }
 }
 
 /* orig $017DF8: clear the 50 entries of the entry table */
@@ -65,7 +68,7 @@ void narrow_words_to_bytes(void)
     int i;
 
     for (i = 0; i < 506; i++)
-        *to++ = (uint8_t)*from++;
+        *to++ = (uint8_t)file_word(from++);
 }
 
 /* orig $00F3C0: give the entries of the list their addresses, one after the other, from 400 bytes after the start of the

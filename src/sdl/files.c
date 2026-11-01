@@ -18,6 +18,7 @@
 #define DIRECTORY_SECTOR 22
 
 static uint8_t *disk[2];
+static int unpack_swaps;   /* the words of what unpack() makes are made native: the file just read is a picture (.pi1: palette and planes) */
 static uint32_t disk_size[2];
 
 extern volatile uint8_t disk_digit;   /* the digit of the disk the program asks for (menu.symbols) */
@@ -108,6 +109,7 @@ int files_read(const char *name, int prefer, uint8_t *dest)
     if (!dest)
         return 0;
     memcpy(dest, file, size);
+    unpack_swaps = ends_with(name, ".pi1");
     if (ends_with(name, ".dat"))
         for (uint32_t i = 0; i + 1 < size; i += 2) {
             uint8_t t = dest[i];
@@ -172,12 +174,13 @@ uint8_t *unpack(uint8_t *to, const uint8_t *from)
             }
         }
     }
-    for (uint8_t *p = start; p + 1 < to; p += 2) {
-        uint8_t t = p[0];
+    if (unpack_swaps)
+        for (uint8_t *p = start; p + 1 < to; p += 2) {
+            uint8_t t = p[0];
 
-        p[0] = p[1];
-        p[1] = t;
-    }
+            p[0] = p[1];
+            p[1] = t;
+        }
     return to;
 }
 
@@ -194,14 +197,8 @@ int files_load_menu_image(void)
         return -1;
     }
     out = malloc(0x80000);
+    unpack_swaps = 0;   /* the loader's unpacker leaves bytes */
     end = unpack(out, packed);
-    /* the loader's unpacker leaves bytes: undo the word swap of unpack() */
-    for (uint8_t *p = out; p + 1 < end; p += 2) {
-        uint8_t t = p[0];
-
-        p[0] = p[1];
-        p[1] = t;
-    }
     guest_load_image(out, (uint32_t)(end - out));
     free(out);
     return 0;

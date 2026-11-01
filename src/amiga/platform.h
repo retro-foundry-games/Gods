@@ -11,4 +11,28 @@ static inline void blit_start(uint16_t size)
     custom->bltsize = size;
 }
 
+/* a word and a long of the data of a loaded file (the files are big-endian: on the Amiga they are read as they are) */
+static inline uint16_t file_word(const void *p)
+{
+    return *(const uint16_t *)p;
+}
+
+static inline uint32_t file_long(const void *p)
+{
+    return *(const uint32_t *)p;
+}
+
+/* `count` words and longs of a loaded file's data are made the machine's own */
+static inline void file_words(void *p, uint32_t count)
+{
+    (void)p;
+    (void)count;
+}
+
+static inline void file_longs(void *p, uint32_t count)
+{
+    (void)p;
+    (void)count;
+}
+
 #endif
