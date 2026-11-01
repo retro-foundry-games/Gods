@@ -78,10 +78,10 @@ def parse_hunks(data: bytes):
 
 def main() -> int:
     BUILD.mkdir(exist_ok=True)
-    flags = os.environ.get("GODS_CFLAGS", "") + " -m68000 -Os -ffreestanding -fno-tree-loop-distribute-patterns -nostdlib -fdata-sections"
+    flags = os.environ.get("GODS_CFLAGS", "") + " -m68000 -O2 -ffreestanding -fno-tree-loop-distribute-patterns -nostdlib -fdata-sections"
     r = nix(f"cd {NATIVE} && m68k-amigaos-gcc {flags} -Wall -Wextra -c gods.c -o {BUILD}/gods.o"
             f" && m68k-amigaos-gcc {flags} -c data.c -o {BUILD}/data.o"
-            f" && m68k-amigaos-ld -m amiga -T gods.ld -o {BUILD}/gods.exe {BUILD}/gods.o {BUILD}/data.o"
+            f" && m68k-amigaos-ld -m amiga -T gods.ld -Map {BUILD}/gods.map -o {BUILD}/gods.exe {BUILD}/gods.o {BUILD}/data.o"
             f" && m68k-amigaos-nm {BUILD}/gods.exe > {BUILD}/gods.sym")
     if r.returncode:
         print(r.stdout[-2000:], r.stderr[-3000:])

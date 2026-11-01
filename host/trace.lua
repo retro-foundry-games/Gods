@@ -12,7 +12,7 @@ local start, frames = tonumber(args:match("start=(%d+)")), tonumber(args:match("
 while ami.frame() < start do ami.wait(1) end
 local log = {}
 for name, addr in (args:match("hooks=(%S+)") or ""):gmatch("(%w+):(%x+)") do
-    ami.hook(tonumber(addr, 16), function() log[#log + 1] = ("%d %s"):format(ami.frame(), name) end)
+    ami.hook(tonumber(addr, 16), function() log[#log + 1] = ("%d %s %d"):format(ami.frame(), name, ami.cycles()) end)
 end
 local from = ami.frame()
 while ami.frame() < from + frames do ami.wait(1) end
