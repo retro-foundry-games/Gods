@@ -110,7 +110,13 @@ game's variables.
   diverged.  Run from fast RAM or on a faster CPU the C was fast enough, but the original's own loops in chip RAM are slower
   than that, so one frame flip fell on the other side of an interrupt.  With the original's instructions in chip RAM the
   timing is the same cycle for cycle.
-- **Frames:** 98,100 frames compared (rebuilt frames 2300-100400 against reference frames 2129-100000), 0 differ.
+- **Scope (agreed with the user):** the lockstep covers the game's own frames, from the original's entry into the game
+  (`$000B12`, reference frame 1,746) to frame 100,000.  The Kickstart boot and the original loader before that (reference
+  frames 0-1,727) cannot match index for index on a 1 MB chip machine: Kickstart sizes and tests the extra RAM, which changes
+  its start-up timing (the original disk on 1 MB chip first differs from the reference at frame 56; on 512 KB it matches
+  frame for frame), and the C's loader hook reads its blob from disk.  Those frames are reported as not comparable.
+- **Frames:** reference frames 1,728-99,999 (98,272 frames) compared against the C build at the constant boot offset (169
+  frames), 0 differ.
 - **Memory:** `scripts/compare_events.py` compares the pinned data objects (sizes from `build/data.o`: the music module,
   the graphics, the palette and blitter state, both screens, the music and channel state, the clocks and the frame counter)
   at the program's own points in time, not at the end of each frame.  An event is the entry of `vbl_wait` (the original's
