@@ -276,7 +276,7 @@ game_record_ptr   0x00000bd2  uint8_t *%s    where the input of this frame is re
 onscreen_count    0x000002b8  uint16_t %s     how many things were counted as on the screen this frame
 game_buttons      0x00000228  uint8_t %s     the button bits of this frame (bit 0 fire); the byte at $228 (the menu uses the word there)
 records_113c      0x0000113c  struct Slot12 %s[10]   ten records of 12 bytes (the second word is not 0 for one in use)
-records_19334     0x00019334  struct Slot8 %s[10]    ten records of 8 bytes (the second word is negative for one that is free)
+records_19334     0x00019334  struct Slot8 %s[20]    twenty records of 8 bytes (the third word is not negative for one that is in use)
 records_19b14     0x00019b14  struct Slot8 %s[200]   two hundred records of 8 bytes (the second word is negative for one that is free)
 dispatch_18be0    0x00018be0  void (*%s[])(void)     the routines a record's kind (0, 1, ...) names
 message_slots     0x00012be6  uint8_t %s[]           the first of the lines of text the messages are made of (88 bytes each)
@@ -297,3 +297,20 @@ item_count         0x00000224 int16_t %s     how many of the things the player h
 flag_2ac           0x000002ac uint16_t %s    set while one of the effects is alive
 effects            0x0003a196 int16_t %s[100]   ten effects of five words (x, y, ?, glyph less 80, life): x negative when it is free
 flag_236           0x00000236 uint16_t %s
+flag_244           0x00000244 int16_t %s
+temp_bb6           0x00000bb6 uint8_t *%s    the pointer a loop over records with a block of its own each keeps
+records_12a0       0x000012a0 uint16_t %s[90]   ten records of 18 bytes (the first word is 0 for one that is free)
+records_1354       0x00001354 uint16_t %s[2140]   ten records of 428 bytes (the first word is 0 for one that is free)
+value_1296         0x00001296 uint32_t %s
+index_1ea          0x000001ea uint16_t %s
+table_ed0          0x00000ed0 int16_t %s[128]    entries of four words
+flag_721c          0x0000721c uint16_t %s    non-zero while a record of records_721e is in use
+records_721e       0x0000721e int16_t %s[30]    ten records of three words (x, y, a count that goes down; negative: free)
+flag_2a8           0x000002a8 uint16_t %s    how many of the records of records_3a0a6 are in use
+records_3a0a6      0x0003a0a6 int16_t %s[120]   twenty records of six words (a flag, x, y, speeds in x and y, a count that goes up to 69)
+table digit_font   0x000058f0 uint8_t 512   sixteen digits of 8 rows of 4 bytes (a plane each)
+flag_2d0           0x000002d0 uint16_t %s    set when the score is to be drawn again
+score_words        0x000002d2 uint16_t %s[4]   the score, two decimal digits a word, the low digits first
+word_200           0x00000200 uint16_t %s
+word_202           0x00000202 uint16_t %s
+fn_5af6           0x00005af6 void %s(void)

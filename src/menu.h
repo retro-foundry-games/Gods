@@ -23,6 +23,9 @@
 #include "file.h"
 #include "boot.h"
 #include "game.h"
+#include "game_a.h"
+#include "game_b.h"
+#include "game_c.h"
 #include "ui.h"
 #include "screen.h"
 

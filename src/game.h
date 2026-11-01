@@ -31,4 +31,16 @@ void draw_item_row(void);                                  /* orig $003806 */
 void work_area_shift_left(void);                           /* orig $01700C */
 void message_ticker(void);                                 /* orig $016CA4 */
 
+void update_records_12a0(void);                           /* orig $009AE6 */
+void update_records_1354(void);                           /* orig $008A54 */
+void next_table_entry(void);                              /* orig $00D47E */
+void mark_player_cells(void);                             /* orig $003C56 */
+
+void draw_sprites_721e(void);                             /* orig $007292 */
+void move_records_3a0a6(void);                            /* orig $003DFC */
+
+void spawn_effect(int16_t x, int16_t y, int16_t kind);       /* orig $003F46 */
+void check_pickups(void);                                  /* orig $010470 */
+void update_score_display(void);                           /* orig $005842 */
+
 #endif

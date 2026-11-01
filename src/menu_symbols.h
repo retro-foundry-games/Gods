@@ -267,7 +267,7 @@ extern uint8_t *game_record_ptr;   /* $00BD2  where the input of this frame is r
 extern uint16_t onscreen_count;   /* $002B8  how many things were counted as on the screen this frame */
 extern uint8_t game_buttons;   /* $00228  the button bits of this frame (bit 0 fire); the byte at $228 (the menu uses the word there) */
 extern struct Slot12 records_113c[10];   /* $0113C  ten records of 12 bytes (the second word is not 0 for one in use) */
-extern struct Slot8 records_19334[10];   /* $19334  ten records of 8 bytes (the second word is negative for one that is free) */
+extern struct Slot8 records_19334[20];   /* $19334  twenty records of 8 bytes (the third word is not negative for one that is in use) */
 extern struct Slot8 records_19b14[200];   /* $19B14  two hundred records of 8 bytes (the second word is negative for one that is free) */
 extern void (*dispatch_18be0[])(void);   /* $18BE0  the routines a record's kind (0, 1, ...) names */
 extern uint8_t message_slots[];   /* $12BE6  the first of the lines of text the messages are made of (88 bytes each) */
@@ -284,6 +284,22 @@ extern int16_t item_count;   /* $00224  how many of the things the player has (d
 extern uint16_t flag_2ac;   /* $002AC  set while one of the effects is alive */
 extern int16_t effects[100];   /* $3A196  ten effects of five words (x, y, ?, glyph less 80, life): x negative when it is free */
 extern uint16_t flag_236;   /* $00236 */
+extern int16_t flag_244;   /* $00244 */
+extern uint8_t *temp_bb6;   /* $00BB6  the pointer a loop over records with a block of its own each keeps */
+extern uint16_t records_12a0[90];   /* $012A0  ten records of 18 bytes (the first word is 0 for one that is free) */
+extern uint16_t records_1354[2140];   /* $01354  ten records of 428 bytes (the first word is 0 for one that is free) */
+extern uint32_t value_1296;   /* $01296 */
+extern uint16_t index_1ea;   /* $001EA */
+extern int16_t table_ed0[128];   /* $00ED0  entries of four words */
+extern uint16_t flag_721c;   /* $0721C  non-zero while a record of records_721e is in use */
+extern int16_t records_721e[30];   /* $0721E  ten records of three words (x, y, a count that goes down; negative: free) */
+extern uint16_t flag_2a8;   /* $002A8  how many of the records of records_3a0a6 are in use */
+extern int16_t records_3a0a6[120];   /* $3A0A6  twenty records of six words (a flag, x, y, speeds in x and y, a count that goes up to 69) */
+extern uint16_t flag_2d0;   /* $002D0  set when the score is to be drawn again */
+extern uint16_t score_words[4];   /* $002D2  the score, two decimal digits a word, the low digits first */
+extern uint16_t word_200;   /* $00200 */
+extern uint16_t word_202;   /* $00202 */
+extern void fn_5af6(void);   /* $05AF6 */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
 extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of the two copper lists' colour moves the message fades */
@@ -302,5 +318,6 @@ extern const uint16_t fill_words[14];   /* $05FAE  fourteen words that fill_buff
 extern const uint32_t fill_longs[14];   /* $05FCA  fourteen longs it repeats instead when flag_290 is not negative */
 extern const uint16_t zone_limits[28];   /* $09992  seven records of four words: the limits of the zones the player is tested against */
 extern const uint8_t zone_groups[18];   /* $099CA  six groups of three zone numbers */
+extern const uint8_t digit_font[512];   /* $058F0  sixteen digits of 8 rows of 4 bytes (a plane each) */
 
 #endif

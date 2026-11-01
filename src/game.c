@@ -466,3 +466,200 @@ void message_ticker(void)
     }
     message_wide++;
 }
+
+/* orig $009AE6: the ten records of 18 bytes at $12A0, each with a block of 240 bytes (at asset_directory + 240 a record) of its own:
+ * a record that is not free (first word not 0) goes on at $9B24 or $9A20, which did not run */
+void update_records_12a0(void)
+{
+    flag_244 = -1;
+    for (int i = 0; i < 10; i++) {
+        temp_bb6 = asset_directory + 240 * i;
+        if (records_12a0[i * 9] != 0)
+            return;
+    }
+}
+
+/* orig $008A54: the same for the ten records of 428 bytes at $1354, with blocks of 400 bytes at ptr_0cee; value_1296 is set to $121C
+ * first; a record that is not free goes on at $8A98 or $891C, which did not run */
+void update_records_1354(void)
+{
+    flag_244 = 0;
+    value_1296 = 0x121c;
+    for (int i = 0; i < 10; i++) {
+        temp_bb6 = ptr_0cee + 400 * i;
+        if (records_1354[i * 214] != 0)
+            return;
+    }
+}
+
+/* orig $00D47E: with param_index 1 the entry of table_ed0 index_1ea names (four words) is looked at: the one whose third word is
+ * not 0 or that is not in the window of 9 by 11 cells (scroll in cells of 32 by 16) at the scroll is passed by: index_1ea goes on
+ * 8, back to 0 at 256 or when the first long of the table is negative.  An entry in the window (third word 0) goes on at $D4E2,
+ * which did not run */
+void next_table_entry(void)
+{
+    if (param_index != 1) {
+        index_1ea = 0;
+        return;
+    }
+    int16_t *entry = (int16_t *)((uint8_t *)table_ed0 + (int16_t)index_1ea);
+
+    if (entry[2] == 0) {
+        int16_t cell_x = scroll_x >> 5;
+        int16_t cell_y = scroll_y >> 4;
+
+        if (entry[0] > cell_x && entry[1] > cell_y && entry[0] < cell_x + 9 && entry[1] < cell_y + 11)
+            return;   /* goes on at $D4E2 */
+    }
+    int16_t next = (int16_t)index_1ea + 8;
+
+    if (next >= 256 || ((int32_t)((table_ed0[0] << 16) | (uint16_t)table_ed0[1])) < 0) {
+        index_1ea = 0;
+        return;
+    }
+    index_1ea = next;
+}
+
+/* orig $003C56: the player's place in the buffer line_text points at, 101 bytes in: four bytes of $FD around where the player is
+ * on the screen (a cell of 8 pixels, 12 bytes of the buffer a row of cells) */
+void mark_player_cells(void)
+{
+    int16_t x = (player_x - scroll_x) >> 3;
+    int16_t y = (int16_t)(player_y - scroll_y) & -8;
+    uint8_t *p = (uint8_t *)line_text + 100 + 1;
+
+    p += x;
+    y = (int16_t)(y << 1);
+    p += y;
+    y = (int16_t)(y << 1);
+    p += y;
+    p[0] = 0xfd;
+    p[3] = 0xfd;
+    p[288] = 0xfd;
+    p[291] = 0xfd;
+}
+
+/* orig $007292: the ten records of three words at $721E that are in use (the third word not negative) are drawn as sprites (their count
+ * plus 100) where they are on the screen, and their counts go down; when the last has run out flag_721c is cleared */
+void draw_sprites_721e(void)
+{
+    int16_t alive = 0;
+
+    if (flag_721c == 0)
+        return;
+    for (int i = 0; i < 10; i++) {
+        int16_t *record = &records_721e[i * 3];
+
+        if (record[2] < 0)
+            continue;
+        alive++;
+        sprite_draw(record[0] - scroll_x, record[1] - scroll_y, record[2] + 100);
+        if (--record[2] < 0) {
+            record[2] = -1;
+            alive--;
+        }
+    }
+    if (alive == 0)
+        flag_721c = 0;
+}
+
+/* orig $003DFC: when flag_2a8 says so, the twenty records of six words at $3A0A6 that are in use (first word not negative) move
+ * (the third and fourth words are added to the second and third: x and y) and are drawn as glyphs of the sixth word where they are on
+ * the screen; the sixth word goes up and at 69 the record is free again (and flag_2a8 down) */
+void move_records_3a0a6(void)
+{
+    if (flag_2a8 == 0)
+        return;
+    for (int i = 0; i < 20; i++) {
+        int16_t *record = &records_3a0a6[i * 6];
+
+        if (record[0] < 0)
+            continue;
+        record[1] += record[3];
+        record[2] += record[4];
+        glyph_draw(record[1] - scroll_x, record[2] - scroll_y, record[5]);
+        record[5]++;
+        if (record[5] >= 69) {
+            record[0] = -1;
+            flag_2a8--;
+        }
+    }
+}
+
+/* orig $003F46: an effect is started where (x, y) is on the screen (x and y are the screen's, the scroll is added): in the first free
+ * record of the ten at `effects` (the first if none is alive), with the kind (`d2`), a count of 6 and -12; none if all are in use */
+void spawn_effect(int16_t x, int16_t y, int16_t kind)
+{
+    int16_t *effect = effects;
+
+    if (flag_2ac != 0) {
+        int i;
+
+        for (i = 0; i < 10; i++, effect += 5)
+            if (effect[0] < 0)
+                break;
+        if (i == 10)
+            return;
+    }
+    effect[0] = x + scroll_x;
+    effect[1] = y + scroll_y;
+    effect[2] = kind;
+    effect[3] = 6;
+    effect[4] = -12;
+    flag_2ac = 1;
+}
+
+/* orig $010470: the player (a box 32 wide and 16 high at the player) against the twenty records of 8 bytes at $19334: the first that
+ * is in use (third word above 0) and inside it sets flag_1f0, copies its third and fourth words and plays sound 5 with priority 25 */
+void check_pickups(void)
+{
+    int16_t x0 = player_x - 16, y0 = player_y - 8, x1 = player_x + 16, y1 = player_y + 8;
+
+    for (int i = 0; i < 20; i++) {
+        struct Slot8 *record = &records_19334[i];
+
+        if (record->w[2] <= 0)
+            continue;
+        if (record->w[0] < x0 || record->w[0] > x1 || record->w[1] < y0 || record->w[1] > y1)
+            continue;
+        flag_1f0 = 1;
+        word_200 = record->w[2];
+        word_202 = record->w[3];
+        play_sound(5, 25);
+        return;
+    }
+}
+
+/* orig $0058C8: one digit (0 to 15) of digit_font is put in the four planes (150 bytes apart) of the score image, 8 rows of a byte, a
+ * row 10 bytes on */
+static void draw_score_digit(uint8_t *to, uint16_t digit)
+{
+    const uint8_t *from = digit_font + (digit << 5);
+
+    for (int row = 0; row < 8; row++) {
+        to[0] = *from++;
+        to[150] = *from++;
+        to[300] = *from++;
+        to[450] = *from++;
+        to += 10;
+    }
+}
+
+/* orig $005842: when flag_2d0 says so the eight digits of the score are drawn in the score image (image 121 of the image table, 48
+ * bytes in, from the right: the low digit of the first word first), then the routine at $5AF6 compares it with the high scores */
+void update_score_display(void)
+{
+    if (flag_2d0 == 0)
+        return;
+    flag_2d0 = 0;
+
+    uint8_t *to = *(uint8_t **)((uint8_t *)image_table + 968 + 4) + 48;
+
+    for (int w = 0; w < 4; w++) {
+        draw_score_digit(to, score_words[w] & 15);
+        to--;
+        draw_score_digit(to, score_words[w] >> 4);
+        to--;
+    }
+    fn_5af6();
+}
