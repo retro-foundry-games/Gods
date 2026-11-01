@@ -139,4 +139,9 @@ return {
     { name = "cell_entry_runs",      orig = 0x012796, args = { "a0" }, scenario = "game" },
     { name = "hint_message",         orig = 0x010976, args = {}, ret = "d3.w", scenario = "game" },
     { name = "pick_up_object",       orig = 0x015282, args = { "d2.w" }, blitter = true, scenario = "game" },
+    { name = "update_records",       orig = 0x00417c, args = {}, blitter = true, scenario = "game" },
+    { name = "record_check_walls",   orig = 0x007eae, args = { "d0.w", "d1.w", "a5" }, scenario = "game" },
+    { name = "draw_score_panel",     orig = 0x0057fc, args = {}, blitter = true, scenario = "game" },
+    { name = "blit_image_5wide",     orig = 0x017100, args = { "a0", "a1", "d0.w", "d1.w", "d7.w" }, blitter = true, scenario = "game" },
+    { name = "draw_records_19334",   orig = 0x01924c, args = {}, blitter = true, scenario = "game" },
 }
