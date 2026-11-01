@@ -1,4 +1,5 @@
-/* Gods SDL port: the sound (see below for what it does) */
+/* Gods SDL port: the sound.  Silent for now: see README.md (the instrument records and the sound files are put in place by the
+ * original's start-up code).  The entry points of the asm (menu_amiga.asm) the program calls are here. */
 #include <stdint.h>
 #include <stdio.h>
 

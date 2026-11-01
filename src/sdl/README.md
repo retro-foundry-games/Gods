@@ -7,10 +7,10 @@ the sound are replaced by the C in this folder; nothing of the original's 68000 
 
 You need the original disk images `gods-disk1.adf` and `gods-disk2.adf` in `projects/gods/local/` (or any folder, see `--disks`).
 
-    nix develop projects/gods/native --command make -C projects/gods/native/src/sdl        # build
+    make -C projects/gods/native/src/sdl                                                    # build (it enters the flake's shell itself)
     projects/gods/native/build/sdl/gods-sdl --disks projects/gods/local                     # run
 
-or both: `make -C projects/gods/native/src/sdl run` (it starts the shell of `native/flake.nix` itself when it is not in it; the
+or both: `make -C projects/gods/native/src/sdl run` (the shell is the one of `native/flake.nix`; the
 flake has the 32-bit gcc and the 32-bit SDL3 the port needs).
 
 Options: `--scale N` (window size, default 3), `--disks FOLDER`.  Test runs without a window:
@@ -58,3 +58,7 @@ writes the picture of every 100th frame as `/tmp/gods_NNNNN.ppm` and presses the
   asset set, the second copper list) are set in `guest.c`; the three saved passwords of the high score file are read in the
   Amiga's byte order and may be wrong (a fresh disk has none).
 * The copper lists are not run: the message line's backgrounds and the scroll are emulated from the program's variables.
+* **Sound is silent.** `sound.c` has the entry points of the asm (`play_sound`, `sound_tick`, `audio_irq`, `voice_start`) as empty
+  routines.  What a sound player needs: the sequencer's tracks (`$21C3A`, the table of sound numbers `$20BCE`) are in the menu image, but
+  the instrument records at `$3A38A` (sample address, lengths, loop) and the three sound files (`sound1.bin` to `sound3.bin`) are put in
+  place by the original's start-up code, which is not in C, so there is nothing to play yet.
