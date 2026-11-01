@@ -8,11 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* a channel of the audio hardware, as it sits in the custom chip registers */
-struct AudioChannel {
-    uint32_t lc;           /* sample address */
-    uint16_t len, per, vol, dat, pad[2];
-};
+#include "hw.h"
 
 /* ---- the screen -------------------------------------------------------------------------------------------------- */
 
