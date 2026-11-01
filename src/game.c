@@ -184,6 +184,15 @@ static void wait_frames_then_flip(uint16_t frames)
     screens_flip();
 }
 
+/* not in the original: the loop of the original at $2C20 is sent to game_loop (a jump over its first six bytes), which runs game_frame in
+ * its place and goes back to $2C20.  This is called before the original's Begin Quest, Continue and the code after the password
+ * screen start the game */
+void game_loop_install(void)
+{
+    *(volatile uint16_t *)GUEST(0x2c20) = 0x4ef9;
+    *(volatile uint32_t *)GUEST(0x2c22) = (uint32_t)(uintptr_t)game_loop;
+}
+
 /* orig $002C20: one frame of the game.  The routines it calls are the original's (fn_ and the address) until they are written
  * in C.  Where the original goes on at an address that did not run in the recorded play ($3A36, $3A6C, $3A54, $39F6, $32B4,
  * $30DA, $35D2, $2F12) the frame ends here: those are the ends of a level, a death, the pause menu and the like */

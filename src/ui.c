@@ -203,10 +203,12 @@ void menu_main(void)
             if (button_bits[0] & 1) {
                 play_sound(33, 2);
                 if ((int16_t)cursor_pos < 1) {
+                    game_loop_install();
                     original_begin();
                     return;
                 }
                 if ((int16_t)cursor_pos > 1) {
+                    game_loop_install();
                     original_continue();
                     return;
                 }
@@ -214,6 +216,7 @@ void menu_main(void)
                 title_x = 32;
                 title_y = 8;
                 password_screen();
+                game_loop_install();
                 original_after_password();
                 return;
             }

@@ -47,3 +47,9 @@ void message_draw(void)
     message_state = -1;
     message_timer = 10;
 }
+
+/* the Amiga's game_loop is the original's loop at $2C20 sent to game_frame: on the host there is no original code, so nothing is sent
+ * (the game itself is not started on the host: Begin Quest is the original's code) */
+void game_loop(void)
+{
+}

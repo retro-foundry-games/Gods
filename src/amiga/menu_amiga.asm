@@ -2655,3 +2655,18 @@ _jump_with_stack:
         movea.l a1,sp
         jmp (a0)
 
+; game_loop: where the original's game loop at $2C20 is sent (game_loop_install patches a jmp there): the loop's body is the C game_frame,
+; run on a stack of its own (the original's is in memory that files are loaded to) with every register kept; then the loop goes on at its top
+        xref _game_frame
+        xdef _game_loop
+_game_loop:
+        movem.l d0-d7/a0-a6,-(sp)
+        lea.l game_loop_sp(pc),a0
+        move.l sp,(a0)
+        lea.l $eb000.l,sp
+        jsr _game_frame
+        movea.l game_loop_sp(pc),sp
+        movem.l (sp)+,d0-d7/a0-a6
+        jmp $2c20.l
+game_loop_sp: dc.l 0
+

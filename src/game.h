@@ -17,6 +17,8 @@ struct SavedByte *restore_saved_bytes(struct SavedByte *list, int16_t count);   
 void call_by_kind(int16_t kind, int16_t arg, int16_t *result);                          /* orig $018A10 */
 uint8_t *next_message_slot(void);                          /* orig $012A80 */
 
+void game_loop(void);                                      /* menu_amiga.asm: the original's loop at $2C20 is sent here by game_loop_install */
+void game_loop_install(void);                              /* the original's game loop at $2C20 gets a jump to game_loop: its body is game_frame */
 void game_frame(void);                                     /* orig $002C20 */
 
 void fill_buffer(void);                                    /* orig $006002 */
