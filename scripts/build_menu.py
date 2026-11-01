@@ -29,7 +29,7 @@ def main() -> int:
     BUILD.mkdir(exist_ok=True)
     gen_menu_symbols.main(base)
     gen_menu_amiga_asm.main()
-    r = subprocess.run(["make", "-C", str(B.G.ROOT / "native"), "--no-print-directory", "native/build/menu"], capture_output=True, text=True)
+    r = subprocess.run(["make", "-C", str(B.G.ROOT / "native"), "--no-print-directory", "build/menu"], capture_output=True, text=True)
     if r.returncode:
         print(r.stdout[-2000:], r.stderr[-3000:])
         return 1
