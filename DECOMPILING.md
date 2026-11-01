@@ -47,14 +47,26 @@ which of its instructions ran.  `native/build/game-ram.bin` is the program's RAM
 
 ## The tools of the checkout in a worktree
 
-A worktree has no `native/build`, `local` or `captures` and no host binary.  Make them first (once):
+A worktree has no `native/build`, `local` or `captures` and no host binary.  Make them first (once).  COPY the data, never
+symlink it into the tree (a symlink named `local` or `captures` replaced the real directories when it was merged once):
 
     W=$(pwd); R=/home/boran/git/amiga-decomp
-    mkdir -p projects/gods/native/build
+    mkdir -p projects/gods/native/build projects/gods/captures/input
     cp $R/projects/gods/native/build/{menu-ram.bin,menu-image.bin,game-ram.bin,keyboard_patch.bin} projects/gods/native/build/
-    ln -s $R/projects/gods/local projects/gods/local; ln -s $R/projects/gods/captures projects/gods/captures
+    cp -r $R/projects/gods/local projects/gods/local
+    cp -r $R/projects/gods/captures/ref100k projects/gods/captures/ 2>/dev/null; cp $R/projects/gods/captures/input/* projects/gods/captures/input/
     export AMI_HOST=$R/tools/engine9000/ami9000_host
     PY=$R/.venv/bin/python        # use this instead of `uv run python`
 
 Every command is run from the worktree's root (`$W`); the scripts find their own files.  The build runs the compiler through `nix develop`.
-Commit in your worktree (message ending `[skip ci]`); do not push.
+Commit in your worktree (message ending `[skip ci]`); do not push and do not commit anything in `local/`, `captures/` or `native/build/`.
+
+## What a finished function needs to do (lessons)
+
+* A function that stops at "goes on at $ADDR" is only the executed part.  The game is played with more branches than the coverage
+  shows (`analysis/coverage-game.txt` is a scripted run plus a human run of level 1, `captures/input/level1-run1.txt`), so a partial
+  function cannot stand in for the original in the C game loop: the lead keeps calling the original for those.  Write the
+  continuations too when you can read them (the disassembly tool shows unexecuted code without the star; read it with
+  `kuna`-free methods: `menu_dis.py 0xADDR` after adding that run to the coverage, or capstone on `native/build/game-ram.bin`).
+* Some `rts`-only routines are patched at run time (a `move.w #$4E75,addr` over a first word turns a routine off); do not treat
+  every one-instruction routine as empty.
