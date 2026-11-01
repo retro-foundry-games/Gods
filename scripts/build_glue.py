@@ -19,6 +19,12 @@ SHIMS = {
     "load_directory": ("load_directory", []),            # orig $002988
     "display_reset": ("display_reset", []),              # orig $01D36E
     "drives_idle": ("drives_idle", []),                  # orig $01D966
+    "display_setup": ("display_setup", []),              # orig $039FA6
+    "chips_setup": ("chips_setup", []),                  # orig $039FDC
+    "memory_map_init": ("memory_map_init", []),          # orig $03A060
+    "display_state_reset": ("display_state_reset", []),  # orig $01F5C4
+    "data_pointers_init": ("data_pointers_init", []),    # orig $01AA3C
+    "sound_init": ("sound_init", []),                    # orig $03A18A
     "assets_load": ("assets_load", ["a4", "a3", "a2", "a1"]),   # orig $01ECA2: a3 and a4 come back as where the data and the table ended
 }
 AFTER = {"assets_load": ["        movea.l ($d3e).w,a3", "        movea.l ($d3a).w,a4"]}
@@ -29,11 +35,11 @@ def main() -> None:
     lines = []
     for n, (name, (func, regs)) in enumerate(SHIMS.items()):
         lines += ([f"        org ${GLUE_BASE:x}"] if n == 0 else ["        cnop 0,64"]) + [f"glue_{name}:", "        movem.l d0-d7/a0-a6,-(sp)",
-                                                                                              f"        move.l sp,(${GLUE_BASE + 0x1f0:x}).l",
+                                                                                              f"        move.l sp,(${GLUE_BASE + 0x400:x}).l",
                                                                                               f"        lea ${GLUE_BASE + 0x1000:x},sp"]   # the C runs on a stack of its own: the original's is in memory it loads files to
         lines += [f"        move.l {r},-(sp)" for r in regs]
         lines += [f"        jsr ${syms[func]:x}", f"        lea {4 * len(regs)}(sp),sp" if regs else "",
-                  f"        movea.l (${GLUE_BASE + 0x1f0:x}).l,sp", "        movem.l (sp)+,d0-d7/a0-a6", ] + AFTER.get(name, []) + ["        move #0,ccr", "        rts", ""]
+                  f"        movea.l (${GLUE_BASE + 0x400:x}).l,sp", "        movem.l (sp)+,d0-d7/a0-a6", ] + AFTER.get(name, []) + ["        move #0,ccr", "        rts", ""]
     src = BM.BUILD / "takeover_glue.asm"
     src.write_text("\n".join(lines) + "\n")
     r = BM.B.nix(f"cd {BM.NATIVE} && vasmm68k_mot -Fbin -no-opt -quiet -o {BM.BUILD}/takeover_glue.bin {src} ")

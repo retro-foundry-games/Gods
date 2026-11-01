@@ -25,7 +25,7 @@ RAM = (PROJECT / "build" / "menu-ram.bin").read_bytes()
 import os
 COVERAGE = PROJECT / "analysis" / os.environ.get("MENU_COVERAGE", "coverage-menu-handling.txt")   # e.g. coverage-menu.txt, coverage-game-start.txt
 NATIVE = PROJECT / "native"
-MENU_C = ["menu", "disk", "alloc", "decrunch", "input", "screen", "draw", "display", "message", "ui", "file"]
+MENU_C = ["menu", "disk", "alloc", "decrunch", "input", "screen", "draw", "display", "message", "ui", "file", "boot"]
 
 
 def decompiled() -> dict[int, str]:

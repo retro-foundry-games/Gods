@@ -21,7 +21,7 @@ NATIVE, BUILD = B.NATIVE, B.BUILD
 FLAGS = "-m68000 -O2 -ffreestanding -fno-tree-loop-distribute-patterns -fno-tree-forwprop -fno-ivopts -nostdlib -fdata-sections -ffunction-sections"
 
 
-MODULES = ['menu', 'disk', 'alloc', 'decrunch', 'input', 'screen', 'draw', 'display', 'message', 'ui', 'file', 'menu_data']   # native/<name>.c
+MODULES = ['menu', 'disk', 'alloc', 'decrunch', 'input', 'screen', 'draw', 'display', 'message', 'ui', 'file', 'boot', 'menu_data']   # native/<name>.c
 
 
 def main() -> int:

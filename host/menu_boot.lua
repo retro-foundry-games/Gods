@@ -20,7 +20,8 @@ local blob = read_file("build/menu.blob")
 local glue = read_file("build/takeover_glue.bin")
 local glue_at = load(read_file("build/takeover_glue.lua"))()
 -- the original's entry of each routine that can be replaced
-local ORIG = { load_file = 0x1d3a6, load_unpacked = 0x2702, load_directory = 0x2988, display_reset = 0x1d36e, drives_idle = 0x1d966, assets_load = 0x1eca2 }
+local ORIG = { load_file = 0x1d3a6, load_unpacked = 0x2702, load_directory = 0x2988, display_reset = 0x1d36e, drives_idle = 0x1d966, assets_load = 0x1eca2,
+  display_setup = 0x39fa6, chips_setup = 0x39fdc, memory_map_init = 0x3a060, display_state_reset = 0x1f5c4, data_pointers_init = 0x1aa3c, sound_init = 0x3a18a }
 local calls = {}
 for name in (args:match("use=(%S+)") or ""):gmatch("[%w_]+") do
     calls[name] = 0
