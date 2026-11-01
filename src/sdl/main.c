@@ -2,7 +2,7 @@
 /* Gods SDL port: the program.  The menu program (menu.c ...) runs on a thread of its own; this thread is the machine around it: it
  * raises the vertical blank interrupt 50 times a second, makes the picture from the chips' registers, and takes the keys.
  *
- *   gods-sdl [--disks FOLDER] [--scale N] [--headless --frames N [--dump PREFIX] [--dump-every N]] */
+ *   gods-sdl [--disks FOLDER] [--scale N] [--headless --frames N [--dump PREFIX] [--dump-every N] [--keys FRAME:RAW:1|0,...]] */
 #include <SDL3/SDL.h>
 #include <execinfo.h>
 #include <pthread.h>
@@ -103,6 +103,7 @@ int main(int argc, char **argv)
     const char *disks = "projects/gods/local";
     const char *dump = 0;
     int headless = 0, frames = 0, scale = 3, dump_every = 50;
+    const char *keys = 0;   /* a scripted run: "frame:raw code (hex):1 pressed or 0 released", comma separated */
     static uint32_t pixels[SCREEN_W * SCREEN_H];
     SDL_Window *window = 0;
     SDL_Renderer *renderer = 0;
@@ -120,6 +121,8 @@ int main(int argc, char **argv)
             frames = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--dump") && i + 1 < argc)
             dump = argv[++i];
+        else if (!strcmp(argv[i], "--keys") && i + 1 < argc)
+            keys = argv[++i];
         else if (!strcmp(argv[i], "--dump-every") && i + 1 < argc)
             dump_every = atoi(argv[++i]);
         else {
@@ -165,6 +168,15 @@ int main(int argc, char **argv)
                 if (code >= 0)
                     irq_key(code, event.type == SDL_EVENT_KEY_DOWN);
             }
+        }
+        for (const char *k = keys; k && *k;) {   /* the scripted keys of this frame */
+            int at, code, down, used = 0;
+
+            if (sscanf(k, "%d:%x:%d%n", &at, &code, &down, &used) >= 3 && at == frame)
+                irq_key(code, down);
+            k += used ? used : strlen(k);
+            if (*k == ',')
+                k++;
         }
         irq_vbl();
         display_render(pixels);
