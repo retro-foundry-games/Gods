@@ -242,7 +242,7 @@ for hex in (args:match("reglog=([%x,]+)") or ""):gmatch("%x+") do
     ami.hook(at, function()
         local t = {}
         for _, r in ipairs({ "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "a0", "a1", "a2", "a3", "a4", "a5", "a6" }) do t[#t + 1] = ("%s=%x"):format(r, ami.reg(r)) end
-        ami.log(("regs %x frame %d: %s"):format(at, ami.frame(), table.concat(t, " ")))
+        ami.log(("regs %x frame %d: %s ret %06x"):format(at, ami.frame(), table.concat(t, " "), ami.peek32(ami.reg("a7"))))
     end)
 end
 if args:find("%f[%w]itlog%f[%W]") then   -- itlog: the emulator frame of the top of every iteration of the game loop (at $2C20), 20 at a time, on the log
