@@ -18,6 +18,7 @@
 --   pause=F       pause both at emulator frame F (for lockstep_dump.py; the first difference does not stop the run when continue= is given)
 --   dump=PATH     the port's image and the original's at the first frame that differs are written to PATH.native.ppm and PATH.emulated.ppm
 local args = ami.args or ""
+local tick_synced = false
 local STATE = args:match("state=(%S+)") or "gods-level1-1m.state"
 local EXTRA = tonumber(args:match("extra=(%d+)")) or 2   -- (found by trying: with 3, the comparison starting at frame 5, the idle level is pixel for pixel the same)
 
@@ -257,7 +258,19 @@ lockstep.run {
     window = { x = 40, y = 18, sx = 2 },   -- where the port's image sits in the original's 720x287 frame (tools/lockstep_align.py)
     start = function() ami.wait(4) return true end,   -- the saved state is the start (a frame later it has been drawn)
     keymap = function(key) return KEYS[key] end,
-    on_frame = (trace or dump or watching or track_at or color_n or pause_at or args:find("%f[%w]keylog%f[%W]")) and function(count, native, emulated)
+    on_frame = function(count, native, emulated)
+        if not tick_synced and ami.frame() >= 8 then
+            -- the original's tick_count ($CE2: the frames since the level began) includes the frames of its disk loading, which the port does not wait for: the port is given the
+            -- original's count (it matters where the script looks at the seconds, as the bonus that is given only in the first minute)
+            tick_synced = true
+            local p = lockstep.peer
+            p:send("mem ce2 4\n")
+            local n = tonumber(p:readline():match("mem (%d+)"))
+            local port = string.unpack("<I4", p:read(n))
+            local orig = ami.peek32(0xce2)
+            p:send(("tick %d\n"):format(orig - port))
+            ami.log(("tick_count: the original's %d, the port's %d: %d added to the port's"):format(orig, port, orig - port))
+        end
         if args:find("%f[%w]keylog%f[%W]") then ami.log(("frame %d: px %d table %02x"):format(ami.frame(), ami.read(0x1e0, 2):byte(1) * 256 + ami.read(0x1e0, 2):byte(2), ami.read(0x1e63a + 0x4e, 1):byte())) end
         if watching then watch_variables() end
         if track_at then track_long() end
