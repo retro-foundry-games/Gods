@@ -127,6 +127,8 @@ do
         ami.hook(at, function() ami.log(string.format("HM %x it=%d px=%d sx=%d py=%d sy=%d sxa=%d", at, ITER, ami.peek16(0x1e0), ami.peek16(0x358), ami.peek16(0x1e2), ami.peek16(0x35a), ami.peek16(0x29a))) end)
     end
 end
+LIVE = args:match("live=(%S+)")
+LIVE_KEYS = {}
 PENDING_KEYS = {}
 function iter_top()
     ITER = ITER + 1
@@ -139,6 +141,19 @@ function iter_top()
     -- iterregion=N:ADDR:LEN:PATH (hex ADDR and LEN): at the top of the Nth iteration that part of the memory is written to PATH
     for region_n, region_addr, region_len, region_path in (args:match("iterregion=(%S+)") or ""):gmatch("(%d+):(%x+):(%x+):([^,]+)") do
         if tonumber(region_n) == ITER then ami.save_file(region_path, ami.read(tonumber(region_addr, 16), tonumber(region_len, 16))) end
+    end
+    -- live=PREFIX (the window and the keyboard of the machine are used: scripts/lockstep_live.py): the keys the game reads (the raw codes $4C-$4F and $40 of the table at $1E63A as they are at
+    -- the top of the iteration) are appended to PREFIX.keys as the SDL port's GODS_ITERKEYS has them ("N CODE V": at the top of the SDL iteration N = ITER + 128), and then the
+    -- variables $100-$FFF of the iteration are appended to the named pipe PREFIX.orig.fifo (nothing is kept: the reader compares them as they come)
+    if LIVE then
+        for _, code in ipairs({ 0x4c, 0x4d, 0x4e, 0x4f, 0x40 }) do
+            local down = ami.read(0x1e63a + code, 1):byte() ~= 0
+            if down ~= LIVE_KEYS[code] then
+                LIVE_KEYS[code] = down
+                ami.append_file(LIVE .. ".keys", string.format("%d %x %d\n", ITER + 128, code, down and 1 or 0))
+            end
+        end
+        ami.append_file(LIVE .. ".orig.fifo", ami.read(0x100, 0xf00))
     end
     if iter_shots[ITER] and shots_dir then ami.screenshot(string.format("%s/iter-%d.ppm", shots_dir, ITER)) end
 end
