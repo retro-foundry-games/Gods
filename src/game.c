@@ -734,6 +734,21 @@ void check_pickups(void)
     }
 }
 
+/* the eight pixels at a byte address of a bitplane (the planes are words: the first of the two bytes of a word is the left eight pixels, its high half) */
+static uint8_t plane_byte(const uint8_t *p)
+{
+    const uint16_t *word = (const uint16_t *)((uintptr_t)p & ~(uintptr_t)1);
+
+    return ((uintptr_t)p & 1) ? (uint8_t)(*word & 0xff) : (uint8_t)(*word >> 8);
+}
+
+static void set_plane_byte(uint8_t *p, uint8_t pixels)
+{
+    uint16_t *word = (uint16_t *)((uintptr_t)p & ~(uintptr_t)1);
+
+    *word = ((uintptr_t)p & 1) ? (uint16_t)((*word & 0xff00) | pixels) : (uint16_t)((*word & 0x00ff) | (pixels << 8));
+}
+
 /* orig $0058C8: one digit (0 to 15) of digit_font is put in the four planes (150 bytes apart) of the score image, 8 rows of a byte, a
  * row 10 bytes on */
 static void draw_score_digit(uint8_t *to, uint16_t digit)
@@ -741,10 +756,10 @@ static void draw_score_digit(uint8_t *to, uint16_t digit)
     const uint8_t *from = digit_font + (digit << 5);
 
     for (int row = 0; row < 8; row++) {
-        *PIXEL_BYTE(to) = *from++;
-        *PIXEL_BYTE(to + 150) = *from++;
-        *PIXEL_BYTE(to + 300) = *from++;
-        *PIXEL_BYTE(to + 450) = *from++;
+        set_plane_byte(to, *from++);
+        set_plane_byte(to + 150, *from++);
+        set_plane_byte(to + 300, *from++);
+        set_plane_byte(to + 450, *from++);
         to += 10;
     }
 }
@@ -1598,37 +1613,33 @@ struct SavedByte *mark_record_cells(int16_t x, int16_t y, const uint8_t *a2, str
 void take_record_to_199ac(uint16_t *a0)
 {
     a0[0] = 0xFFFF;
-    uint8_t *entry = ptr_0d0e + (int16_t)(a0[1] << 4);
-    uint8_t *slot = table_199ac;
+    const struct CreatureEntry *entry = (const struct CreatureEntry *)ptr_0d0e + a0[1];
+    struct CreatureType *type = (struct CreatureType *)table_199ac;
     int i;
 
-    for (i = 0; i < 10; i++, slot += 36)
-        if (*(uint16_t *)(slot + 6) == 0)
+    for (i = 0; i < 10; i++, type++)
+        if (type->status == 0)
             break;
     if (i == 10)
         return;
-    uint8_t *out = slot + 6;
-    const uint16_t *w = (const uint16_t *)entry;
+    const struct CreatureTemplate *template = (const struct CreatureTemplate *)ptr_0b82 + entry->template_index;
 
-    *(uint16_t *)out = 2;
-    *(uint16_t *)(out + 2) = w[0];
-    *(uint16_t *)(out + 4) = w[1];
-    out[6] = entry[4];
-    out[7] = entry[5];
-    *(uint16_t *)(out + 8) = w[3];
-    out[10] = entry[8];
-    out[11] = entry[9];
-    int16_t from = (int16_t)(w[5] << 4);
-    out[12] = entry[12];
-    out[13] = entry[13];
-    uint8_t last = entry[14];
-    const uint8_t *src = ptr_0b82 + 2 + from;
-
-    *(uint16_t *)(out + 14) = *(const uint16_t *)src;
-    *(uint32_t *)(out + 16) = *(const uint32_t *)(src + 2);
-    *(uint32_t *)(out + 20) = *(const uint32_t *)(src + 6);
-    *(uint32_t *)(out + 24) = *(const uint32_t *)(src + 10);
-    out[28] = last;
+    type->status = 2;
+    type->start_x = entry->start_x;
+    type->start_y = entry->start_y;
+    type->direction = entry->direction;
+    type->bounds = entry->bounds;
+    type->delay_step = entry->delay_step;
+    type->number = entry->number;
+    type->value = entry->value;
+    type->flag_18 = entry->flag_18;
+    type->speed = entry->speed;
+    type->draw_kind = template->draw_kind;
+    type->move_routine = template->move_routine;
+    type->box_width = template->box_width;
+    type->box_height = template->box_height;
+    type->step_routine = template->step_routine;
+    type->drop = entry->drop;
 }
 
 
@@ -3270,44 +3281,6 @@ void draw_records_19334(void)
 
 /* ======== from game_e.c ======== */
 /* Gods, the game: the routines at $6ED0, $12924, $12A9C, $12796, $10976 and $15282 and what they call.  Each function says where the original has it (`orig $ADDR`). */
-
-/* the creatures of a level: ten records of 36 bytes at $199AC (table_199ac), each the type of a group of up to 255 creatures whose 14
- * byte records (struct Creature) it points to.  Its movement and step routines are the original's (addresses in the record); only
- * the ones that ran are written (see call_move / call_step) */
-struct Creature {
-    int16_t x;
-    int16_t y;
-    int16_t state;     /* +4 0 or more: the step of its animation, -1: just hit, then counts up to 7 while it dies */
-    int16_t delay;     /* +6 negative or positive: frames to go before it appears; 0 it is there */
-    int16_t hp;        /* +8 0: gone; negative: dying */
-    int16_t direction; /* +10 */
-    int16_t timer;     /* +12 */
-};
-
-struct CreatureType {
-    struct Creature *creatures;   /* +0 */
-    int16_t count;                /* +4 */
-    uint16_t status;              /* +6 bit 1: in use, bit 0: started */
-    int16_t start_x;              /* +8 */
-    int16_t start_y;              /* +10 */
-    int8_t direction;             /* +12 */
-    int8_t bounds;                /* +13 0, 1 none; 2 left, 3 right, 4 top, 5 bottom: the creature is gone when it leaves the screen that way */
-    int16_t delay_step;           /* +14 */
-    uint8_t number;               /* +16 */
-    uint8_t value;                /* +17 its hit points, and the score it gives */
-    uint8_t flag_18;              /* +18 */
-    uint8_t speed;                /* +19 */
-    uint16_t draw_kind;           /* +20 index of the table of draw routines at $6EA8 */
-    uint32_t move_routine;        /* +22 */
-    int16_t box_width;            /* +26 */
-    int16_t box_height;           /* +28 */
-    uint32_t step_routine;        /* +30 */
-    uint8_t drop;                 /* +34 what the group drops when it is all gone ($FF none) */
-    uint8_t pad_35;
-};
-
-_Static_assert(sizeof(struct CreatureType) == 36, "creature type record");
-_Static_assert(sizeof(struct Creature) == 14, "creature record");
 
 /* the BCD add of a byte (abcd src, dst) with the extend bit x, which it sets */
 static uint8_t abcd(uint8_t dst, uint8_t src, int *x)
@@ -6804,10 +6777,10 @@ void hud_digits_load(void)
     for (int pair = 0; pair < 5; pair++) {
         for (int half = 0; half < 2; half++) {
             for (int row = 0; row < 8; row++, from += 44) {
-                out[0] = *PIXEL_BYTE(from);
-                out[1] = *PIXEL_BYTE(from + 8448);
-                out[2] = *PIXEL_BYTE(from + 16896);
-                out[3] = *PIXEL_BYTE(from + 25344);
+                out[0] = plane_byte(from);
+                out[1] = plane_byte(from + 8448);
+                out[2] = plane_byte(from + 16896);
+                out[3] = plane_byte(from + 25344);
                 out += 4;
             }
             from -= 351;
@@ -7337,6 +7310,16 @@ static void loading_level_screen(void)
     show_text_screen((const char *)level_text);
 }
 
+/* the groups of creatures of the level (the entries at data_1b17e, 100 of them, 16 bytes: the file's calfils, loaded from the disk): their words are made the machine's own */
+static void creature_entries_from_disk(struct CreatureEntry *entry, int count)
+{
+    for (int i = 0; i < count; i++, entry++) {
+        file_words(&entry->start_x, 2);
+        file_words(&entry->delay_step, 1);
+        file_words(&entry->template_index, 1);
+    }
+}
+
 /* orig $00323C: when the small font asked for it (menu_state_25a) it is loaded again: the asset set of the level's sprites */
 static void reload_sprites(void)
 {
@@ -7399,6 +7382,7 @@ void begin_quest(void)
     load_unpacked((const char *)names + NAME_ALFILS, background);
     for (int i = 0; i < 7000; i++)
         data_1aa66[i] = background[i];
+    creature_entries_from_disk((struct CreatureEntry *)data_1b17e, 100);
     read_text_table_14852((const uint16_t *)(background + 7000), (uint16_t *)(data_1aa66 + 7000));
     place_pickups();
     {

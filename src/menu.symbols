@@ -30,6 +30,7 @@ table_14cf8       0x00014cf8  struct Rec10 %s[132]   built by build_table_14cf8
 marker_table      0x0001a3fc  uint32_t %s[100]   set to -1 by reset_marker_table
 record_table      0x0001a58c  struct Rec6 %s[200]   copied in by copy_record_table
 entry_table       0x0003a25e  struct Rec6 %s[50]   cleared by clear_entry_table
+table creature_templates 0x0001c698 struct CreatureTemplate 49   what a group is: its draw kind, move and step routines and its box (the pointers of table_1c678 point into it)
 table clip_rectangles 0x00000128 uint16_t 6   the clip rectangles of image_draw_clipped (x0, x1, y0, y1: the whole screen; a negative x0 ends the list)
 table param_table  0x000029da uint16_t 24   four rows of 12 bytes (two longs, two words) that select_params takes
 table offsets_4cba 0x00004cba uint8_t 132   signed bytes that build_table_14cf8 puts in the table

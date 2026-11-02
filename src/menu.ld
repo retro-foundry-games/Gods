@@ -53,6 +53,7 @@ SECTIONS {
         . = 0x196de; *(.rodata.objects_name) *(.data.objects_name)
         . = 0x196fe; *(.rodata.tocache_name) *(.data.tocache_name)
         . = 0x1c678; *(.rodata.table_1c678) *(.data.table_1c678)
+        . = 0x1c698; *(.rodata.creature_templates) *(.data.creature_templates)
         . = 0x1c9e4; *(.rodata.table_1c9e4) *(.data.table_1c9e4)
         . = 0x1d3d2; *(.rodata.sound1_name) *(.data.sound1_name)
         . = 0x1e5ae; *(.rodata.keymap) *(.data.keymap)

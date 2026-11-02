@@ -91,14 +91,11 @@ the sound as raw signed 16 bit stereo 44100 Hz.
 
 ## Pixel bytes
 
-The bitplanes' words are the machine's own on the host (the blits work on words), so the first byte of a word is its low one.  The few places
-of the program that read or write the pixels of a plane by bytes (cutting the digits out of the screen in `hud_digits_load`, putting them in the score
-image in `draw_score_digit`) go through `PIXEL_BYTE(p)` (`amiga/platform.h`: the pointer itself; `sdl/sdl_platform.h`: the neighbouring byte).
-Without it the score shows eight ones.  Any other byte access to a plane's pixels needs the same.
+The bitplanes' words are the machine's own on the host (converted when they are loaded; the blits work on words).  The program's few byte accesses to the pixels of a plane
+(cutting the digits out of the screen in `hud_digits_load`, putting them in the score image in `draw_score_digit`) are written as what they are, eight pixels of a
+word (`plane_byte`, `set_plane_byte` in game.c: the high half of a word for an even address), so that they mean the same on both machines.
 
 ## Debug build
 
 `make sdl DEBUG=1` (or `DEBUG=1 make -C projects/gods/native/src/sdl`) compiles everything with `-O0 -ggdb`; the objects are made again when the flags change, so `make sdl`
 without it goes back.  `gdb build/sdl/gods-sdl` (a 32 bit program; the game's memory is mapped at the Amiga's addresses, the first 64 KiB at `0x01000000`).
-The Amiga build has the same: `make menu DEBUG=1` / `DEBUG=1 uv run python projects/gods/scripts/build_menu.py` (the code is bigger and slower, the game's timing
-is not the same; `amiga/libgcc_debug.c` supplies the 32 bit multiply and divide that -O0 code calls).

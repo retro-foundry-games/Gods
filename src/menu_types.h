@@ -92,4 +92,72 @@ struct Object {
 struct Shot { int16_t active; int16_t x; int16_t y; int16_t direction; };
 struct ShotList { int16_t object; struct Shot shot[18]; };   /* 146 bytes: the number of the object (negative: none) and its shots */
 
+
+/* the creatures of a level (game.c, take_record_to_199ac): an entry of the table that says where and how a group starts (16 bytes, 25 for each level)... */
+struct CreatureEntry {
+    int16_t start_x;
+    int16_t start_y;
+    int8_t direction;
+    uint8_t bounds;
+    int16_t delay_step;
+    uint8_t number;
+    uint8_t value;         /* the hit points of one, and the score it gives */
+    uint16_t template_index;   /* which CreatureTemplate */
+    uint8_t flag_18;
+    uint8_t speed;
+    uint8_t drop;          /* what the group drops when it is all gone ($FF none) */
+    uint8_t pad_15;
+};
+_Static_assert(sizeof(struct CreatureEntry) == 16, "creature entry");
+
+/* ... and a template: the draw kind, the routines that move and step the creature (addresses in the original program: game.c has them by number) and its box (16 bytes) */
+struct CreatureTemplate {
+    uint16_t unused;
+    uint16_t draw_kind;
+    uint32_t move_routine;
+    uint16_t box_width;
+    uint16_t box_height;
+    uint32_t step_routine;
+};
+_Static_assert(sizeof(struct CreatureTemplate) == 16, "creature template");
+
+
+/* the creatures of a level: ten records of 36 bytes at $199AC (table_199ac), each the type of a group of up to 255 creatures whose 14
+ * byte records (struct Creature) it points to.  Its movement and step routines are the original's (addresses in the record); only
+ * the ones that ran are written (see call_move / call_step) */
+struct Creature {
+    int16_t x;
+    int16_t y;
+    int16_t state;     /* +4 0 or more: the step of its animation, -1: just hit, then counts up to 7 while it dies */
+    int16_t delay;     /* +6 negative or positive: frames to go before it appears; 0 it is there */
+    int16_t hp;        /* +8 0: gone; negative: dying */
+    int16_t direction; /* +10 */
+    int16_t timer;     /* +12 */
+};
+
+struct CreatureType {
+    struct Creature *creatures;   /* +0 */
+    int16_t count;                /* +4 */
+    uint16_t status;              /* +6 bit 1: in use, bit 0: started */
+    int16_t start_x;              /* +8 */
+    int16_t start_y;              /* +10 */
+    int8_t direction;             /* +12 */
+    int8_t bounds;                /* +13 0, 1 none; 2 left, 3 right, 4 top, 5 bottom: the creature is gone when it leaves the screen that way */
+    int16_t delay_step;           /* +14 */
+    uint8_t number;               /* +16 */
+    uint8_t value;                /* +17 its hit points, and the score it gives */
+    uint8_t flag_18;              /* +18 */
+    uint8_t speed;                /* +19 */
+    uint16_t draw_kind;           /* +20 index of the table of draw routines at $6EA8 */
+    uint32_t move_routine;        /* +22 */
+    int16_t box_width;            /* +26 */
+    int16_t box_height;           /* +28 */
+    uint32_t step_routine;        /* +30 */
+    uint8_t drop;                 /* +34 what the group drops when it is all gone ($FF none) */
+    uint8_t pad_35;
+};
+
+_Static_assert(sizeof(struct CreatureType) == 36, "creature type record");
+_Static_assert(sizeof(struct Creature) == 14, "creature record");
+
 #endif

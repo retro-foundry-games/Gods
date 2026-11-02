@@ -63,7 +63,4 @@ static inline void file_longs(void *p, uint32_t count)
     }
 }
 
-/* a byte of the pixels of a bitplane: the planes' words are the machine's own here, so the byte that is first in a word on the Amiga is the second */
-#define PIXEL_BYTE(p) ((__typeof__(p))((uintptr_t)(p) ^ 1))
-
 #endif

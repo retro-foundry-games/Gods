@@ -524,6 +524,7 @@ extern uint16_t code_9ae6;   /* $09AE6 */
 extern uint16_t code_6ed0;   /* $06ED0 */
 extern uint8_t level_text[16];   /* $028F8  "LOADING LEVEL " and the level's number (plus 93): the text of the loading screen */
 extern uint8_t copy_1cde4[256];   /* $1CDE4  a copy of the first 256 bytes of table_1c9e4 that make_pairs_fb9a makes */
+extern const struct CreatureTemplate creature_templates[49];   /* $1C698  what a group is: its draw kind, move and step routines and its box (the pointers of table_1c678 point into it) */
 extern const uint16_t clip_rectangles[6];   /* $00128  the clip rectangles of image_draw_clipped (x0, x1, y0, y1: the whole screen; a negative x0 ends the list) */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */

@@ -10,7 +10,6 @@
 #
 # The toolchain is in the flake of this directory: outside its shell every target is run again inside it.  Variables:
 # GODS_CFLAGS, GODS_OPT (the intro's optimisation, default -O2), MENU_BASE (default C0000, hex), PYTHON.
-# DEBUG=1: everything is compiled with -O0 -ggdb (the objects are made again when the flags change; the code is bigger and slower: the game's timing is not the same).
 
 CC     := m68k-amigaos-gcc
 AS     := vasmm68k_mot
@@ -21,13 +20,7 @@ SRC    := src
 AMIGA  := $(SRC)/amiga
 BUILD  := build
 PYTHON ?= uv run python
-ifdef DEBUG
-GODS_OPT := -O0 -ggdb
-MENU_OPT := -O0 -ggdb
-else
 GODS_OPT ?= -O2
-MENU_OPT := -O2
-endif
 MENU_BASE ?= C0000
 
 ifeq ($(shell command -v $(CC) 2>/dev/null),)
@@ -39,15 +32,12 @@ else
 
 COMMON := -m68000 -ffreestanding -fno-tree-loop-distribute-patterns -fno-tree-forwprop -fno-ivopts -nostdlib -fdata-sections
 INTRO_CFLAGS := $(GODS_CFLAGS) $(COMMON) $(GODS_OPT)
-MENU_CFLAGS := $(COMMON) $(MENU_OPT) -ffunction-sections
+MENU_CFLAGS := $(COMMON) -O2 -ffunction-sections
 WARN := -Wall -Wextra
 
 # the menu program: one object for each module (the sources are split by what the code does, see src/menu.h)
-FLAGS_STAMP := $(BUILD)/.cflags
-$(shell mkdir -p $(BUILD); echo '$(INTRO_CFLAGS) | $(MENU_CFLAGS)' | cmp -s - $(FLAGS_STAMP) || echo '$(INTRO_CFLAGS) | $(MENU_CFLAGS)' > $(FLAGS_STAMP))
-
 MENU_MODULES := menu disk alloc decrunch input draw message ui file boot game menu_data
-MENU_OBJS := $(MENU_MODULES:%=$(BUILD)/menu_%.o) $(BUILD)/menu_display.o $(BUILD)/menu_amiga.o $(if $(DEBUG),$(BUILD)/menu_libgcc_debug.o)
+MENU_OBJS := $(MENU_MODULES:%=$(BUILD)/menu_%.o) $(BUILD)/menu_display.o $(BUILD)/menu_amiga.o
 INTRO_OBJS := $(BUILD)/intro.o $(BUILD)/intro_amiga.o $(BUILD)/intro_data.o
 
 .PHONY: all intro menu menu-blob adf regen clean sdl sdl-run
@@ -59,9 +49,9 @@ $(BUILD):
 	mkdir -p $@
 
 # intro
-$(BUILD)/intro.o: $(SRC)/intro.c $(FLAGS_STAMP) | $(BUILD)
+$(BUILD)/intro.o: $(SRC)/intro.c | $(BUILD)
 	$(CC) $(INTRO_CFLAGS) $(WARN) -MMD -MP -c $< -o $@
-$(BUILD)/intro_data.o: $(SRC)/intro_data.c $(FLAGS_STAMP) | $(BUILD)
+$(BUILD)/intro_data.o: $(SRC)/intro_data.c | $(BUILD)
 	$(CC) $(INTRO_CFLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/intro_amiga.o: $(AMIGA)/intro_amiga.asm $(AMIGA)/intro_offsets.i | $(BUILD)
 	$(AS) -Fhunk -no-opt -quiet -nowarn=62 -I$(AMIGA) -o $@ $<
@@ -70,15 +60,13 @@ $(BUILD)/intro: $(INTRO_OBJS) $(SRC)/intro.ld
 	$(NM) $@ > $(BUILD)/intro.sym
 
 # menu
-$(BUILD)/menu_menu_data.o: $(SRC)/menu_data.c $(FLAGS_STAMP) | $(BUILD)
+$(BUILD)/menu_menu_data.o: $(SRC)/menu_data.c | $(BUILD)
 	$(CC) $(MENU_CFLAGS) -MMD -MP -c $< -o $@
-$(BUILD)/menu_%.o: $(SRC)/%.c $(FLAGS_STAMP) | $(BUILD)
+$(BUILD)/menu_%.o: $(SRC)/%.c | $(BUILD)
 	$(CC) $(MENU_CFLAGS) $(WARN) -MMD -MP -c $< -o $@
-$(BUILD)/menu_display.o: $(AMIGA)/display.c $(FLAGS_STAMP) | $(BUILD)
+$(BUILD)/menu_display.o: $(AMIGA)/display.c | $(BUILD)
 	$(CC) $(MENU_CFLAGS) $(WARN) -MMD -MP -c $< -o $@
-$(BUILD)/menu_libgcc_debug.o: $(AMIGA)/libgcc_debug.c $(FLAGS_STAMP) | $(BUILD)
-	$(CC) $(COMMON) -O2 -ffunction-sections $(WARN) -MMD -MP -c $< -o $@
-$(BUILD)/menu_amiga.o: $(AMIGA)/menu_amiga.asm $(FLAGS_STAMP) | $(BUILD)
+$(BUILD)/menu_amiga.o: $(AMIGA)/menu_amiga.asm | $(BUILD)
 	$(AS) -Fhunk -no-opt -quiet -nowarn=62 -I$(AMIGA) -o $@ $<
 $(BUILD)/menu: $(MENU_OBJS) $(SRC)/menu.ld
 	$(LD) -m amiga -T $(SRC)/menu.ld -Map $(BUILD)/menu.map -o $@ $(MENU_OBJS)
