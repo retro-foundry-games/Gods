@@ -16,6 +16,7 @@
 --   replay=FILE   the keys of a recording (captures/input/level1-run1.txt: "frame k keysym state", by frame from the state) are given to both sides at the same steps, as if played
 --   dumpfrom=N    (with dump=) the first difference at emulator frame N or later
 --   watch         (with continue=all) the first frame at which each of a few game variables differs between the two sides is logged (read from the port with `mem`)
+--   pause=F       pause both at emulator frame F (for lockstep_dump.py; the first difference does not stop the run when continue= is given)
 --   dump=PATH     the port's image and the original's at the first frame that differs are written to PATH.native.ppm and PATH.emulated.ppm
 local args = ami.args or ""
 local STATE = args:match("state=(%S+)") or "gods-level1-1m.state"
@@ -101,17 +102,33 @@ local KEYS = { [273] = 0x4c, [274] = 0x4d, [275] = 0x4e, [276] = 0x4f, [32] = 0x
 local trace = args:find("%f[%w]trace%f[%W]")
 local dump = args:match("dump=(%S+)")
 local watching = args:find("%f[%w]watch%f[%W]")
+local pause_at = tonumber(args:match("pause=(%d+)"))
 local WATCH = { player_x = 0x1e0, player_y = 0x1e2, player_state = 0x19c, player_frame = 0x19a, counter_204 = 0x204, counter_260 = 0x260, scroll_x = 0x358, scroll_y = 0x35a, word_39e = 0x39e,
                 onscreen_count = 0x2b8, flag_23a = 0x23a, timer_306 = 0x306, energy_shown = 0x216, flag_230 = 0x230, word_3b0 = 0x3b0, player_energy = 0xc96, hit = 0x3a6, word_2ba = 0x2ba, tick_hold = 0x26c, word_226 = 0x226, word_228 = 0x228, item_count = 0x20a }
 local watch_found = {}
 -- track=ADDR (hex): the long at ADDR on both sides is logged whenever either changes (to find where two states part)
 local track_at = tonumber(args:match("track=(%x+)") or "", 16)
+local track_size = tonumber(args:match("track=%x+:(%d)") or "4")
 local track_last_o, track_last_p
-local function track_long()
-    delayed:send(("mem %x 4\n"):format(track_at))
+-- trackcolor=N: the colour register N (0 to 31) of both sides is logged whenever either changes
+local color_n = tonumber(args:match("trackcolor=(%d+)"))
+local color_last_o, color_last_p
+local function track_color()
+    delayed:send(("mem dff%03x 2\n"):format(0x180 + 2 * color_n))
     local n = tonumber(delayed:readline():match("mem (%d+)"))
-    local port = string.unpack("<I4", delayed:read(n))
-    local orig = string.unpack(">I4", ami.read(track_at, 4))
+    local port = string.unpack("<I2", delayed:read(n))
+    local orig = ami.custom(0x180 + 2 * color_n) & 0xffff
+    if orig ~= color_last_o or port ~= color_last_p then
+        color_last_o, color_last_p = orig, port
+        ami.log(("color %d: frame %d: original %03x, port %03x"):format(color_n, ami.frame(), orig, port))
+    end
+end
+local function track_long()
+    delayed:send(("mem %x %d\n"):format(track_at, track_size))
+    local n = tonumber(delayed:readline():match("mem (%d+)"))
+    local fmt = track_size == 2 and "I2" or "I4"
+    local port = string.unpack("<" .. fmt, delayed:read(n))
+    local orig = string.unpack(">" .. fmt, ami.read(track_at, track_size))
     if orig ~= track_last_o or port ~= track_last_p then
         track_last_o, track_last_p = orig, port
         ami.log(("track %x: frame %d: original %d, port %d"):format(track_at, ami.frame(), orig, port))
@@ -180,6 +197,11 @@ if hit_first then
         end
     end)
 end
+-- calllog=ADDR[,ADDR...] (hex): the emulator frame and the registers d0, d1, d7 of every time the original reaches those addresses (once per call, whatever frames)
+for hex in (args:match("calllog=([%x,]+)") or ""):gmatch("%x+") do
+    local at = tonumber(hex, 16)
+    ami.hook(at, function() ami.log(("reached %x at frame %d (cycles %d): d0 %x d1 %x d7 %x"):format(at, ami.frame(), ami.cycles(), ami.reg("d0") & 0xffff, ami.reg("d1") & 0xffff, ami.reg("d7") & 0xffff)) end)
+end
 if args:find("%f[%w]itlog%f[%W]") then   -- itlog: the emulator frame of the top of every iteration of the game loop (at $2C20), 20 at a time, on the log
     local last, line = 0, {}
     ami.hook(0x2c20, function()
@@ -195,11 +217,13 @@ lockstep.run {
     window = { x = 40, y = 18, sx = 2 },   -- where the port's image sits in the original's 720x287 frame (tools/lockstep_align.py)
     start = function() ami.wait(4) return true end,   -- the saved state is the start (a frame later it has been drawn)
     keymap = function(key) return KEYS[key] end,
-    on_frame = (trace or dump or watching or track_at or args:find("%f[%w]keylog%f[%W]")) and function(count, native, emulated)
+    on_frame = (trace or dump or watching or track_at or color_n or pause_at or args:find("%f[%w]keylog%f[%W]")) and function(count, native, emulated)
         if args:find("%f[%w]keylog%f[%W]") then ami.log(("frame %d: px %d table %02x"):format(ami.frame(), ami.read(0x1e0, 2):byte(1) * 256 + ami.read(0x1e0, 2):byte(2), ami.read(0x1e63a + 0x4e, 1):byte())) end
         if watching then watch_variables() end
         if track_at then track_long() end
+        if color_n then track_color() end
         if trace then ami.log(("different pixels: %d"):format(count)) end
+        if pause_at and ami.frame() >= pause_at then return true end
         if dump and count > 0 and not dumped and ami.frame() >= (tonumber(args:match("dumpfrom=(%d+)")) or 0) then
             dumped = true
             ami.save_file(dump .. ".native.ppm", "P6\n320 256\n255\n" .. native)
