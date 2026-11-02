@@ -524,6 +524,7 @@ extern uint16_t code_9ae6;   /* $09AE6 */
 extern uint16_t code_6ed0;   /* $06ED0 */
 extern uint8_t level_text[16];   /* $028F8  "LOADING LEVEL " and the level's number (plus 93): the text of the loading screen */
 extern uint8_t copy_1cde4[256];   /* $1CDE4  a copy of the first 256 bytes of table_1c9e4 that make_pairs_fb9a makes */
+extern const uint16_t clip_rectangles[6];   /* $00128  the clip rectangles of image_draw_clipped (x0, x1, y0, y1: the whole screen; a negative x0 ends the list) */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
 extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of the two copper lists' colour moves the message fades */
@@ -551,7 +552,7 @@ extern const uint32_t state_table[58];   /* $10280  29 states of the player, two
 extern const uint8_t text_power[12];   /* $12CEE  "Power", 0, "Value", 0 (text_power + 6 is "Value") */
 extern const uint32_t table_18714[3];   /* $18714  the routines (take_record_to_199ac, finish_record_1895a, ...) the cell kinds' states name */
 extern const uint8_t text_10a34[8];   /* $10A34  the first eight bytes of the message fn_10976 makes */
-extern const uint8_t fall_steps_f2[62];   /* $000F2  game_d: signed bytes: how far a thing falls (added to y) at each step 0 to 23 of its flag byte (steps 24 to 37 read on into the next 38 bytes, the sounds) */
+extern const uint8_t fall_steps_f2[52];   /* $000F2  game_d: signed bytes: how far a thing falls (added to y) at each step 0 to 23 of its flag byte (steps 24 to 37 read on into the next bytes, the sounds: up to $12F, where clip_rectangles is from $128) */
 extern const uint16_t frames_44b4[4];   /* $044B4  game_d: the four glyphs of the sprite 280, by counter_2b4 */
 extern const uint16_t frames_44bc[4];   /* $044BC  game_d: ... of the sprite 279 */
 extern const uint16_t frames_44c4[4];   /* $044C4  game_d: ... of the glyph 253, by counter_24a */

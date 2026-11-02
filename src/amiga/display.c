@@ -457,3 +457,118 @@ void blit_image_5wide(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t
         blit_start(size);
     }
 }
+
+/* orig $01F54E (the mask) and $01F4B6 with $01F52C (the cookie cut; $01E356, the blitter wait, is blitter_grab_wait): the image at `source` (four planes, plane_size bytes each, `rows`
+ * rows of `words` words; the blitter's modulo for it is modulo_ab) is drawn to `dest` (four planes 8448 bytes apart, modulo_cd) through a
+ * mask that is its four planes or'ed (made in mask_buffer by two blits) */
+void blit_masked(const uint8_t *source, uint8_t *dest, int16_t modulo_ab, uint16_t words, int16_t modulo_cd, uint32_t plane_size,
+                        uint16_t rows)
+{
+    uint16_t size = (uint16_t)((rows << 6) | words);
+
+    blitter_grab_wait();
+    custom->bltdpt = ADDR(mask_buffer);
+    custom->bltapt = ADDR(source);
+    custom->bltbpt = ADDR(source + plane_size);
+    custom->bltcpt = ADDR(source + 2 * plane_size);
+    custom->bltamod = (uint16_t)modulo_ab;
+    custom->bltbmod = (uint16_t)modulo_ab;
+    custom->bltcmod = (uint16_t)modulo_ab;
+    custom->bltdmod = (uint16_t)modulo_ab;
+    custom->bltcon1 = 0;
+    custom->bltcon0 = 4094;
+    custom->bltafwm = 0xFFFF;
+    custom->bltalwm = 0xFFFF;
+    blit_start(size);
+    blitter_grab_wait();
+    custom->bltcpt = ADDR(source + 3 * plane_size);
+    custom->bltbpt = ADDR(mask_buffer);
+    custom->bltdpt = ADDR(mask_buffer);
+    custom->bltcon0 = 2030;
+    blit_start(size);
+
+    blitter_grab_wait();
+    custom->bltafwm = 0xFFFF;
+    custom->bltalwm = 0xFFFF;
+    custom->bltapt = ADDR(mask_buffer);
+    custom->bltbpt = ADDR(source);
+    custom->bltcpt = ADDR(dest);
+    custom->bltdpt = ADDR(dest);
+    custom->bltdmod = (uint16_t)modulo_cd;
+    custom->bltcmod = (uint16_t)modulo_cd;
+    custom->bltamod = (uint16_t)modulo_ab;
+    custom->bltbmod = (uint16_t)modulo_ab;
+    custom->bltcon1 = 0;
+    custom->bltcon0 = 4042;
+    blit_start(size);
+    for (int plane = 0; plane < 3; plane++) {
+        dest += 8448;
+        source += plane_size;
+        blitter_grab_wait();
+        custom->bltbpt = ADDR(source);
+        custom->bltapt = ADDR(mask_buffer);
+        custom->bltcpt = ADDR(dest);
+        custom->bltdpt = ADDR(dest);
+        blit_start(size);
+    }
+}
+
+/* orig $01F0AA: the image (x, y, `width` pixels, `height` + 1 rows, at `source`: the first of its four planes) is clipped by the
+ * rectangle `clip` (x0, x1, y0, y1) and drawn on the screen buffer.  Only the way that ran is written: an image that is mirrored
+ * (word_d82 negative), the shift in the bits of x (word_d86) and the other draw routines of the table at $0D9A are not */
+void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uint8_t *source, const int16_t *clip)
+{
+    int16_t low = clip[2];
+    int16_t high = clip[3];
+    int16_t rest;
+    int16_t modulo_ab;
+    int16_t modulo_cd;
+    uint16_t words;
+    int16_t offset;
+    uint32_t product;
+
+    if (y < low)
+        return;   /* goes on at $01F0B6 */
+    if (y > high)
+        return;
+    if ((int16_t)(height + y) > high)
+        height = (int16_t)(high - y);
+    low = clip[0];
+    rest = width;
+    if (x <= low) {
+        rest = (int16_t)(rest + x);
+        if (rest < low)
+            return;
+        rest = (int16_t)(rest - low);
+        offset = (int16_t)(((uint16_t)(low - x) & 0xFFF0) >> 3);
+        source += offset;
+        x = low;
+        word_d88 = 1;
+    }
+    high = clip[1];
+    if (x > high)
+        return;
+    if ((int16_t)(rest + x) > high) {
+        rest = (int16_t)(high - x);
+        word_d88 = (uint16_t)(word_d88 + 2);
+    }
+    words = (uint16_t)rest >> 4;
+    rest = (int16_t)(words << 3);   /* the original's d5 */
+    if (!(word_d82 & 0x8000))
+        return;   /* goes on at $01F13A */
+    width = (int16_t)(((uint16_t)width >> 1) & 0xFFF8);
+    product = (uint32_t)(uint16_t)(width + 8) * word_dd4;
+    source += (int16_t)((uint16_t)product >> 2);
+    if (flags_0ddd & 0x20)
+        return;   /* goes on at $01F186 */
+    modulo_ab = (int16_t)(width - rest);
+    modulo_cd = (int16_t)(((uint16_t)(word_dd2 - 8 - rest)) >> 2);
+    x = (int16_t)((uint16_t)x & 0xFFF0);
+    x = (int16_t)((uint16_t)x >> 3);
+    x = (int16_t)(x + (uint16_t)((uint16_t)y * 44));
+    if (word_d86 != 0)
+        return;   /* goes on at $01F1BE */
+    if (word_dde != 1 || (flags_0ddd & 4))
+        return;   /* goes on at the routine of the table at $0D9A that word_dde and bit 2 of flags_0ddd name */
+    blit_masked(source, screen_buffer + x, (int16_t)(modulo_ab >> 2), (uint16_t)(words + 1), modulo_cd, long_dd8, (uint16_t)(height + 1));
+}

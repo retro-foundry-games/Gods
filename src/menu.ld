@@ -5,6 +5,7 @@
 SECTIONS {
     .data : SUBALIGN(1) {
         . = 0xf2; *(.rodata.fall_steps_f2) *(.data.fall_steps_f2)
+        . = 0x128; *(.rodata.clip_rectangles) *(.data.clip_rectangles)
         . = 0xd2e; *(.rodata.asset_extensions) *(.data.asset_extensions)
         . = 0x26d2; *(.rodata.background_name) *(.data.background_name)
         . = 0x2752; *(.rodata.level_name_template) *(.data.level_name_template)

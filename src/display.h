@@ -37,6 +37,9 @@ void blitter_grab_wait(void);               /* orig $01E372 */
 void blit_tile(int16_t src_step, int16_t dst_step, int16_t rows, const uint8_t *src, uint8_t *dst);   /* orig $017082 */
 void blitter_setup_copy(void);              /* orig $017044 */
 void blit_image_5wide(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows);   /* orig $017100 */
+void blit_masked(const uint8_t *source, uint8_t *dest, int16_t modulo_ab, uint16_t words, int16_t modulo_cd, uint32_t plane_size,
+                  uint16_t rows);                              /* orig $01F54E, $01F4B6: an image through the mask of its planes */
+void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uint8_t *source, const int16_t *clip);   /* orig $01F0AA */
 void copy_screen(const uint8_t *from, uint8_t *to);             /* orig $017814: the whole screen (4 planes of 192 rows) from one place to another */
 
 void vbl_irq(void);                                            /* orig $01CFF8, menu_amiga.asm: the level 3 interrupt */

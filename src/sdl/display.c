@@ -304,3 +304,84 @@ void blit_image_5wide(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t
 {
     blit_masked_image(dst, src, plane, shift, rows, 5, 0, 0xffff, 0);
 }
+
+/* orig $01F54E, $01F4B6: the image at `source` (four planes, plane_size bytes apart, `rows` rows of `words` words, modulo_ab bytes between its rows) is
+ * drawn to `dest` (four planes 8448 bytes apart, modulo_cd between rows) through the mask of its four planes or'ed: D = mask ? plane : screen */
+void blit_masked(const uint8_t *source, uint8_t *dest, int16_t modulo_ab, uint16_t words, int16_t modulo_cd, uint32_t plane_size, uint16_t rows)
+{
+    unsigned source_row = words * 2u + (unsigned)(int)modulo_ab, dest_row = words * 2u + (unsigned)(int)modulo_cd;
+
+    for (unsigned plane = 0; plane < 4; plane++) {
+        for (unsigned row = 0; row < rows; row++) {
+            for (unsigned word = 0; word < words; word++) {
+                unsigned at = row * source_row + 2 * word;
+                uint16_t mask = 0;
+                uint16_t *to = (uint16_t *)(dest + plane * 8448u + row * dest_row + 2 * word);
+
+                for (unsigned i = 0; i < 4; i++)
+                    mask |= *(const uint16_t *)(source + i * plane_size + at);
+                *to = (uint16_t)((mask & *(const uint16_t *)(source + plane * plane_size + at)) | (~mask & *to));
+            }
+        }
+    }
+}
+
+/* orig $01F0AA: the image (x, y, `width` pixels, `height` + 1 rows, at `source`: the first of its four planes) is clipped by the
+ * rectangle `clip` (x0, x1, y0, y1) and drawn on the screen buffer.  Only the way that ran is written: an image that is mirrored
+ * (word_d82 negative), the shift in the bits of x (word_d86) and the other draw routines of the table at $0D9A are not */
+void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uint8_t *source, const int16_t *clip)
+{
+    int16_t low = clip[2];
+    int16_t high = clip[3];
+    int16_t rest;
+    int16_t modulo_ab;
+    int16_t modulo_cd;
+    uint16_t words;
+    int16_t offset;
+    uint32_t product;
+
+    if (y < low)
+        return;   /* goes on at $01F0B6 */
+    if (y > high)
+        return;
+    if ((int16_t)(height + y) > high)
+        height = (int16_t)(high - y);
+    low = clip[0];
+    rest = width;
+    if (x <= low) {
+        rest = (int16_t)(rest + x);
+        if (rest < low)
+            return;
+        rest = (int16_t)(rest - low);
+        offset = (int16_t)(((uint16_t)(low - x) & 0xFFF0) >> 3);
+        source += offset;
+        x = low;
+        word_d88 = 1;
+    }
+    high = clip[1];
+    if (x > high)
+        return;
+    if ((int16_t)(rest + x) > high) {
+        rest = (int16_t)(high - x);
+        word_d88 = (uint16_t)(word_d88 + 2);
+    }
+    words = (uint16_t)rest >> 4;
+    rest = (int16_t)(words << 3);   /* the original's d5 */
+    if (!(word_d82 & 0x8000))
+        return;   /* goes on at $01F13A */
+    width = (int16_t)(((uint16_t)width >> 1) & 0xFFF8);
+    product = (uint32_t)(uint16_t)(width + 8) * word_dd4;
+    source += (int16_t)((uint16_t)product >> 2);
+    if (flags_0ddd & 0x20)
+        return;   /* goes on at $01F186 */
+    modulo_ab = (int16_t)(width - rest);
+    modulo_cd = (int16_t)(((uint16_t)(word_dd2 - 8 - rest)) >> 2);
+    x = (int16_t)((uint16_t)x & 0xFFF0);
+    x = (int16_t)((uint16_t)x >> 3);
+    x = (int16_t)(x + (uint16_t)((uint16_t)y * 44));
+    if (word_d86 != 0)
+        return;   /* goes on at $01F1BE */
+    if (word_dde != 1 || (flags_0ddd & 4))
+        return;   /* goes on at the routine of the table at $0D9A that word_dde and bit 2 of flags_0ddd name */
+    blit_masked(source, screen_buffer + x, (int16_t)(modulo_ab >> 2), (uint16_t)(words + 1), modulo_cd, long_dd8, (uint16_t)(height + 1));
+}

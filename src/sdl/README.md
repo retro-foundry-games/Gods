@@ -88,3 +88,10 @@ the sound as raw signed 16 bit stereo 44100 Hz.
   menu is silent.  Nothing was listened to.
 * The intro's story scroll and its other parts were not compared with the original; the music is not the original's replayer.
 * The three saved passwords of the high score file are read in the Amiga's byte order and may be wrong (a fresh disk has none).
+
+## Pixel bytes
+
+The bitplanes' words are the machine's own on the host (the blits work on words), so the first byte of a word is its low one.  The few places
+of the program that read or write the pixels of a plane by bytes (cutting the digits out of the screen in `hud_digits_load`, putting them in the score
+image in `draw_score_digit`) go through `PIXEL_BYTE(p)` (`amiga/platform.h`: the pointer itself; `sdl/sdl_platform.h`: the neighbouring byte).
+Without it the score shows eight ones.  Any other byte access to a plane's pixels needs the same.

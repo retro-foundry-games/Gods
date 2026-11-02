@@ -30,6 +30,7 @@ table_14cf8       0x00014cf8  struct Rec10 %s[132]   built by build_table_14cf8
 marker_table      0x0001a3fc  uint32_t %s[100]   set to -1 by reset_marker_table
 record_table      0x0001a58c  struct Rec6 %s[200]   copied in by copy_record_table
 entry_table       0x0003a25e  struct Rec6 %s[50]   cleared by clear_entry_table
+table clip_rectangles 0x00000128 uint16_t 6   the clip rectangles of image_draw_clipped (x0, x1, y0, y1: the whole screen; a negative x0 ends the list)
 table param_table  0x000029da uint16_t 24   four rows of 12 bytes (two longs, two words) that select_params takes
 table offsets_4cba 0x00004cba uint8_t 132   signed bytes that build_table_14cf8 puts in the table
 blit_extra_modulo 0x000003b4  uint16_t %s     the blitter's extra modulo for the masked blit (0 unless set)
@@ -455,7 +456,7 @@ byte_2b6          0x000002b6  uint8_t %s    game_d: the byte of flags_39fde of t
 word_2b2          0x000002b2  uint16_t %s    game_d: the id of the thing the player touched
 score_total_1fc   0x000001fc  uint32_t %s    game_d: the points won, as one number (the score itself is in score_words)
 word_2ba          0x000002ba  int16_t %s     game_d: -1, or the step (0 to 4) of the thing of kinds 232, 288, 290 and 292
-table fall_steps_f2   0x000000f2 uint8_t 62    game_d: signed bytes: how far a thing falls (added to y) at each step 0 to 23 of its flag byte (steps 24 to 37 read on into the next 38 bytes, the sounds)
+table fall_steps_f2   0x000000f2 uint8_t 52    game_d: signed bytes: how far a thing falls (added to y) at each step 0 to 23 of its flag byte (steps 24 to 37 read on into the next bytes, the sounds: up to $12F, where clip_rectangles is from $128)
 table frames_44b4 0x000044b4 uint16_t 4   game_d: the four glyphs of the sprite 280, by counter_2b4
 table frames_44bc 0x000044bc uint16_t 4   game_d: ... of the sprite 279
 table frames_44c4 0x000044c4 uint16_t 4   game_d: ... of the glyph 253, by counter_24a

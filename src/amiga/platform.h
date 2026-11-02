@@ -35,4 +35,7 @@ static inline void file_longs(void *p, uint32_t count)
     (void)count;
 }
 
+/* a byte of the pixels of a bitplane (the planes are words: on the host the words are the machine's own, the first byte of a word is its low one) */
+#define PIXEL_BYTE(p) (p)
+
 #endif
