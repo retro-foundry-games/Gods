@@ -34,8 +34,13 @@ void message_draw(void)
     for (int i = 0; i < length; i++) {
         const uint8_t *glyph = font_8x8 + (*text++ << 3);
 
-        for (int row = 0; row < 7; row++)
-            to[40 * row] = glyph[row];
+        /* (the rows are words of the machine: the shifting and the ticker of the message work on words, a byte of the row is the high or the low half of its word) */
+        for (int row = 0; row < 7; row++) {
+            uint16_t *word = (uint16_t *)(to - ((uintptr_t)to & 1) + 40 * row);
+            int low = (int)((uintptr_t)to & 1);
+
+            *word = (uint16_t)(low ? (*word & 0xff00) | glyph[row] : (*word & 0x00ff) | (glyph[row] << 8));
+        }
         to++;
     }
     message_shown = 1;

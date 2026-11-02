@@ -120,6 +120,8 @@ static int raw_code(SDL_Scancode s)
     return -1;
 }
 
+extern unsigned gods_iteration;
+
 static void dump_ppm(const char *prefix, int frame, const uint32_t *pixels)
 {
     char name[512];
@@ -232,6 +234,7 @@ int main(int argc, char **argv)
     }
     start_phase(phase);
 
+    int vsync = !headless && renderer && SDL_SetRenderVSync(renderer, 1);   /* presented at the display's refresh */
     uint64_t next = SDL_GetTicksNS();
     for (int frame = 0; !frames || frame < frames; frame++) {
         SDL_Event event;
@@ -266,16 +269,37 @@ int main(int argc, char **argv)
             if (*k == ',')
                 k++;
         }
-        if (phase == PHASE_INTRO) {
-            ih_vbl();
-            ih_music_mix(samples, 882, 44100);
-            intro_render(pixels);
-        } else {
-            display_latch();
-            irq_vbl();
-            sound_mix(samples);
-            display_render(pixels);
+        /* In a window the screen is presented at the display's refresh (vsync) and the 50 Hz frames of the machine are counted from the clock: a refresh
+         * has none, one or two of them to run.  Without a window (and without vsync) one frame is run for every pass, paced by the sleep below. */
+        int due = 1;
+
+        if (vsync) {
+            uint64_t now = SDL_GetTicksNS();
+
+            due = 0;
+            if (now > next + 100000000ull)
+                next = now;   /* far behind (the window was moved, the machine was busy): start again */
+            while (next <= now && due < 3) {
+                due++;
+                next += 20000000ull;
+            }
         }
+        for (int tick = 0; tick < due; tick++) {
+            if (phase == PHASE_INTRO) {
+                ih_vbl();
+                ih_music_mix(samples, 882, 44100);
+            } else {
+                display_latch();
+                irq_vbl();
+                sound_mix(samples);
+            }
+            if (vsync && audio && SDL_GetAudioStreamQueued(audio) < 44100 / 5 * 4)
+                SDL_PutAudioStreamData(audio, samples, sizeof samples);
+        }
+        if (phase == PHASE_INTRO)
+            intro_render(pixels);
+        else
+            display_render(pixels);
         if (wav) {   /* a test: the sound as raw signed 16 bit stereo 44100 Hz */
             FILE *f = fopen(wav, "ab");
 
@@ -284,24 +308,46 @@ int main(int argc, char **argv)
                 fclose(f);
             }
         }
+        {   /* GODS_ITERSHOT=N,N,...: the frame shown when the Nth iteration of the game loop starts is written to GODS_ITERSHOT_PREFIX<N>.ppm (a test) */
+            static const char *list, *prefix;
+            static int init;
+
+            if (!init) {
+                init = 1;
+                list = getenv("GODS_ITERSHOT");
+                prefix = getenv("GODS_ITERSHOT_PREFIX");
+            }
+            for (const char *l = list; l && prefix && *l; ) {
+                char *end;
+                unsigned n = (unsigned)strtoul(l, &end, 10);
+
+                if (end == l)
+                    break;
+                if (gods_iteration == n + 1)
+                    dump_ppm(prefix, (int)n, pixels);
+                l = *end ? end + 1 : end;
+            }
+        }
         if (dump && dump_every && frame % dump_every == 0)
             dump_ppm(dump, frame, pixels);
         if (!headless) {
-            if (audio && SDL_GetAudioStreamQueued(audio) < 44100 / 5 * 4)
+            if (!vsync && audio && SDL_GetAudioStreamQueued(audio) < 44100 / 5 * 4)
                 SDL_PutAudioStreamData(audio, samples, sizeof samples);
             SDL_UpdateTexture(texture, 0, pixels, SCREEN_W * 4);
             SDL_RenderClear(renderer);
             SDL_RenderTexture(renderer, texture, 0, 0);
             SDL_RenderPresent(renderer);
         }
-        next += 20000000ull;   /* 50 frames a second (also without a window: the program's thread needs its time) */
-        {
+        if (!vsync) {
+            next += 20000000ull;   /* 50 frames a second (also without a window: the program's thread needs its time) */
+            {
             uint64_t now = SDL_GetTicksNS();
 
             if (next > now)
                 SDL_DelayNS(next - now);
             else
                 next = now;
+            }
         }
     }
     if (dump)

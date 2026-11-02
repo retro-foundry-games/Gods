@@ -8,6 +8,8 @@
  *     message_pairs on a background that goes from dark to lighter green and back.
  * Low resolution, 320 pixels wide, from line 60 on.  The words of the bitplanes are native words. */
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "guest.h"
@@ -25,6 +27,7 @@ extern uint16_t x_offset;
 extern uint32_t *work_area;
 extern const uint32_t message_pairs[8];
 extern uint16_t message_shown;
+extern uint16_t menu_active;
 
 /* what the display hardware has at the start of a frame: the copper restarts from COP1LC at the vertical blank, the scroll and the colours come from the
  * copper list and the registers as they were then.  The program's thread sets them whenever it likes (it flips the screens just after the vertical blank
@@ -35,6 +38,18 @@ static uint16_t latched_colors[16];
 
 void display_latch(void)
 {
+    static uint32_t last_list;
+    static unsigned frames_since;
+    static int trace = -1;
+
+    if (trace < 0)
+        trace = getenv("GODS_FLIPTRACE") != 0;   /* GODS_FLIPTRACE=1: the frames between two changes of the shown screen, on stderr */
+    frames_since++;
+    if (trace && REG32(0x080) != last_list) {
+        fprintf(stderr, "flip after %u frames\n", frames_since);
+        frames_since = 0;
+        last_list = REG32(0x080);
+    }
     latched_cop1lc = REG32(0x080);
     latched_x_offset = x_offset;
     for (int i = 0; i < 16; i++)
@@ -125,17 +140,17 @@ void display_render(uint32_t *pixels)
     }
 
     /* the message: seven lines, the colour of the text and of the background by line */
-    if (message_shown) {
+    if (message_shown || !menu_active) {   /* (the band is there in the level also when no message is on show) */
         static const uint16_t background[7] = { 0x030, 0x042, 0x060, 0x082, 0x060, 0x042, 0x030 };
         static const int band[7] = { 0, 2, 4, 6, 5, 3, 1 };   /* which of message_pairs colours the text of the line */
 
         for (int line = 0; line < 7; line++) {
             uint32_t *out = pixels + (MESSAGE_TOP - FIRST_LINE + line) * SCREEN_W;
             const uint16_t *text_color = (const uint16_t *)(uintptr_t)message_pairs[band[line]] + 1;
-            const uint8_t *bits = (const uint8_t *)work_area + 40 * line;
+            const uint16_t *bits = (const uint16_t *)((const uint8_t *)work_area + 40 * line);   /* words of the machine */
 
             for (int x = 0; x < SCREEN_W; x++)
-                out[x] = (bits[x >> 3] >> (7 - (x & 7)) & 1) ? argb(*text_color) : argb(background[line]);
+                out[x] = (message_shown && (bits[x >> 4] >> (15 - (x & 15)) & 1)) ? argb(*text_color) : argb(background[line]);
         }
     }
 }
