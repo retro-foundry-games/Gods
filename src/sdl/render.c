@@ -26,6 +26,21 @@ extern uint32_t *work_area;
 extern const uint32_t message_pairs[8];
 extern uint16_t message_shown;
 
+/* what the display hardware has at the start of a frame: the copper restarts from COP1LC at the vertical blank, the scroll and the colours come from the
+ * copper list and the registers as they were then.  The program's thread sets them whenever it likes (it flips the screens just after the vertical blank
+ * that ended its wait), so they are latched before the blank of the frame is signalled, as the hardware does, and the frame is drawn from them */
+static uint32_t latched_cop1lc;
+static uint16_t latched_x_offset;
+static uint16_t latched_colors[16];
+
+void display_latch(void)
+{
+    latched_cop1lc = REG32(0x080);
+    latched_x_offset = x_offset;
+    for (int i = 0; i < 16; i++)
+        latched_colors[i] = REG16(0x180 + 2 * i);
+}
+
 static uint32_t argb(uint16_t color)
 {
     uint32_t r = (color >> 8 & 15) * 17, g = (color >> 4 & 15) * 17, b = (color & 15) * 17;
@@ -39,14 +54,16 @@ static uint32_t argb(uint16_t color)
  * the list ends with $FFFF,$FFFE is read. */
 static void line_palettes(uint16_t colors[][16], int lines)
 {
-    const uint16_t *list = (const uint16_t *)(uintptr_t)REG32(0x080);
+    uint32_t cop1lc = latched_cop1lc;
+    /* (an address in the low 64 KiB is the program's, not the host's: the boot code leaves one there until the screens are set up) */
+    const uint16_t *list = cop1lc < 0x10000 ? (const uint16_t *)guest_ptr(cop1lc) : (const uint16_t *)(uintptr_t)cop1lc;
     uint16_t current[16];
     int line = 0, swapped = 0, count = 0;
 
     for (int i = 0; i < 16; i++)
-        current[i] = REG16(0x180 + 2 * i);
+        current[i] = latched_colors[i];
     if (list) {
-        for (int i = 0; i < 2048 && !count; i += 2) {
+        for (int i = 0; i < 1024 && !count; i += 2) {
             if (list[i] == 0xffff && list[i + 1] == 0xfffe)
                 count = i + 2;
             else if (list[i] == 0xffff && list[i + 1] == 0xfeff)
@@ -81,13 +98,13 @@ void display_render(uint32_t *pixels)
 {
     static uint16_t colors[320][16];
     uint32_t palette[16];
-    const uint8_t *first_list = (const uint8_t *)(uintptr_t)REG32(0x080);
+    const uint8_t *first_list = (const uint8_t *)(uintptr_t)latched_cop1lc;
     const uint8_t *screen = first_list == copper_list_a ? screen_1 : screen_2;
-    int scroll = x_offset & 31;
+    int scroll = latched_x_offset & 31;
 
     line_palettes(colors, 320);
     for (int i = 0; i < 16; i++)
-        palette[i] = argb(REG16(0x180 + 2 * i));
+        palette[i] = argb(latched_colors[i]);
     for (int i = 0; i < SCREEN_W * SCREEN_H; i++)
         pixels[i] = palette[0];
 

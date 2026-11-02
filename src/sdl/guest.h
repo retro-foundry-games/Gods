@@ -28,6 +28,7 @@ int files_load_menu_image(void);                             /* bm.2 of disk 1 u
 /* display.c */
 #define SCREEN_W 320
 #define SCREEN_H 256
+void display_latch(void);                                      /* the display registers as the frame starts (before the vertical blank is signalled) */
 void display_render(uint32_t *pixels);                       /* one frame: the copper list and the bitplanes to ARGB pixels */
 
 /* irq.c (the game thread runs the program, the main thread the interrupts) */

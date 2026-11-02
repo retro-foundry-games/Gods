@@ -418,14 +418,13 @@ void activate_records_now(void)
 
     for (int i = 0; i < 200; i++) {
         struct Slot8 *record = &records_19b14[i];
-        uint8_t *last_byte = (uint8_t *)record + 7;
 
         if (record->w[2] < 0 || record->w[0] < x0 || record->w[0] > x1 || record->w[1] < y0 || record->w[1] > y1) {
             record->w[3] = 0;
             continue;
         }
-        if (!(*last_byte & 1)) {
-            *last_byte |= 1;
+        if (!(record->w[3] & 1)) {
+            record->w[3] |= 1;
             flags_39fde[i] = 0xff;
         }
     }

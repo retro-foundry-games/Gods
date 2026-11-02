@@ -40,10 +40,13 @@ void vbl_irq(void)
         for (int i = 0; i < 16; i++)
             REG16(0x180 + 2 * i) = shadow_table[i];
     }
+    frame_tick();   /* the original jumps to the routine at $016C30 */
+    /* the counts the program waits on come last: on the Amiga the interrupt is not interrupted by the program, here the program's thread
+     * runs at the same time and must not see a frame whose work (tick_count, the sound, the message) is not done */
+    __atomic_thread_fence(__ATOMIC_SEQ_CST);
+    vbl_count++;
     if (vbl_saturating != 0x7fff)
         vbl_saturating++;
-    vbl_count++;
-    frame_tick();   /* the original jumps to the routine at $016C30 */
 }
 
 void irq_vbl(void)

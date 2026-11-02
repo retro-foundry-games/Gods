@@ -271,6 +271,7 @@ int main(int argc, char **argv)
             ih_music_mix(samples, 882, 44100);
             intro_render(pixels);
         } else {
+            display_latch();
             irq_vbl();
             sound_mix(samples);
             display_render(pixels);

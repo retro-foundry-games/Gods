@@ -55,6 +55,8 @@ void message_draw(void)
  * loop of game_frame, for ever, with the interrupts on */
 extern void sr_set(uint16_t value);
 
+unsigned gods_iteration;   /* the iteration of the loop now running (for the debugger) */
+
 void game_loop(void)
 {
     /* the lockstep with the Amiga build (scripts/lockstep_sdl.py): GODS_ITERKEYS=FILE ("N CODE V" lines: at the top of the Nth iteration of the loop the key with the raw
@@ -86,6 +88,7 @@ void game_loop(void)
     sr_set(0x2000);
     for (;;) {
         iteration++;
+        gods_iteration = iteration;
         if (max_iterations && iteration > max_iterations)
             exit(0);
         while (next_key < key_count && keys[next_key].iteration <= iteration) {
