@@ -76,6 +76,13 @@ void game_loop(void)
     const char *max_text = getenv("GODS_ITERMAX");   /* GODS_ITERMAX=N: the program ends at the top of the Nth iteration */
     unsigned max_iterations = max_text ? (unsigned)atoi(max_text) : 0;
 
+    /* GODS_ITERREGION=N:ADDR:LEN:PATH (hex ADDR and LEN): the part of the memory at the top of the Nth iteration is written to PATH */
+    const char *region_text = getenv("GODS_ITERREGION");
+    unsigned region_iteration = 0, region_address = 0, region_length = 0;
+    char region_path[512] = "";
+
+    if (region_text && sscanf(region_text, "%u:%x:%x:%511s", &region_iteration, &region_address, &region_length, region_path) != 4)
+        region_text = 0;
     sr_set(0x2000);
     for (;;) {
         iteration++;
@@ -84,6 +91,14 @@ void game_loop(void)
         while (next_key < key_count && keys[next_key].iteration <= iteration) {
             key_down[keys[next_key].code] = keys[next_key].value ? 0xff : 0x00;
             next_key++;
+        }
+        if (region_text && iteration == region_iteration) {
+            FILE *f = fopen(region_path, "wb");
+
+            if (f) {
+                fwrite((const void *)(uintptr_t)GUEST(region_address), 1, region_length, f);
+                fclose(f);
+            }
         }
         if (dump) {
             fwrite((const void *)(uintptr_t)GUEST(0x100), 1, 0xF00, dump);

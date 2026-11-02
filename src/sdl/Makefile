@@ -29,6 +29,8 @@ else
 ifdef DEBUG
 OPT_GAME := -O0 -ggdb
 OPT_HOST := -O0 -ggdb
+# the compiler wrapper turns _FORTIFY_SOURCE on, which needs -O: not in a debug build
+export NIX_HARDENING_ENABLE := $(filter-out fortify fortify3,$(NIX_HARDENING_ENABLE))
 else
 OPT_GAME := -O1 -g
 OPT_HOST := -O2 -g

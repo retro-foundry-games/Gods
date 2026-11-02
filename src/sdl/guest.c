@@ -78,6 +78,38 @@ void guest_reset(void)
     *(volatile uint8_t *)0xbfe001 = 0xff;   /* CIA A port A: no fire button down */
 }
 
+/* the words and longs of the program's variables (guest_fixups.h, from menu.symbols' types) are made native: they are the image's, big endian, what the loader leaves in memory */
+static void apply_fixups(long size)
+{
+    uint8_t *swapped = calloc((size_t)size + 8, 1);
+    for (unsigned i = 0; i < sizeof guest_fixups / sizeof guest_fixups[0]; i++) {
+        if ((long)guest_fixups[i].address + 4 * guest_fixups[i].count > size)
+            continue;
+        for (unsigned j = 0; j < guest_fixups[i].count; j++) {   /* (variables overlap: a byte is swapped once) */
+            uint32_t at = guest_fixups[i].address + guest_fixups[i].width * j;
+            int fresh = 1, width = guest_fixups[i].width == 2 ? 2 : 4;
+
+            at = guest_fixups[i].address + (unsigned)width * j;
+            for (int k = 0; k < width; k++)
+                fresh &= !swapped[at + (unsigned)k];
+            if (!fresh)
+                continue;
+            for (int k = 0; k < width; k++)
+                swapped[at + (unsigned)k] = 1;
+            if (width == 2) {
+                swap16_range(at, 2);
+            } else {
+                uint32_t *p = (uint32_t *)guest_ptr(at);
+
+                swap32_range(at, 4);
+                if (guest_fixups[i].width == 5 && *p != 0 && *p < GUEST_LOW_LIMIT)
+                    *p += GUEST_LOW_BASE;
+            }
+        }
+    }
+    free(swapped);
+}
+
 void guest_load_image(const uint8_t *image, uint32_t size)
 {
     uint32_t *pairs = (uint32_t *)(uintptr_t)message_pairs;   /* (the table list declares it as bytes) */
@@ -86,10 +118,8 @@ void guest_load_image(const uint8_t *image, uint32_t size)
         if (!in_table(IMAGE_BASE + i))
             *guest_ptr(IMAGE_BASE + i) = image[i];
 
-    /* the variables the program reads as words that the image has: the message colours (message_words) */
-    swap16_range(0x53ee, 32);
-    swap32_range(0x3b6, 4);      /* blit_plane_stride */
-    swap16_range(0x6384, 2);     /* menu_item_count */
+    /* the variables the image has: their words and longs are made native (what the types of menu.symbols say) */
+    apply_fixups(IMAGE_BASE + size);
     swap16_range(0x4d8a, 0xa8);  /* the two copper lists (the program changes their words, the display reads them as words) */
 
     /* What the original's start-up writes that is not in the unpacked image: the name of the first asset set and the lists of
@@ -149,33 +179,7 @@ int guest_load_level_image(const char *path)
         if (!in_table(i))
             *guest_ptr(i) = image[i];
     free(image);
-    uint8_t *swapped = calloc((size_t)size + 8, 1);
-    for (unsigned i = 0; i < sizeof guest_fixups / sizeof guest_fixups[0]; i++) {
-        if ((long)guest_fixups[i].address + 4 * guest_fixups[i].count > size)
-            continue;
-        for (unsigned j = 0; j < guest_fixups[i].count; j++) {   /* (variables overlap: a byte is swapped once) */
-            uint32_t at = guest_fixups[i].address + guest_fixups[i].width * j;
-            int fresh = 1, width = guest_fixups[i].width == 2 ? 2 : 4;
-
-            at = guest_fixups[i].address + (unsigned)width * j;
-            for (int k = 0; k < width; k++)
-                fresh &= !swapped[at + (unsigned)k];
-            if (!fresh)
-                continue;
-            for (int k = 0; k < width; k++)
-                swapped[at + (unsigned)k] = 1;
-            if (width == 2) {
-                swap16_range(at, 2);
-            } else {
-                uint32_t *p = (uint32_t *)guest_ptr(at);
-
-                swap32_range(at, 4);
-                if (guest_fixups[i].width == 5 && *p != 0 && *p < GUEST_LOW_LIMIT)
-                    *p += GUEST_LOW_BASE;
-            }
-        }
-    }
-    free(swapped);
+    apply_fixups(size);
     if (size >= 0x80000)
         swap16_range(0x6f800, 0x80000 - 0x6f800);        /* the two screens */
     swap_image_table();

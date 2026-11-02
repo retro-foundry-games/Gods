@@ -136,8 +136,9 @@ uint16_t message_request(int16_t priority)
             message_start(priority);
             return 1;
         }
+        static const uint8_t no_text[1] = { 0 };   /* (no text on show: address 0, which on the Amiga is memory that reads as an empty string) */
         const uint8_t *next = message_next;
-        const uint8_t *shown = message_text;
+        const uint8_t *shown = message_text ? message_text : no_text;
 
         for (;;) {
             uint8_t ch = *next++;
