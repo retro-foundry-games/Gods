@@ -64,9 +64,6 @@ $(BUILD)/menu_menu_data.o: $(SRC)/menu_data.c | $(BUILD)
 	$(CC) $(MENU_CFLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/menu_%.o: $(SRC)/%.c | $(BUILD)
 	$(CC) $(MENU_CFLAGS) $(WARN) -MMD -MP -c $< -o $@
-# the game's modules are optimised for size: the C and the intro have to fit the 5 extra cylinders of the disk image (an emulated drive takes 85)
-$(BUILD)/menu_game%.o: $(SRC)/game%.c | $(BUILD)
-	$(CC) $(MENU_CFLAGS) -Os $(WARN) -MMD -MP -c $< -o $@
 $(BUILD)/menu_display.o: $(AMIGA)/display.c | $(BUILD)
 	$(CC) $(MENU_CFLAGS) $(WARN) -MMD -MP -c $< -o $@
 $(BUILD)/menu_amiga.o: $(AMIGA)/menu_amiga.asm | $(BUILD)

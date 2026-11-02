@@ -193,6 +193,18 @@ void game_loop_install(void)
     *(volatile uint32_t *)GUEST(0x2c22) = (uint32_t)(uintptr_t)game_loop;
 }
 
+/* orig $0030C6: the screen is pushed to the right, 4 pixels a frame (the toggle word shifted twice, or 4 when it is 0), and flag_26e (the
+ * frames left) counts down.  The recording never reaches it (flag_26e is 0 there) */
+static void scroll_push(void)
+{
+    int16_t step = (int16_t)(frame_toggle << 2);
+
+    if (step == 0)
+        step = 4;
+    scroll_x += step;
+    flag_26e--;
+}
+
 /* orig $002C20: one frame of the game.  The routines it calls are the original's (fn_ and the address) until they are written
  * in C.  Where the original goes on at an address that did not run in the recorded play ($3A36, $3A6C, $3A54, $39F6, $32B4,
  * $30DA, $35D2, $2F12) the frame ends here: those are the ends of a level, a death, the pause menu and the like */
@@ -218,7 +230,7 @@ void game_frame(void)
         return;   /* goes on at $3A6C */
     fill_buffer();
     if (flag_26e)
-        fn_30c6();
+        scroll_push();
     draw_background();
     draw_records_19334();
     do_nothing_b();
