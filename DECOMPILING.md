@@ -107,7 +107,11 @@ the loading screen).  How it was made and checked:
   difference was in the oracle's own comparison of the patched keyboard bytes, now ignored with kbd=1).
 - `game_frame` calls no original code except $30C6, $33D4 and $12E08, which the recording never reaches.  Branches of the written routines that
   the recording never reaches are marked `goes on at $ADDR` (or written from the disassembly without a check: the reports of the modules say which).
-- The takeover lockstep (`menu_takeover.lua mode=game`) diverges from the flip ~44 on: this is the speed of the C, not a difference of the
-  result.  Measured: the original's loop takes 3 frames an iteration (667 iterations of $2C20 in 2000 frames), the C `game_frame` 4 frames (500 in
-  2000, count= on the C disk), so the game's own time (counters, animation phases that advance with iterations, not with frames) drifts apart.
+- Speed: with the game's modules built `-O2` (the Makefile used `-Os` for a while to fit the disk's cylinders) the C `game_frame` loop on the
+  C disk runs 667 iterations in 2000 frames, exactly the original's (3 frames an iteration; with `-Os` it was 500, 4 frames).  Count with
+  `gods.lua ... count=ADDR` (the original's loop is $2C20, the C one is `_game_frame` in build/menu.sym + $C0000).
+- End-to-end check against the original, no replay needed: run the original disk (`onemb joy1`, fire pulses to the level) and the C disk with the
+  same joystick script relative to the first iteration of the loop (L about 6195 and 7848), and compare screenshots at L+k: the scenes, scroll
+  positions and enemies agree (scores a few points apart: the first iteration is only known to a few frames).  The takeover lockstep
+  (`menu_takeover.lua mode=game`) still diverges from the flip ~70 (its glue is slower than the C disk): informative for the first flips only.
 - Continue and the password route (`original_continue`, `original_after_password`) are still the original's code; levels 2 to 4 are not decompiled.
