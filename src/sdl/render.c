@@ -34,6 +34,7 @@ extern uint16_t menu_active;
  * that ended its wait), so they are latched before the blank of the frame is signalled, as the hardware does, and the frame is drawn from them */
 static uint32_t latched_cop1lc;
 static uint16_t latched_x_offset;
+extern uint8_t list_scroll[2];   /* display.c: the scroll set for each copper list */
 static uint16_t latched_colors[16];
 
 void display_latch(void)
@@ -51,7 +52,7 @@ void display_latch(void)
         last_list = REG32(0x080);
     }
     latched_cop1lc = REG32(0x080);
-    latched_x_offset = x_offset;
+    latched_x_offset = list_scroll[(uint8_t *)(uintptr_t)REG32(0x080) == copper_list_a ? 0 : 1];
     for (int i = 0; i < 16; i++)
         latched_colors[i] = REG16(0x180 + 2 * i);
 }
@@ -123,7 +124,7 @@ void display_render(uint32_t *pixels)
     for (int i = 0; i < SCREEN_W * SCREEN_H; i++)
         pixels[i] = palette[0];
 
-    for (int row = 0; row < SCREEN_ROWS; row++) {
+    for (int row = 0; row < SCREEN_ROWS - 1; row++) {   /* (the display window ends a line early: the last row of the screen is not shown) */
         uint32_t *out = pixels + (SCREEN_TOP - FIRST_LINE + row) * SCREEN_W;
 
         for (int i = 0; i < 16; i++)
@@ -147,7 +148,7 @@ void display_render(uint32_t *pixels)
         for (int line = 0; line < 7; line++) {
             uint32_t *out = pixels + (MESSAGE_TOP - FIRST_LINE + line) * SCREEN_W;
             const uint16_t *text_color = (const uint16_t *)(uintptr_t)message_pairs[band[line]] + 1;
-            const uint16_t *bits = (const uint16_t *)((const uint8_t *)work_area + 40 * line);   /* words of the machine */
+            const uint16_t *bits = (const uint16_t *)((const uint8_t *)work_area + 40 * (line + 1));   /* words of the machine; the band shows the work area from its second row on (the text is drawn from there) */
 
             for (int x = 0; x < SCREEN_W; x++)
                 out[x] = (message_shown && (bits[x >> 4] >> (15 - (x & 15)) & 1)) ? argb(*text_color) : argb(background[line]);

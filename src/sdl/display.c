@@ -239,11 +239,13 @@ void fade_out(uint16_t delay, uint16_t arg)
 
 /* ---- what the display needs of the chips (the host's) ---- */
 
-/* orig $004D3E: the fine scroll of a copper list: the display (render.c) takes it from x_offset, there is no list to change */
+/* orig $004D3E: the fine scroll of a copper list.  There is no list to change: the scroll is kept for the list (the first or the second) and the display (render.c) shows
+ * the screen with the scroll of the list COP1LC names, as the copper does (the program has already set the next frame's x_offset when the screen is on show) */
+uint8_t list_scroll[2];
+
 void set_scroll(uint8_t *copper_list, uint8_t x)
 {
-    (void)copper_list;
-    (void)x;
+    list_scroll[copper_list == copper_list_a ? 0 : 1] = x;
 }
 
 /* orig $01D05C: wait for the next vertical blank (the main thread raises it) */
