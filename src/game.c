@@ -1524,11 +1524,34 @@ void step_1843e(void)
         return;
 }
 
-/* orig $0190F2: nothing is done when word_354 is negative; the original goes on at $190F8, which did not run */
+/* orig $0190F2: the sparkle of a thing that was dropped (words_34e: where, and the number), while word_354 is not negative: the glyph
+ * 80 + word_354 (a number from 192 on is an object: the glyph is its base frame) is drawn on the middle of the thing's picture
+ * (16 less its width and height, halved, are taken off the place) and word_354 goes up; at 7 it is -1 (over) */
 void step_190f2(void)
 {
     if (word_354 < 0)
         return;
+
+    int16_t x = words_34e[0];
+    int16_t y = words_34e[1];
+    int16_t number = words_34e[2];
+    int16_t glyph;
+
+    if (number >= 0xC0)
+        glyph = ((const struct Object *)object_slots)[number - 0xC0].base_frame;
+    else
+        glyph = (int16_t)table_14cf8[number].w[0];
+
+    const struct Image *image = &image_table[glyph];
+    int16_t across = (int16_t)((16 + image->neg_width) >> 1);
+    int16_t down = (int16_t)((16 - (int16_t)image->height) >> 1);
+
+    x = (int16_t)(x - across);
+    y = (int16_t)(y - down);
+    glyph_draw((int16_t)(x - scroll_x), (int16_t)(y - scroll_y), (uint16_t)(word_354 + 0x50));
+    word_354++;
+    if (word_354 >= 7)
+        word_354 = -1;
 }
 
 /* orig $00D270: a hit at (x, y) of the given strength: when the player is alive and the point is inside the box around the player

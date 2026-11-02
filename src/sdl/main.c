@@ -273,6 +273,8 @@ static int lockstep_commands(const uint32_t *pixels, int phase)
             printf("mem %d\n", b);
             fwrite(guest_ptr((uint32_t)a), 1, (size_t)b, stdout);
             fflush(stdout);
+        } else if (sscanf(line, "tick %d", &a) == 1) {   /* `tick DELTA`: tick_count goes up by DELTA (the original's count includes the frames of its disk loading, which the port does not wait for; the lockstep driver gives the port the original's count) */
+            *(volatile uint32_t *)guest_ptr(0xce2) += (uint32_t)a;   /* tick_count */
         } else if (!strncmp(line, "image", 5))
             lockstep_reply(pixels, phase);
         else if (!strncmp(line, "step", 4))
