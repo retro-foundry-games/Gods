@@ -7312,6 +7312,7 @@ static void level_tables_from_disk(void)
         file_words(description->waypoint, 8);
     }
     file_words(flags_1c056, 3 * 64);
+    file_words(table_1c28a, 60);   /* the pick-ups of the level */
 }
 
 /* orig $00323C: when the small font asked for it (menu_state_25a) it is loaded again: the asset set of the level's sprites */

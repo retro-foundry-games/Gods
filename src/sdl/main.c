@@ -161,6 +161,124 @@ static void key(int phase, int code, int down)
     }
 }
 
+/* the frames of the port by iteration (the original's screenshot of its iteration n is put against the port's frame of its iteration n + 127), and the third window: the pixels that
+ * differ in red over the port's frame dimmed.  The original (host/menu_takeover.lua live=) writes its screenshot and then the number of its iteration to /dev/shm. */
+#define RING 32
+static uint32_t frame_ring[RING][SCREEN_W * SCREEN_H];
+
+static void diff_update(const uint32_t *pixels, SDL_Window *window, SDL_Renderer *renderer, SDL_Texture *texture)
+{
+    static unsigned shown = 0;
+    static uint32_t out[SCREEN_W * SCREEN_H];
+    static uint8_t *file;
+    unsigned n = 0;
+    FILE *f;
+
+    memcpy(frame_ring[gods_iteration % RING], pixels, sizeof out);
+    if (!texture)
+        return;
+    f = fopen("/dev/shm/gods-live-orig.ppm.n", "r");
+    if (!f)
+        return;
+    if (fscanf(f, "%u", &n) != 1)
+        n = 0;
+    fclose(f);
+    if (n == 0 || n == shown || gods_iteration < n + 127 || gods_iteration > n + 127 + RING - 2)
+        return;
+    f = fopen("/dev/shm/gods-live-orig.ppm", "rb");
+    if (!f)
+        return;
+    int w, h, max;
+    if (fscanf(f, "P6 %d %d %d", &w, &h, &max) != 3 || w != 720 || h < 250) {
+        fclose(f);
+        return;
+    }
+    fgetc(f);
+    if (!file)
+        file = malloc(720 * 3 * 300);
+    size_t got = fread(file, 3, (size_t)w * (size_t)h, f);
+    fclose(f);
+    if (got < (size_t)w * (size_t)h)
+        return;
+    shown = n;
+    const uint32_t *mine = frame_ring[(n + 127) % RING];
+    unsigned different = 0;
+
+    for (int y = 0; y < SCREEN_H; y++) {
+        for (int x = 0; x < SCREEN_W; x++) {
+            int orow = y + 18, ocol = 2 * (x + 20);
+            uint32_t original = 0xff000000u;
+
+            if (orow < h && ocol < w) {
+                const uint8_t *p = file + 3 * ((size_t)orow * (size_t)w + (size_t)ocol);
+
+                original = 0xff000000u | (uint32_t)p[0] << 16 | (uint32_t)p[1] << 8 | p[2];
+            }
+            uint32_t value = mine[y * SCREEN_W + x];
+            int inside = (y >= 16 && y < 208) || (y >= 209 && y < 216);
+
+            if (inside && original != value) {
+                out[y * SCREEN_W + x] = 0xffff0000u;
+                different++;
+            } else {
+                out[y * SCREEN_W + x] = 0xff000000u | ((value >> 2) & 0x3f3f3fu);
+            }
+        }
+    }
+    char title[80];
+
+    snprintf(title, sizeof title, "difference: %u pixels (iteration %u)", different, n);
+    SDL_SetWindowTitle(window, title);
+    SDL_UpdateTexture(texture, 0, out, SCREEN_W * 4);
+    SDL_RenderClear(renderer);
+    SDL_RenderTexture(renderer, texture, 0, 0);
+    SDL_RenderPresent(renderer);
+}
+
+/* ---- the lockstep with the original (tools/ami9000_host/lua/amiga/lockstep.lua, projects/gods/host/gods_lockstep.lua) ----------------
+ * --lockstep: no window; the port boots to level 1 by itself (the fire key at frame 300 of the menu), runs the first 128 iterations of the level (the original's saved state is
+ * that far in) and --lockstep-extra N more frames (to be in the same phase of the frame as the emulator), and then answers the protocol on stdin/stdout, one line a command: `key CODE DOWN`
+ * (CODE is the Amiga raw code), `mouse DX DY` and `button B DOWN` (not used), `step` (one video frame: the vertical blank, and the program's thread given a moment) and `image`; the answer to
+ * `step` and `image` is `frame TICKS 320 256 NAME -` and 320*256*3 bytes of RGB. */
+static int lockstep_ready;
+static unsigned lockstep_ticks;
+
+static void lockstep_reply(const uint32_t *pixels, int phase)
+{
+    static uint8_t rgb[SCREEN_W * SCREEN_H * 3];
+
+    for (int i = 0; i < SCREEN_W * SCREEN_H; i++) {
+        rgb[3 * i] = (uint8_t)(pixels[i] >> 16);
+        rgb[3 * i + 1] = (uint8_t)(pixels[i] >> 8);
+        rgb[3 * i + 2] = (uint8_t)pixels[i];
+    }
+    printf("frame %u %d %d %s -\n", lockstep_ticks, SCREEN_W, SCREEN_H, phase == PHASE_INTRO ? "intro" : "level");
+    fwrite(rgb, 1, sizeof rgb, stdout);
+    fflush(stdout);
+}
+
+/* the commands up to the next `step` (returns 1), answering `image` on the way; 0 when the other side is gone or says quit */
+static int lockstep_commands(const uint32_t *pixels, int phase)
+{
+    char line[200];
+
+    while (fgets(line, sizeof line, stdin)) {
+        int code, down, a, b;
+
+        if (sscanf(line, "key %d %d", &code, &down) == 2)
+            irq_key(code, down);
+        else if (sscanf(line, "mouse %d %d", &a, &b) == 2 || sscanf(line, "button %d %d", &a, &b) == 2)
+            continue;
+        else if (!strncmp(line, "image", 5))
+            lockstep_reply(pixels, phase);
+        else if (!strncmp(line, "step", 4))
+            return 1;
+        else if (!strncmp(line, "quit", 4))
+            return 0;
+    }
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     struct sigaction sa = { .sa_sigaction = crash, .sa_flags = SA_SIGINFO };
@@ -173,6 +291,12 @@ int main(int argc, char **argv)
     SDL_Renderer *renderer = 0;
     SDL_Texture *texture = 0;
     SDL_AudioStream *audio = 0;
+    int lockstep = 0, lockstep_extra = 0;   /* --lockstep, --lockstep-extra N: see lockstep_commands */
+    int window_x = -1, window_y = -1, diff_x = -1, diff_y = -1;   /* --window-pos, --diff-pos: where the windows go (the diff window is for GODS_FOLLOW) */
+    int follow = getenv("GODS_FOLLOW") != 0;                      /* the original is played live and this port follows it: it takes no keys of its own */
+    SDL_Window *diff_window = 0;
+    SDL_Renderer *diff_renderer = 0;
+    SDL_Texture *diff_texture = 0;
 
     sigaction(SIGSEGV, &sa, 0);
     for (int i = 1; i < argc; i++) {
@@ -180,6 +304,14 @@ int main(int argc, char **argv)
             disks = argv[++i];
         else if (!strcmp(argv[i], "--scale") && i + 1 < argc)
             scale = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--lockstep"))
+            lockstep = headless = 1;
+        else if (!strcmp(argv[i], "--lockstep-extra") && i + 1 < argc)
+            lockstep_extra = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--window-pos") && i + 1 < argc)
+            sscanf(argv[++i], "%d,%d", &window_x, &window_y);
+        else if (!strcmp(argv[i], "--diff-pos") && i + 1 < argc)
+            sscanf(argv[++i], "%d,%d", &diff_x, &diff_y);
         else if (!strcmp(argv[i], "--level1-image") && i + 1 < argc)
             host_level_image = argv[++i];
         else if (!strcmp(argv[i], "--skip-intro"))
@@ -228,13 +360,26 @@ int main(int argc, char **argv)
         }
         SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
         SDL_SetRenderLogicalPresentation(renderer, SCREEN_W, SCREEN_H * 5 / 6, SDL_LOGICAL_PRESENTATION_LETTERBOX);
+        if (window_x >= 0)
+            SDL_SetWindowPosition(window, window_x, window_y);
+        if (follow) {   /* the third window: where the port's frame differs from the original's */
+            diff_window = SDL_CreateWindow("difference", SCREEN_W * scale, SCREEN_H * scale, 0);
+            diff_renderer = diff_window ? SDL_CreateRenderer(diff_window, 0) : 0;
+            diff_texture = diff_renderer ? SDL_CreateTexture(diff_renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_W, SCREEN_H) : 0;
+            if (diff_texture) {
+                SDL_SetTextureScaleMode(diff_texture, SDL_SCALEMODE_NEAREST);
+                SDL_SetRenderLogicalPresentation(diff_renderer, SCREEN_W, SCREEN_H * 5 / 6, SDL_LOGICAL_PRESENTATION_LETTERBOX);
+                if (diff_x >= 0)
+                    SDL_SetWindowPosition(diff_window, diff_x, diff_y);
+            }
+        }
         audio = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, 0, 0);
         if (audio)
             SDL_ResumeAudioStreamDevice(audio);
     }
     start_phase(phase);
 
-    int vsync = !headless && renderer && SDL_SetRenderVSync(renderer, 1);   /* presented at the display's refresh */
+    int vsync = !headless && renderer && !follow && SDL_SetRenderVSync(renderer, 1);   /* presented at the display's refresh */
     uint64_t next = SDL_GetTicksNS();
     for (int frame = 0; !frames || frame < frames; frame++) {
         SDL_Event event;
@@ -256,11 +401,13 @@ int main(int argc, char **argv)
                     exit(0);
                 if (event.key.scancode == SDL_SCANCODE_LCTRL && phase == PHASE_INTRO)
                     code = 0x40;
-                if (code >= 0)
+                if (code >= 0 && !follow)
                     key(phase, code, event.type == SDL_EVENT_KEY_DOWN);
             }
         }
-        for (const char *k = keys; k && *k;) {   /* the scripted keys of this frame */
+        if (lockstep && lockstep_ready && !lockstep_commands(pixels, phase))
+            return 0;
+        for (const char *k = keys; k && *k && !lockstep_ready; ) {   /* the scripted keys of this frame */
             int at, code, down, used = 0;
 
             if (sscanf(k, "%d:%x:%d%n", &at, &code, &down, &used) >= 3 && at == frame)
@@ -297,6 +444,8 @@ int main(int argc, char **argv)
             } else {
                 display_latch();
                 irq_vbl();
+                if (lockstep)
+                    SDL_DelayNS(3000000);   /* the program's thread flips the screens right after the blank it waited for: give it that moment before the frame is drawn */
                 sound_mix(samples);
             }
             if (vsync && audio && SDL_GetAudioStreamQueued(audio) < 44100 / 5 * 4)
@@ -306,6 +455,19 @@ int main(int argc, char **argv)
             intro_render(pixels);
         else
             display_render(pixels);
+        if (lockstep) {
+            extern unsigned gods_iteration;
+
+            lockstep_ticks++;
+            if (!lockstep_ready && lockstep_ticks % 200 == 0)
+                fprintf(stderr, "gods-sdl: lockstep boot: step %u, phase %d, iteration %u\n", lockstep_ticks, phase, gods_iteration);
+            if (lockstep_ready)
+                lockstep_reply(pixels, phase);
+            else if (gods_iteration >= 129 && lockstep_extra-- <= 0)   /* (the level runs inside the menu's phase: Begin Quest calls the game loop) */
+                lockstep_ready = 1;
+        }
+        if (follow && phase == PHASE_LEVEL)
+            diff_update(pixels, diff_window, diff_renderer, diff_texture);
         if (wav) {   /* a test: the sound as raw signed 16 bit stereo 44100 Hz */
             FILE *f = fopen(wav, "ab");
 
@@ -339,12 +501,18 @@ int main(int argc, char **argv)
         if (!headless) {
             if (!vsync && audio && SDL_GetAudioStreamQueued(audio) < 44100 / 5 * 4)
                 SDL_PutAudioStreamData(audio, samples, sizeof samples);
-            SDL_UpdateTexture(texture, 0, pixels, SCREEN_W * 4);
-            SDL_RenderClear(renderer);
-            SDL_RenderTexture(renderer, texture, 0, 0);
-            SDL_RenderPresent(renderer);
+            static uint64_t last_present;
+            uint64_t now = SDL_GetTicksNS();
+
+            if (!follow || now - last_present > 20000000ull) {   /* (following the original: as fast as it goes, shown 50 times a second) */
+                last_present = now;
+                SDL_UpdateTexture(texture, 0, pixels, SCREEN_W * 4);
+                SDL_RenderClear(renderer);
+                SDL_RenderTexture(renderer, texture, 0, 0);
+                SDL_RenderPresent(renderer);
+            }
         }
-        if (!vsync && !getenv("GODS_FAST")) {   /* (GODS_FAST: as fast as it goes: the lockstep with the original) */
+        if (!vsync && !lockstep && !getenv("GODS_FAST")) {   /* (GODS_FAST: as fast as it goes: the lockstep with the original) */
             next += 20000000ull;   /* 50 frames a second (also without a window: the program's thread needs its time) */
             {
             uint64_t now = SDL_GetTicksNS();
