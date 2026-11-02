@@ -239,8 +239,22 @@ if iter_at then
         ijoy[tonumber(k)] = st
     end
     for k in (args:match("itershot=([%d,]+)") or ""):gmatch("%d+") do ishot[tonumber(k)] = true end
+    -- iterkeys=N:RAWCODE:1|0,...  sets key_down[RAWCODE] at the top of the Nth iteration (the keyboard interrupt's table, $1E63A; raw codes $4C up, $4D down, $4E right, $4F left, $40 space)
+    local ikeys = {}
+    local keys_text = args:match("iterkeys=(%S+)") or ""
+    local keys_file = args:match("iterkeysfile=(%S+)")   -- iterkeysfile=PATH (relative to projects/gods): the same list in a file
+    if keys_file then keys_text = ami.file_read(keys_file, 0, ami.file_size(keys_file)):gsub("%s+", "") end
+    for k, code, v in keys_text:gmatch("(%d+):(%x+):(%d)") do
+        ikeys[tonumber(k)] = ikeys[tonumber(k)] or {}
+        table.insert(ikeys[tonumber(k)], { tonumber(code, 16), v == "1" })
+    end
+    -- itervars=PATH: the variables $100-$FFF at the top of every iteration, one after the other (written with the screenshots at the end)
+    ITERVARS_PATH = args:match("itervars=(%S+)")
+    ITERVARS = {}
     ami.hook(iter_at, function()
         n = n + 1
+        for _, k in ipairs(ikeys[n - 1] or {}) do ami.write(0x1e63a + k[1], k[2] and "\xff" or "\x00") end
+        if ITERVARS_PATH then ITERVARS[#ITERVARS + 1] = ami.read(0x100, 0xf00) end
         if ijoy[n] then ami.joystick(ijoy[n]) end
         if ishot[n] then ami.screenshot(shots_dir .. "/iter-" .. n .. ".ppm") end
     end)
@@ -358,7 +372,11 @@ if ram_path then
     ami.save_file(ram_path, ami.read(0, 0x80000))
     ami.log("ram", ram_path, "pc", string.format("%06x", ami.reg("pc")), "frame", ami.frame() - base)
 end
-if shots_dir or ram_path or snap_name then report_counts() ami.quit(0) end
+if shots_dir or ram_path or snap_name then
+    report_counts()
+    if ITERVARS_PATH then ami.save_file(ITERVARS_PATH, table.concat(ITERVARS)) end
+    ami.quit(0)
+end
 
 -- inputlog=FILE: play (the window stays) and write every key and mouse event the host processes as "frame kind a b" (frame counted
 -- from the start or the loaded snapshot); replay=FILE plays such a file again.  The file is rewritten every second.

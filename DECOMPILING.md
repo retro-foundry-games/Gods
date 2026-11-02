@@ -175,3 +175,13 @@ screenshots at chosen iterations: `menu_takeover.lua ... itershot=N,N shots=DIR`
 Amiga, `amiga/display.c` (the old screen.c and display.c: the buffers and the shadow table of the colours, the copper list's colours and fades, the frame
 tick, and the chips' parts: the copper scroll, the vertical blank, the blitter wait, `display_show`), with the interface in `display.h`; the host's
 version is `sdl/display.c` (the same logic; the chips' parts are the host's: it must follow changes of the Amiga's file).
+
+## Lockstep of the Amiga build and the SDL port (scripts/lockstep_sdl.py)
+
+Both start level 1 from Begin Quest and get the keys of your recording by iteration (shifted by the 128 iterations its state is into the level:
+captures/input/level1-run1-iterkeys*.txt), and write the variables $100-$FFF at the top of every iteration (gods.lua iterhook= itervars= iterkeysfile=; the SDL port
+GODS_ITERKEYS= GODS_ITERDUMP= GODS_ITERMAX=); lockstep_sdl.py puts the SDL's words in the Amiga's order and lists the first iteration at which a variable differs.
+First run (3000 iterations): the first differences are the start state (word_4a2 $04a3: Amiga 01, SDL 00; slot_ref_748/7da: Amiga 00, SDL ff, the original's state has ff too, so the
+C disk is the one that differs; word_ddc/flags_0ddd are one word and one byte over the same place: left out), and the first difference of the play is at iteration 201: word_274
+(the sum of the first_value of the objects in the slots, after the first pick-up: Amiga 4, SDL 1) and the object number of the first shot list ($06B6: Amiga -1, SDL 0): the objects
+(weapons) of the slots are not the same on both: look at load_weapons_file / the fields of struct Object that the host converts (pad_16, the words that are not listed).
