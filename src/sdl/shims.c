@@ -241,3 +241,17 @@ __attribute__((weak)) void original_after_password(void)
 {
     host_begin_quest();
 }
+
+/* an original routine that is not replicated was reached: once each, on stderr */
+void host_missing_routine(uint32_t address)
+{
+    static uint32_t said[256];
+    static unsigned count;
+
+    for (unsigned i = 0; i < count; i++)
+        if (said[i] == address)
+            return;
+    if (count < 256)
+        said[count++] = address;
+    fprintf(stderr, "gods-sdl: the original's routine at $%X is not replicated and was reached\n", address);
+}

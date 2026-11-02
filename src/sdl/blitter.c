@@ -7,6 +7,7 @@
  * ORed; both shifted `shift` pixels to the right (one word wider when extra_modulo is not negative), the first and the last word of a
  * row cut by first_mask and last_mask; the screen's rows are 44 bytes and its planes blit_plane_stride apart.  The words are native. */
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "guest.h"
@@ -33,6 +34,9 @@ static uint16_t mask_word(const uint8_t *src, unsigned plane, unsigned stride, u
 }
 
 /* orig $017208 (draw.c): the arguments are the program's */
+volatile int gods_trace;   /* the lockstep's peer: GODS_TRACE=FIRST-LAST (ticks of the port): the draws near the top of the screen are written to stderr */
+extern uint8_t *screen_buffer;
+
 void blit_masked_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows, uint16_t words,
                        uint16_t extra_modulo, uint16_t first_mask, uint16_t last_mask)
 {
@@ -43,6 +47,8 @@ void blit_masked_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_
     unsigned shift_bits = shift & 0xff;
     int16_t plane_stride = (int16_t)blit_plane_stride;
 
+    if (gods_trace && (long)(dst - screen_buffer) < 44 * 6)
+        fprintf(stderr, "trace blit_masked_image row %ld col %ld words %u rows %u shift %u src %p first %04x last %04x\n", (long)(dst - screen_buffer) / 44, (long)(dst - screen_buffer) % 44, words, rows, shift, (const void *)src, first_mask, last_mask);
     if (src == 0)
         return;   /* an image the table has no data for: on the Amiga the vectors at address 0 are drawn */
     blit_extra_modulo = extra_modulo;

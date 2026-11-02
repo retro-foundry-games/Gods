@@ -269,7 +269,11 @@ static int lockstep_commands(const uint32_t *pixels, int phase)
             irq_key(code, down);
         else if (sscanf(line, "mouse %d %d", &a, &b) == 2 || sscanf(line, "button %d %d", &a, &b) == 2)
             continue;
-        else if (!strncmp(line, "image", 5))
+        else if (sscanf(line, "mem %x %x", (unsigned *)&a, (unsigned *)&b) == 2) {   /* `mem ADDR LEN`: `mem LEN` and LEN bytes of the program's memory (a debugging aid: tools/ami9000_host/ctl.py) */
+            printf("mem %d\n", b);
+            fwrite(guest_ptr((uint32_t)a), 1, (size_t)b, stdout);
+            fflush(stdout);
+        } else if (!strncmp(line, "image", 5))
             lockstep_reply(pixels, phase);
         else if (!strncmp(line, "step", 4))
             return 1;
@@ -459,6 +463,20 @@ int main(int argc, char **argv)
             extern unsigned gods_iteration;
 
             lockstep_ticks++;
+            {   /* GODS_TRACE=FIRST-LAST: the draws near the top of the screen of those ticks go to stderr (blitter.c) */
+                extern volatile int gods_trace;
+                unsigned first = 0, last = 0;
+
+                if (getenv("GODS_TRACE") && sscanf(getenv("GODS_TRACE"), "%u-%u", &first, &last) == 2)
+                    gods_trace = lockstep_ticks + 1 >= first && lockstep_ticks <= last;
+                if (gods_trace) {
+                    static unsigned last_iteration;
+
+                    if (gods_iteration != last_iteration)
+                        fprintf(stderr, "trace iteration %u starts by tick %u\n", gods_iteration, lockstep_ticks);
+                    last_iteration = gods_iteration;
+                }
+            }
             if (!lockstep_ready && lockstep_ticks % 200 == 0)
                 fprintf(stderr, "gods-sdl: lockstep boot: step %u, phase %d, iteration %u\n", lockstep_ticks, phase, gods_iteration);
             if (lockstep_ready)

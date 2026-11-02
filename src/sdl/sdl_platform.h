@@ -20,6 +20,9 @@ static inline void blit_start(uint16_t size)
     sdl_blit_run();
 }
 
+/* the original's routine at `address` is not replicated and was reached: said once on stderr (sdl/shims.c), so that what the play needs and the port lacks is known */
+void host_missing_routine(uint32_t address);
+
 /* a word and a long of the data of a loaded file (the files are big-endian) */
 static inline uint16_t file_word(const void *p)
 {

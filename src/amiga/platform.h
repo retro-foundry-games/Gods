@@ -35,4 +35,10 @@ static inline void file_longs(void *p, uint32_t count)
     (void)count;
 }
 
+/* the original's routine at `address` is not replicated and was reached (the host says so; here nothing is done, as the original's code is not there to call either) */
+static inline void host_missing_routine(uint32_t address)
+{
+    (void)address;
+}
+
 #endif

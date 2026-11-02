@@ -3,6 +3,9 @@
 #include "menu.h"
 #include "sound.h"
 
+static void update_falling_slots(void);
+static void update_crumbles(void);
+
 /* orig $00363A: this frame's input: the joystick byte and the button bits are kept for the game; when the input is being recorded
  * (demo_mode positive) one byte of them is put in the record (the buttons in bits 6 and 7, the stick below) */
 void game_read_input(void)
@@ -281,7 +284,7 @@ void game_frame(void)
         mark_player_cells();
         update_records_1354();
         draw_sprites_721e();
-        do_nothing_b();
+        update_falling_slots();
         unit0_update();
         unit1_update();
         unit2_update();
@@ -1334,42 +1337,6 @@ void step_d898(void)
         return;
 }
 
-/* orig $00E486: the first of five records of 24 bytes at $18741 is only looked at while bit 1 of its first byte is set (the
- * original then goes on at $E490, which did not run) */
-void unit0_update(void)
-{
-    if (!(unit_flags_18741[0] & 2))
-        return;
-}
-
-/* orig $00E76C: the same for the second record */
-void unit1_update(void)
-{
-    if (!(unit_flags_18741[24] & 2))
-        return;
-}
-
-/* orig $00EA52: the same for the third record */
-void unit2_update(void)
-{
-    if (!(unit_flags_18741[48] & 2))
-        return;
-}
-
-/* orig $00ED38: the same for the fourth record */
-void unit3_update(void)
-{
-    if (!(unit_flags_18741[72] & 2))
-        return;
-}
-
-/* orig $00F01E: the same for the fifth record */
-void unit4_update(void)
-{
-    if (!(unit_flags_18741[96] & 2))
-        return;
-}
-
 /* orig $016AEE: nothing is done unless flag_aa8 is 1; the original then goes on at $16AF6, which did not run */
 void step_16aee(void)
 {
@@ -1643,37 +1610,37 @@ void take_record_to_199ac(struct EntryRef *a0)
 
 
 /* orig $018900: like take_record_to_199ac, but the entry's record (its word +2 numbers 8 bytes of ptr_0cb2) is made into the first
- * free one of the five records of 24 bytes of records_18740 (a state 0): state 2, the 8 bytes (the byte +6 split into two
+ * free one of the five records of 24 bytes of `units` (a state 0): state 2, the 8 bytes (the byte +6 split into two
  * nibbles), and 14 bytes copied from the table ptr_0b7e + 2 (16 bytes for each of the signed byte +5); when none is free that is
  * all */
 void take_record_to_18740(struct EntryRef *a0)
 {
     a0->state = 0xFFFF;
 
-    const uint8_t *s = ptr_0cb2 + (int16_t)(a0->number << 3);
-    uint8_t *slot = records_18740;
+    const struct UnitScript *script = &((const struct UnitScript *)ptr_0cb2)[a0->number];
+    struct Unit *unit = units;
     int i;
 
-    for (i = 0; i < 5; i++, slot += 24)
-        if (*(uint16_t *)slot == 0)
+    for (i = 0; i < 5; i++, unit++)
+        if (unit->state == 0)
             break;
     if (i == 5)
         return;
-    uint8_t *out = slot;
-    *(uint16_t *)out = 2;
-    out[2] = s[0];
-    out[3] = s[1];
-    out[4] = s[2];
-    out[5] = s[3];
-    out[6] = s[4];
-    out[7] = s[6] >> 4;
-    out[8] = s[6] & 15;
-    const uint8_t *src = ptr_0b7e + 2 + (int16_t)((int8_t)s[5] << 4);
+    unit->state = 2;
+    unit->count = script->count;
+    unit->path = script->path;
+    unit->spacing = script->spacing;
+    unit->life = script->life;
+    unit->aim = script->speeds >> 4;
+    unit->rate = script->speeds & 15;
 
-    out[9] = src[1];
-    for (int k = 0; k < 12; k++)
-        out[10 + k] = src[2 + k];
-    out[22] = s[7];
+    const struct CreatureTemplate *template = &((const struct CreatureTemplate *)ptr_0b7e)[script->template_index];
+    unit->draw = (uint8_t)template->draw_kind;
+    unit->move = template->move_routine;
+    unit->box_width = (int16_t)template->box_width;
+    unit->box_height = (int16_t)template->box_height;
+    unit->step = template->step_routine;
+    unit->drop = script->drop;
 }
 
 /* orig $01FA8C: the sound `id` is stopped when a voice plays it: the voice whose entry in voice_ids_207a6 equals the byte +1 of the
@@ -3557,6 +3524,663 @@ static void creatures_run(struct CreatureType *type)
     }
     if (gone >= type->count)
         type->status = 0;
+}
+
+
+/* orig $00E352 (d0 and d1 the screen place): a thing falls from there: the first free of the ten records of five words at slots_11b4 (the first word negative) gets the
+ * place (the x eleven to the right, in the level), no picture count yet and a speed of 4, and the routine at $E3A2 is switched on */
+static void drop_falling_slot(int16_t x, int16_t y)
+{
+    for (int i = 0; i < 10; i++) {
+        int16_t *slot = &slots_11b4[i * 5];
+
+        if (slot[0] < 0) {
+            code_e3a2 = 0x4E71;
+            slot[0] = (int16_t)(x + scroll_x + 11);
+            slot[1] = (int16_t)(y + scroll_y);
+            slot[2] = 0;
+            slot[3] = 4;
+            return;
+        }
+    }
+}
+
+/* orig $017BE2 and $017C1E: the cell `cell` of the collision map (the second half of the map) has an entry of the table of forty crumbling cells (table_1a30c, three words:
+ * x, y, the state) when the place of the cell is in one whose state is negative (just hit): then what the thing that hit it does to it (its word +8 of `slot`, more
+ * for the weapon 10) is taken off the state; at less than -200 the cell begins to crumble (state 0).  Returns 1 then: the caller is done */
+static int crumble_hit_existing(uint16_t x, uint16_t y, const int16_t *slot)
+{
+    uint16_t *entry = table_1a30c;
+
+    for (int i = 0; i < 40; i++, entry += 3) {
+        if (entry[0] != x || entry[1] != y || (int16_t)entry[2] >= 0)
+            continue;
+        int16_t hit = slot[4];
+        int16_t weapon = (int16_t)y;   /* d5 as it is when the list number is not 0 to 2 */
+
+        if (list_index_a98 == 0)
+            weapon = slot_ref_6b6;
+        if (list_index_a98 == 1)
+            weapon = slot_ref_748;
+        if (list_index_a98 == 2)
+            weapon = slot_ref_7da;
+        if (weapon == 10)
+            hit = (int16_t)(hit + 0x32);
+        entry[2] = (uint16_t)(entry[2] - hit);
+        if ((int16_t)entry[2] < -200)
+            entry[2] = 0;
+        return 1;
+    }
+    return 0;
+}
+
+/* orig $017B98: a thing (`slot`) has hit the cell `cell` of the collision map: when the cell is not yet crumbling a free entry of the table of forty is made for it (its place,
+ * the state -1) and the routine at $17CC0 is switched on */
+static void crumble_start(const uint8_t *cell, const int16_t *slot)
+{
+    uint32_t index = (uint32_t)(cell - 0x2000 - ptr_0b86);
+    uint16_t x = (uint16_t)((index & 0x7F) << 5);
+    uint16_t y = (uint16_t)((index & 0xFFFF80) >> 3);
+
+    if (crumble_hit_existing(x, y, slot))
+        return;
+    uint16_t *entry = table_1a30c;
+
+    for (int i = 0; i < 40; i++, entry += 3) {
+        if ((int16_t)entry[0] < 0) {
+            entry[0] = x;
+            entry[1] = y;
+            entry[2] = 0xFFFF;
+            word_4a0++;
+            code_17cc0 = 0x4E71;
+            return;
+        }
+    }
+}
+
+/* orig $017D28: the crumbling entry `entry` is done: its cell becomes ground no more: a free one of the hundred markers (marker_table) is made for the cell of the collision
+ * map, which gets 0, and the cell of the map gets 1 */
+static void crumble_remove(const uint16_t *entry)
+{
+    int16_t x = (int16_t)(entry[0] & 0xFFE0);
+    int16_t y = (int16_t)(entry[1] & 0xFFF0);
+    uint8_t *cell = ptr_0b86 + 0x2000 + (x >> 5) + (int16_t)(y << 3);
+
+    for (int i = 0; i < 100; i++) {
+        if ((int32_t)marker_table[i] < 0) {
+            marker_table[i] = (uint32_t)(uintptr_t)cell;
+            *cell = 0;
+            *(cell - 0x2000) = 1;
+            return;
+        }
+    }
+}
+
+/* orig $017CC2 (the routine at $17CC0 is a bare return until a cell crumbles): the cells that crumble are drawn (the sprite param_d + the state), the state goes up every frame
+ * the screen is on and at 4 the cell is removed */
+static void update_crumbles(void)
+{
+    if (code_17cc0 != 0x4E71)
+        return;
+    if (word_4a0 == 0)
+        code_17cc0 = 0x4E75;
+    uint16_t *entry = table_1a30c;
+
+    for (int i = 0; i < 40; i++, entry += 3) {
+        if ((int32_t)(((uint32_t)entry[0] << 16) | entry[1]) < 0)
+            continue;
+        if ((int16_t)entry[2] < 0)
+            continue;
+        sprite_draw((int16_t)(entry[0] - scroll_x), (int16_t)(entry[1] - scroll_y), (uint16_t)(entry[2] + param_d));
+        word_4a0++;
+        if (frame_toggle == 0)
+            continue;
+        entry[2]++;
+        if ((int16_t)entry[2] > 3) {
+            crumble_remove(entry);
+            entry[0] = 0xFFFF;
+            entry[1] = 0xFFFF;
+            word_4a0--;
+        }
+    }
+}
+
+/* orig $00E3A4 (the routine at $E3A2 is a bare return until something is dropped): the ten falling things: each falls by its speed, which goes up to 16 every other
+ * frame; the cell two rows under it is looked at (a cell of 109 is hit: the crumbling of $17B98 starts); the player is hit by it (damage_player_at) or it is drawn as the
+ * glyph 541 + its picture count and goes when it is off the bottom of the screen */
+static void update_falling_slots(void)
+{
+    if (code_e3a2 != 0x4E71)
+        return;
+    word_1218 = 0;
+    for (int i = 0; i < 10; i++) {
+        int16_t *slot = &slots_11b4[i * 5];
+        int16_t x = slot[0];
+
+        if (x < 0)
+            continue;
+        word_1218++;
+        int16_t y = (int16_t)(slot[1] + slot[3]);
+
+        slot[1] = y;
+        if (frame_phase == 0) {
+            slot[3]++;
+            if (slot[3] > 0x10)
+                slot[3] = 0x10;
+        }
+        const uint8_t *cell = ptr_0b86 + (int16_t)(((x + 5) & 0xFFE0) >> 5) + (int16_t)((y & 0xFFF0) << 3) + 0x100;
+
+        if (*cell == 0x6D) {
+            slot[4] = 0xFA;
+            list_index_a98 = 0;
+            crumble_start(cell + 0x2000, slot);
+        }
+        word_39c = 5;
+        word_39e = 0x10;
+        if ((int16_t)damage_player_at(x, (int16_t)(y + 8), slot[2]) < 0) {
+            slot[0] = -1;
+            continue;
+        }
+        int16_t sx = (int16_t)(x - scroll_x);
+        int16_t sy = (int16_t)(y - scroll_y);
+
+        if (sy >= 0xC0) {
+            slot[0] = -1;
+            continue;
+        }
+        glyph_draw(sx, sy, (uint16_t)(slot[2] + 0x21D));
+    }
+    if (word_1218 == 0)
+        code_e3a2 = 0x4E75;
+}
+
+/* orig $0183BC: an aimed shot (a bolt) from (x, y) at the player, `speed` and the kind `d6`: the bolts are not replicated yet */
+static void aimed_shot(int16_t x, int16_t y, int16_t speed, int16_t kind)
+{
+    (void)x;
+    (void)y;
+    (void)speed;
+    (void)kind;
+    host_missing_routine(0x183BC);
+}
+
+/* ======== the waves of enemies ("units"): $E486, with its four copies $E76C, $EA52, $ED38 and $F01E, and the routines the templates name ======== */
+
+/* a routine of a template that is not written here (the address is the original's): the host says which, once */
+static void unit_routine_missing(uint32_t address)
+{
+    host_missing_routine(address);
+}
+
+/* orig $008292: a member of a unit goes through its pictures (the low two bits of its picture count on, bit 3 is kept) and turns to face the player: the bit
+ * is cleared when the player is to its right and set when he is to its left, one pixel's worth of dead zone either side */
+static void unit_face(struct UnitMember *m)
+{
+    if (frame_toggle == 0)
+        return;
+    int16_t picture = m->anim;
+    int16_t turned = (int16_t)(picture & 8);
+
+    picture = (int16_t)(((picture + 1) & 3) | turned);
+    m->anim = picture;
+
+    int16_t x = m->x;
+
+    if (x == word_1da)
+        return;
+    if (x > word_1da) {   /* $82C8 */
+        x--;
+        if (x <= word_1da)
+            return;
+        m->anim |= 8;
+        return;
+    }
+    x++;
+    if (x > word_1da)
+        return;
+    m->anim &= (int16_t)~8;
+}
+
+/* orig $008274: the picture is one of four of the table `pictures`, plus 3 when it faces left */
+static int16_t unit_move_8274(struct UnitMember *m, const uint16_t *pictures)
+{
+    unit_face(m);
+    int16_t picture = m->anim;
+    int16_t left = (int16_t)(picture & 8);
+    int16_t d2 = (int16_t)pictures[picture & 3];
+
+    if (left != 0)
+        d2 = (int16_t)(d2 + 3);
+    return d2;
+}
+
+static const uint16_t unit_pictures_82d8[4] = { 0x1C0, 0x1C1, 0x1C2, 0x1C1 };
+static const uint16_t unit_pictures_82e0[4] = { 0x1C6, 0x1C7, 0x1C8, 0x1C7 };
+
+/* orig $008234: eight pictures from `base` on (four more when it faces left) */
+static int16_t unit_move_8234(struct UnitMember *m, int16_t base)
+{
+    unit_face(m);
+    int16_t picture = m->anim;
+    int16_t d2 = (int16_t)((picture & 7) + base);
+
+    if ((picture & 8) != 0)
+        d2 = (int16_t)(d2 + 4);
+    return d2;
+}
+
+/* orig $00818C: a shot goes out sideways from the member (to the left from 12 pixels before it, to the right from 27 after), at the speed its rate gives */
+static void unit_shot_818c(struct UnitMember *m)
+{
+    int16_t x = m->x;
+    int16_t y = (int16_t)(m->y + 9);
+    int16_t speed = (int16_t)((word_7edc >> 1) + 4);
+
+    if ((m->anim & 8) == 0) {
+        x = (int16_t)(x - 12);
+        word_2e4 = (int16_t)-speed;
+        enemy_shot(x, y, 0);
+    } else {
+        x = (int16_t)(x + 27);
+        word_2e4 = speed;
+        enemy_shot(x, y, 1);
+    }
+}
+
+/* orig $0081D0: a member that shoots: with bit 2 of its picture set it goes through the pictures 4 to 7 (the shot goes out at the 6th), else as $8218 */
+static int16_t unit_move_81d0(struct UnitMember *m)
+{
+    int16_t d2 = m->anim;
+
+    if ((d2 & 4) != 0) {
+        d2 &= 7;
+        if (frame_toggle != 0) {
+            d2++;
+            if (d2 == 6)
+                unit_shot_818c(m);
+            if (d2 >= 8) {
+                m->anim &= 8;
+                goto done;
+            }
+        }
+        m->anim &= 8;
+        m->anim |= d2;
+        d2 -= 4;
+        if ((m->anim & 8) != 0)
+            d2 += 4;
+        return (int16_t)(d2 + 0x1FE);
+    }
+    unit_face(m);
+done:;
+    d2 = m->anim;
+    int16_t d3 = d2;
+
+    d2 &= 3;
+    d3 &= 8;
+    d3 >>= 1;
+    d2 = (int16_t)(d2 + d3);
+    return (int16_t)(d2 + 0x1F6);
+}
+
+/* orig $008116: a member that goes through twelve pictures (the ones from the fourth on once started, a thing is dropped at the ninth) */
+static int16_t unit_move_8116(struct UnitMember *m, int16_t x, int16_t y)
+{
+    if (frame_phase == 0) {
+        if (m->anim <= 3) {
+            m->anim++;
+            m->anim &= 3;
+        } else {
+            m->anim++;
+            if (m->anim == 9)
+                drop_falling_slot(x, y);   /* $E352 */
+            if (m->anim >= 12)
+                m->anim = 0;
+        }
+    }
+    return (int16_t)(m->anim + 0x211);
+}
+
+/* orig $0082E8, $008308, $008328 and $008348: a member that goes through `pictures` pictures (one a frame_toggle) from `base` on */
+static int16_t unit_move_cycle(struct UnitMember *m, int16_t pictures, int16_t base)
+{
+    if (frame_toggle != 0) {
+        m->anim++;
+        if (m->anim >= pictures)
+            m->anim = 0;
+    }
+    return (int16_t)(m->anim + base);
+}
+
+/* the movement routines of the templates for the members of a unit (the original's addresses): returns the picture */
+static int16_t unit_move_routine(uint32_t routine, struct UnitMember *m, int16_t x, int16_t y)
+{
+    switch (routine) {
+    case 0x8116:
+        return unit_move_8116(m, x, y);
+    case 0x81D0:
+        return unit_move_81d0(m);
+    case 0x8250:
+        return unit_move_8234(m, 0x209);
+    case 0x8256:
+        return unit_move_8234(m, 0x1F6);
+    case 0x825C:
+        return unit_move_8234(m, 0x1FE);
+    case 0x8262:
+        return unit_move_8274(m, unit_pictures_82d8);
+    case 0x826A:
+        return unit_move_8274(m, unit_pictures_82e0);
+    case 0x82E8:
+        return unit_move_cycle(m, 6, 0x202);
+    case 0x8308:
+        return unit_move_cycle(m, 6, 0x1E4);
+    case 0x8328:
+        return unit_move_cycle(m, 8, 0x1EE);
+    case 0x8348:
+        return unit_move_cycle(m, 7, 0x20A);
+    default:
+        unit_routine_missing(routine);
+        return 0;
+    }
+}
+
+/* orig $007EE2: the step of a member that shoots at the player: its timer runs down; at 0 it is set again (from the rate) and, when the unit's shots are aimed, a bolt goes
+ * out ($183BC, the aim the rate says), otherwise a shot goes sideways at the speed the rate gives, from the side the player is on */
+static void unit_step_7ee2(struct UnitMember *m)
+{
+    if (word_7edc == 0)
+        return;
+    m->timer--;
+    if (m->timer != 0)
+        return;
+    if (word_7ede != 0) {
+        m->timer = (int16_t)((16 - word_7edc) << 1);
+        aimed_shot((int16_t)(m->x + 16), (int16_t)(m->y + 16), (int16_t)((word_7edc >> 1) + 4), 1);
+        return;
+    }
+    m->timer = (int16_t)((16 - word_7edc) << 1);
+    int16_t x = m->x;
+    int16_t y = (int16_t)(m->y + 12);
+    int16_t speed = (int16_t)((word_7edc >> 1) + 4);
+
+    if (x < word_1da) {
+        x = (int16_t)(x + 8);
+        word_2e4 = (int16_t)-speed;
+        enemy_shot(x, y, 0);
+    } else {
+        x = (int16_t)(x + 24);
+        word_2e4 = speed;
+        enemy_shot(x, y, 1);
+    }
+}
+
+/* orig $0080E8: the step of a member whose timer, when it has run out at its picture 3 (the screen not on its odd frame), goes on to the picture 4 */
+static void unit_step_80e8(struct UnitMember *m)
+{
+    if (word_7edc == 0)
+        return;
+    m->timer--;
+    if (m->timer >= 0)
+        return;
+    if (m->anim != 3)
+        return;
+    if (frame_phase != 0)
+        return;
+    m->timer = (int16_t)((16 - word_7edc) << 2);
+    m->anim++;
+}
+
+/* orig $008158: the step of a member that, when its timer has run out at its picture 3 or 7 (when frame_toggle is set), goes on to the next */
+static void unit_step_8158(struct UnitMember *m)
+{
+    if (word_7edc == 0)
+        return;
+    m->timer--;
+    if (m->timer >= 0)
+        return;
+    if ((m->anim & 7) != 3)
+        return;
+    if (frame_toggle == 0)
+        return;
+    m->timer = (int16_t)((16 - word_7edc) << 1);
+    m->anim++;
+}
+
+/* the step routines of the templates for the members of a unit */
+static void unit_step_routine(uint32_t routine, struct UnitMember *m)
+{
+    switch (routine) {
+    case 0x7EE2:
+        unit_step_7ee2(m);
+        break;
+    case 0x80A0:   /* a bare return */
+        break;
+    case 0x80E8:
+        unit_step_80e8(m);
+        break;
+    case 0x8158:
+        unit_step_8158(m);
+        break;
+    case 0xFFFFFFFF:   /* the templates that have none */
+        break;
+    default:
+        unit_routine_missing(routine);
+        break;
+    }
+}
+
+/* orig $0080A2: the member is hit by what the player has (check_hit_and_walls, with word_3a6 set to say it is a unit's): its hit points are what is left; when they
+ * are negative its picture count is -1 and its last step, the byte before where it is on its path, is kept to die going on with */
+static void unit_hit(struct UnitMember *m, int16_t x, int16_t y)
+{
+    word_3a6 = 0xFFFF;
+    int16_t hp = check_hit_and_walls((int16_t)(x + scroll_x), (int16_t)(y + scroll_y), m->hp);
+
+    word_3a6 = 0;
+    m->hp = hp;
+    if (hp >= 0)
+        return;
+    m->anim = -1;
+    m->vector = (int16_t)(int8_t)m->path[-1];
+}
+
+/* orig $0173C4 and the others of the table at $6EA8: what the member is drawn with (the draw routine of the template) */
+static void unit_draw(uint8_t kind, int16_t x, int16_t y, int16_t picture)
+{
+    switch ((int8_t)kind) {
+    case 0:
+        glyph_draw(x, y, (uint16_t)picture);
+        break;
+    case 1:
+    case 2:
+        sprite_draw(x, y, (uint16_t)picture);
+        break;
+    default:
+        host_missing_routine(0x6EA8 + 4 * (uint32_t)(int32_t)(int8_t)kind);
+        break;
+    }
+}
+
+/* the step of a member along its path: a byte a frame, the step in x in the high nibble and in y in the low (both signed) */
+static void unit_walk(struct UnitMember *m, int16_t *x, int16_t *y, int8_t step)
+{
+    int16_t dy = (int16_t)((int8_t)(((uint8_t)step & 0x0F) << 4) >> 4);
+    int16_t dx = (int16_t)((int8_t)((uint8_t)step & 0xF0) >> 4);
+
+    (void)m;
+    *y = (int16_t)(*y + dy);
+    *x = (int16_t)(*x + dx);
+}
+
+/* the body of $E486 and its copies: unit `k` (0 to 4).  A unit that has been made (state 2) puts its members at the start of the path; one going (state 3) moves
+ * them, one a frame, along it */
+static void unit_update(int k, uint16_t *words)
+{
+    struct Unit *unit = &units[k];
+
+    if ((unit->state & 2) == 0)
+        return;
+    struct UnitMember *member = (struct UnitMember *)ptr_0cfa[k];
+    int16_t index = 0;
+    int16_t gone = 0;
+
+    if ((unit->state & 1) == 0) {   /* $E49C: the members are put at the start of their path */
+        int16_t delay = 0;
+
+        do {
+            words[0] = 0;
+            unit->state++;
+            const struct Entry8 *entry = &entry_list[(int8_t)unit->path];
+            const uint16_t *path = (const uint16_t *)(uintptr_t)entry->address;
+
+            unit_path_end[k] = (const uint8_t *)path + entry->size;
+            if (path[0] == 0x2345) {
+                member->x = (int16_t)path[1];
+                member->y = (int16_t)path[2];
+                member->path = (const uint8_t *)(path + 3);
+            } else {
+                member->x = (int16_t)(path[0] + scroll_x);
+                member->y = (int16_t)(path[1] + scroll_y);
+                member->path = (const uint8_t *)path + 4;
+            }
+            member->unused_4 = 0;
+            member->delay = delay;
+            member->anim = 0;
+            member->timer = (int16_t)((int16_t)(int8_t)(16 - unit->rate) * 2);
+            member->hp = unit->life;
+            delay = (int16_t)(delay + unit->spacing);
+            member++;
+            index++;
+        } while ((uint8_t)index != unit->count);
+        unit_count[k] = (int8_t)unit->count;
+        unit->state = 3;
+        return;
+    }
+
+    /* $E546 */
+    words[1] = 0;
+    words[2] = 0;
+    word_7edc = unit->rate;
+    word_7ede = unit->aim;
+    member = (struct UnitMember *)ptr_0cfa[k];
+    index = 0;
+    for (;;) {
+        if (member->hp == 0) {
+            gone++;
+        } else if (member->hp < 0) {   /* $E700: it dies going on as it went */
+            words[2]++;
+            member->anim++;
+            if (member->anim >= 17) {
+                member->hp = 0;
+            } else {
+                int16_t x = member->x, y = member->y;
+
+                unit_walk(member, &x, &y, (int8_t)member->vector);
+                member->x = x;
+                member->y = y;
+                sprite_draw((int16_t)(x - scroll_x), (int16_t)(y - scroll_y), (uint16_t)(member->anim + 0x5B));
+            }
+        } else if (member->delay != 0) {
+            member->delay--;
+        } else {
+            int16_t x = member->x, y = member->y;
+            int off = 0;
+
+            if (timer_306 == 0) {
+                const uint8_t *path = member->path;
+                int8_t step = (int8_t)*path++;
+
+                if (path >= unit_path_end[k]) {   /* the end of the path: it goes when it is off the screen, else it keeps its last step */
+                    int16_t sx = (int16_t)(member->x - scroll_x);
+                    int16_t sy = (int16_t)(member->y - scroll_y);
+
+                    if (sx <= -36 || sx >= 324 || sy <= -40 || sy >= 196) {
+                        member->hp = 0;
+                        unit->drop = 0xFF;
+                        gone++;
+                        off = 1;
+                    } else {
+                        path--;
+                    }
+                }
+                if (!off) {
+                    word_1da = member->x;
+                    member->path = path;
+                    unit_walk(member, &x, &y, step);
+                }
+            }
+            if (!off) {
+                member->x = x;
+                member->y = y;
+                x = (int16_t)(x - scroll_x);
+                y = (int16_t)(y - scroll_y);
+                if (word_214 >= 0) {
+                    int16_t *list = (int16_t *)(uintptr_t)value_c6c;
+
+                    list[0] = x;
+                    list[1] = y;
+                    list[2] = member->hp;
+                    flag_20e++;
+                    value_c6c += 6;
+                }
+                int16_t picture = unit_move_routine(unit->move, member, x, y);
+
+                unit_step_routine(unit->step, member);
+                word_39c = unit->box_width;
+                word_39e = unit->box_height;
+                unit_hit(member, x, y);
+                if (member->hp < 0) {   /* $E6D6: just killed */
+                    words[1]++;
+                    word_7f74 = x;
+                    word_7f76 = y;
+                    add_kill_score(unit->life);
+                }
+                unit_draw(unit->draw, x, y, picture);
+            }
+        }
+        index++;
+        member++;
+        if (index >= unit_count[k])
+            break;
+    }
+    /* $E674: when all of them are gone or dying and none has dropped what the unit drops yet, it is dropped where the last was */
+    int16_t left = (int16_t)(unit_count[k] - words[1] - words[2]);
+
+    if (left == gone && words[0] == 0) {
+        int16_t x = (int16_t)(word_7f74 + scroll_x + 8);
+        int16_t y = (int16_t)(word_7f76 + scroll_y + 8);
+
+        if (unit->drop != 0xFF)
+            drop_thing(x, y, unit->drop);
+        words[0] = 1;
+    }
+    if (gone >= unit_count[k])
+        unit->state = 0;
+}
+
+/* orig $00E486, $00E76C, $00EA52, $00ED38 and $00F01E: the five units */
+void unit0_update(void)
+{
+    unit_update(0, unit0_words);
+}
+
+void unit1_update(void)
+{
+    unit_update(1, unit1_words);
+}
+
+void unit2_update(void)
+{
+    unit_update(2, unit2_words);
+}
+
+void unit3_update(void)
+{
+    unit_update(3, unit3_words);
+}
+
+void unit4_update(void)
+{
+    unit_update(4, unit4_words);
 }
 
 /* orig $006ED0 and $0070C8 (the table at $7074 is a switch in creature_runs; $7074 to $70C8 are its cases; inlined: $6EC0, $6EEC,
@@ -5947,12 +6571,12 @@ void reset_records_7544(void)
     code_7906 = 0x4E75;
 }
 
-/* orig $00FA64: the first word of the five records (24 bytes) of records_18740 is cleared, so is the word at +6 of the ten
+/* orig $00FA64: the first word of the five records (24 bytes) of `units` is cleared, so is the word at +6 of the ten
  * creature types (36 bytes) of table_199ac; then clear_records_1036 */
 void clear_creature_state(void)
 {
     for (int i = 0; i < 5; i++)
-        *(uint16_t *)(records_18740 + i * 24) = 0;
+        units[i].state = 0;
     for (int i = 0; i < 10; i++)
         *(uint16_t *)(table_199ac + i * 36 + 6) = 0;
     clear_records_1036();
@@ -6192,6 +6816,17 @@ void load_pattern_data(const uint8_t *names)
         load_unpacked((const char *)names + NAME_PATTERN, entry_list);
         file_longs(entry_list, 100);
         assign_addresses();
+        /* the paths of the units: the first words of each are values (where it starts, or $2345 and then where), the rest are the steps, a byte a frame */
+        for (const struct Entry8 *entry = entry_list; (int32_t)entry->address >= 0; entry++) {
+            uint16_t *path = (uint16_t *)(uintptr_t)entry->address;
+
+            if (entry->size < 6)
+                continue;
+            if (file_word(path) == 0x2345)
+                file_words(path, 3);
+            else
+                file_words(path, 2);
+        }
     }
     if (flag_286 == 0) {
         /* goes on at $00F330 (not run) */
@@ -7313,6 +7948,8 @@ static void level_tables_from_disk(void)
     }
     file_words(flags_1c056, 3 * 64);
     file_words(table_1c28a, 60);   /* the pick-ups of the level */
+    for (int i = 0; i < 100; i++)   /* the scripts of the units (8 bytes each): the word that is the delay between the members */
+        file_words(&((struct UnitScript *)ptr_0cb2)[i].spacing, 1);
 }
 
 /* orig $00323C: when the small font asked for it (menu_state_25a) it is loaded again: the asset set of the level's sprites */

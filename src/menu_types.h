@@ -122,6 +122,50 @@ struct CreatureTemplate {
 _Static_assert(sizeof(struct CreatureTemplate) == 16, "creature template");
 
 
+/* the waves of enemies (the original's "units": five records of 24 bytes at $18740, take_record_to_18740 makes one from a record of the level's script of 8 bytes, UnitScript, and a
+ * template of the creature templates; the members of a unit, UnitMember, follow a path of the level's pattern file) */
+struct UnitScript {
+    uint8_t count;        /* +0 how many members */
+    uint8_t path;         /* +1 which path (an entry of entry_list) they follow */
+    uint16_t spacing;     /* +2 the delay between one member and the next */
+    uint8_t life;         /* +4 the hit points of a member, and the score it gives */
+    int8_t template_index;/* +5 which CreatureTemplate */
+    uint8_t speeds;       /* +6 bits 4 to 7: how the shots are aimed, 0 to 3: how often they are made */
+    uint8_t drop;         /* +7 what the last one drops ($FF none) */
+};
+_Static_assert(sizeof(struct UnitScript) == 8, "unit script");
+
+struct __attribute__((packed)) Unit {
+    uint16_t state;       /* +0 0 free, 2 made, 3 going (bit 1: in use, bit 0: going) */
+    uint8_t count;        /* +2 */
+    uint8_t path;         /* +3 */
+    uint16_t spacing;     /* +4 */
+    uint8_t life;         /* +6 */
+    uint8_t aim;          /* +7 */
+    uint8_t rate;         /* +8 */
+    uint8_t draw;         /* +9 which draw routine of the table at $6EA8 */
+    uint32_t move;        /* +10 the template's movement routine */
+    int16_t box_width;    /* +14 the box the member is hit in */
+    int16_t box_height;   /* +16 */
+    uint32_t step;        /* +18 the template's step routine */
+    uint8_t drop;         /* +22 */
+    uint8_t pad;          /* +23 */
+};
+_Static_assert(sizeof(struct Unit) == 24, "unit");
+
+struct UnitMember {
+    int16_t x;            /* +0 */
+    int16_t y;            /* +2 */
+    int16_t unused_4;     /* +4 */
+    int16_t delay;        /* +6 frames to go before it starts */
+    const uint8_t *path;  /* +8 where it is on its path (a byte a frame: a step in x in the high nibble, in y in the low) */
+    int16_t hp;           /* +12 0 gone, negative dying */
+    int16_t anim;         /* +14 the picture (bit 3: faces left), while dying the count */
+    int16_t vector;       /* +16 the last step of its path, which it dies going on with */
+    int16_t timer;        /* +18 */
+};
+_Static_assert(sizeof(struct UnitMember) == 20, "unit member");
+
 /* the creatures of a level: ten records of 36 bytes at $199AC (table_199ac), each the type of a group of up to 255 creatures whose 14
  * byte records (struct Creature) it points to.  Its movement and step routines are the original's (addresses in the record); only
  * the ones that ran are written (see call_move / call_step) */

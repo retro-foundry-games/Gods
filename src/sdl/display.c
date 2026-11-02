@@ -1,5 +1,6 @@
 /* Gods SDL port, the display: the screens, the colours and the copper list that shows them: the screen buffers, the shadow table of the colours, the fades and the
  * frame tick.  This is amiga/display.c for the host: the same logic (the colours are still in the copper lists, which render.c reads), the chips' parts are the host's: no copper scroll to set, a vertical blank wait that lets the other threads run, no blitter to wait for. */
+#include <stdio.h>
 #include "menu.h"
 #include <sched.h>
 #include <string.h>
@@ -282,8 +283,13 @@ void blitter_setup_copy(void)
 
 /* orig $017082: one column of a tile: four copies of (rows + 1) rows of 4 bytes (two words) from consecutive source bytes to the screen's rows (44 bytes
  * apart); the source moves by src_step and the destination by dst_step bytes between them */
+extern volatile int gods_trace;
+extern uint8_t *screen_buffer;
+
 void blit_tile(int16_t src_step, int16_t dst_step, int16_t rows, const uint8_t *src, uint8_t *dst)
 {
+    if (gods_trace && (long)(dst - screen_buffer) < 44 * 4)
+        fprintf(stderr, "trace blit_tile row %ld col %ld rows %d src %p\n", (long)(dst - screen_buffer) / 44, (long)(dst - screen_buffer) % 44, rows, (const void *)src);
     for (int pass = 0; pass < 4; pass++) {
         for (int row = 0; row <= rows; row++)
             memcpy(dst + row * 44, src + row * 4, 4);
@@ -313,6 +319,9 @@ void blit_masked(const uint8_t *source, uint8_t *dest, int16_t modulo_ab, uint16
 {
     unsigned source_row = words * 2u + (unsigned)(int)modulo_ab, dest_row = words * 2u + (unsigned)(int)modulo_cd;
 
+    if (gods_trace && (long)(dest - screen_buffer) < 44 * 6)
+        fprintf(stderr, "trace blit_masked row %ld col %ld words %u rows %u\n", (long)(dest - screen_buffer) / 44, (long)(dest - screen_buffer) % 44, words, rows);
+
     for (unsigned plane = 0; plane < 4; plane++) {
         for (unsigned row = 0; row < rows; row++) {
             for (unsigned word = 0; word < words; word++) {
@@ -336,6 +345,9 @@ void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uin
     int16_t low = clip[2];
     int16_t high = clip[3];
     int16_t rest;
+
+    if (gods_trace && y < 6)
+        fprintf(stderr, "trace blit_clipped x %d y %d width %d height %d clip %d,%d,%d,%d\n", x, y, width, height, clip[0], clip[1], clip[2], clip[3]);
     int16_t modulo_ab;
     int16_t modulo_cd;
     uint16_t words;

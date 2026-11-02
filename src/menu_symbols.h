@@ -270,7 +270,6 @@ extern int16_t word_8472;   /* $08472  the glyph draw_sprite_8472 draws (negativ
 extern int16_t word_846e;   /* $0846E  its x */
 extern int16_t word_8470;   /* $08470  its y */
 extern uint16_t word_10ae;   /* $010AE */
-extern uint8_t unit_flags_18741[];   /* $18741  five records of 24 bytes; bit 1 of the first byte is set while the record is in use */
 extern uint16_t flag_aa8;   /* $00AA8 */
 extern uint16_t word_186be;   /* $186BE */
 extern int16_t word_354;   /* $00354 */
@@ -440,7 +439,7 @@ extern int16_t words_34e[3];   /* $0034E  x, y and number of the last thing drop
 extern uint8_t tile_24d;   /* $0024D  the first tile number of the blocks kind 2 of finish_record_1895a sets */
 extern int16_t word_314;   /* $00314  how many marks kind 6 of finish_record_1895a has made */
 extern uint8_t *ptr_0b7e;   /* $00B7E */
-extern uint8_t records_18740[120];   /* $18740  five records of 24 bytes (a state word, 0 free) take_record_to_18740 fills */
+extern struct Unit units[5];   /* $18740  the waves of enemies: five records of 24 bytes (a state word, 0 free) take_record_to_18740 fills */
 extern uint16_t word_22e;   /* $0022E  counts the spots remembered in points_b3a (like word_22c); the level ends (flag_230) when it reaches the count at ptr_0bc6 */
 extern const uint16_t *ptr_0bc6;   /* $00BC6  its first word is how many spots end the level */
 extern int16_t words_2a2[2];   /* $002A2  a copy of the player position (player_x, player_y) made by remember_visited_spot */
@@ -524,6 +523,18 @@ extern uint16_t code_9ae6;   /* $09AE6 */
 extern uint16_t code_6ed0;   /* $06ED0 */
 extern uint8_t level_text[16];   /* $028F8  "LOADING LEVEL " and the level's number (plus 93): the text of the loading screen */
 extern uint8_t copy_1cde4[256];   /* $1CDE4  a copy of the first 256 bytes of table_1c9e4 that make_pairs_fb9a makes */
+extern const uint8_t *unit_path_end[5];   /* $00C74  where the path of each unit's members ends */
+extern int16_t unit_count[5];   /* $00C8C  how many members each unit has */
+extern int16_t word_7edc;   /* $07EDC  in the code area: the rate of the shots of the unit that is run */
+extern int16_t word_7ede;   /* $07EDE  in the code area: how its shots are aimed (0: sideways) */
+extern uint16_t unit0_words[3];   /* $0E764  in the code area: the first unit's: the drop was made, the members killed, the members dying */
+extern uint16_t unit1_words[3];   /* $0EA4A  ... the second unit's */
+extern uint16_t unit2_words[3];   /* $0ED30 */
+extern uint16_t unit3_words[3];   /* $0F016 */
+extern uint16_t unit4_words[3];   /* $0F2FC */
+extern uint16_t word_4a0;   /* $004A0  how many of the cells that crumble ($1A30C) are going */
+extern uint16_t word_1218;   /* $01218  how many of the ten falling things ($11B4) are going */
+extern uint16_t code_17cc0;   /* $17CC0  the first word of the routine at $17CC0 (rts: off, nop: the cells crumble) */
 extern const struct CreatureTemplate creature_templates[49];   /* $1C698  what a group is: its draw kind, move and step routines and its box (the pointers of table_1c678 point into it) */
 extern const uint16_t clip_rectangles[6];   /* $00128  the clip rectangles of image_draw_clipped (x0, x1, y0, y1: the whole screen; a negative x0 ends the list) */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
