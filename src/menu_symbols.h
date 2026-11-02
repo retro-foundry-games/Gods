@@ -303,6 +303,7 @@ extern int16_t word_272;   /* $00272  game_b: compared with word_274 by the look
 extern int16_t word_284;   /* $00284  game_b: non-zero: check_hit_and_walls lets the player's armour take some of the damage (the higher, the less) */
 extern int16_t word_3a4;   /* $003A4  game_b: the strength check_hit_and_walls leaves after a hit on a cell */
 extern int16_t word_8892;   /* $08892  game_b: the damage a cell of type -1 does */
+extern int16_t word_8894;   /* $08894  game_b: what the pick-up of a thing that is kind 8 raises */
 extern int16_t records_86c[240];   /* $0086C  game_b: eighty records of three words (x, y, two signed speed bytes; negative first word: free), the particles of spawn_particles_15c54 */
 extern int16_t word_a52;   /* $00A52  game_b: counter of the particle burst (spawn_particles_15c54 clears it) */
 extern int16_t word_a54;   /* $00A54  game_b: set to -10 by spawn_particles_15c54 */

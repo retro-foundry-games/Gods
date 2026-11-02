@@ -363,6 +363,7 @@ _word_272 = 0x272;
 _word_284 = 0x284;
 _word_3a4 = 0x3a4;
 _word_8892 = 0x8892;
+_word_8894 = 0x8894;
 _records_86c = 0x86c;
 _word_a52 = 0xa52;
 _word_a54 = 0xa54;

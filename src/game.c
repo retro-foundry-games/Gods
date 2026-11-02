@@ -3077,6 +3077,34 @@ static void teleport_gem(void)
     play_sound(5, 25);
 }
 
+static void count_slots(void);   /* orig $0152D8 (below) */
+
+/* orig $003E5C (with $003E76): the last_value of the objects the three slot_refs name goes up by one.  A ref of -1 names the 80 bytes before the table,
+ * which the original changes in the same way (a word of the machine's byte order there) */
+static void raise_unit_counts(void)
+{
+    int16_t refs[3] = { slot_ref_6b6, slot_ref_748, slot_ref_7da };
+
+    for (int i = 0; i < 3; i++) {
+        if (refs[i] >= 0) {
+            ((struct Object *)object_slots)[refs[i]].last_value++;
+        } else {
+            uint8_t *word = (uint8_t *)object_slots + refs[i] * 80 + 8;
+            uint16_t value = (uint16_t)((word[0] << 8) | word[1]) + 1;
+
+            word[0] = (uint8_t)(value >> 8);
+            word[1] = (uint8_t)value;
+        }
+    }
+}
+
+/* orig $0106D0..: the pick-ups of the things that are not energy (the handlers of the table at $1067A); each returns what the original leaves in d3 */
+static void load_block_16bb4(const uint16_t *words)
+{
+    for (int i = 0; i < 12; i++)
+        ((uint16_t *)block_16bb4)[i] = words[i];
+}
+
 /* the handlers of the table at $1067A, called with the index of the thing's kind (the number of zero bytes of offsets_4cba before its id)
  * and the loop counter of $417C (d7); returns the d3 they leave (0: nothing more to do; 1: the message of the thing; 2 or more: the
  * message without the line of word_2f8 being cleared first) or -1 when the handler is not written (it did not run) */
@@ -3101,6 +3129,60 @@ static int16_t pickup_handler(int16_t index, int16_t counter)
     case 13:
         countdown_220 = 1000;    /* orig $010802 */
         return 1;
+    case 1:                      /* orig $010954 */
+        raise_unit_counts();
+        count_slots();
+        play_sound(0x38, 0xA);
+        return 1;
+    case 2:                      /* orig $010950 */
+        raise_unit_counts();
+        raise_unit_counts();
+        count_slots();
+        play_sound(0x38, 0xA);
+        return 1;
+    case 4:                      /* orig $010852 */
+        spawn_particles_15c54((int16_t)(player_x + 8), (int16_t)(player_y + 0x20));
+        return 1;
+    case 6:                      /* orig $010834 */
+        messages_reset_16ac8();
+        play_sound(0x3C, 2);
+        return 1;
+    case 7:                      /* orig $01080C: $0086C0 */
+        if (flag_8890 >= 0) {
+            flag_8890 = (int16_t)(flag_8890 + 0x3E8);
+            word_8892++;
+        } else {
+            host_missing_routine(0x86D8);   /* the rest of $0086C0 (flag_8890 negative) did not run */
+        }
+        return 1;
+    case 8:                      /* orig $010816 */
+        word_8894++;
+        return 1;
+    case 9:                      /* orig $010820 */
+        word_8892 = (int16_t)(word_8892 + 2);
+        return 1;
+    case 10:                     /* orig $0107DC (the long that is compared is never 0: item_count stays) */
+        play_sound(0x1F, 0x37);
+        return 1;
+    case 14:                     /* orig $016C14 */
+        copy_block_16bb4();
+        return 1;
+    case 15: {                   /* orig $0107C0: the twelve words at $16BE4 */
+        static const uint16_t words[12] = { 0x000C, 0xFFFF, 0x000C, 0x0000, 0x000C, 0x0001, 0xFFF4, 0xFFFF, 0xFFF4, 0x0000, 0xFFF4, 0x0001 };
+
+        load_block_16bb4(words);
+        return 1;
+    }
+    case 16: {                   /* orig $0107CE: the twelve words at $16BFC */
+        static const uint16_t words[12] = { 0x000A, 0xFFF6, 0x000A, 0x0000, 0x000A, 0x000A, 0xFFF6, 0xFFF6, 0xFFF6, 0x0000, 0xFFF6, 0x000A };
+
+        load_block_16bb4(words);
+        return 1;
+    }
+    case 22:                     /* orig $0106E0 */
+        flag_290 = 0x41;
+        flags_3b1 &= (uint8_t)~4;   /* bclr #10 on a byte: bit 2 */
+        return 2;
     case 17:
         teleport_gem();          /* orig $0106F0 */
         return 1;
