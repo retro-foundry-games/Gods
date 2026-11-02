@@ -136,3 +136,7 @@ ADDR is $2C20 for the original disk and `_game_frame` + $C0000 for the C disk) b
 screenshots at iterations 90, 400, 500, 650, 800, 900, 1000 and 1100 (walking, jumping, ladder, shooting, scrolling; score and enemies) are
 pixel-identical.  The ones at iterations 200 and 330 differ only in the message line at the bottom (rows 227 to 234: its scroll is timed by
 frames, not by iterations).  The original disk is deterministic (two runs whose level starts 59 frames apart are identical).
+
+Longer run: a random input script (seed 7: 40 or so changes of direction, jump and fire between iterations 100 and 1950, in
+`itershot` every 50 iterations): the 39 screenshots of the C disk and of the original disk are pixel-identical above the message line
+(rows 0 to 225).
