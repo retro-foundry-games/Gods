@@ -2,7 +2,7 @@
  * it (`orig $ADDR`). */
 #include "menu.h"
 
-/* orig $00BA34, $00BC1A, $00C374, $00D6B8, $00DB04, $00DE54, $00E142, $00E3A2, $017CC0, $0194D0, $018C24 and $018C2E: nothing;
+/* orig $007C52, $00BA34, $00BC1A, $00C374, $00D6B8, $00DB04, $00DE54, $00E142, $00E3A2, $017CC0, $0194D0, $018C24 and $018C2E: nothing;
  * places of the program where an empty routine is called (the game loop calls most of them every frame) */
 void do_nothing_b(void)
 {
