@@ -205,6 +205,29 @@ for a in (args:match("trace=([%x,]+)") or ""):gmatch("%x+") do
         ami.log(("trace $%x hit %d frame %d: %s ret=%x"):format(addr, hits, ami.frame(), table.concat(t, " "), string.unpack(">I4", top)))
     end)
 end
+-- track=ADDR (hex) [trackfrom=N trackto=M]: at the Nth to Mth time the program reaches ADDR (the game loop's top) write one line to the log with the
+-- sums of the 8 blocks of 512 bytes of $0-$FFF (find the first iteration and the block in which two runs differ)
+local track_at = tonumber(args:match("track=(%x+)") or "", 16)
+if track_at then
+    local from, to = tonumber(args:match("trackfrom=(%d+)")) or 1, tonumber(args:match("trackto=(%d+)")) or 400
+    local n = 0
+    ami.hook(track_at, function()
+        n = n + 1
+        if n < from or n > to then return end
+        local len = tonumber(args:match("tracklen=(%x+)") or "1000", 16)   -- tracklen=HEX: the bytes from 0 to look at (default $1000)
+        local ram = ami.read(0, len)
+        local t = {}
+        for b = 0, len // 512 - 1 do
+            local sum = 0
+            for i = b * 512 + 1, b * 512 + 512 do sum = (sum * 31 + ram:byte(i)) & 0xffffffff end
+            t[#t + 1] = ("%08x"):format(sum)
+        end
+        ami.log(("track %d frame %d %s"):format(n, ami.frame() - base, table.concat(t, " ")))
+        if n == tonumber(args:match("trackdump=(%d+)") or "") then
+            ami.save_file(args:match("trackfile=(%S+)"), ami.read(0, 0x1000))   -- trackdump=N trackfile=PATH: the bytes $0-$FFF at that time
+        end
+    end)
+end
 -- stopat=ADDR (hex) [ram=PATH]: at the first time the program reaches ADDR write the chip RAM (512 KiB) to ram= and quit
 local stop_at = tonumber(args:match("stopat=(%x+)") or "", 16)
 local stop_nth = tonumber(args:match("stopnth=(%d+)") or "") or 1   -- stopnth=N: at the Nth time (the loop's Nth iteration)

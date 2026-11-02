@@ -138,3 +138,9 @@ the C `begin_quest` (checked only by the whole-RAM A/B of the C disk against its
 the RAM of both disks at the same loop iteration (the host's stopat/ram= did not give a reliable dump of the original at an iteration;
 use hooks or the oracle's snapshots).  Script: the alignment is by the first hit of $2C20 (original) and of game_frame (C), from
 `trace=ADDR`.
+
+Narrowed down (track=ADDR trackdump=N trackfile=PATH in host/gods.lua: the bytes $0-$FFF at the Nth iteration of the loop): at iteration 60 the
+variables of $100-$FFF of the original disk and of the C disk are identical except `message_x` (the scroll phase of the message), a pointer at
+$CE5 and `restart_address` (a pointer).  So the difference in the pick-up's animation frame and in the enemies is in the memory above $1000
+(the record tables) or in the way the screens are drawn; reading 256 KB per iteration in the emulator's Lua is too slow (tracklen=40000
+gave no output): compare the record tables ($1036-$1400, $1294.., $3A0A6.. and so on) in blocks.
