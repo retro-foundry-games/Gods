@@ -11,7 +11,6 @@
 --   continue=all  do not stop: the differences are logged as they start and stop, with a summary now and then
 --   continue=N    go on N frames past the first difference
 --   trace         log the number of differing pixels of every frame
---   delay=N       the keys reach the port N steps after the original (default 2)
 --   input=PATH    the keys you play are written to PATH ("step k keysym state", the format replay= reads) as they happen: a play can be given again
 --   replay=FILE   the keys of a recording (captures/input/level1-run1.txt: "frame k keysym state", by frame from the state) are given to both sides at the same steps, as if played
 --   dumpfrom=N    (with dump=) the first difference at emulator frame N or later
@@ -20,7 +19,7 @@
 --   dump=PATH     the port's image and the original's at the first frame that differs are written to PATH.native.ppm and PATH.emulated.ppm
 local args = ami.args or ""
 local STATE = args:match("state=(%S+)") or "gods-level1-1m.state"
-local EXTRA = tonumber(args:match("extra=(%d+)")) or 3   -- (found by trying: with 3, the comparison starting at frame 5, the idle level is pixel for pixel the same)
+local EXTRA = tonumber(args:match("extra=(%d+)")) or 2   -- (found by trying: with 3, the comparison starting at frame 5, the idle level is pixel for pixel the same)
 
 ami.machine{
     name = "Gods lockstep", model = "A500", system = "../local/system", save = "../local/save", files = "..",
@@ -44,28 +43,36 @@ do
 end
 
 local lockstep = ami.import("amiga/lockstep")
--- the peer, with its key lines held back DELAY steps (the keyboard of the emulated machine takes a key a little later than the port: with 2 the recorded play of level 1 is the same on both)
-local DELAY = tonumber(args:match("delay=(%d+)")) or 2
+-- The port is given the keys at the frame the original's game reads them (the hook at its input routine, $363A, sees the key table as the game takes it; what changed since the last read is
+-- sent before the port's next step, which is the step of that same iteration: the port's logic and the original's are in the same phase).  The keys the window forwards are not used.  The
+-- keys are recorded from those reads, as the frame before the read, which is when `replay=` has to press them for the original to read them again at the same iteration.
 local real = ami.peer("native")
-local steps, held = 0, {}
+local steps, pending = 0, {}
 local input_log = args:match("input=(%S+)")
 if input_log then ami.save_file(input_log, "") end
 local SYM = { [0x4c] = 273, [0x4d] = 274, [0x4e] = 275, [0x4f] = 276, [0x40] = 32 }   -- the raw codes the port takes, as the keys of the recordings
+local last_keys = {}
+-- what the game reads at $363A is the joystick byte ($1E5AC: bit 0 up, 1 down, 2 left, 3 right, 7 fire), which the keyboard patch makes from the key table at the vertical blank poll
+local STICK_BITS = { [0x4c] = 0, [0x4d] = 1, [0x4f] = 2, [0x4e] = 3, [0x40] = 7 }
+ami.hook(0x363a, function()
+    local stick = ami.read(0x1e5ac, 1):byte()
+    for raw, bit in pairs(STICK_BITS) do
+        local down = (stick >> bit) & 1 == 1
+        if down ~= (last_keys[raw] or false) then
+            last_keys[raw] = down
+            pending[#pending + 1] = ("key %d %d\n"):format(raw, down and 1 or 0)
+            if input_log then ami.append_file(input_log, ("%d k %d %d\n"):format(steps - 1, SYM[raw], down and 1 or 0)) end
+        end
+    end
+end)
 local delayed = setmetatable({
     send = function(_, text)
         for line in text:gmatch("[^\n]+") do
-            if line:match("^key ") then
-                local code, down = line:match("^key (%d+) (%d+)")
-                if input_log and SYM[tonumber(code)] then ami.append_file(input_log, ("%d k %d %s\n"):format(steps, SYM[tonumber(code)], down)) end
-                held[#held + 1] = { steps + DELAY, line .. "\n" }
-            else
+            if not line:match("^key ") then
                 if line == "step" then
                     steps = steps + 1
-                    local keep = {}
-                    for _, h in ipairs(held) do
-                        if h[1] < steps then real:send(h[2]) else keep[#keep + 1] = h end
-                    end
-                    held = keep
+                    for _, p in ipairs(pending) do real:send(p) end
+                    pending = {}
                 end
                 real:send(line .. "\n")
             end
@@ -89,8 +96,7 @@ if replay then
         local lines = {}
         for _, e in ipairs(events[step] or {}) do
             ami.key(e[1], e[2])
-            local raw = ({ [273] = 0x4c, [274] = 0x4d, [275] = 0x4e, [276] = 0x4f, [32] = 0x40 })[e[1]]
-            if raw then lines[#lines + 1] = ("key %d %d\n"):format(raw, e[2] and 1 or 0) end
+
             if args:find("%f[%w]keylog%f[%W]") then ami.log(("step %d: key %d %s; table %02x"):format(step, e[1], tostring(e[2]), ami.read(0x1e63a + 0x4e, 1):byte())) end
 
         end
