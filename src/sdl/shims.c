@@ -2,6 +2,7 @@
  * the program's, whose own copies are not used).  Each is the program's routine with the one difference said.  Compiled with the
  * program's headers and flags. */
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "menu.h"
 
@@ -56,9 +57,40 @@ extern void sr_set(uint16_t value);
 
 void game_loop(void)
 {
+    /* the lockstep with the Amiga build (scripts/lockstep_sdl.py): GODS_ITERKEYS=FILE ("N CODE V" lines: at the top of the Nth iteration of the loop the key with the raw
+     * code CODE ($4C up, $4D down, $4E right, $4F left, $40 space) is set to V, in the keyboard interrupt's table) and GODS_ITERDUMP=FILE (the variables $100-$FFF at the top of
+     * every iteration, as they are in the host's memory) */
+    static struct { unsigned iteration, code, value; } keys[2000];
+    unsigned key_count = 0, next_key = 0, iteration = 0;
+    const char *keys_path = getenv("GODS_ITERKEYS"), *dump_path = getenv("GODS_ITERDUMP");
+    FILE *dump = dump_path ? fopen(dump_path, "wb") : 0;
+
+    if (keys_path) {
+        FILE *f = fopen(keys_path, "r");
+
+        while (f && key_count < 2000 && fscanf(f, "%u %x %u", &keys[key_count].iteration, &keys[key_count].code, &keys[key_count].value) == 3)
+            key_count++;
+        if (f)
+            fclose(f);
+    }
+    const char *max_text = getenv("GODS_ITERMAX");   /* GODS_ITERMAX=N: the program ends at the top of the Nth iteration */
+    unsigned max_iterations = max_text ? (unsigned)atoi(max_text) : 0;
+
     sr_set(0x2000);
-    for (;;)
+    for (;;) {
+        iteration++;
+        if (max_iterations && iteration > max_iterations)
+            exit(0);
+        while (next_key < key_count && keys[next_key].iteration <= iteration) {
+            key_down[keys[next_key].code] = keys[next_key].value ? 0xff : 0x00;
+            next_key++;
+        }
+        if (dump) {
+            fwrite((const void *)(uintptr_t)GUEST(0x100), 1, 0xF00, dump);
+            fflush(dump);
+        }
         game_frame();
+    }
 }
 
 /* ---- Begin Quest on the host -------------------------------------------------------------------------------------------------------
