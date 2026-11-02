@@ -272,6 +272,12 @@ int main(int argc, char **argv)
         /* In a window the screen is presented at the display's refresh (vsync) and the 50 Hz frames of the machine are counted from the clock: a refresh
          * has none, one or two of them to run.  Without a window (and without vsync) one frame is run for every pass, paced by the sleep below. */
         int due = 1;
+        extern volatile int gods_waiting;
+
+        if (gods_waiting && phase == PHASE_LEVEL) {   /* (GODS_FOLLOW) the machine's time stands still while the port waits for the original */
+            SDL_DelayNS(500000);
+            continue;
+        }
 
         if (vsync) {
             uint64_t now = SDL_GetTicksNS();
@@ -338,7 +344,7 @@ int main(int argc, char **argv)
             SDL_RenderTexture(renderer, texture, 0, 0);
             SDL_RenderPresent(renderer);
         }
-        if (!vsync) {
+        if (!vsync && !getenv("GODS_FAST")) {   /* (GODS_FAST: as fast as it goes: the lockstep with the original) */
             next += 20000000ull;   /* 50 frames a second (also without a window: the program's thread needs its time) */
             {
             uint64_t now = SDL_GetTicksNS();

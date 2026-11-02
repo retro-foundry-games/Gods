@@ -2,6 +2,8 @@
  * the program's, whose own copies are not used).  Each is the program's routine with the one difference said.  Compiled with the
  * program's headers and flags. */
 #include <stdio.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <stdlib.h>
 
 #include "menu.h"
@@ -82,6 +84,7 @@ static int record_key(int raw, int down, void *arg)
     return 1;
 }
 
+volatile int gods_waiting;   /* the program waits for the original (GODS_FOLLOW): the machine's time does not go on */
 unsigned gods_iteration;   /* the iteration of the loop now running (for the debugger) */
 
 void game_loop(void)
@@ -89,7 +92,7 @@ void game_loop(void)
     /* the lockstep with the Amiga build (scripts/lockstep_sdl.py): GODS_ITERKEYS=FILE ("N CODE V" lines: at the top of the Nth iteration of the loop the key with the raw
      * code CODE ($4C up, $4D down, $4E right, $4F left, $40 space) is set to V, in the keyboard interrupt's table) and GODS_ITERDUMP=FILE (the variables $100-$FFF at the top of
      * every iteration, as they are in the host's memory) */
-    static struct { unsigned iteration, code, value; } keys[2000];
+    static struct { unsigned iteration, code, value; } keys[100000];
     unsigned key_count = 0, next_key = 0, iteration = 0;
     const char *keys_path = getenv("GODS_ITERKEYS"), *dump_path = getenv("GODS_ITERDUMP");
     FILE *dump = dump_path ? fopen(dump_path, "wb") : 0;
@@ -108,10 +111,26 @@ void game_loop(void)
     if (keys_path) {
         FILE *f = fopen(keys_path, "r");
 
-        while (f && key_count < 2000 && fscanf(f, "%u %x %u", &keys[key_count].iteration, &keys[key_count].code, &keys[key_count].value) == 3)
+        while (f && key_count < 100000 && fscanf(f, "%u %x %u", &keys[key_count].iteration, &keys[key_count].code, &keys[key_count].value) == 3)
             key_count++;
         if (f)
             fclose(f);
+    }
+    /* GODS_FOLLOW=PREFIX: the SDL port follows the original that is played live (scripts/lockstep_live.py).  PREFIX.keys are the original's keys ("N CODE V", as GODS_ITERKEYS has
+     * them), PREFIX.count the number of iterations the original has begun (a short text file) and the variables of the port go to the named pipe PREFIX.sdl.fifo.  An iteration N of
+     * the port (the original's is N - 128: it starts that far into the level) is not begun before the original has begun its own, and the machine's time stands still while the
+     * port waits (no frame is counted). */
+    const char *follow = getenv("GODS_FOLLOW");
+    static char follow_count[600], follow_keys[600];   /* (static: the stack of the loop is not safe from the program) */
+    static off_t follow_keys_size = -1;
+
+    if (follow) {
+        char name[600];
+
+        snprintf(follow_count, sizeof follow_count, "%s.count", follow);
+        snprintf(follow_keys, sizeof follow_keys, "%s.keys", follow);
+        snprintf(name, sizeof name, "%s.sdl.fifo", follow);
+        dump = fopen(name, "wb");
     }
     const char *max_text = getenv("GODS_ITERMAX");   /* GODS_ITERMAX=N: the program ends at the top of the Nth iteration */
     unsigned max_iterations = max_text ? (unsigned)atoi(max_text) : 0;
@@ -129,6 +148,35 @@ void game_loop(void)
         gods_iteration = iteration;
         if (max_iterations && iteration > max_iterations)
             exit(0);
+        if (follow) {
+            struct stat st;
+            unsigned begun = 0;
+
+            for (;;) {
+                FILE *c = fopen(follow_count, "r");
+
+                if (c) {
+                    if (fscanf(c, "%u", &begun) != 1)
+                        begun = 0;
+                    fclose(c);
+                }
+                if (begun >= (iteration > 128 ? iteration - 128 : 0))
+                    break;
+                gods_waiting = 1;
+                usleep(1000);
+            }
+            gods_waiting = 0;
+            if (stat(follow_keys, &st) == 0 && st.st_size != follow_keys_size) {
+                FILE *f = fopen(follow_keys, "r");
+
+                follow_keys_size = st.st_size;
+                key_count = 0;
+                while (f && key_count < 100000 && fscanf(f, "%u %x %u", &keys[key_count].iteration, &keys[key_count].code, &keys[key_count].value) == 3)
+                    key_count++;
+                if (f)
+                    fclose(f);
+            }
+        }
         if (record) {
             record_iteration = iteration;
             if (iteration == RECORD_FROM + 1)
