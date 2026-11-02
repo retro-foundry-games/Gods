@@ -11,14 +11,15 @@
 --   continue=all  do not stop: the differences are logged as they start and stop, with a summary now and then
 --   continue=N    go on N frames past the first difference
 --   trace         log the number of differing pixels of every frame
---   delay=N       the keys reach the port N steps after the original (the keyboard of the emulated machine delivers a key a little later than the port takes it)
+--   delay=N       the keys reach the port N steps after the original (default 2)
+--   input=PATH    the keys you play are written to PATH ("step k keysym state", the format replay= reads) as they happen: a play can be given again
 --   replay=FILE   the keys of a recording (captures/input/level1-run1.txt: "frame k keysym state", by frame from the state) are given to both sides at the same steps, as if played
 --   dumpfrom=N    (with dump=) the first difference at emulator frame N or later
+--   watch         (with continue=all) the first frame at which each of a few game variables differs between the two sides is logged (read from the port with `mem`)
 --   dump=PATH     the port's image and the original's at the first frame that differs are written to PATH.native.ppm and PATH.emulated.ppm
 local args = ami.args or ""
 local STATE = args:match("state=(%S+)") or "gods-level1-1m.state"
-local DELAY = tonumber(args:match("delay=(%d+)")) or 2   -- (found by trying: with 2 the recorded play of level 1 is the same on both)
-local EXTRA = tonumber(args:match("extra=(%d+)")) or 1   -- (found by trying: with 1 the idle level is pixel for pixel the same)
+local EXTRA = tonumber(args:match("extra=(%d+)")) or 3   -- (found by trying: with 3, the comparison starting at frame 5, the idle level is pixel for pixel the same)
 
 ami.machine{
     name = "Gods lockstep", model = "A500", system = "../local/system", save = "../local/save", files = "..",
@@ -42,13 +43,19 @@ do
 end
 
 local lockstep = ami.import("amiga/lockstep")
--- the peer, with its key lines held back DELAY steps
+-- the peer, with its key lines held back DELAY steps (the keyboard of the emulated machine takes a key a little later than the port: with 2 the recorded play of level 1 is the same on both)
+local DELAY = tonumber(args:match("delay=(%d+)")) or 2
 local real = ami.peer("native")
 local steps, held = 0, {}
+local input_log = args:match("input=(%S+)")
+if input_log then ami.save_file(input_log, "") end
+local SYM = { [0x4c] = 273, [0x4d] = 274, [0x4e] = 275, [0x4f] = 276, [0x40] = 32 }   -- the raw codes the port takes, as the keys of the recordings
 local delayed = setmetatable({
     send = function(_, text)
         for line in text:gmatch("[^\n]+") do
             if line:match("^key ") then
+                local code, down = line:match("^key (%d+) (%d+)")
+                if input_log and SYM[tonumber(code)] then ami.append_file(input_log, ("%d k %d %s\n"):format(steps, SYM[tonumber(code)], down)) end
                 held[#held + 1] = { steps + DELAY, line .. "\n" }
             else
                 if line == "step" then
@@ -81,9 +88,10 @@ if replay then
         local lines = {}
         for _, e in ipairs(events[step] or {}) do
             ami.key(e[1], e[2])
-            if args:find("%f[%w]keylog%f[%W]") then ami.log(("step %d: key %d %s; table %02x"):format(step, e[1], tostring(e[2]), ami.read(0x1e63a + 0x4e, 1):byte())) end
             local raw = ({ [273] = 0x4c, [274] = 0x4d, [275] = 0x4e, [276] = 0x4f, [32] = 0x40 })[e[1]]
             if raw then lines[#lines + 1] = ("key %d %d\n"):format(raw, e[2] and 1 or 0) end
+            if args:find("%f[%w]keylog%f[%W]") then ami.log(("step %d: key %d %s; table %02x"):format(step, e[1], tostring(e[2]), ami.read(0x1e63a + 0x4e, 1):byte())) end
+
         end
         return #lines > 0 and table.concat(lines) or nil
     end })
@@ -92,15 +100,105 @@ end
 local KEYS = { [273] = 0x4c, [274] = 0x4d, [275] = 0x4e, [276] = 0x4f, [32] = 0x40 }
 local trace = args:find("%f[%w]trace%f[%W]")
 local dump = args:match("dump=(%S+)")
+local watching = args:find("%f[%w]watch%f[%W]")
+local WATCH = { player_x = 0x1e0, player_y = 0x1e2, player_state = 0x19c, player_frame = 0x19a, counter_204 = 0x204, counter_260 = 0x260, scroll_x = 0x358, scroll_y = 0x35a, word_39e = 0x39e,
+                onscreen_count = 0x2b8, flag_23a = 0x23a, timer_306 = 0x306, energy_shown = 0x216, flag_230 = 0x230, word_3b0 = 0x3b0, player_energy = 0xc96, hit = 0x3a6, word_2ba = 0x2ba, tick_hold = 0x26c, word_226 = 0x226, word_228 = 0x228, item_count = 0x20a }
+local watch_found = {}
+-- track=ADDR (hex): the long at ADDR on both sides is logged whenever either changes (to find where two states part)
+local track_at = tonumber(args:match("track=(%x+)") or "", 16)
+local track_last_o, track_last_p
+local function track_long()
+    delayed:send(("mem %x 4\n"):format(track_at))
+    local n = tonumber(delayed:readline():match("mem (%d+)"))
+    local port = string.unpack("<I4", delayed:read(n))
+    local orig = string.unpack(">I4", ami.read(track_at, 4))
+    if orig ~= track_last_o or port ~= track_last_p then
+        track_last_o, track_last_p = orig, port
+        ami.log(("track %x: frame %d: original %d, port %d"):format(track_at, ami.frame(), orig, port))
+    end
+end
+local function watch_variables()
+    for name, address in pairs(WATCH) do
+        if not watch_found[name] then
+            delayed:send(("mem %x 2\n"):format(address))
+            local header = delayed:readline()
+            local n = tonumber(header:match("mem (%d+)"))
+            local bytes = delayed:read(n)
+            local port = string.unpack("<I2", bytes)
+            local orig = string.unpack(">I2", ami.read(address, 2))
+            if port ~= orig then
+                watch_found[name] = true
+                ami.log(("watch: %s differs from emulator frame %d: original %04x, port %04x"):format(name, ami.frame(), orig, port))
+            end
+        end
+    end
+end
 local dumped = false
+-- drawlog=FIRST-LAST: the original's calls of its draw routines (glyph $17686, sprite $173C4) at the top of the screen (y below 6) in those emulator frames, with who called
+local draw_first, draw_last = args:match("drawlog=(%d+)-(%d+)")
+if draw_first then
+    for _, at in ipairs({ 0x17686, 0x173c4 }) do
+        ami.hook(at, function()
+            local f = ami.frame()
+            if f >= tonumber(draw_first) and f <= tonumber(draw_last) then
+                local y = ami.reg("d1") & 0xffff
+                if y >= 0x8000 then y = y - 0x10000 end
+                if y < 6 then
+                    local x = ami.reg("d0") & 0xffff
+                    if x >= 0x8000 then x = x - 0x10000 end
+                    ami.log(("draw %x frame %d: x %d y %d image %d, called from %06x"):format(at, f, x, y, ami.reg("d2") & 0xffff, ami.peek32(ami.reg("a7"))))
+                end
+            end
+        end)
+    end
+end
+if draw_first then   -- and the draw routine the creatures call at $E660 (the one of the table at $6EA8 the creature's template names)
+    ami.hook(0xe660, function()
+        local f = ami.frame()
+        if f >= tonumber(draw_first) and f <= tonumber(draw_last) then
+            local a5 = ami.reg("a5")
+            ami.log(("creature draw frame %d: routine %06x, record %06x (%d %d %d %d %d), d0 %d d1 %d"):format(f, ami.reg("a4"), a5, ami.peek16(a5), ami.peek16(a5 + 2), ami.peek16(a5 + 4), ami.peek16(a5 + 6), ami.peek16(a5 + 8), ami.reg("d0") & 0xffff, ami.reg("d1") & 0xffff))
+        end
+    end)
+end
+-- hitlog=FIRST-LAST: the original's calls of its player damage routine ($D270: d0, d1 the place, d2 the strength) in those emulator frames, with who called and the energy
+local hit_first, hit_last = args:match("hitlog=(%d+)-(%d+)")
+if hit_first then
+    for _, at in ipairs({ 0x80a2, 0xd00a, 0x7eae }) do
+        ami.hook(at, function()
+            local f = ami.frame()
+            if f >= tonumber(hit_first) and f <= tonumber(hit_last) then
+                ami.log(("call %x frame %d: d0 %d d1 %d"):format(at, f, ami.reg("d0") & 0xffff, ami.reg("d1") & 0xffff))
+            end
+        end)
+    end
+    ami.hook(0xd270, function()
+        local f = ami.frame()
+        if f >= tonumber(hit_first) and f <= tonumber(hit_last) then
+            local function signed(v) v = v & 0xffff if v >= 0x8000 then v = v - 0x10000 end return v end
+            ami.log(("damage $d270 frame %d: x %d y %d strength %d, energy %d, called from %06x, player %d,%d"):format(f, signed(ami.reg("d0")), signed(ami.reg("d1")), signed(ami.reg("d2")), ami.peek16(0xc96), ami.peek32(ami.reg("a7")), ami.peek16(0x1e0), ami.peek16(0x1e2)))
+        end
+    end)
+end
+if args:find("%f[%w]itlog%f[%W]") then   -- itlog: the emulator frame of the top of every iteration of the game loop (at $2C20), 20 at a time, on the log
+    local last, line = 0, {}
+    ami.hook(0x2c20, function()
+        local f = ami.frame()
+        line[#line + 1] = ("%d(+%d)"):format(f, f - last)
+        last = f
+        if #line >= 20 then ami.log("iterations: " .. table.concat(line, " ")) line = {} end
+    end)
+end
 lockstep.run {
     peer = delayed,
     width = 320, height = 256,
     window = { x = 40, y = 18, sx = 2 },   -- where the port's image sits in the original's 720x287 frame (tools/lockstep_align.py)
-    start = function() ami.wait(2) return true end,   -- the saved state is the start (a frame later it has been drawn)
+    start = function() ami.wait(4) return true end,   -- the saved state is the start (a frame later it has been drawn)
     keymap = function(key) return KEYS[key] end,
-    on_frame = (trace or dump or args:find("%f[%w]keylog%f[%W]")) and function(count, native, emulated)
+    on_frame = (trace or dump or watching or track_at or args:find("%f[%w]keylog%f[%W]")) and function(count, native, emulated)
         if args:find("%f[%w]keylog%f[%W]") then ami.log(("frame %d: px %d table %02x"):format(ami.frame(), ami.read(0x1e0, 2):byte(1) * 256 + ami.read(0x1e0, 2):byte(2), ami.read(0x1e63a + 0x4e, 1):byte())) end
+        if watching then watch_variables() end
+        if track_at then track_long() end
         if trace then ami.log(("different pixels: %d"):format(count)) end
         if dump and count > 0 and not dumped and ami.frame() >= (tonumber(args:match("dumpfrom=(%d+)")) or 0) then
             dumped = true
@@ -108,6 +206,8 @@ lockstep.run {
             ami.save_file(dump .. ".emulated.ppm", "P6\n320 256\n255\n" .. emulated)
         end
     end or nil,
+    -- the message band: a message shows in the port one frame before the original's CPU gets to draw it (the raster has passed the band by then), a one frame difference each time
+    ignore = { { 0, 209, 320, 7 } },
     schedule = schedule,
     continue_for = args:find("continue=all") and -1 or tonumber(args:match("continue=(%d+)")) or 0,
 }

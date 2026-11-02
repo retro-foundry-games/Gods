@@ -47,7 +47,7 @@ LABELS = {
 }
 LABELS.update({t: f"cmd_{0x80 + 4 * n:02x}" for n, t in enumerate(COMMAND_TARGETS)})
 SIZES = {"char": 1, "uint8_t": 1, "int8_t": 1, "uint16_t": 2, "int16_t": 2, "uint32_t": 4, "int32_t": 4, "struct Rec6": 6, "struct Rec10": 10,
-         "struct Rec80": 80, "struct Entry8": 8, "struct MemLists": 20, "struct Image": 8, "struct AssetEntry": 8, "struct Voice": 148, "void": 2, "struct Slot8": 8, "struct Slot12": 12, "struct SavedByte": 6, "struct PathDescription": 28, "struct LeverFlag": 6}
+         "struct Rec80": 80, "struct Entry8": 8, "struct MemLists": 20, "struct Image": 8, "struct AssetEntry": 8, "struct Voice": 148, "void": 2, "struct Slot8": 8, "struct Slot12": 12, "struct SavedByte": 6, "struct PathDescription": 28, "struct LeverFlag": 6, "struct Unit": 24}
 
 
 def size_of(decl: str) -> int:
