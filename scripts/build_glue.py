@@ -38,7 +38,7 @@ def main() -> None:
     for n, (name, (func, regs)) in enumerate(SHIMS.items()):
         lines += ([f"        org ${GLUE_BASE:x}"] if n == 0 else ["        cnop 0,64"]) + [f"glue_{name}:", "        movem.l d0-d7/a0-a6,-(sp)",
                                                                                               f"        move.l sp,(${GLUE_BASE + 0x400:x}).l",
-                                                                                              f"        lea ${GLUE_BASE + 0x1000:x},sp"]   # the C runs on a stack of its own: the original's is in memory it loads files to
+                                                                                              f"        lea ${GLUE_BASE + 0x10000:x},sp"]   # the C runs on a stack of its own: the original's is in memory it loads files to
         lines += [f"        move.l {r},-(sp)" for r in regs]
         lines += [f"        jsr ${syms[func]:x}", f"        lea {4 * len(regs)}(sp),sp" if regs else "",
                   f"        movea.l (${GLUE_BASE + 0x400:x}).l,sp", "        movem.l (sp)+,d0-d7/a0-a6", ] + AFTER.get(name, []) + TAIL.get(name, ["        move #0,ccr", "        rts"]) + [""]

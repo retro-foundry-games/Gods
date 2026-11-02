@@ -145,6 +145,13 @@ local function check(case)
         for _, spec in ipairs(case.args) do inputs[#inputs + 1] = string.format("%s=%x", spec, reg_value(spec, regs)) end
         if case.name == "player_control" then inputs[#inputs + 1] = string.format("pstate=%d d7=%d stick=%d btn=%d", (before:byte(0x19c + 1) << 8) | before:byte(0x19d + 1), (before:byte(0x19a + 1) << 8) | before:byte(0x19b + 1), before:byte(0x226 + 1), before:byte(0x228 + 1)) end   -- the player state machine: which state, frame and input
         say("DIFF %s (call %d, frame %d) %s: %s", case.name, case.calls, ami.frame(), table.concat(inputs, " "), table.concat(problems, "; "))
+        if args:match("stopfirst=1") then
+            -- lockstep: stop at the first difference; the machine is at the call's entry again (memory put back): save it to start again from there
+            say("STOP at the first difference: %s, call %d, frame %d (start of the run: frame %d)", case.name, case.calls, ami.frame(), start)
+            say("state saved: %s", tostring(ami.snapshot_save(args:match("failstate=(%S+)") or "lockstep-fail.state")))
+            ami.save_file(args:match("out=(%S+)") or "/tmp/menu_oracle.txt", table.concat(log, "\n") .. "\n")
+            ami.quit(3)
+        end
     end
 end
 

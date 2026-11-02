@@ -74,6 +74,7 @@ if MODE == "game" then   -- the game loop's body in C each frame (its routines t
     local glue = read_file("native/build/takeover_glue.bin")
     local glue_at = load(read_file("native/build/takeover_glue.lua"))()
     ami.hook(0x2c20, function()
+        iter_top()
         ami.write(syms.base, blob)
         ami.write(glue_at.base, glue)
         ami.set_reg("pc", glue_at.game_frame)
@@ -98,6 +99,38 @@ if MODE == "c" or MODE == "irq" then
         TOOK_FRAME = ami.frame() - start
     end)
 end
+
+-- iterkeys=FILE: the keys by iteration of the game loop ("N k code state": at the top of iteration N+1); iterlog=FILE (with replay=, mode=orig): write that file from
+-- the frame-timed replay (what iteration each key event fell into); itershot=N,N,...: a screenshot into shots=DIR at the top of the Nth iteration
+iter_keys = {}
+do
+    local fp = args:match("iterkeys=(%S+)")
+    if fp then
+        for line in read_file(fp):gmatch("[^\n]+") do
+            local n, a, b, off = line:match("^(%d+) k (-?%d+) (-?%d+) ?(%d*)")
+            if n then iter_keys[tonumber(n)] = iter_keys[tonumber(n)] or {}; table.insert(iter_keys[tonumber(n)], { tonumber(a), tonumber(b) ~= 0, tonumber(off) or 0 }) end
+        end
+    end
+end
+ITER, ITERLOG = 0, {}
+iter_shots = {}
+for n in (args:match("itershot=([%d,]+)") or ""):gmatch("%d+") do iter_shots[tonumber(n)] = true end
+shots_dir = args:match("shots=(%S+)")
+ITERVARS, ITERKEYS = {}, {}
+KIRQ = 0
+KLOG = {}
+ami.hook(0x1e2b8, function() KIRQ = KIRQ + 1; KLOG[#KLOG + 1] = string.format("%d it=%d frame=%d sr=%04x pc_ret=%x", KIRQ, ITER, ami.frame() - start, ami.reg("sr") & 0xffff, ami.peek32(ami.reg("a7") + 2)) end)
+PENDING_KEYS = {}
+function iter_top()
+    ITER = ITER + 1
+    TOP_FRAME = ami.frame() - start
+    if args:match("itervars=1") then ITERVARS[#ITERVARS + 1] = ami.read(0x100, 0xf00); ITERKEYS[#ITERKEYS + 1] = ami.read(0x1e63a + 0x4c, 4) .. ami.read(0x1e63a + 0x40, 1) .. string.pack(">I2I2", KIRQ, ami.peek16(0x1e630)) end
+    for _, k in ipairs(iter_keys[ITER - 1] or {}) do   -- the key table of the keyboard interrupt is set at once ($1E63A: $FF for a key held down, by raw key code): the interrupt is
+        local raw = ({ [273] = 0x4c, [274] = 0x4d, [275] = 0x4e, [276] = 0x4f, [32] = 0x40 })[k[1]]   -- asynchronous, two events close together lose one by the original's timing
+        if raw then ami.write(0x1e63a + raw, k[2] and "\xff" or "\x00") end
+    end
+    if iter_shots[ITER] and shots_dir then ami.screenshot(string.format("%s/iter-%d.ppm", shots_dir, ITER)) end
+end
 local joys = {}
 for f, dirs in (args:match("joy=(%S+)") or ""):gmatch("(%d+):([%a+]+)") do
     local st = {}
@@ -115,6 +148,7 @@ end
 for addr, name in (args:match("otrace=(%S+)") or ""):gmatch("(%x+):([%w_]+)") do
     ami.hook(tonumber(addr, 16), function() EVENTS[#EVENTS + 1] = string.format("%d:%s", ami.frame() - start, name) end)
 end
+if MODE ~= "game" then ami.hook(0x2c20, iter_top) end
 local DUMPFLIP = tonumber(args:match("dumpflip=(%d+)"))
 if args:match("gtrace=1") then
     local W = function() return string.format("%d d0=%d d1=%d d2=%d", ami.frame() - start, ami.reg("d0") & 0xffff, ami.reg("d1") & 0xffff, ami.reg("d2") & 0xffff) end
@@ -148,7 +182,12 @@ while ami.frame() - start < UNTIL do
     end
     if joys[f] then ami.joystick(joys[f]) end
     if keys[f] then ami.key(ami.keys[keys[f][1]], keys[f][2]) end
-    for _, k in ipairs(game_keys[f] or {}) do ami.key(k[1], k[2]) end
+    local i = 1
+    while i <= #PENDING_KEYS do
+        local p = PENDING_KEYS[i]
+        if f >= p[1] then ami.key(p[2], p[3]); table.remove(PENDING_KEYS, i) else i = i + 1 end
+    end
+    for _, k in ipairs(game_keys[f] or {}) do ami.key(k[1], k[2]); ITERLOG[#ITERLOG + 1] = string.format("%d k %d %d %d", ITER, k[1], k[2] and 1 or 0, f - (TOP_FRAME or 0)) end
     if DUMP and f == DUMP then ami.save_file(OUT .. ".ram", ami.read(0, 0x80000)) end
     local line = { tostring(f) }
     PCS = PCS or {}
@@ -162,5 +201,11 @@ log[#log + 1] = "flips " .. table.concat(FLIPS, " ")
 log[#log + 1] = "events " .. table.concat(EVENTS, " ")
 log[#log + 1] = "pcs " .. table.concat(PCS, " ")
 log[#log + 1] = string.format("took %s irq3 %x irq4 %x", tostring(TOOK_FRAME), orig_irq3, orig_irq4)
+if args:match("itervars=1") then
+    ami.save_file(OUT .. ".iter", table.concat(ITERVARS))
+    ami.save_file(OUT .. ".kirq", table.concat(KLOG, "\n"))
+    ami.save_file(OUT .. ".keys", table.concat(ITERKEYS))   -- key_down for the codes $4C to $4F and $40 (up, down, right, left, space) at each iteration   -- the variables ($100-$FFF) at the top of every iteration, one after the other
+end
+if args:match("iterlog=(%S+)") then ami.save_file(args:match("iterlog=(%S+)"), table.concat(ITERLOG, "\n") .. "\n") end
 ami.save_file(OUT, table.concat(log, "\n") .. "\n")
 ami.quit(0)

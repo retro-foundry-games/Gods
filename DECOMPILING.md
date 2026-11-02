@@ -155,3 +155,15 @@ Longer run: a random input script (seed 7: 40 or so changes of direction, jump a
   (continues at $7184 for the types whose byte 19 is not 0, calls $60AE and $60F2) and `update_creatures` (because of the creature step).
   Levels 3 and 4 have not been run through the oracle yet.  These are the first of the routines that levels 2 to 4 need beyond level 1: write the
   continuations from the disassembly of the level's RAM dump, re-run the oracle for the level, repeat.
+
+## Lockstep on a recorded play (scripts/lockstep.py)
+
+Level 1, your recording (captures/input/level1-run1.txt, 772 key events, about 2600 iterations of the loop): the original and the C loop, both given the
+keys by iteration, have the same game variables ($100-$FFF) at the top of every iteration, and 105 screenshots (every 25 iterations, above the message
+line) are identical.  Only the variables that count time differ (message_*, $CE4/$CE5, word_2e6, flag_236).  Two things made the test deterministic:
+the keys are applied to the keyboard interrupt's table ($1E63A) at the top of the iteration, because the interrupt loses one of two close key events by
+the original's own timing (a left-up and right-down at one instant gave `left+right` in one run and `right` in the other), and the comparison is by
+iteration, because the C loop is slower while the level starts.
+Use: play a level on the original disk with gods.lua inputlog= (see the top of scripts/lockstep.py), then
+`uv run python projects/gods/scripts/lockstep.py LEVEL`: it prints the first iteration at which a game variable differs (variable name, address, values);
+screenshots at chosen iterations: `menu_takeover.lua ... itershot=N,N shots=DIR` for mode=orig and mode=game.  The glue stack of the takeover moved to $FA000.
