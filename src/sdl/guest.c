@@ -90,6 +90,7 @@ void guest_load_image(const uint8_t *image, uint32_t size)
     swap16_range(0x53ee, 32);
     swap32_range(0x3b6, 4);      /* blit_plane_stride */
     swap16_range(0x6384, 2);     /* menu_item_count */
+    swap16_range(0x4d8a, 0xa8);  /* the two copper lists (the program changes their words, the display reads them as words) */
 
     /* What the original's start-up writes that is not in the unpacked image: the name of the first asset set and the lists of
      * file names of the asset sets (the table asset_names points at them; the names are on the disks' directories) */
