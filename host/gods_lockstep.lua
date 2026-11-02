@@ -194,7 +194,8 @@ if box_first then
                 local function signed(v) v = v & 0xffff if v >= 0x8000 then v = v - 0x10000 end return v end
                 local x, y = signed(ami.reg("d0")), signed(ami.reg("d1"))
                 if x >= tonumber(bx0) and x <= tonumber(bx1) and y >= tonumber(by0) and y <= tonumber(by1) then
-                    ami.log(("drawbox %x frame %d: x %d y %d image %d, called from %06x"):format(at, f, x, y, ami.reg("d2") & 0xffff, ami.peek32(ami.reg("a7"))))
+                    local image = ami.reg("d2") & 0xffff
+                    ami.log(("drawbox %x frame %d: x %d y %d image %d data %x, called from %06x"):format(at, f, x, y, image, ami.peek32(ami.peek32(0xe3c) + image * 8 + 4), ami.peek32(ami.reg("a7"))))
                 end
             end
         end)
@@ -230,6 +231,15 @@ if rl_first then
     ami.hook(0x633e, function()
         local f = ami.frame()
         if f >= tonumber(rl_first) and f <= tonumber(rl_last) then ami.log(("rand frame %d: index %d, called from %06x"):format(f, ami.peek16(0x2e6), ami.peek32(ami.reg("a7")))) end
+    end)
+end
+-- reglog=ADDR[,ADDR...] (hex): every register d0-d7, a0-a6 of every time the original reaches those addresses
+for hex in (args:match("reglog=([%x,]+)") or ""):gmatch("%x+") do
+    local at = tonumber(hex, 16)
+    ami.hook(at, function()
+        local t = {}
+        for _, r in ipairs({ "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "a0", "a1", "a2", "a3", "a4", "a5", "a6" }) do t[#t + 1] = ("%s=%x"):format(r, ami.reg(r)) end
+        ami.log(("regs %x frame %d: %s"):format(at, ami.frame(), table.concat(t, " ")))
     end)
 end
 if args:find("%f[%w]itlog%f[%W]") then   -- itlog: the emulator frame of the top of every iteration of the game loop (at $2C20), 20 at a time, on the log
