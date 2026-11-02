@@ -710,13 +710,13 @@ play_sound_body:
 .L1fb38:
         move.b $5(a0),d6
         beq.b .L1fbaa
-        jsr $633e.w
+        jsr (_random_word).l
         andi.l #$ffff,d0
         cmpi.b #$5,d6
         bne.b .L1fb60
         andi.w #$3,d0
         move.w d0,d6
-        jsr $633e.w
+        jsr (_random_word).l
         andi.w #$1,d0
         add.w d6,d0
         bra.b .L1fbaa
@@ -1426,7 +1426,7 @@ _vbl_irq:
         addq.w #$1,(_vbl_saturating).l
 .L1d048:
         addq.w #$1,(_vbl_count).l
-        jsr (_shot_deltas+$7c).l
+        jsr _frame_tick
         movem.l (a7)+,d0-d7/a0-a6
         rte 
 
@@ -1633,9 +1633,10 @@ L1d586:
 .L1d608:
         lea.l -$2(a1),a2
         move.l (a7)+,d7
-        move.l #$1d61c,-(a7)
+        move.l #.L1d61c,-(a7)
         movem.l d1-d7/a0-a6,-(a7)
         bra.w .L1d6ea
+.L1d61c:
         bsr.w L1d4ca
         movem.l (a7)+,d1-d7/a0-a6
         moveq #$0,d0
