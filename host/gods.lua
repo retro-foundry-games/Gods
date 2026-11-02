@@ -207,8 +207,12 @@ for a in (args:match("trace=([%x,]+)") or ""):gmatch("%x+") do
 end
 -- stopat=ADDR (hex) [ram=PATH]: at the first time the program reaches ADDR write the chip RAM (512 KiB) to ram= and quit
 local stop_at = tonumber(args:match("stopat=(%x+)") or "", 16)
+local stop_nth = tonumber(args:match("stopnth=(%d+)") or "") or 1   -- stopnth=N: at the Nth time (the loop's Nth iteration)
+local stop_hits = 0
 if stop_at then
     ami.hook(stop_at, function()
+        stop_hits = stop_hits + 1
+        if stop_hits < stop_nth then return end
         local ram = args:match("ram=(%S+)")
         if ram then ami.save_file(ram, ami.read(0, 0x80000)) end
         ami.log(("stopat $%x frame %d"):format(stop_at, ami.frame() - base))

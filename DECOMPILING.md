@@ -126,3 +126,15 @@ gen_menu_amiga_asm.py now send these calls to the copies in menu_amiga.asm or to
 in the C disk is the start-up before the menu (frames below ~5400: the start stub $240C, the original's load_unpacked/load_directory and the
 file layer it uses, the protection stub amboot3 at $35DAC, the loader), the patched jump at $2C20, and Continue and the password route.
 (The host's coverage cannot be started at a later frame reliably: instructions reached before it are reported again; count addresses instead.)
+
+## End-to-end comparison C disk against the original disk (open)
+
+The original disk is deterministic: two runs whose level starts 59 frames apart (fire pulses shifted) show pixel-identical screens at the same
+frame after the first game-loop iteration (k = 400..3200).  The C disk (boot, Begin Quest in C, game_frame) with the same joystick script
+is identical at k=20 and differs from k=60 on: at k=150..300 (no input yet) 344 pixels, all in the small animated pick-up item at the top
+left of the first screen (another animation frame), and enemy positions differ later (k=330 on: thousands of pixels).  The routines are
+exact per call on the replay (oracle), so the difference is in what the oracle does not compare: the state at the level's start made by
+the C `begin_quest` (checked only by the whole-RAM A/B of the C disk against itself), or the order inside `game_frame`.  Find it with
+the RAM of both disks at the same loop iteration (the host's stopat/ram= did not give a reliable dump of the original at an iteration;
+use hooks or the oracle's snapshots).  Script: the alignment is by the first hit of $2C20 (original) and of game_frame (C), from
+`trace=ADDR`.
