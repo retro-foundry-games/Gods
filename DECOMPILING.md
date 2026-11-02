@@ -98,3 +98,16 @@ the loading screen).  How it was made and checked:
   password start (`word_0266`), the other draw routines of the table at $0D9A and the mirrored or shifted draws of `image_draw_clipped`,
   the kinds 0, 1 and 6 at the end of a path ($18106).  A file that cannot be read does not come back (`load_file`), so the
   original's code for that is not written.
+
+## Status of the game run (November 2)
+
+- Executed code of the human level-1 run (analysis/coverage-game.txt, 4456 instructions) and of Begin Quest (analysis/coverage-begin.txt, 4683):
+  `menu_dis.py --todo` lists nothing that is not decompiled, except the keyboard patch code at $1E426/$1E608 (not the game's: it is the memory patch
+  of scripts/build_keyboard_patch.py).  Every written routine is checked by the oracle on every call of the replay (differ 0; the one remaining
+  difference was in the oracle's own comparison of the patched keyboard bytes, now ignored with kbd=1).
+- `game_frame` calls no original code except $30C6, $33D4 and $12E08, which the recording never reaches.  Branches of the written routines that
+  the recording never reaches are marked `goes on at $ADDR` (or written from the disassembly without a check: the reports of the modules say which).
+- The takeover lockstep (`menu_takeover.lua mode=game`) diverges from the flip ~44 on: this is the speed of the C, not a difference of the
+  result.  Measured: the original's loop takes 3 frames an iteration (667 iterations of $2C20 in 2000 frames), the C `game_frame` 4 frames (500 in
+  2000, count= on the C disk), so the game's own time (counters, animation phases that advance with iterations, not with frames) drifts apart.
+- Continue and the password route (`original_continue`, `original_after_password`) are still the original's code; levels 2 to 4 are not decompiled.

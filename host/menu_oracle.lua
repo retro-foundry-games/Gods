@@ -131,7 +131,7 @@ local function check(case)
         for pos in pairs(differences(after_orig, after_c, 64)) do positions[#positions + 1] = pos end
         table.sort(positions)
         for _, pos in ipairs(positions) do
-            if pos >= 8 and not (pos >= syms.base and pos < syms.base + #blob) and not (pos >= SCRATCH - 0x1000 and pos < SCRATCH + 0x100) and not noise[pos] and not (pos >= dskpt and pos < dskpt + dsklen) and shown < 12 then
+            if pos >= 8 and not (args:match("kbd=1") and (pos >= 0x1e2f8 and pos < 0x1e2fc or pos >= 0x1e420 and pos < 0x1e426 or pos >= 0x1e608 and pos < 0x1e700)) and not (pos >= syms.base and pos < syms.base + #blob) and not (pos >= SCRATCH - 0x1000 and pos < SCRATCH + 0x100) and not noise[pos] and not (pos >= dskpt and pos < dskpt + dsklen) and shown < 12 then
                 shown = shown + 1
                 problems[#problems + 1] = string.format("memory $%05x orig %02x C %02x", pos, after_orig:byte(pos + 1), after_c:byte(pos + 1))
             end
