@@ -61,7 +61,7 @@ def size_of(decl: str) -> int:
 
 VARIABLES, TABLES = S.parse()
 OBJECTS = sorted([(n, a, size_of(d)) for n, a, d, _ in VARIABLES] +
-                 [(n, a, S.WIDTH[t] * c) for n, a, t, c, _ in TABLES], key=lambda o: o[1])
+                 [(n, a, (sum(f[0] for f in S.STRUCT_FIELDS[t.split()[1]]) if t.startswith('struct ') else S.WIDTH[t]) * c) for n, a, t, c, _ in TABLES], key=lambda o: o[1])
 
 
 def data_symbol(addr: int) -> str | None:

@@ -17,6 +17,11 @@ PROJECT = Path(__file__).resolve().parents[1]
 SRC = PROJECT / "native" / "src"
 RAM = PROJECT / "native" / "build" / "menu-ram.bin"
 WIDTH = {"uint8_t": 1, "uint16_t": 2, "uint32_t": 4}
+# the structs of menu_types.h that a table can have: the fields in order, (width in bytes, signed) (big endian in the original's memory)
+STRUCT_FIELDS = {
+    "CreatureEntry": [(2, 1), (2, 1), (1, 1), (1, 0), (2, 1), (1, 0), (1, 0), (2, 0), (1, 0), (1, 0), (1, 0), (1, 0)],
+    "CreatureTemplate": [(2, 0), (2, 0), (4, 0), (2, 0), (2, 0), (4, 0)],
+}
 
 
 def parse() -> tuple[list, list]:
@@ -24,7 +29,7 @@ def parse() -> tuple[list, list]:
     for line in (SRC / "menu.symbols").read_text().split("\n"):
         if not line.strip() or line.startswith("#"):
             continue
-        t = re.match(r"table\s+(\w+)\s+(0x[0-9a-fA-F]+)\s+(uint\d+_t)\s+(\d+)(?:\s{2,}(.*))?$", line)
+        t = re.match(r"table\s+(\w+)\s+(0x[0-9a-fA-F]+)\s+(uint\d+_t|struct \w+)\s+(\d+)(?:\s{2,}(.*))?$", line)
         if t:
             tables.append((t.group(1), int(t.group(2), 16), t.group(3), int(t.group(4)), (t.group(5) or "").strip()))
             continue
@@ -64,6 +69,19 @@ def main(code_base: int = 0xC0000) -> None:
              " * The tables of the menu program, as C initializers.  menu.ld places each at the address the original keeps it at. */",
              '#include "menu_symbols.h"', ""]
         for name, addr, ctype, count, comment in tables:
+            if ctype.startswith("struct "):
+                fields = STRUCT_FIELDS[ctype.split()[1]]
+                size = sum(f[0] for f in fields)
+                c.append(f"/* ${addr:05X}" + (f"  {comment}" if comment else "") + " */")
+                c.append(f"const {ctype} {name}[{count}] __attribute__((aligned(1))) = {{")
+                for i in range(count):
+                    at, items = addr + i * size, []
+                    for width, signed in fields:
+                        items.append(str(int.from_bytes(ram[at:at + width], "big", signed=bool(signed))))
+                        at += width
+                    c.append("    { " + ", ".join(items) + " },")
+                c += ["};", ""]
+                continue
             w = WIDTH[ctype]
             vals = [int.from_bytes(ram[addr + i * w:addr + (i + 1) * w], "big") for i in range(count)]
             per = 16 // w if w > 1 else 16
