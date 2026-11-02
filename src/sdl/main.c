@@ -450,6 +450,11 @@ int main(int argc, char **argv)
             } else {
                 display_latch();
                 irq_vbl();
+                {
+                    extern void display_latch_fresh(void);
+
+                    display_latch_fresh();
+                }
                 if (lockstep)
                     SDL_DelayNS(3000000);   /* the program's thread flips the screens right after the blank it waited for: give it that moment before the frame is drawn */
                 sound_mix(samples);

@@ -501,6 +501,7 @@ extern uint32_t records_737e[20];   /* $0737E  ten records of two longs */
 extern int16_t records_7544[210];   /* $07544  forty-two records of 10 bytes */
 extern uint16_t table_1a30c[120];   /* $1A30C  forty records of 6 bytes */
 extern uint8_t records_1a154[440];   /* $1A154  twenty records of 22 bytes */
+extern int16_t table_1c1d6[90];   /* $1C1D6  thirty entries of three words (the gem's x, and two words that say where it sends the player) of the level (loaded data) */
 extern uint16_t table_1c28a[60];   /* $1C28A  twenty entries of three words (x, y, kind) of the level's pick-ups */
 extern uint16_t table_19456[60];   /* $19456  ... copied by place_pickups */
 extern uint8_t bytes_fbf2[64];   /* $0FBF2  thirty-two pairs of bytes made by make_pairs_fb9a */

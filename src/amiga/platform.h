@@ -41,4 +41,20 @@ static inline void host_missing_routine(uint32_t address)
     (void)address;
 }
 
+/* the original's CPU work takes `frames` video frames here (a loop of clr.l, the drawing of a frame); the Amiga's own time is that, the host waits for them */
+static inline void host_cpu_frames(unsigned frames)
+{
+    (void)frames;
+}
+
+/* the start of a frame of the game, and the least time its work takes: the host has done the work at once and waits for the video frames it took on the Amiga */
+static inline void host_iteration_mark(void)
+{
+}
+
+static inline void host_iteration_cpu(unsigned frames)
+{
+    (void)frames;
+}
+
 #endif

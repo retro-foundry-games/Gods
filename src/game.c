@@ -183,6 +183,7 @@ uint8_t *next_message_slot(void)
 /* orig $001D2FC: wait until more than `frames` frames have passed since the last flip (vbl_saturating counts them), then flip */
 static void wait_frames_then_flip(uint16_t frames)
 {
+    host_iteration_cpu(2);   /* (the work of the frame, which took the original two frames) */
     while ((int16_t)(frames - vbl_saturating) >= 0)
         ;
     screens_flip();
@@ -369,6 +370,49 @@ static void player_death_frame(void)
     player_death_step();
 }
 
+/* orig $00374A (from $0035D2 when word_200 is 1): the player is put where word_202 says (the high byte times 32 plus 16, the low byte, signed, times 16),
+ * the scroll goes there (as $37D2: 144 left and 72 above, kept in the level), the records of the screen are made again, the player stands (state 4),
+ * the screen fades out, a frame is drawn, the screens flip and the screen fades in (delay 1) */
+static void teleport_player(void)
+{
+    int16_t x = (int16_t)(((word_202 >> 8) << 5) + 0x10);
+    int16_t y = (int16_t)((int8_t)(word_202 & 0xFF) << 4);
+
+    player_x = x;
+    player_y = y;
+    if (flag_8890 >= 0) {
+        word_8882 = x;
+        word_8884 = (int16_t)(y - 0x28);
+    }
+
+    int16_t sx = (int16_t)(x - 0x90);
+    int16_t sy = (int16_t)(y - 0x48);
+
+    if (sx < 0)
+        sx = 0;
+    if (sy < 0)
+        sy = 0;
+    if (sx >= 0xEC0)
+        sx = 0xEC0;
+    if (sy >= 0x340)
+        sy = 0x340;
+    scroll_x = sx;
+    scroll_y = sy;
+    clear_records_1354();
+    activate_records_now();
+    word_19a = 0;
+    flag_1f0 = 0;
+    player_state = 4;
+    word_2aa = scroll_y;
+    fade_out(1, 0xFFFF);
+    draw_start_frame();
+    host_cpu_frames(2);   /* (the original's drawing of that frame takes 3 frames in all) */
+    screens_flip();
+    copper_setup_done = 0;
+    fade_in(palette_words, 1);
+    host_cpu_frames(1);   /* (the original goes on 31 frames after the call of the fade) */
+}
+
 /* orig $002D54 on: what ends a frame of the game, after the player has been run (or, when he is dead, after the frame of his death: $3A6C): the units and the other things
  * that are run, the panels, the energy, the keys of the pause and the like, and the wait for the next frame */
 static void game_frame_tail(void)
@@ -458,8 +502,13 @@ static void game_frame_tail(void)
         return;   /* goes on at $32B4 */
     if (flag_258)
         return;   /* goes on at $30DA */
-    if (flag_1f0)
-        return;   /* goes on at $35D2 */
+    if (flag_1f0) {   /* $35D2 */
+        if (word_200 == 1)
+            teleport_player();
+        else
+            host_missing_routine(0x35DC);   /* the level change through the table at $143C8 did not run */
+        return;
+    }
     if (flags_3b0 & 0x40)
         return;   /* goes on at $2F12 */
 }
@@ -469,6 +518,7 @@ static void game_frame_tail(void)
  * $30DA, $35D2, $2F12) the frame ends here: those are the ends of a level, a death, the pause menu and the like */
 void game_frame(void)
 {
+    host_iteration_mark();
     message_tick();
     game_read_input();
     frame_toggle = ~frame_toggle;
@@ -2999,6 +3049,34 @@ static void energy_pickup(int16_t amount, int16_t sound)
     }
 }
 
+/* orig $0106F0: the teleport gem (the thing ptr_0ba6 is at, its x the first word): where it sends the player is word_202.  In the
+ * third level row (param_index 2, word_266 0) a gem with x from 1472 to 1600 sends to $202E.  Otherwise the thirty entries of
+ * table_1c1d6 are looked at for the gem's x: its two other words give (x / 32) * 256 + y / 16; with no entry the next word of the list at
+ * ptr_0b76 is taken (the list goes on by two bytes).  flag_1f0 and word_200 are set and sound 5 is played (priority 25) */
+static void teleport_gem(void)
+{
+    int16_t x = ptr_0ba6->w[0];
+    int found = 0;
+
+    if (param_index == 2 && word_0266 == 0 && x >= 0x5c0 && x <= 0x640) {
+        word_202 = 0x202e;
+        found = 1;
+    }
+    for (int i = 0; i < 30 && !found; i++) {
+        if (table_1c1d6[i * 3] == x) {
+            word_202 = (uint16_t)(((int16_t)(table_1c1d6[i * 3 + 1] >> 5) << 8) | (uint16_t)(table_1c1d6[i * 3 + 2] >> 4));
+            found = 1;
+        }
+    }
+    if (!found) {
+        word_202 = (uint16_t)((ptr_0b76[0] << 8) | ptr_0b76[1]);
+        ptr_0b76 += 2;
+    }
+    flag_1f0 = 1;
+    word_200 = 1;
+    play_sound(5, 25);
+}
+
 /* the handlers of the table at $1067A, called with the index of the thing's kind (the number of zero bytes of offsets_4cba before its id)
  * and the loop counter of $417C (d7); returns the d3 they leave (0: nothing more to do; 1: the message of the thing; 2 or more: the
  * message without the line of word_2f8 being cleared first) or -1 when the handler is not written (it did not run) */
@@ -3022,6 +3100,9 @@ static int16_t pickup_handler(int16_t index, int16_t counter)
         return 1;
     case 13:
         countdown_220 = 1000;    /* orig $010802 */
+        return 1;
+    case 17:
+        teleport_gem();          /* orig $0106F0 */
         return 1;
     case 18:
         hint_message();          /* orig $010976 */
@@ -8144,6 +8225,7 @@ static void level_tables_from_disk(void)
     }
     file_words(flags_1c056, 3 * 64);
     file_words(table_1c28a, 60);   /* the pick-ups of the level */
+    file_words(table_1c1d6, 90);   /* the teleport gems */
     for (int i = 0; i < 100; i++)   /* the scripts of the units (8 bytes each): the word that is the delay between the members */
         file_words(&((struct UnitScript *)ptr_0cb2)[i].spacing, 1);
 }

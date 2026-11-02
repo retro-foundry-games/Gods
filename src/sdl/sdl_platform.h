@@ -22,6 +22,9 @@ static inline void blit_start(uint16_t size)
 
 /* the original's routine at `address` is not replicated and was reached: said once on stderr (sdl/shims.c), so that what the play needs and the port lacks is known */
 void host_missing_routine(uint32_t address);
+void host_iteration_mark(void);   /* the start of a frame of the game (platform.h) */
+void host_iteration_cpu(unsigned frames);   /* wait until that many video frames have passed since the mark */
+void host_cpu_frames(unsigned frames);   /* the original's CPU work that takes that many video frames (platform.h) */
 
 /* a word and a long of the data of a loaded file (the files are big-endian) */
 static inline uint16_t file_word(const void *p)

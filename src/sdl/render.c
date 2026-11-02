@@ -41,6 +41,8 @@ static int latched_list_valid;
 
 void display_latch_colors(void);
 
+volatile int display_fresh;   /* set by the fades (display.c): their colours and copper list are shown as they are, not as they were two frames before */
+
 void display_latch(void)
 {
     static uint32_t last_list;
@@ -73,6 +75,10 @@ void display_latch(void)
         previous_valid = list != 0;
         if (list)
             memcpy(previous, list, sizeof previous);
+        if (display_fresh && list) {
+            latched_list_valid = 1;
+            memcpy(latched_list, list, sizeof previous);
+        }
     }
 }
 
@@ -88,6 +94,24 @@ void display_latch_colors(void)
     memcpy(before_previous, previous, sizeof previous);
     for (int i = 0; i < 16; i++)
         previous[i] = REG16(0x180 + 2 * i);
+    if (display_fresh)
+        memcpy(latched_colors, previous, sizeof previous);
+}
+
+/* in a fade: after the blank's interrupt has written the colour registers the frame shows them and the copper list as they are (called right after irq_vbl, before the program's thread goes on) */
+void display_latch_fresh(void)
+{
+    if (!display_fresh)
+        return;
+    for (int i = 0; i < 16; i++)
+        latched_colors[i] = REG16(0x180 + 2 * i);
+    uint32_t cop1lc = REG32(0x080);
+    const uint16_t *list = cop1lc < 0x10000 ? (const uint16_t *)guest_ptr(cop1lc) : (const uint16_t *)(uintptr_t)cop1lc;
+
+    if (list) {
+        latched_list_valid = 1;
+        memcpy(latched_list, list, sizeof latched_list);
+    }
 }
 
 static uint32_t argb(uint16_t color)

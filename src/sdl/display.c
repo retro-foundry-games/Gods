@@ -51,6 +51,7 @@ void clear_both_screens(void)
 {
     clear_screen_buffer((uint32_t *)screen_buffer);
     clear_screen_buffer((uint32_t *)screen_other);
+    host_cpu_frames(3);   /* the original clears the 2 x 33792 bytes with a loop of clr.l: about 3 frames */
 }
 
 /* orig $01CFCE: copy the other screen over the one that is drawn on */
@@ -143,10 +144,13 @@ void copper_colors_restore(void)
         *colour = *from++;
 }
 
+extern volatile int display_fresh;   /* render.c: the fades show their colours and copper list as they are */
+
 /* orig $01D0C0: fade the colours in from black to the palette `target` (words, each colour a half of what it is on the
  * screen), a step per `delay + 1` frames; the 15 steps change the shadow table, the copper list's colours follow */
 void fade_in(const uint16_t *target, uint16_t delay)
 {
+    display_fresh = 1;
     copper_colors_save(0);
     if (copper_setup_done == 0) {
         wait_vblank();
@@ -172,6 +176,7 @@ void fade_in(const uint16_t *target, uint16_t delay)
             wait_vblank();
     }
     palette_lit = 0xff;
+    display_fresh = 0;
 }
 
 /* orig $016C30: the work of every frame (the vertical blank interrupt calls it): the scroll word of the copper lists, the
@@ -208,6 +213,7 @@ void frame_tick(void)
  * they were before */
 void fade_out(uint16_t delay, uint16_t arg)
 {
+    display_fresh = 1;
     (void)delay;
     message_start(arg);
     delay = 1;   /* the original's d0, which is the delay, is the result of the routine that starts the message (orig $016DF8: 1): every step waits two frames */
@@ -238,6 +244,7 @@ void fade_out(uint16_t delay, uint16_t arg)
     copper_move_b = 0x00865246;
     copper_colors_restore();
     palette_lit = 0;
+    display_fresh = 0;
 }
 
 /* ---- what the display needs of the chips (the host's) ---- */

@@ -242,6 +242,32 @@ __attribute__((weak)) void original_after_password(void)
     host_begin_quest();
 }
 
+/* the original's CPU work (a loop that clears a screen, the drawing of a frame) takes frames of the video; the host does it at once and waits for them */
+void host_cpu_frames(unsigned frames)
+{
+    extern void wait_vblank(void);
+
+    while (frames--)
+        wait_vblank();
+}
+
+static uint16_t iteration_mark;
+
+void host_iteration_mark(void)
+{
+    iteration_mark = vbl_count;
+}
+
+/* the drawing and moving of a frame of the game takes the original's CPU about two video frames, so a frame that is not held back by the wait for the last flip (the first
+ * after a fade) still ends two frames after it began */
+void host_iteration_cpu(unsigned frames)
+{
+    extern void wait_vblank(void);
+
+    while ((uint16_t)(vbl_count - iteration_mark) < frames)
+        wait_vblank();
+}
+
 /* an original routine that is not replicated was reached: once each, on stderr */
 void host_missing_routine(uint32_t address)
 {

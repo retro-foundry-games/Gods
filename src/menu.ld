@@ -561,6 +561,7 @@ _records_737e = 0x737e;
 _records_7544 = 0x7544;
 _table_1a30c = 0x1a30c;
 _records_1a154 = 0x1a154;
+_table_1c1d6 = 0x1c1d6;
 _table_1c28a = 0x1c28a;
 _table_19456 = 0x19456;
 _bytes_fbf2 = 0xfbf2;
