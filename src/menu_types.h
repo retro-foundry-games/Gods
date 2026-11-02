@@ -232,6 +232,17 @@ struct LeverFlag {
 };
 _Static_assert(sizeof(struct LeverFlag) == 6, "lever flag");
 
+/* what the end of a level shows and how many spots end it (34 bytes, a list for each level at the addresses table_143b8 names; the list of the first level has four): the number of
+ * spots remembered (word_22e) that ends the level, the bonus, the text (two lines of eleven characters), and where the score goes */
+struct __attribute__((packed)) LevelEnd {
+    uint16_t spots;
+    uint32_t bonus;
+    uint8_t text[22];
+    uint32_t score_place;
+    uint16_t last;
+};
+_Static_assert(sizeof(struct LevelEnd) == 34, "level end");
+
 /* ... and a record (24 bytes, 25 of them): where it is, which way it goes and the state of its line (the original keeps the line's registers in the record and leaves
  * the loop of the line by storing the address it goes on at; the four loops, the line steeper or flatter, left or right, are tagged by those addresses) */
 struct PathState {

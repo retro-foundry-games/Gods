@@ -4718,7 +4718,7 @@ void object_message(const struct Object *object)
  * (The original loses the caller's a6 here: it leaves ptr_0bc6 in it and the saved a6 in a0) */
 static void level_over_check(void)
 {
-    if (ptr_0bc6[0] != word_22e) {
+    if (ptr_0bc6->spots != word_22e) {
         if (param_index != 3 || word_0266 != 0 || player_x < 0x450 || player_y > 0x310 || player_y < 0x300)
             return;
         word_22e = 0;
@@ -7841,7 +7841,7 @@ void level_state_init(void)
     word_17e9c = 0x4E75;
     word_4a2 = 0;
     code_c374 = 0x4E75;
-    ptr_0bc6 = (const uint16_t *)(uintptr_t)table_143b8[(int16_t)(param_index - 1)];
+    ptr_0bc6 = (const struct LevelEnd *)(uintptr_t)table_143b8[(int16_t)(param_index - 1)];
     word_2aa = scroll_y;
     mark_cells_19170();
     place_pickups();

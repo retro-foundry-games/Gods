@@ -33,7 +33,7 @@ for line in (src / "menu.symbols").read_text().splitlines():
     parts = line.split()
     if parts[0] == "table":
         if parts[3] == "struct":   # table NAME ADDR struct NAME COUNT: the structs of menu_types.h
-            tables.append((parts[1], int(parts[2], 16), {"CreatureEntry": 16, "CreatureTemplate": 16, "PathDescription": 28}[parts[4]] * int(parts[5])))
+            tables.append((parts[1], int(parts[2], 16), {"CreatureEntry": 16, "CreatureTemplate": 16, "PathDescription": 28, "LevelEnd": 34}[parts[4]] * int(parts[5])))
             continue
         name, addr, ty, count = parts[1], int(parts[2], 16), parts[3], int(parts[4])
         tables.append((name, addr, SIZES[ty] * count))

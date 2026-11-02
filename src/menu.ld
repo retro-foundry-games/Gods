@@ -45,6 +45,7 @@ SECTIONS {
         . = 0x125ac; *(.rodata.frame_map_125ac) *(.data.frame_map_125ac)
         . = 0x12cee; *(.rodata.text_power) *(.data.text_power)
         . = 0x143b8; *(.rodata.table_143b8) *(.data.table_143b8)
+        . = 0x143d8; *(.rodata.level_end_1) *(.data.level_end_1)
         . = 0x14988; *(.rodata.object_slot_image) *(.data.object_slot_image)
         . = 0x1527a; *(.rodata.table_1527a) *(.data.table_1527a)
         . = 0x15b5c; *(.rodata.particle_speeds_15b5c) *(.data.particle_speeds_15b5c)

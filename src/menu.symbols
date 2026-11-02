@@ -479,7 +479,7 @@ word_314          0x00000314  int16_t %s      how many marks kind 6 of finish_re
 ptr_0b7e          0x00000b7e  uint8_t *%s
 units             0x00018740  struct Unit %s[5]   the waves of enemies: five records of 24 bytes (a state word, 0 free) take_record_to_18740 fills
 word_22e          0x0000022e  uint16_t %s   counts the spots remembered in points_b3a (like word_22c); the level ends (flag_230) when it reaches the count at ptr_0bc6
-ptr_0bc6          0x00000bc6  const uint16_t *%s   its first word is how many spots end the level
+ptr_0bc6          0x00000bc6  const struct LevelEnd *%s   the record of the level end that the level is at (its first word is how many spots end the level)
 words_2a2         0x000002a2  int16_t %s[2]   a copy of the player position (player_x, player_y) made by remember_visited_spot
 points_b3a        0x00000b3a  int16_t %s[12]   the six spots (x, y; the latest first) remember_visited_spot keeps
 shot_offsets_6a4 0x000006a4 int16_t %s[9]    per-column counters handler 1 of the object lists (update_shots_sliding) adds to the shots of a column
@@ -492,6 +492,7 @@ table shift_tables 0x00002a0a uint32_t 40   for each level (ten longs): the firs
 table table_17a6e  0x00017a6e uint16_t 8   for each level two words (by word_0266): how many 32 by 16 pixel blocks its background tiles have
 table table_fa5c   0x0000fa5c uint16_t 4   the glyph of the pick-ups of each level (word_26a)
 table table_143b8  0x000143b8 uint32_t 4   for each level the list of spots that ptr_0bc6 points to
+table level_end_1  0x000143d8 struct LevelEnd 4   the first level's list: three spots, six, eight and twelve (the others are not converted yet)
 table table_1527a  0x0001527a uint16_t 4   for each level the value word_272 takes
 table table_1077a  0x0001077a uint32_t 4   for each level the list that ptr_0b76 points to
 table table_5b9e   0x00005b9e uint32_t 4   for each level the first high score
