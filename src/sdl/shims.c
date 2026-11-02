@@ -60,6 +60,28 @@ void message_draw(void)
  * loop of game_frame, for ever, with the interrupts on */
 extern void sr_set(uint16_t value);
 
+extern int keys_deferred;
+extern int keys_take(int (*take)(int raw, int down, void *arg), void *arg);
+
+/* GODS_RECORD=PREFIX: a play that is checked against the original afterwards (scripts/lockstep_play.py).  The variables at the top of every iteration go to PREFIX.iter and the
+ * keys, taken at the top of an iteration, to PREFIX.keys ("N CODE V" as GODS_ITERKEYS has them).  The first RECORD_FROM iterations are not played by the original (its start is a state
+ * that far into the level): keys that come before are let go. */
+#define RECORD_FROM 128
+static FILE *record_keys;
+static unsigned record_iteration;
+
+static int record_key(int raw, int down, void *arg)
+{
+    (void)arg;
+    if (record_iteration <= RECORD_FROM)
+        return !down;   /* (a key let go is let go) */
+    if (record_keys) {
+        fprintf(record_keys, "%u %x %d\n", record_iteration, raw & 0x7f, down ? 1 : 0);
+        fflush(record_keys);
+    }
+    return 1;
+}
+
 unsigned gods_iteration;   /* the iteration of the loop now running (for the debugger) */
 
 void game_loop(void)
@@ -71,6 +93,17 @@ void game_loop(void)
     unsigned key_count = 0, next_key = 0, iteration = 0;
     const char *keys_path = getenv("GODS_ITERKEYS"), *dump_path = getenv("GODS_ITERDUMP");
     FILE *dump = dump_path ? fopen(dump_path, "wb") : 0;
+    const char *record = getenv("GODS_RECORD");
+
+    if (record) {
+        char name[600];
+
+        snprintf(name, sizeof name, "%s.iter", record);
+        dump = fopen(name, "wb");
+        snprintf(name, sizeof name, "%s.keys", record);
+        record_keys = fopen(name, "w");
+        keys_deferred = 1;
+    }
 
     if (keys_path) {
         FILE *f = fopen(keys_path, "r");
@@ -96,6 +129,12 @@ void game_loop(void)
         gods_iteration = iteration;
         if (max_iterations && iteration > max_iterations)
             exit(0);
+        if (record) {
+            record_iteration = iteration;
+            if (iteration == RECORD_FROM + 1)
+                fprintf(stderr, "gods-sdl: recording keys from iteration %u: play now\n", iteration);
+            keys_take(record_key, 0);
+        }
         while (next_key < key_count && keys[next_key].iteration <= iteration) {
             key_down[keys[next_key].code] = keys[next_key].value ? 0xff : 0x00;
             next_key++;

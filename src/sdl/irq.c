@@ -60,8 +60,48 @@ void keyboard_irq(void)
 {
 }
 
-/* the key with the Amiga raw code `raw`: pressed or let go */
+/* the keys of a recorded play (GODS_RECORD=PREFIX, see scripts/lockstep_play.py): the window's key events wait in a queue and the program's thread takes them at the top of
+ * an iteration of the game loop, so that the iteration they belong to is known and the original can be given the same keys at the same iteration */
+static struct { int raw, down; } key_queue[256];
+static volatile unsigned key_head, key_tail;
+int keys_deferred;
+
+static void key_apply(int raw, int down);
+
 void irq_key(int raw, int down)
+{
+    if (!keys_deferred) {
+        key_apply(raw, down);
+        return;
+    }
+    unsigned head = key_head;
+
+    if (head - key_tail < 256) {
+        key_queue[head & 255].raw = raw;
+        key_queue[head & 255].down = down;
+        __atomic_store_n(&key_head, head + 1, __ATOMIC_RELEASE);
+    }
+}
+
+/* the events that came since the last call (oldest first): `take` is told each (it says whether it is applied); returns how many were */
+int keys_take(int (*take)(int raw, int down, void *arg), void *arg)
+{
+    int n = 0;
+
+    while (key_tail != __atomic_load_n(&key_head, __ATOMIC_ACQUIRE)) {
+        int raw = key_queue[key_tail & 255].raw, down = key_queue[key_tail & 255].down;
+
+        key_tail++;
+        if (!take || take(raw, down, arg)) {
+            key_apply(raw, down);
+            n++;
+        }
+    }
+    return n;
+}
+
+/* the key with the Amiga raw code `raw`: pressed or let go */
+static void key_apply(int raw, int down)
 {
     uint8_t code = (uint8_t)(raw & 0x7f);
 
