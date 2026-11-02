@@ -25,14 +25,14 @@ import menu_analysis as M  # noqa: E402
 RAM = (PROJECT / "native" / "build" / os.environ.get("MENU_RAM", "menu-ram.bin")).read_bytes()   # e.g. game-ram.bin with MENU_COVERAGE=coverage-game.txt
 COVERAGE = PROJECT / "analysis" / os.environ.get("MENU_COVERAGE", "coverage-menu-handling.txt")   # e.g. coverage-menu.txt, coverage-game-start.txt
 SRC = PROJECT / "native" / "src"
-MENU_C = ["menu", "disk", "alloc", "decrunch", "input", "screen", "draw", "display", "message", "ui", "file", "boot", "game", "game_a", "game_b", "game_c", "game_d", "game_e", "game_f", "game_g", "game_h"]
+MENU_C = ["menu", "disk", "alloc", "decrunch", "input", "draw", "amiga/display", "message", "ui", "file", "boot", "game"]
 
 
 def decompiled() -> dict[int, str]:
     """address -> function name, from the `orig $ADDR` comment that precedes each function of the menu's C."""
     out: dict[int, str] = {}
     for m in MENU_C:
-        text = (SRC / f"{m}.c" if (SRC / f"{m}.c").exists() else SRC / "amiga" / f"{m}.c").read_text()   # (display.c is Amiga only: amiga/)
+        text = (SRC / f"{m}.c").read_text()
         for c in re.finditer(r"/\* orig \$([0-9A-Fa-f]+)[^\n]*(?:\n \*[^\n]*)*\*/\n(?:static )?[\w\s\*]*?\b(\w+)\([^)]*\)\n\{", text):
             out[int(c.group(1), 16)] = c.group(2)
             for extra in re.findall(r"\$([0-9A-Fa-f]{4,6})", c.group(0).split("\n")[0])[1:]:   # `orig $A, $B and $C`: the same function at more addresses

@@ -167,3 +167,11 @@ iteration, because the C loop is slower while the level starts.
 Use: play a level on the original disk with gods.lua inputlog= (see the top of scripts/lockstep.py), then
 `uv run python projects/gods/scripts/lockstep.py LEVEL`: it prints the first iteration at which a game variable differs (variable name, address, values);
 screenshots at chosen iterations: `menu_takeover.lua ... itershot=N,N shots=DIR` for mode=orig and mode=game.  The glue stack of the takeover moved to $FA000.
+
+## Module layout (November 2)
+
+`native/src/game.c` / `game.h` hold all of the game (what was game_a to game_h: the order of the old files is kept, each part starts with a
+`/* ======== from game_X.c ======== */` line; `orig $ADDR` comments find the functions as before).  The screens, colours and fades are one file for the
+Amiga, `amiga/display.c` (the old screen.c and display.c: the buffers and the shadow table of the colours, the copper list's colours and fades, the frame
+tick, and the chips' parts: the copper scroll, the vertical blank, the blitter wait, `display_show`), with the interface in `display.h`; the host's
+version is `sdl/display.c` (the same logic; the chips' parts are the host's: it must follow changes of the Amiga's file).
