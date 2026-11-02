@@ -33,7 +33,7 @@ static uint32_t be32(uint32_t address)
 
 struct SoundVoice {
     int active;
-    unsigned id, priority;
+    unsigned id, priority, number;   /* number: the track the sound started the voice with (the original keeps it at $207A6 for stop_sound) */
     uint32_t pc, start;            /* the track */
     uint32_t stack[STACK];
     int sp;
@@ -194,8 +194,12 @@ static void sync_busy(void)
 {
     volatile uint8_t *busy = guest_ptr(0x207a0);
 
-    for (int i = 0; i < VOICES && i < 4; i++)
+    volatile uint8_t *ids = guest_ptr(0x207a6);
+
+    for (int i = 0; i < VOICES && i < 4; i++) {
         busy[i] = voice[i].active ? (uint8_t)voice[i].priority : 0;
+        ids[i] = voice[i].active ? (uint8_t)voice[i].number : 0;
+    }
 }
 
 static void start_voice(struct SoundVoice *v, unsigned number, unsigned id, unsigned priority)
@@ -203,6 +207,7 @@ static void start_voice(struct SoundVoice *v, unsigned number, unsigned id, unsi
     memset(v, 0, sizeof *v);
     v->active = 1;
     v->id = id;
+    v->number = number;
     v->priority = priority;
     v->pc = v->start = track_of(number);
     if (!v->pc) {
@@ -261,10 +266,15 @@ done:
     pthread_mutex_unlock(&lock);
 }
 
+/* orig $01FE3E: the sound track `sound` is started on the voice `index`; stop_sound starts the silent one (22), which stops the voice */
 void voice_start(uint16_t sound, uint16_t index)
 {
-    (void)sound;
-    (void)index;
+    if (sound != 22 || index >= VOICES)
+        return;
+    pthread_mutex_lock(&lock);
+    voice[index].active = 0;
+    sync_busy();
+    pthread_mutex_unlock(&lock);
 }
 
 void audio_irq(void)

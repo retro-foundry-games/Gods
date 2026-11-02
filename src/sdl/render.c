@@ -55,18 +55,21 @@ void display_latch(void)
         frames_since = 0;
         last_list = REG32(0x080);
     }
+    /* (the screen and its scroll are not latched: the original shows a flip in the frame the program's logic makes it, the program's thread having flipped just after the blank) */
     latched_cop1lc = REG32(0x080);
     latched_x_offset = list_scroll[(uint8_t *)(uintptr_t)REG32(0x080) == copper_list_a ? 0 : 1];
     display_latch_colors();
     {
-        uint32_t cop1lc = latched_cop1lc;
+        uint32_t cop1lc = REG32(0x080);
         const uint16_t *list = cop1lc < 0x10000 ? (const uint16_t *)guest_ptr(cop1lc) : (const uint16_t *)(uintptr_t)cop1lc;
 
-        static uint16_t previous[1024];
-        static int previous_valid;
+        static uint16_t previous[1024], before_previous[1024];
+        static int previous_valid, before_previous_valid;
 
-        latched_list_valid = previous_valid;
-        memcpy(latched_list, previous, sizeof previous);
+        latched_list_valid = before_previous_valid;
+        memcpy(latched_list, before_previous, sizeof previous);
+        memcpy(before_previous, previous, sizeof previous);
+        before_previous_valid = previous_valid;
         previous_valid = list != 0;
         if (list)
             memcpy(previous, list, sizeof previous);
@@ -79,7 +82,10 @@ void display_latch_colors(void)
 {
     static uint16_t previous[16];
 
-    memcpy(latched_colors, previous, sizeof previous);   /* (the colours the frame before) */
+    static uint16_t before_previous[16];
+
+    memcpy(latched_colors, before_previous, sizeof previous);   /* (the colours two frames before) */
+    memcpy(before_previous, previous, sizeof previous);
     for (int i = 0; i < 16; i++)
         previous[i] = REG16(0x180 + 2 * i);
 }
@@ -140,6 +146,8 @@ void display_render(uint32_t *pixels)
 {
     static uint16_t colors[320][16];
     uint32_t palette[16];
+    latched_cop1lc = REG32(0x080);   /* the screen and the scroll as they are now (see display_latch) */
+    latched_x_offset = list_scroll[(uint8_t *)(uintptr_t)latched_cop1lc == copper_list_a ? 0 : 1];
     const uint8_t *first_list = (const uint8_t *)(uintptr_t)latched_cop1lc;
     const uint8_t *screen = first_list == copper_list_a ? screen_1 : screen_2;
     int scroll = latched_x_offset & 31;
