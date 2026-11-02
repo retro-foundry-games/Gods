@@ -184,6 +184,22 @@ if draw_first then   -- and the draw routine the creatures call at $E660 (the on
         end
     end)
 end
+-- drawbox=FIRST-LAST,X0,Y0,X1,Y1: the original's calls of glyph_draw and sprite_draw whose screen place is in the box, in those emulator frames, with who called
+local box_first, box_last, bx0, by0, bx1, by1 = args:match("drawbox=(%d+)-(%d+),(%-?%d+),(%-?%d+),(%-?%d+),(%-?%d+)")
+if box_first then
+    for _, at in ipairs({ 0x17686, 0x173c4 }) do
+        ami.hook(at, function()
+            local f = ami.frame()
+            if f >= tonumber(box_first) and f <= tonumber(box_last) then
+                local function signed(v) v = v & 0xffff if v >= 0x8000 then v = v - 0x10000 end return v end
+                local x, y = signed(ami.reg("d0")), signed(ami.reg("d1"))
+                if x >= tonumber(bx0) and x <= tonumber(bx1) and y >= tonumber(by0) and y <= tonumber(by1) then
+                    ami.log(("drawbox %x frame %d: x %d y %d image %d, called from %06x"):format(at, f, x, y, ami.reg("d2") & 0xffff, ami.peek32(ami.reg("a7"))))
+                end
+            end
+        end)
+    end
+end
 -- hitlog=FIRST-LAST: the original's calls of its player damage routine ($D270: d0, d1 the place, d2 the strength) in those emulator frames, with who called and the energy
 local hit_first, hit_last = args:match("hitlog=(%d+)-(%d+)")
 if hit_first then
@@ -207,6 +223,14 @@ end
 for hex in (args:match("calllog=([%x,]+)") or ""):gmatch("%x+") do
     local at = tonumber(hex, 16)
     ami.hook(at, function() ami.log(("reached %x at frame %d (cycles %d): d0 %x d1 %x d7 %x"):format(at, ami.frame(), ami.cycles(), ami.reg("d0") & 0xffff, ami.reg("d1") & 0xffff, ami.reg("d7") & 0xffff)) end)
+end
+-- randlog=FIRST-LAST: the original's calls of its random routine ($633E) in those emulator frames, with who called and the table index
+local rl_first, rl_last = args:match("randlog=(%d+)-(%d+)")
+if rl_first then
+    ami.hook(0x633e, function()
+        local f = ami.frame()
+        if f >= tonumber(rl_first) and f <= tonumber(rl_last) then ami.log(("rand frame %d: index %d, called from %06x"):format(f, ami.peek16(0x2e6), ami.peek32(ami.reg("a7")))) end
+    end)
 end
 if args:find("%f[%w]itlog%f[%W]") then   -- itlog: the emulator frame of the top of every iteration of the game loop (at $2C20), 20 at a time, on the log
     local last, line = 0, {}
