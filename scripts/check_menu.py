@@ -26,13 +26,24 @@ SCENARIOS["boot"] = (None, 9000, "")   # from a cold start: the original loads t
 SCENARIOS["idle"] = (STATE, 2600, "")   # nothing pressed: the menu, then the top ten (cases with scenario = "idle")
 # the game: level 1 played by a human (captures/input/level1-run1.txt, recorded with gods.lua inputlog=) from the 1 MB snapshot of its start
 SCENARIOS["game"] = ("gods-level1-1m.state", 6000, "", "kbd=1 replay=captures/input/level1-run1.txt")
+# the game's levels 2 to 4 (GODS_LEVEL=N makes the cases of scenario "game" run in them): the original from a snapshot 1800 frames after Begin Quest started that
+# level (gods.lua poke=11:1d4:N,...: param_index N, see DECOMPILING.md), played by a seeded random joystick script
+import random as _random
+for _level in (2, 3, 4):
+    _rng = _random.Random(11 + _level)
+    _joy, _f = [], 30
+    while _f < 3200:
+        _joy.append(f"{_f}:{_rng.choice(['right', 'left', 'up', 'right+fire', 'left+fire', 'right+up', 'left+up', 'fire', 'down', 'none', 'right', 'right+fire'])}")
+        _f += _rng.randint(15, 70)
+    SCENARIOS[f"game{_level}"] = (f"gods-level{_level}-1m.state", 3300, ",".join(_joy))
 SCENARIOS["begin_quest"] = (STATE, 1500, "20:fire,30:none")   # Begin Quest to the first frames of the game: the level's set-up (cases with scenario = "begin_quest")
 SCENARIOS["begin"] = (STATE, 700, "20:fire,30:none")   # Begin Quest chosen at once: the program starts the game (cases with scenario = "begin")
 
 
 def scenario_of(name: str) -> str:
     m = re.search(rf'name = "{name}".*?scenario = "(\w+)"', (PROJECT / "host" / "menu_cases.lua").read_text())
-    return m.group(1) if m else "menu"
+    found = m.group(1) if m else "menu"
+    return found + os.environ["GODS_LEVEL"] if found == "game" and os.environ.get("GODS_LEVEL") else found
 
 
 def calls(name: str) -> int:

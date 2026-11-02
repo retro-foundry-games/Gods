@@ -316,6 +316,8 @@ if replay_path then
 end
 for f, v in pairs(moves) do events[#events + 1] = { f, "move", v } end
 for f, v in pairs(joys) do events[#events + 1] = { f, "joy", v } end
+-- poke=F:ADDR:VALUE[,...] (ADDR hex, VALUE hex word): at frame F the word is written to chip RAM (e.g. 3:1d4:2 makes the menu's Begin Quest start level 2)
+for f, a, v in (args:match("poke=(%S+)") or ""):gmatch("(%d+):(%x+):(%x+)") do events[#events + 1] = { tonumber(f), "poke", { tonumber(a, 16), tonumber(v, 16) } } end
 for _, f in ipairs(frames_of("click")) do
     events[#events + 1] = { f, "click" }
     events[#events + 1] = { f + 3, "unclick" }
@@ -324,7 +326,9 @@ table.sort(events, function(a, b) return a[1] < b[1] end)
 local snap_name = args:match("snapname=(%S+)")
 for _, e in ipairs(events) do
     ami.wait_until(function() if watch_poll then watch_poll() end return ami.frame() - base >= e[1] end)
-    if e[2] == "joy" then
+    if e[2] == "poke" then
+        ami.write(e[3][1], string.pack(">I2", e[3][2]))
+    elseif e[2] == "joy" then
         ami.joystick(e[3])
     elseif e[2] == "move" then
         ami.mouse_move(e[3][1], e[3][2])

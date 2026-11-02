@@ -140,3 +140,18 @@ frames, not by iterations).  The original disk is deterministic (two runs whose 
 Longer run: a random input script (seed 7: 40 or so changes of direction, jump and fire between iterations 100 and 1950, in
 `itershot` every 50 iterations): the 39 screenshots of the C disk and of the original disk are pixel-identical above the message line
 (rows 0 to 225).
+
+## Levels 2 to 4 (the method, and where it stands)
+
+- Start a level from the menu of the original disk: `gods.lua onemb joy1 load=gods-menu-1m.state poke=11:1d4:N,12:1d4:N,...,200:1d4:N joy=10:fire,25:none ...`
+  (poke writes the word at ADDR; param_index is $1D4; the menu's Begin Quest sets it to 1 and the pokes put N back at once, so the level N files are
+  loaded: "Loading Level N" and the level appears).  `snap=1800 snapname=gods-levelN-1m` saves the state 1800 frames in (local/save, ignored).
+- Coverage of Begin Quest and about 5400 frames of seeded random play in each of the levels 2, 3 and 4 is in analysis/coverage-level{2,3,4}.txt
+  (with RAM dumps in native/build/level{N}-ram.bin): `menu_dis.py --todo` lists no component that is not named in C, because the components
+  that matter are routines that exist in C as far as level 1 uses them (a routine that stops at `goes on at $ADDR`).
+- The oracle on the levels: `GODS_LEVEL=N python scripts/check_menu.py <the cases of scenario game>` (scripts/check_menu.py: scenarios game2 to game4,
+  the states above, a seeded random joystick script).  Level 2: 101 of 104 cases show 0 differences (the others have no calls); three differ:
+  `game_step_73d2` (the particles: 10 records at $737E, continues at $73D8, uses $7486 and the routine $184EE, not in C), `creature_step_717e`
+  (continues at $7184 for the types whose byte 19 is not 0, calls $60AE and $60F2) and `update_creatures` (because of the creature step).
+  Levels 3 and 4 have not been run through the oracle yet.  These are the first of the routines that levels 2 to 4 need beyond level 1: write the
+  continuations from the disassembly of the level's RAM dump, re-run the oracle for the level, repeat.
