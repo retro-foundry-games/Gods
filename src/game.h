@@ -100,10 +100,7 @@ uint16_t *clear_72_words(uint16_t *p);      /* orig $00FB20 */
 void reset_object_slot(int16_t index, int16_t other);   /* orig $00FB2E */
 
 void draw_marks_316(void);                  /* orig $018D14 */
-void blitter_grab_wait(void);               /* orig $01E372 */
-void blit_tile(int16_t src_step, int16_t dst_step, int16_t rows, const uint8_t *src, uint8_t *dst);   /* orig $017082 */
 const uint8_t *draw_background_tile(const uint8_t *map, const uint8_t *tiles, uint8_t *dst, int16_t y, int16_t src_step, int16_t dst_step);   /* orig $017972 */
-void blitter_setup_copy(void);              /* orig $017044 */
 void draw_background(void);                 /* orig $0178C6 */
 void step_18072(uint8_t *a1, const uint8_t *a2);   /* orig $018072 */
 void draw_record_image(int16_t x, int16_t y, const uint8_t *a2);   /* orig $017FA0 */
@@ -149,7 +146,6 @@ int16_t player_touch_record(int16_t x, int16_t y, struct Slot8 *record, int16_t 
 int16_t record_check_walls(int16_t x, int16_t y, int16_t *record);         /* orig $007EAE */
 void draw_score_panel(void);                                               /* orig $0057FC */
 void draw_records_19334(void);                                             /* orig $01924C (all of it; find_record_19334 is its first part) */
-void blit_image_5wide(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows);   /* orig $017100 */
 
 /* The routines of game_e.c this module needs, with the registers they take in the original.  game_d.c has weak versions that do
  * nothing: the strong ones of game_e.c (or whatever names the lead gives them) replace them when the symbols are the same. */

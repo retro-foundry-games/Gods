@@ -33,6 +33,12 @@ void copy_other_screen(void);                                            /* orig
 void blitter_wait(void);                                                 /* orig $01DFD8 */
 void display_show(const uint8_t *list);                             /* amiga/display_hw.c: the copper runs this list (sdl/display_hw_sdl.c) */
 
+void blitter_grab_wait(void);               /* orig $01E372 */
+void blit_tile(int16_t src_step, int16_t dst_step, int16_t rows, const uint8_t *src, uint8_t *dst);   /* orig $017082 */
+void blitter_setup_copy(void);              /* orig $017044 */
+void blit_image_5wide(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows);   /* orig $017100 */
+void copy_screen(const uint8_t *from, uint8_t *to);             /* orig $017814: the whole screen (4 planes of 192 rows) from one place to another */
+
 void vbl_irq(void);                                            /* orig $01CFF8, menu_amiga.asm: the level 3 interrupt */
 
 #endif

@@ -2,6 +2,7 @@
  * frame tick.  This is amiga/display.c for the host: the same logic (the colours are still in the copper lists, which render.c reads), the chips' parts are the host's: no copper scroll to set, a vertical blank wait that lets the other threads run, no blitter to wait for. */
 #include "menu.h"
 #include <sched.h>
+#include <string.h>
 
 /* orig $01CFAC: clear a screen buffer, 8448 longs */
 void clear_screen_buffer(uint32_t *buffer)
@@ -263,4 +264,43 @@ void blitter_wait(void)
 void display_show(const uint8_t *list)
 {
     custom->cop1lc = (uint32_t)(uintptr_t)list;
+}
+
+/* ---- the blitter's copies, done directly ---- */
+
+/* orig $01E372: (the blitter grabs the bus: nothing to wait for) */
+void blitter_grab_wait(void)
+{
+}
+
+/* orig $017044: the blitter is set up for plain copies: blit_tile and copy_screen below copy directly */
+void blitter_setup_copy(void)
+{
+}
+
+/* orig $017082: one column of a tile: four copies of (rows + 1) rows of 4 bytes (two words) from consecutive source bytes to the screen's rows (44 bytes
+ * apart); the source moves by src_step and the destination by dst_step bytes between them */
+void blit_tile(int16_t src_step, int16_t dst_step, int16_t rows, const uint8_t *src, uint8_t *dst)
+{
+    for (int pass = 0; pass < 4; pass++) {
+        for (int row = 0; row <= rows; row++)
+            memcpy(dst + row * 44, src + row * 4, 4);
+        dst += dst_step;
+        src += src_step;
+    }
+}
+
+/* orig $017814: the whole screen (4 planes of 192 rows of 44 bytes) is copied */
+void copy_screen(const uint8_t *from, uint8_t *to)
+{
+    memcpy(to, from, 4 * 192 * 44);
+}
+
+/* orig $017100: an image five words wide, drawn with the mask of its planes (the host does it as blit_image_wide does: sdl/blitter.c) */
+extern void blit_masked_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows, uint16_t words,
+                              uint16_t extra_modulo, uint16_t first_mask, uint16_t last_mask);
+
+void blit_image_5wide(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows)
+{
+    blit_masked_image(dst, src, plane, shift, rows, 5, 0, 0xffff, 0);
 }

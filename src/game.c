@@ -1454,47 +1454,6 @@ void draw_marks_316(void)
     }
 }
 
-/* orig $01E372: the blitter gets priority over the processor until it is done */
-void blitter_grab_wait(void)
-{
-    custom->dmacon = 0x8400;
-    while (custom->dmaconr & DMAF_BLTBUSY)
-        ;
-    custom->dmacon = 0x0400;
-}
-
-/* orig $017082: one column of a tile is copied by four blits of (rows + 1) rows and two words (A to D, no mask): the source
- * moves by src_step and the destination by dst_step bytes between them */
-void blit_tile(int16_t src_step, int16_t dst_step, int16_t rows, const uint8_t *src, uint8_t *dst)
-{
-    uint16_t size = 1026;
-
-    blitter_grab_wait();
-    if (rows != 15)
-        size = (uint16_t)(((rows + 1) << 6) | 2);
-    custom->bltapt = ADDR(src);
-    custom->bltdpt = ADDR(dst);
-    custom->dmacon = 0x8400;
-    blit_start(size);
-    dst += dst_step;
-    src += src_step;
-    for (int i = 0; i < 2; i++) {
-        while (custom->dmaconr & DMAF_BLTBUSY)
-            ;
-        custom->bltapt = ADDR(src);
-        custom->bltdpt = ADDR(dst);
-        blit_start(size);
-        dst += dst_step;
-        src += src_step;
-    }
-    while (custom->dmaconr & DMAF_BLTBUSY)
-        ;
-    custom->bltapt = ADDR(src);
-    custom->bltdpt = ADDR(dst);
-    custom->dmacon = 0x0400;
-    blit_start(size);
-}
-
 /* orig $017972: one tile of the background: the byte `*map` names the tile (256 bytes of ptr_0c70 each), and the blits of
  * blit_tile copy it to dst; y is its row on the screen (negative: the tile begins above it, positive: it may reach below the
  * last line and is cut).  Returns the map pointer after the byte; nothing is drawn when nothing of the tile is visible */
@@ -1522,38 +1481,6 @@ const uint8_t *draw_background_tile(const uint8_t *map, const uint8_t *tiles, ui
     }
     blit_tile(src_step, dst_step, rows, src, dst);
     return map;
-}
-
-/* orig $017044: the blitter is set up for plain copies (A to D, full masks, source modulo 0, destination modulo 40); the
- * original also leaves 64 in d4 and $2100 in d5, the steps between the four blits of a tile */
-void blitter_setup_copy(void)
-{
-    while (custom->dmaconr & DMAF_BLTBUSY)
-        ;
-    custom->bltcon0 = 2544;
-    custom->bltcon1 = 0;
-    custom->bltafwm = 0xFFFF;
-    custom->bltalwm = 0xFFFF;
-    custom->bltamod = 0;
-    custom->bltdmod = 40;
-}
-
-/* orig $017814 and $01786E..: the whole screen (4 planes of 192 rows, 44 bytes a row) is copied by the blitter from `from` to `to` (the
- * original waits for the blitter first, clears the first/last word masks and the modulos, and the copy is A to D with no shift) */
-static void copy_screen(const uint8_t *from, uint8_t *to)
-{
-    while (custom->dmaconr & DMAF_BLTBUSY)
-        ;
-    custom->bltafwm = 0xFFFF;
-    custom->bltalwm = 0xFFFF;
-    custom->bltapt = ADDR(from);
-    custom->bltdpt = ADDR(to);
-    custom->bltdmod = 0;
-    custom->bltamod = 0;
-    custom->bltcon1 = 0;
-    custom->bltcon0 = 2544;
-    custom->dmacon = 0x0400;
-    blit_start(0xC016);
 }
 
 /* orig $0178C6: the background of the level is drawn into the screen buffer from the map ptr_0b86 with blits of tiles: eleven
@@ -2811,103 +2738,6 @@ void draw_score_panel(void)
 
     dst += (int16_t)(x & 240) >> 3;
     blit_image_5wide(dst, src, 150, x & 15, 15);
-}
-
-/* orig $017100 (with the common blit of $017208 written out): an image five words wide (the part of the screen is `dst`, its four planes
- * `plane` bytes apart from `src`, `rows` + 1 rows high, shifted `shift` pixels to the right) is drawn with the mask the blitter
- * makes of its planes in mask_buffer.  blit_extra_modulo is cleared */
-void blit_image_5wide(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows)
-{
-    uint16_t size = (uint16_t)((rows << 6) | 5);
-    uint16_t dst_mod = 44 - 10;
-    uint16_t first_mask = 0xffff, last_mask = 0;
-    uint16_t con0 = 0x0fca, con1 = 0;
-    uint16_t a_mod = 0, b_mod;
-    const uint8_t *s = src;
-    uint8_t *mask = (uint8_t *)mask_buffer;
-    uint8_t *d = dst, *dd = dst;
-
-    blit_extra_modulo = 0;
-    shift &= 0xff;
-
-    custom->dmacon = 0x8400;
-    while (custom->dmaconr & DMAF_BLTBUSY)
-        ;
-    /* the mask: the planes 0, 1 and 2 ORed ... */
-    custom->bltapt = ADDR(s);
-    s += (int16_t)plane;
-    custom->bltbpt = ADDR(s);
-    s += (int16_t)plane;
-    custom->bltcpt = ADDR(s);
-    s += (int16_t)plane;
-    custom->bltdpt = ADDR(mask);
-    custom->bltafwm = 0xffff;
-    custom->bltalwm = 0xffff;
-    custom->bltdmod = 0;
-    custom->bltcon1 = 0;
-    custom->bltcon0 = 4094;
-    custom->bltamod = 0;
-    custom->bltbmod = 0;
-    custom->bltcmod = 0;
-    blit_start(size);
-    /* ... and the plane 3 */
-    while (custom->dmaconr & DMAF_BLTBUSY)
-        ;
-    custom->bltbmod = 0;
-    custom->bltcon0 = 3580;
-    custom->bltapt = ADDR(s);
-    custom->bltbpt = ADDR(mask);
-    custom->bltdpt = ADDR(mask);
-    blit_start(size);
-    while (custom->dmaconr & DMAF_BLTBUSY)
-        ;
-    custom->bltafwm = first_mask;
-    custom->bltalwm = last_mask;
-    if (shift == 0) {
-        custom->bltcon0 = con0;
-        custom->bltalwm = 0xffff;
-        a_mod = 0;
-        custom->bltamod = a_mod;
-        custom->bltcon1 = 0;
-        b_mod = a_mod + blit_extra_modulo;
-        custom->bltbmod = b_mod;
-    } else {
-        while (custom->dmaconr & DMAF_BLTBUSY)
-            ;
-        con1 = (uint16_t)(shift << 12);
-        custom->bltcon1 = con1;
-        con0 = con1 | 0x0fca;
-        custom->bltcon0 = con0;
-        /* blit_extra_modulo is 0 here (not negative): one word wider, the destination modulo less 2 */
-        dst_mod -= 2;
-        size++;
-        a_mod = (uint16_t)-2;
-        custom->bltamod = a_mod;
-        b_mod = a_mod + 0;
-        custom->bltbmod = b_mod;
-    }
-    custom->bltcmod = dst_mod;
-    custom->bltdmod = dst_mod;
-
-    /* the four planes of the image: the mask (A), the plane (B) and the screen (C and D) */
-    int16_t stride = (int16_t)blit_plane_stride;
-    s = src;
-    for (int i = 0; i < 4; i++) {
-        if (i != 0) {
-            d += stride;
-            dd += stride;
-            s += (int16_t)plane;
-            while (custom->dmaconr & DMAF_BLTBUSY)
-                ;
-        }
-        custom->bltcpt = ADDR(d);
-        custom->bltbpt = ADDR(s);
-        custom->bltapt = ADDR(mask);
-        custom->bltdpt = ADDR(dd);
-        if (i == 3)
-            custom->dmacon = 0x0400;
-        blit_start(size);
-    }
 }
 
 /* orig $007EAE: the record (a5: x at +0, y at +2, a word at +4 and the strength at +8) is checked against the walls at the point
