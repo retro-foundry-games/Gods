@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "guest.h"
+uint16_t random_word(void);   /* orig $00633E */
 
 #define VOICES 4
 #define STACK 16
@@ -226,6 +227,50 @@ void sound_reset(void)
     pthread_mutex_unlock(&lock);
 }
 
+/* orig $01FACC: the random number d0 scaled to 0..max (a division by a step of 65535 / (max + 1) + 1) */
+static unsigned scale_random(unsigned r, unsigned max)
+{
+    unsigned step = (0xffffu / (max + 1) + 1) & 0xffff;
+
+    if (r == 0)
+        r = 1;
+    return (r / step) & 0xffff;
+}
+
+/* orig $01FB38..$01FBA8: the random numbers that the sound's variation takes from the program's table ($633E) before a voice is started: the
+ * record's byte 5 says how many (5: two, 6: more until the choice (0..5) is not the last one, 9: one and then the record of a variant
+ * (0..2) is looked at in the same way, other values not zero: one).  The variation itself is not made (the tracks are not played with it) but the
+ * index into the table must go on as the original's */
+static void take_variation_randoms(uint32_t record)
+{
+    for (;;) {
+        unsigned variant = guest_ptr(record)[5];
+        unsigned r;
+
+        if (variant == 0)
+            return;
+        r = random_word() & 0xffff;
+        if (variant == 5) {
+            random_word();
+            return;
+        }
+        if (variant == 6) {
+            volatile uint8_t *last = guest_ptr(0x1faca);
+            unsigned choice = scale_random(r, 5) & 0xff;
+
+            if (choice == *last)
+                continue;
+            *last = (uint8_t)choice;
+            return;
+        }
+        if (variant == 9) {
+            record += (scale_random(r, 2) + 1) * 6;
+            continue;
+        }
+        return;
+    }
+}
+
 /* orig $01FAF6: start the sound `id` with the priority `priority` */
 void play_sound(uint16_t id, uint16_t priority)
 {
@@ -241,6 +286,7 @@ void play_sound(uint16_t id, uint16_t priority)
         for (int i = 0; i < VOICES; i++)
             if (voice[i].active && voice[i].id == id)
                 goto done;
+    take_variation_randoms(record);
     for (unsigned k = 0; k < count && k < 4; k++) {
         unsigned number = guest_ptr(record)[1 + k];
         int chosen = -1;

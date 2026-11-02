@@ -1277,8 +1277,8 @@ void spawn_puff(int16_t *object)
 }
 
 /* the end of $007F88 ($008058): the first free of records_19b14 gets x, y, kind less 11 and 1 and its byte in flags_39fde is set.
- * Kinds below 11 (the original goes on at $8088) did not run.  The original's result is in a5 and d5 and the condition codes;
- * nothing uses it */
+ * Kinds below 11 ($8088) are the objects: the kind plus 192 is the record's kind.  The original's result is in a5 and d5 and the condition
+ * codes; nothing uses it */
 static void drop_record(int16_t x, int16_t y, int16_t kind)
 {
     struct Slot8 *record = find_free_record_19b14();
@@ -1288,8 +1288,9 @@ static void drop_record(int16_t x, int16_t y, int16_t kind)
     record->w[0] = x;
     record->w[1] = y;
     if (kind < 11)
-        return;   /* goes on at $8088 */
-    record->w[2] = kind - 11;
+        record->w[2] = kind + 0xC0;   /* $8088 */
+    else
+        record->w[2] = kind - 11;
     record->w[3] = 1;
     flags_39fde[record - records_19b14] = 0xff;
 }
@@ -1298,8 +1299,10 @@ static void drop_record(int16_t x, int16_t y, int16_t kind)
  * it starts to fall (fall_kind); when one falls already a record is made at once */
 void drop_thing(int16_t x, int16_t y, int16_t kind)
 {
-    if (kind == 61)
-        return;   /* the original goes to $7F80, which did not run */
+    if (kind == 61) {   /* $7F80: dropped at once, on a multiple of 16 in y */
+        drop_record(x, (int16_t)(y & -16), kind);
+        return;
+    }
     if (fall_kind >= 0) {
         drop_record(x, y, kind);
         return;
