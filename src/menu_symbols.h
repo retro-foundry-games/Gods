@@ -535,6 +535,9 @@ extern uint16_t unit4_words[3];   /* $0F2FC */
 extern uint16_t word_4a0;   /* $004A0  how many of the cells that crumble ($1A30C) are going */
 extern uint16_t word_1218;   /* $01218  how many of the ten falling things ($11B4) are going */
 extern uint16_t code_17cc0;   /* $17CC0  the first word of the routine at $17CC0 (rts: off, nop: the cells crumble) */
+extern int16_t death_particles[28];   /* $000B2  ... and where each is (x, y) and its steps (dx, dy), on the screen */
+extern uint16_t words_a9e[4];   /* $00A9E  the first four words of the list of message lines ($16AC8 sets them to 0, 16, 32, 48) */
+extern void (*callback_514)(void);   /* $00514 */
 extern const struct CreatureTemplate creature_templates[49];   /* $1C698  what a group is: its draw kind, move and step routines and its box (the pointers of table_1c678 point into it) */
 extern const uint16_t clip_rectangles[6];   /* $00128  the clip rectangles of image_draw_clipped (x0, x1, y0, y1: the whole screen; a negative x0 ends the list) */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
@@ -591,5 +594,7 @@ extern const uint32_t table_1c678[8];   /* $1C678  for each level two pointers (
 extern const uint8_t sound1_name[11];   /* $1D3D2  "sound1.bin" */
 extern const uint8_t objects_name[8];   /* $196DE  "objects": the asset set of the objects */
 extern const uint8_t table_1c9e4[1024];   /* $1C9E4  two tables of 256 words (the first and the second word of each of 32 pairs, 32 bytes apart) make_pairs_fb9a reads */
+extern const uint16_t death_steps[14];   /* $00096  the seven pieces of the player's death: the steps (x, y) each starts with */
+extern const uint16_t respawn_search[45];   /* $03864  fifteen records of three words: where, from the cell the player was last at, the cell that is looked for (an offset into the collision map, then the step of x and y) */
 
 #endif

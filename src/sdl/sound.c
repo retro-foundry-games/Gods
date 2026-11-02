@@ -189,6 +189,15 @@ static void run_track(struct SoundVoice *v)
     v->active = 0;
 }
 
+/* the original keeps, for each voice, the priority of the sound it plays at $207A0 (a byte each; 0: free), which the game waits on (stop_game_sounds): kept the same here, under the lock */
+static void sync_busy(void)
+{
+    volatile uint8_t *busy = guest_ptr(0x207a0);
+
+    for (int i = 0; i < VOICES && i < 4; i++)
+        busy[i] = voice[i].active ? (uint8_t)voice[i].priority : 0;
+}
+
 static void start_voice(struct SoundVoice *v, unsigned number, unsigned id, unsigned priority)
 {
     memset(v, 0, sizeof *v);
@@ -248,6 +257,7 @@ void play_sound(uint16_t id, uint16_t priority)
             start_voice(&voice[chosen], number, id, priority);
     }
 done:
+    sync_busy();
     pthread_mutex_unlock(&lock);
 }
 
@@ -275,6 +285,7 @@ void sound_tick(void)
         if (v->active && v->wait > 0)
             v->wait--;
     }
+    sync_busy();
     pthread_mutex_unlock(&lock);
 }
 

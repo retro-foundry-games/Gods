@@ -36,6 +36,10 @@ static uint32_t latched_cop1lc;
 static uint16_t latched_x_offset;
 extern uint8_t list_scroll[2];   /* display.c: the scroll set for each copper list */
 static uint16_t latched_colors[16];
+static uint16_t latched_list[1024];   /* the copper list that COP1LC names, as it was: the program's thread changes its colour moves whenever it likes (the fades) */
+static int latched_list_valid;
+
+void display_latch_colors(void);
 
 void display_latch(void)
 {
@@ -53,8 +57,31 @@ void display_latch(void)
     }
     latched_cop1lc = REG32(0x080);
     latched_x_offset = list_scroll[(uint8_t *)(uintptr_t)REG32(0x080) == copper_list_a ? 0 : 1];
+    display_latch_colors();
+    {
+        uint32_t cop1lc = latched_cop1lc;
+        const uint16_t *list = cop1lc < 0x10000 ? (const uint16_t *)guest_ptr(cop1lc) : (const uint16_t *)(uintptr_t)cop1lc;
+
+        static uint16_t previous[1024];
+        static int previous_valid;
+
+        latched_list_valid = previous_valid;
+        memcpy(latched_list, previous, sizeof previous);
+        previous_valid = list != 0;
+        if (list)
+            memcpy(previous, list, sizeof previous);
+    }
+}
+
+/* the colour registers: the vertical blank interrupt (irq_vbl) writes them from the shadow table, so what the frame shows is what they hold after it; the program's thread (woken at the end of
+ * the interrupt) changes them later in the frame, which the hardware shows from that line on: the frame is drawn from what they were when it began */
+void display_latch_colors(void)
+{
+    static uint16_t previous[16];
+
+    memcpy(latched_colors, previous, sizeof previous);   /* (the colours the frame before) */
     for (int i = 0; i < 16; i++)
-        latched_colors[i] = REG16(0x180 + 2 * i);
+        previous[i] = REG16(0x180 + 2 * i);
 }
 
 static uint32_t argb(uint16_t color)
@@ -70,9 +97,8 @@ static uint32_t argb(uint16_t color)
  * the list ends with $FFFF,$FFFE is read. */
 static void line_palettes(uint16_t colors[][16], int lines)
 {
-    uint32_t cop1lc = latched_cop1lc;
     /* (an address in the low 64 KiB is the program's, not the host's: the boot code leaves one there until the screens are set up) */
-    const uint16_t *list = cop1lc < 0x10000 ? (const uint16_t *)guest_ptr(cop1lc) : (const uint16_t *)(uintptr_t)cop1lc;
+    const uint16_t *list = latched_list_valid ? latched_list : 0;
     uint16_t current[16];
     int line = 0, swapped = 0, count = 0;
 

@@ -209,44 +209,147 @@ static void scroll_push(void)
     flag_26e--;
 }
 
-/* orig $002C20: one frame of the game.  The routines it calls are the original's (fn_ and the address) until they are written
- * in C.  Where the original goes on at an address that did not run in the recorded play ($3A36, $3A6C, $3A54, $39F6, $32B4,
- * $30DA, $35D2, $2F12) the frame ends here: those are the ends of a level, a death, the pause menu and the like */
-void game_frame(void)
+static void player_death_frame(void);
+/* orig $0016AC8: the list of message lines is set again: $A9A is 255, the four words at $A9E are 0, 16, 32 and 48, the cursor's frame is 0 and flag_aa8 is 1 */
+static void messages_reset_16ac8(void)
 {
-    message_tick();
-    game_read_input();
-    frame_toggle = ~frame_toggle;
-    frame_phase++;
-    if ((int16_t)frame_phase >= 2)
-        frame_phase = 0;
-    timer_306--;
-    if ((int16_t)timer_306 < 0)
-        timer_306 = 0;
-    if ((int16_t)demo_mode < 0 && (button_bits[0] & 1)) {
-        demo_mode = 0;
-        return;   /* goes on at $3A36 */
+    word_a9a = 0xFF;
+    words_a9e[0] = 0;
+    words_a9e[1] = 0x10;
+    words_a9e[2] = 0x20;
+    words_a9e[3] = 0x30;
+    cursor_frame = 0;
+    flag_aa8 = 1;
+}
+
+/* orig $0038BE (from $0039EE when the player has things left, word item_count not negative): the player comes back where he last was: the screen fades out, the energy is full,
+ * the cell he was at (words_2a2, the place remember_visited_spot kept) is looked at for a free one near it (the fifteen offsets of respawn_search; the cell that is $FF), he is put there
+ * and the scroll follows, he is standing, the records on the screen are made again, a frame is drawn, the sounds are stopped, and the screen fades in; then what the start of a level
+ * does ($2BD6) */
+static void player_respawn(void)
+{
+    fade_out(0, 0xFFFF);
+    player_energy = 0x18;
+    energy_shown = 1;
+    word_2a6 = 0xFFFF;
+    messages_reset_16ac8();
+    word_a9a = (int16_t)(word_a9a - 0xAA);
+    if (flag_23a != 0)
+        callback_514();
+
+    int16_t x = (int16_t)((words_2a2[0] + 0x10) & -32);
+    int16_t y = (int16_t)((words_2a2[1] + 8) & -16);
+    const uint8_t *cell = ptr_0b86 + 0x2000 + (x >> 5) + (int16_t)(y << 3);
+    int16_t dx = 0, dy = 0;
+
+    for (int i = 0; i < 15; i++) {
+        int16_t offset = (int16_t)respawn_search[i * 3];
+
+        dx = (int16_t)respawn_search[i * 3 + 1];
+        dy = (int16_t)respawn_search[i * 3 + 2];
+        if (cell[offset] == 0xFF)
+            break;
     }
-    if (!(game_buttons & 1))
-        fire_latch = 0;
-    energy_old = player_energy;
-    if ((int16_t)energy_shown <= 0)
-        return;   /* goes on at $3A6C */
+    player_x = (int16_t)(x + dx);
+    player_y = (int16_t)(y + dy);
+    if (word_037c == 0) {
+        int16_t sx = (int16_t)(player_x - 0x90);
+        int16_t sy = (int16_t)(player_y - 0x48);
+
+        if (sx < 0)
+            sx = 0;
+        if (sy < 0)
+            sy = 0;
+        if (sx >= 0xEC0)
+            sx = 0xEC0;
+        if (sy >= 0x340)
+            sy = 0x340;
+        scroll_x = sx;
+        scroll_y = sy;
+    }
+    player_state = 4;
+    word_19a = 0;
+    fall_distance = 0;
+    word_370 = 0;
+    word_1f2 = 3;
+    activate_records_now();
+    draw_start_frame();
+    screens_flip();
+    stop_game_sounds();
+    play_sound(60, 2);
+    play_sound(9, 0x7F);
+    palette_words[0] = 0;
+    fade_in(palette_words, 0);
+    drives_idle();
+    if (flag_aa8 != 0)
+        play_sound(60, 2);
+    else
+        stop_sound(60);
+    if (param_index == 3)
+        play_sound(66, 1);
+}
+
+/* orig $0039EE: the death is over: with things left (item_count not negative) the player comes back; otherwise the game is over ($39F6: not replicated yet) */
+static void player_death_over(void)
+{
+    if (item_count >= 0) {
+        player_respawn();
+        return;
+    }
+    host_missing_routine(0x39F6);
+}
+
+/* orig $003B04 (to $003BD0; it returns into the end of the frame): the frames of the player's death.  When it begins (word_2a6 is negative) the sounds 0 and 4 are played and the
+ * seven pieces start at the player; then each frame the pieces move by their steps (the y step grows by one a frame) and are drawn as the sprites 91 + the frame number; at
+ * frame 6 a sound is played; at frame 17 they are no longer moved; at frame 18 the death is over ($39EE: the player comes back, or the game is over) */
+static void player_death_step(void)
+{
+    if ((int16_t)word_2a6 < 0) {
+        play_sound(0, 0);
+        play_sound(4, 0x7F);
+        int16_t x = (int16_t)(player_x - scroll_x);
+        int16_t y = (int16_t)(player_y - scroll_y + 8);
+
+        for (int i = 0; i < 7; i++) {
+            death_particles[i * 4] = x;
+            death_particles[i * 4 + 1] = y;
+            death_particles[i * 4 + 2] = death_steps[i * 2];
+            death_particles[i * 4 + 3] = death_steps[i * 2 + 1];
+        }
+        word_2a6 = 0;
+    } else if (word_2a6 == 0x12) {
+        player_death_over();
+        return;
+    }
+    if (word_2a6 != 0x11) {
+        for (int i = 0; i < 7; i++) {
+            int16_t *piece = &death_particles[i * 4];
+
+            piece[0] = (int16_t)(piece[0] + piece[2]);
+            piece[1] = (int16_t)(piece[1] + piece[3]);
+            piece[3]++;
+            sprite_draw(piece[0], piece[1], (uint16_t)(0x5B + word_2a6));
+        }
+    }
+    word_2a6++;
+    if (word_2a6 == 6)
+        play_sound(0x15, 0x7F);
+}
+
+/* orig $003A6C: a frame of the game when the player is dead (energy_shown is not above 0): the things of the level are run and drawn as in the frame of the living, but not the player
+ * and his hits; the frame goes on at the end of the common frame ($2D54) */
+static void player_death_frame(void)
+{
     fill_buffer();
-    if (flag_26e)
-        scroll_push();
     draw_background();
     draw_records_19334();
-    do_nothing_b();
-    do_nothing_b();
-    do_nothing_b();
-    if (flag_23a)
-        callback_4e4();
+    do_nothing_b();   /* $194D0 */
+    do_nothing_b();   /* $194D0 */
+    update_crumbles();   /* $17CC0 */
     redraw_record_images();
-    if (param_index == 2 || flag_23a != 1) {
+    if (flag_23a == 0) {
         activate_records();
         update_records();
-        update_falling_thing();
         game_step_4070();
     }
     run_object_lists();
@@ -257,18 +360,19 @@ void game_frame(void)
     update_creatures();
     if (flag_23a == 0) {
         game_step_73d2();
-        game_nothing();
-        game_nothing();
         draw_effects();
+        update_falling_thing();
         draw_marks_316();
     }
     scroll_x_a = scroll_x;
     scroll_y_a = scroll_y;
-    if (flag_290 >= 0)
-        fn_33d4();
-    else
-        player_control();
-    count_zones();
+    player_death_step();
+}
+
+/* orig $002D54 on: what ends a frame of the game, after the player has been run (or, when he is dead, after the frame of his death: $3A6C): the units and the other things
+ * that are run, the panels, the energy, the keys of the pause and the like, and the wait for the next frame */
+static void game_frame_tail(void)
+{
     scroll_x_b = scroll_x;
     scroll_y_b = scroll_y;
     scroll_x = scroll_x_a;
@@ -358,6 +462,72 @@ void game_frame(void)
         return;   /* goes on at $35D2 */
     if (flags_3b0 & 0x40)
         return;   /* goes on at $2F12 */
+}
+
+/* orig $002C20: one frame of the game.  The routines it calls are the original's (fn_ and the address) until they are written
+ * in C.  Where the original goes on at an address that did not run in the recorded play ($3A36, $3A6C, $3A54, $39F6, $32B4,
+ * $30DA, $35D2, $2F12) the frame ends here: those are the ends of a level, a death, the pause menu and the like */
+void game_frame(void)
+{
+    message_tick();
+    game_read_input();
+    frame_toggle = ~frame_toggle;
+    frame_phase++;
+    if ((int16_t)frame_phase >= 2)
+        frame_phase = 0;
+    timer_306--;
+    if ((int16_t)timer_306 < 0)
+        timer_306 = 0;
+    if ((int16_t)demo_mode < 0 && (button_bits[0] & 1)) {
+        demo_mode = 0;
+        return;   /* goes on at $3A36 */
+    }
+    if (!(game_buttons & 1))
+        fire_latch = 0;
+    energy_old = player_energy;
+    if ((int16_t)energy_shown <= 0) {   /* the player is dead: $3A6C */
+        player_death_frame();
+        game_frame_tail();
+        return;
+    }
+    fill_buffer();
+    if (flag_26e)
+        scroll_push();
+    draw_background();
+    draw_records_19334();
+    do_nothing_b();
+    do_nothing_b();
+    do_nothing_b();
+    if (flag_23a)
+        callback_4e4();
+    redraw_record_images();
+    if (param_index == 2 || flag_23a != 1) {
+        activate_records();
+        update_records();
+        update_falling_thing();
+        game_step_4070();
+    }
+    run_object_lists();
+    fn_15cc4_c();
+    step_836c();
+    value_c6c = 3030;
+    flag_20e = -1;
+    update_creatures();
+    if (flag_23a == 0) {
+        game_step_73d2();
+        game_nothing();
+        game_nothing();
+        draw_effects();
+        draw_marks_316();
+    }
+    scroll_x_a = scroll_x;
+    scroll_y_a = scroll_y;
+    if (flag_290 >= 0)
+        fn_33d4();
+    else
+        player_control();
+    count_zones();
+    game_frame_tail();
 }
 
 /* orig $006002: the 1600 bytes line_text points at are filled with a pattern of 56 bytes (fourteen longs): the words of fill_words
@@ -7621,7 +7791,7 @@ void draw_start_frame(void)
     draw_background();
     draw_records_19334();
     do_nothing_b();
-    do_nothing_b();
+    update_crumbles();
     redraw_record_images();
     activate_records();
     update_records();
@@ -7654,7 +7824,7 @@ void draw_start_frame(void)
     mark_player_cells();
     update_records_1354();
     draw_sprites_721e();
-    do_nothing_b();
+    update_falling_slots();
     unit0_update();
     unit1_update();
     unit2_update();

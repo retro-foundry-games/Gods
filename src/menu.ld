@@ -4,6 +4,7 @@
  * is linked at the address it will run at ($c0000), so it needs no relocation. */
 SECTIONS {
     .data : SUBALIGN(1) {
+        . = 0x96; *(.rodata.death_steps) *(.data.death_steps)
         . = 0xf2; *(.rodata.fall_steps_f2) *(.data.fall_steps_f2)
         . = 0x128; *(.rodata.clip_rectangles) *(.data.clip_rectangles)
         . = 0xd2e; *(.rodata.asset_extensions) *(.data.asset_extensions)
@@ -13,6 +14,7 @@ SECTIONS {
         . = 0x29da; *(.rodata.param_table) *(.data.param_table)
         . = 0x2a0a; *(.rodata.shift_tables) *(.data.shift_tables)
         . = 0x3232; *(.rodata.small_font_name) *(.data.small_font_name)
+        . = 0x3864; *(.rodata.respawn_search) *(.data.respawn_search)
         . = 0x44b4; *(.rodata.frames_44b4) *(.data.frames_44b4)
         . = 0x44bc; *(.rodata.frames_44bc) *(.data.frames_44bc)
         . = 0x44c4; *(.rodata.frames_44c4) *(.data.frames_44c4)
@@ -593,3 +595,6 @@ _unit4_words = 0xf2fc;
 _word_4a0 = 0x4a0;
 _word_1218 = 0x1218;
 _code_17cc0 = 0x17cc0;
+_death_particles = 0xb2;
+_words_a9e = 0xa9e;
+_callback_514 = 0x514;

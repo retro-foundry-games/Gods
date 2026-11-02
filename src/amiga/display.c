@@ -205,7 +205,9 @@ void frame_tick(void)
  * they were before */
 void fade_out(uint16_t delay, uint16_t arg)
 {
+    (void)delay;
     message_start(arg);
+    delay = 1;   /* the original's d0, which is the delay, is the result of the routine that starts the message (orig $016DF8: 1): every step waits two frames */
     message_current = 0;
     copper_colors_save(0xffff);
     for (int step = 0; step < 15; step++) {
