@@ -496,7 +496,6 @@ _word_26a = 0x26a;
 _bcd_346 = 0x346;
 _flags_1c056 = 0x1c056;
 _words_34e = 0x34e;
-_tile_24d = 0x24d;
 _word_314 = 0x314;
 _ptr_0b7e = 0xb7e;
 _units = 0x18740;

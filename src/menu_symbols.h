@@ -436,7 +436,6 @@ extern uint16_t word_26a;   /* $0026A  game_d: the glyph the pick-ups of records
 extern uint16_t bcd_346[4];   /* $00346  the number call_by_kind makes of five thousand times its argument, a BCD byte a word, the low digits first */
 extern struct LeverFlag flags_1c056[64];   /* $1C056  the switches of the level (loaded data); bit 0 of the state is a flag call_by_kind tests */
 extern int16_t words_34e[3];   /* $0034E  x, y and number of the last thing dropped (then word_354 is cleared) */
-extern uint8_t tile_24d;   /* $0024D  the first tile number of the blocks kind 2 of finish_record_1895a sets */
 extern int16_t word_314;   /* $00314  how many marks kind 6 of finish_record_1895a has made */
 extern uint8_t *ptr_0b7e;   /* $00B7E */
 extern struct Unit units[5];   /* $18740  the waves of enemies: five records of 24 bytes (a state word, 0 free) take_record_to_18740 fills */

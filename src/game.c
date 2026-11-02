@@ -2461,14 +2461,14 @@ static void kind_place_19334(const struct ScriptRecord *a1, int twenty)
 }
 
 /* orig $0192A4 and $0192D6 (kind 2): the block of the tile map (ptr_0b86) at the record a1's position (x rounded to 32, y 8
- * further and rounded to 16) is set to six tiles counted up from tile_24d and the three cells of the second plane (+8192)
+ * further and rounded to 16) is set to six tiles counted up from the byte at $24D (param_a >> 16) and the three cells of the second plane (+8192)
  * cleared; the sound 7 is played (priority 5) */
 static void kind_set_tiles(const struct ScriptRecord *a1)
 {
     int16_t x = (int16_t)(((a1->x & 0xFFE0) + 12) & 0xFFE0);
     int16_t y = (int16_t)((a1->y + 8) & 0xFFF0);
     uint8_t *cell = ptr_0b86 + (int16_t)(x >> 5) + (int16_t)(y << 3);
-    uint8_t base = tile_24d;
+    uint8_t base = (uint8_t)(param_a >> 16);   /* the byte at $24D: the long param_a is the machine's, its second byte from the top is not the one at that address here */
 
     cell[0] = base;
     cell[1] = (uint8_t)(base + 1);

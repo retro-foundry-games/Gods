@@ -474,7 +474,6 @@ table mask_table    0x00017380 uint16_t 32   draw: the masks of the screen edges
 bcd_346           0x00000346  uint16_t %s[4]  the number call_by_kind makes of five thousand times its argument, a BCD byte a word, the low digits first
 flags_1c056       0x0001c056  struct LeverFlag %s[64]   the switches of the level (loaded data); bit 0 of the state is a flag call_by_kind tests
 words_34e         0x0000034e  int16_t %s[3]   x, y and number of the last thing dropped (then word_354 is cleared)
-tile_24d          0x0000024d  uint8_t %s      the first tile number of the blocks kind 2 of finish_record_1895a sets
 word_314          0x00000314  int16_t %s      how many marks kind 6 of finish_record_1895a has made
 ptr_0b7e          0x00000b7e  uint8_t *%s
 units             0x00018740  struct Unit %s[5]   the waves of enemies: five records of 24 bytes (a state word, 0 free) take_record_to_18740 fills
