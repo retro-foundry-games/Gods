@@ -115,3 +115,14 @@ the loading screen).  How it was made and checked:
   positions and enemies agree (scores a few points apart: the first iteration is only known to a few frames).  The takeover lockstep
   (`menu_takeover.lua mode=game`) still diverges from the flip ~70 (its glue is slower than the C disk): informative for the first flips only.
 - Continue and the password route (`original_continue`, `original_after_password`) are still the original's code; levels 2 to 4 are not decompiled.
+
+## What the C disk runs (November 2)
+
+Checked with `count=ADDR` (hits of an address in the emulator; the counts are only reported with `frames=N shots=DIR`) on the C disk from
+boot to level 1 played with the joystick: the original's frame tick ($16C30..), message ticker ($16C78), sound driver ($1FCB8..$20344), file
+layer ($1D4CA..$1E252) and random routine ($633E) are not run once the C is in (hits 0 from boot to frame 9400).  Earlier they were: the
+generated asm called them by absolute address (`jsr $633e.w`, the VBL's `jsr $16c30`, a pushed return address $1D61C); amiga_asm.py and
+gen_menu_amiga_asm.py now send these calls to the copies in menu_amiga.asm or to the C functions.  What still runs from the original's code
+in the C disk is the start-up before the menu (frames below ~5400: the start stub $240C, the original's load_unpacked/load_directory and the
+file layer it uses, the protection stub amboot3 at $35DAC, the loader), the patched jump at $2C20, and Continue and the password route.
+(The host's coverage cannot be started at a later frame reliably: instructions reached before it are reported again; count addresses instead.)
