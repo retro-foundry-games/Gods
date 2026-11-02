@@ -104,10 +104,10 @@ void hardware_setup(void)
 void data_pointers_init(void)
 {
     ptr_0cb2 = data_1aa66;
-    ptr_0cbe = data_1ad8a;
-    ptr_0d0e = data_1b17e;
+    ptr_0cbe = (struct EntryRef *)data_1ad8a;
+    ptr_0d0e = (struct CreatureEntry *)data_1b17e;
     ptr_0ce6 = data_1b7be;
-    ptr_0c9a = data_1c302;
+    ptr_0c9a = path_descriptions;
 }
 
 /* orig $03A060: the memory map: each buffer of the program is a pointer into one block that begins at program_end, a buffer
@@ -158,7 +158,7 @@ void memory_map_init(void)
     p += 0xc0;
     ptr_0cfa[0] = p;
     p += 0x3e8;
-    buffer_cb6 = p;
+    buffer_cb6 = (struct ScriptRecord *)p;
     p += 0x960;
     ptr_0cba = p;
     p += 0x50;
@@ -166,7 +166,7 @@ void memory_map_init(void)
     p += 0xa;
     ptr_0cce = p;
     p += 0xa0;
-    ptr_0c9e = p;
+    ptr_0c9e = (struct PathRecord *)p;
     p += 0x258;
     ptr_0bb2 = p;
     ptr_0e44 = p;

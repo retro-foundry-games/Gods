@@ -68,7 +68,7 @@ void narrow_words_to_bytes(void)
     int i;
 
     for (i = 0; i < 506; i++)
-        *to++ = (uint8_t)file_word(from++);
+        *to++ = (uint8_t)*from++;
 }
 
 /* orig $00F3C0: give the entries of the list their addresses, one after the other, from 400 bytes after the start of the
@@ -93,14 +93,16 @@ void assign_addresses(void)
 /* orig $00F488: fill the 2400-byte buffer: first clear it, then copy the bytes in */
 void load_buffer_2400(const uint8_t *from)
 {
-    uint8_t *to = buffer_cb6;
+    uint8_t *to = (uint8_t *)buffer_cb6;
     int i;
 
     for (i = 0; i < 2400; i++)
         *to++ = 0;
-    to = buffer_cb6;
+    to = (uint8_t *)buffer_cb6;
     for (i = 0; i < 2400; i++)
         *to++ = *from++;
+    for (i = 0; i < 100; i++)   /* (loaded from the disk: the words of the records are made the machine's own) */
+        file_words(&buffer_cb6[i], 12);
 }
 
 /* orig $0029B4: take the row of param_table that param_index names (the first is 1) into param_a to param_d */

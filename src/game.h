@@ -102,11 +102,11 @@ void reset_object_slot(int16_t index, int16_t other);   /* orig $00FB2E */
 void draw_marks_316(void);                  /* orig $018D14 */
 const uint8_t *draw_background_tile(const uint8_t *map, const uint8_t *tiles, uint8_t *dst, int16_t y, int16_t src_step, int16_t dst_step);   /* orig $017972 */
 void draw_background(void);                 /* orig $0178C6 */
-void step_18072(uint8_t *a1, const uint8_t *a2);   /* orig $018072 */
-void draw_record_image(int16_t x, int16_t y, const uint8_t *a2);   /* orig $017FA0 */
-struct SavedByte *mark_record_cells(int16_t x, int16_t y, const uint8_t *a2, struct SavedByte *list);   /* orig $018014 */
-void take_record_to_18740(uint16_t *a0);       /* orig $018900 */
-void take_record_to_199ac(uint16_t *a0);    /* orig $018890 */
+void step_18072(struct PathRecord *a1, const struct PathDescription *a2);   /* orig $018072 */
+void draw_record_image(int16_t x, int16_t y, const struct PathDescription *a2);   /* orig $017FA0 */
+struct SavedByte *mark_record_cells(int16_t x, int16_t y, const struct PathDescription *a2, struct SavedByte *list);   /* orig $018014 */
+void take_record_to_18740(struct EntryRef *a0);       /* orig $018900 */
+void take_record_to_199ac(struct EntryRef *a0);    /* orig $018890 */
 void stop_sound(uint16_t id);               /* orig $01FA8C */
 void mark_shot_cells(int16_t x, int16_t y, const int16_t *flag);                /* orig $016A08 */
 void spawn_debris_at_cell(int16_t x, int16_t y, const uint8_t *record, int16_t *flag);   /* orig $01695E */
@@ -114,7 +114,7 @@ void redraw_record_images(void);            /* orig $017E9C */
 void end_flag_8890(void);                   /* orig $008822 */
 
 int16_t check_hit_and_walls(int16_t x, int16_t y, int16_t strength);   /* orig $00D00A and $00D114 */
-void finish_record_1895a(uint16_t *a0);        /* orig $01895A */
+void finish_record_1895a(struct EntryRef *a0);        /* orig $01895A */
 
 uint16_t claim_free_entries(void);   /* orig $00FDBA */
 
@@ -202,8 +202,8 @@ void level_state_init(void);            /* orig $00F526 */
 void hud_digits_load(void);             /* orig $005E50 */
 void image_draw_clipped(int16_t x, int16_t y, uint16_t image);   /* orig $01EFCC (the clipped, masked draw of image `image` at (x, y) with the clip list of ptr_0de0) */
 
-void start_record_path(uint16_t *entry, int16_t variant);   /* orig $017E0A, $017E0E, $017E12 and $017E16 (the variant 0 to 3), which go on at $017E18 */
-void path_continue(uint8_t *record, const uint8_t *description);       /* orig $01808E: the record's line is walked on */
+void start_record_path(struct EntryRef *entry, int16_t variant);   /* orig $017E0A, $017E0E, $017E12 and $017E16 (the variant 0 to 3), which go on at $017E18 */
+void path_continue(struct PathRecord *record, const struct PathDescription *description);       /* orig $01808E: the record's line is walked on */
 
 void player_tile_scan(void);             /* orig $012710 */
 
@@ -253,7 +253,7 @@ void load_background_tiles(const uint8_t *name);
 void scroll_to_player(int16_t x, int16_t y);
 void mark_cells_19170(void);
 void make_pairs_fb9a(void);
-uint8_t *find_flag_entry(int16_t x, int16_t y);
+struct LeverFlag *find_flag_entry(int16_t x, int16_t y);
 void fix_records_3d86(void);
 void find_duplicate_records(void);
 void item_panels_make(void);

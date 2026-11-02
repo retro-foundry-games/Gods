@@ -29,13 +29,14 @@ extern uint16_t param_d;   /* $00256 */
 extern struct Entry8 *entry_list;   /* $00CAE  a list of address/size entries that assign_addresses fills in */
 extern const uint16_t *words_source;   /* $00CBE  words that narrow_words_to_bytes makes bytes of */
 extern uint8_t *bytes_dest;   /* $00CC2  ... and where the bytes go */
-extern uint8_t *buffer_cb6;   /* $00CB6  a buffer of 2400 bytes that load_buffer_2400 fills */
+extern struct ScriptRecord *buffer_cb6;   /* $00CB6  a buffer of 2400 bytes that load_buffer_2400 fills */
 extern uint16_t saved_slot_words[22];   /* $148E8  two words of each of the eleven slots, put away by save_slot_words */
 extern struct Rec80 object_slots[11];   /* $14988  eleven records of 80 bytes */
 extern struct Rec10 table_14cf8[132];   /* $14CF8  built by build_table_14cf8 */
 extern uint32_t marker_table[100];   /* $1A3FC  set to -1 by reset_marker_table */
 extern struct Rec6 record_table[200];   /* $1A58C  copied in by copy_record_table */
 extern struct Rec6 entry_table[50];   /* $3A25E  cleared by clear_entry_table */
+extern struct PathDescription path_descriptions[25];   /* $1C302  the things that move along a path: where they start, their picture, their waypoints (loaded from the disk with the level) */
 extern uint16_t blit_extra_modulo;   /* $003B4  the blitter's extra modulo for the masked blit (0 unless set) */
 extern uint32_t blit_plane_stride;   /* $003B6  bytes from one plane of the screen to the next */
 extern uint16_t *mask_buffer;   /* $00E48  the buffer the blit makes its mask in */
@@ -126,15 +127,15 @@ extern uint8_t *ptr_0cfa[5];   /* $00CFA  five pointers, 200 bytes apart (the fi
 extern uint8_t *ptr_0cba;   /* $00CBA */
 extern uint8_t *ptr_0bce;   /* $00BCE */
 extern uint8_t *ptr_0cce;   /* $00CCE */
-extern uint8_t *ptr_0c9e;   /* $00C9E */
+extern struct PathRecord *ptr_0c9e;   /* $00C9E */
 extern uint8_t *ptr_0bb2;   /* $00BB2 */
 extern uint8_t *ptr_0e44;   /* $00E44 */
 extern uint8_t *ptr_0e5c;   /* $00E5C */
 extern uint8_t *ptr_0cb2;   /* $00CB2 */
-extern uint8_t *ptr_0cbe;   /* $00CBE */
-extern uint8_t *ptr_0d0e;   /* $00D0E */
+extern struct EntryRef *ptr_0cbe;   /* $00CBE */
+extern struct CreatureEntry *ptr_0d0e;   /* $00D0E */
 extern uint8_t *ptr_0ce6;   /* $00CE6 */
-extern uint8_t *ptr_0c9a;   /* $00C9A */
+extern const struct PathDescription *ptr_0c9a;   /* $00C9A */
 extern uint8_t *ptr_0cf2;   /* $00CF2 */
 extern uint8_t *restart_address;   /* $00E48 */
 extern uint8_t program_end[];   /* $3A670  the end of the program as the loader reads it: the memory map begins here */
@@ -146,7 +147,6 @@ extern uint8_t data_1aa66[];   /* $1AA66 */
 extern uint8_t data_1ad8a[];   /* $1AD8A */
 extern uint8_t data_1b17e[];   /* $1B17E */
 extern uint8_t data_1b7be[];   /* $1B7BE */
-extern uint8_t data_1c302[];   /* $1C302 */
 extern uint8_t loading_text[];   /* $1D3F4  "loading game please wait" */
 extern uint16_t palette_words[16];   /* $00134  the sixteen colours of the picture assets_load read last */
 extern char first_asset_name[];   /* $196D6  "always": the name of the first asset set */
@@ -435,7 +435,7 @@ extern int16_t word_2ba;   /* $002BA  game_d: -1, or the step (0 to 4) of the th
 extern void fn_10976(void);   /* $10976  game_d: the pick-up handler 18 of the table at $1067A (game_e writes it in C) */
 extern uint16_t word_26a;   /* $0026A  game_d: the glyph the pick-ups of records_19334 are drawn with (sprite, two words wide) */
 extern uint16_t bcd_346[4];   /* $00346  the number call_by_kind makes of five thousand times its argument, a BCD byte a word, the low digits first */
-extern uint8_t flags_1c056[];   /* $1C056  entries of 6 bytes; bit 0 of the byte +5 is a flag call_by_kind tests */
+extern struct LeverFlag flags_1c056[64];   /* $1C056  the switches of the level (loaded data); bit 0 of the state is a flag call_by_kind tests */
 extern int16_t words_34e[3];   /* $0034E  x, y and number of the last thing dropped (then word_354 is cleared) */
 extern uint8_t tile_24d;   /* $0024D  the first tile number of the blocks kind 2 of finish_record_1895a sets */
 extern int16_t word_314;   /* $00314  how many marks kind 6 of finish_record_1895a has made */
@@ -528,6 +528,7 @@ extern const struct CreatureTemplate creature_templates[49];   /* $1C698  what a
 extern const uint16_t clip_rectangles[6];   /* $00128  the clip rectangles of image_draw_clipped (x0, x1, y0, y1: the whole screen; a negative x0 ends the list) */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
+extern const uint8_t object_slot_image[880];   /* $14988  the eleven slots as the original has them before a level is loaded: the words of each that survive the weapons file (the SDL port starts from them) */
 extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of the two copper lists' colour moves the message fades */
 extern const uint8_t font_8x8[1272];   /* $1E7F4  the text font (8 bytes a character) */
 extern const uint8_t menu_texts[41];   /* $0635A  the main menu's lines, each ended by a 0: "BEGIN QUEST", "ENTER PASSWORD", "CONTINUE GAME" */
@@ -551,7 +552,7 @@ extern const uint16_t jump_deltas[23];   /* $11318  how many rows up the player 
 extern const uint16_t frame_map_125ac[6];   /* $125AC  the frame after a frame of the state 5 (five words), then how near the left or right of the screen the player may go before the scroll follows */
 extern const uint32_t state_table[58];   /* $10280  29 states of the player, two longs each: the first sprite and the routine (the C does not use the second) */
 extern const uint8_t text_power[12];   /* $12CEE  "Power", 0, "Value", 0 (text_power + 6 is "Value") */
-extern const uint32_t table_18714[3];   /* $18714  the routines (take_record_to_199ac, finish_record_1895a, ...) the cell kinds' states name */
+extern const uint32_t table_18714[10];   /* $18714  the routines (take_record_to_199ac, finish_record_1895a, ...) the cell kinds' states name */
 extern const uint8_t text_10a34[8];   /* $10A34  the first eight bytes of the message fn_10976 makes */
 extern const uint8_t fall_steps_f2[52];   /* $000F2  game_d: signed bytes: how far a thing falls (added to y) at each step 0 to 23 of its flag byte (steps 24 to 37 read on into the next bytes, the sounds: up to $12F, where clip_rectangles is from $128) */
 extern const uint16_t frames_44b4[4];   /* $044B4  game_d: the four glyphs of the sprite 280, by counter_2b4 */

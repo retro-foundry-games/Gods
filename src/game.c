@@ -106,7 +106,7 @@ void call_by_kind(int16_t kind, int16_t arg, int16_t *result)
     }
     case 5:
     case 6: {
-        int16_t state = *(int16_t *)(ptr_0cbe + (int16_t)((arg - 1) << 2));
+        int16_t state = (int16_t)ptr_0cbe[arg - 1].state;
 
         clear = kind == 5 ? state >= 0 : state < 0;
         break;
@@ -136,7 +136,7 @@ void call_by_kind(int16_t kind, int16_t arg, int16_t *result)
     }
     case 11:
     case 12: {
-        int set = flags_1c056[(uint16_t)(arg * 6) + 5] & 1;
+        int set = flags_1c056[(uint16_t)arg].state & 1;
 
         clear = kind == 11 ? !set : set;
         break;
@@ -1543,10 +1543,10 @@ void draw_background(void)
 
 /* orig $018072: the entry a2 is looked at (word_185bc gets its byte at +5, plus one); when the record a1 has its byte at +5
  * negative that is all; otherwise it goes on along its line (path_continue, $01808E) */
-void step_18072(uint8_t *a1, const uint8_t *a2)
+void step_18072(struct PathRecord *a1, const struct PathDescription *a2)
 {
-    word_185bc = (int16_t)(int8_t)a2[5] + 1;
-    if ((int8_t)a1[5] < 0)
+    word_185bc = (int16_t)a2->speed + 1;
+    if (a1->waypoint < 0)
         return;
     path_continue(a1, a2);
 }
@@ -1554,14 +1554,14 @@ void step_18072(uint8_t *a1, const uint8_t *a2)
 /* orig $017FA0: the picture of a record (a2: byte +4 is the number of a 256-byte block of the background, +26 and +27 the size
  * in 32 pixel columns and 16 line rows, less one) is made an image at the end of the image table and drawn with sprite_draw at
  * (x, y), less the scroll, in columns and rows */
-void draw_record_image(int16_t x, int16_t y, const uint8_t *a2)
+void draw_record_image(int16_t x, int16_t y, const struct PathDescription *a2)
 {
     struct Image *image = (struct Image *)asset_table_end;
-    int16_t columns = a2[26] & 7;
-    int16_t rows = (int8_t)a2[27];
+    int16_t columns;
+    int16_t rows = a2->rows;
 
     image->height = 15;
-    image->data = (const uint16_t *)(background + ((int32_t)(int8_t)a2[4] << 8));
+    image->data = (const uint16_t *)(background + ((int32_t)a2->block << 8));
     uint16_t index = (uint16_t)((int16_t)((uint32_t)asset_table_end - (uint32_t)image_table) >> 3);
 
     x -= scroll_x;
@@ -1569,7 +1569,7 @@ void draw_record_image(int16_t x, int16_t y, const uint8_t *a2)
     int16_t first_x = x;
 
     for (int16_t r = rows; r >= 0; r--) {
-        columns = a2[26] & 7;
+        columns = a2->columns & 7;
         for (int16_t c = columns; c >= 0; c--) {
             sprite_draw(x, y, index);
             x += 32;
@@ -1582,20 +1582,20 @@ void draw_record_image(int16_t x, int16_t y, const uint8_t *a2)
 /* orig $018014: the cells the record a2 covers in the tile map (ptr_0b86 + 8192) at (x + 16, y + 8) are marked: for each cell
  * an entry (its address, and its old value) is put in the list at `list` and the cell is set to 1.  Not for a record whose
  * byte +26 has bit 7 set.  Returns the end of the list */
-struct SavedByte *mark_record_cells(int16_t x, int16_t y, const uint8_t *a2, struct SavedByte *list)
+struct SavedByte *mark_record_cells(int16_t x, int16_t y, const struct PathDescription *a2, struct SavedByte *list)
 {
-    if (a2[26] & 0x80)
+    if (a2->columns & 0x80)
         return list;
     int16_t col = (int16_t)(x + 16) & -32;
     int16_t row = (int16_t)(y + 8) & -16;
     uint8_t *cell = ptr_0b86 + 8192 + (col >> 5) + (int16_t)(row << 3);
     uint8_t *line = cell;
-    int16_t lines = (int8_t)a2[27];
+    int16_t lines = a2->rows;
 
     for (int16_t r = lines; r >= 0; r--) {
         uint8_t *p = line;
 
-        for (int16_t c = a2[26] & 7; c >= 0; c--) {
+        for (int16_t c = a2->columns & 7; c >= 0; c--) {
             list->address = p;
             list->value = *p;
             list++;
@@ -1610,10 +1610,10 @@ struct SavedByte *mark_record_cells(int16_t x, int16_t y, const uint8_t *a2, str
  * first word -1) and a free one of the ten records of 36 bytes of table_199ac is filled from the entry (a state 2, the entry's
  * words and bytes and then 14 bytes copied from the table ptr_0b82 + 2, 16 bytes for each of the entry's word +10); when none is
  * free that is all */
-void take_record_to_199ac(uint16_t *a0)
+void take_record_to_199ac(struct EntryRef *a0)
 {
-    a0[0] = 0xFFFF;
-    const struct CreatureEntry *entry = (const struct CreatureEntry *)ptr_0d0e + a0[1];
+    a0->state = 0xFFFF;
+    const struct CreatureEntry *entry = &ptr_0d0e[a0->number];
     struct CreatureType *type = (struct CreatureType *)table_199ac;
     int i;
 
@@ -1647,11 +1647,11 @@ void take_record_to_199ac(uint16_t *a0)
  * free one of the five records of 24 bytes of records_18740 (a state 0): state 2, the 8 bytes (the byte +6 split into two
  * nibbles), and 14 bytes copied from the table ptr_0b7e + 2 (16 bytes for each of the signed byte +5); when none is free that is
  * all */
-void take_record_to_18740(uint16_t *a0)
+void take_record_to_18740(struct EntryRef *a0)
 {
-    a0[0] = 0xFFFF;
+    a0->state = 0xFFFF;
 
-    const uint8_t *s = ptr_0cb2 + (int16_t)(a0[1] << 3);
+    const uint8_t *s = ptr_0cb2 + (int16_t)(a0->number << 3);
     uint8_t *slot = records_18740;
     int i;
 
@@ -1759,10 +1759,10 @@ void spawn_debris_at_cell(int16_t x, int16_t y, const uint8_t *record, int16_t *
 /* orig $017F46: a record that moved is looked at for being near the screen: on it (the screen's terms: -32 to 320 across and -16 to 192
  * down) or, when it is to the left of it or above, with its image's size (a2: the columns +26 and the rows +27) reaching it: bit 7 of
  * flags_3b0 is set */
-static void record_seen(const uint8_t *a1, const uint8_t *a2)
+static void record_seen(const struct PathRecord *a1, const struct PathDescription *a2)
 {
-    int16_t sx = (int16_t)(*(const int16_t *)a1 - scroll_x);
-    int16_t sy = (int16_t)(*(const int16_t *)(a1 + 2) - scroll_y);
+    int16_t sx = (int16_t)(a1->x - scroll_x);
+    int16_t sy = (int16_t)(a1->y - scroll_y);
 
     if (sx > -32) {
         if (sx > 320)
@@ -1773,8 +1773,8 @@ static void record_seen(const uint8_t *a1, const uint8_t *a2)
             return;
         }
     }
-    int16_t wide = (int16_t)(((int8_t)a2[27] << 5) + sx);
-    int16_t high = (int16_t)(((a2[26] & 7) << 4) + sy);
+    int16_t wide = (int16_t)((a2->rows << 5) + sx);
+    int16_t high = (int16_t)(((a2->columns & 7) << 4) + sy);
 
     if (wide > -32 && high > -16)
         flags_3b0 |= 0x80;
@@ -1799,13 +1799,13 @@ void redraw_record_images(void)
     restore_saved_bytes((struct SavedByte *)entry_table, 49);
 
     struct SavedByte *list = (struct SavedByte *)entry_table;
-    uint8_t *a1 = ptr_0c9e;
-    uint8_t *a2 = ptr_0c9a;
+    struct PathRecord *a1 = ptr_0c9e;
+    const struct PathDescription *a2 = ptr_0c9a;
     int16_t x;
     int16_t y;
 
-    for (int16_t n = 24; n >= 0; n--, a1 += 24, a2 += 28) {
-        if ((int8_t)a1[4] < 0)
+    for (int16_t n = 24; n >= 0; n--, a1++, a2++) {
+        if (a1->kind < 0)
             continue;
         uint32_t before = *(uint32_t *)a1;
 
@@ -1813,8 +1813,8 @@ void redraw_record_images(void)
         if (*(uint32_t *)a1 != before) {
             record_seen(a1, a2);
         }
-        x = *(int16_t *)a1;
-        y = *(int16_t *)(a1 + 2);
+        x = a1->x;
+        y = a1->y;
 
         list = mark_record_cells(x, y, a2, list);
         draw_record_image(x, y, a2);
@@ -2126,30 +2126,30 @@ static void empty_first_slot_with(int16_t item)
 
 /* orig $018AAE and $018AD6: a record whose kind (the word +16 without the top bit) is 2, 3, 4, 7 or 8 empties the slot that holds
  * the item each of its three pairs of words names, when the pair's first word is 1 and the item is 18 to 23 or 127 to 129 */
-static void empty_slots_of_record(const uint16_t *a1)
+static void empty_slots_of_record(const struct ScriptRecord *a1)
 {
-    uint16_t kind = a1[8] & 0x7FFF;
+    uint16_t kind = a1->effect & 0x7FFF;
 
     if (!(kind == 2 || kind == 3 || kind == 4 || kind == 7 || kind == 8))
         return;
-    for (int p = 0; p < 6; p += 2) {
-        int16_t item = (int16_t)a1[p + 1];
+    for (int p = 0; p < 3; p++) {
+        int16_t item = a1->condition[p].argument;
 
-        if (a1[p] == 1 && ((item >= 0x12 && item <= 0x17) || (item >= 0x7F && item <= 0x81)))
+        if (a1->condition[p].kind == 1 && ((item >= 0x12 && item <= 0x17) || (item >= 0x7F && item <= 0x81)))
             empty_first_slot_with(item);
     }
 }
 
 /* orig $018A22, $018A2C and $018A5C: a record whose word +16 has the top bit set empties every slot of item_slots that holds the
  * item each of its pairs of words names (the pair's first word 1) when the item's table_14cf8 entry has the word +4 at 0 or 2 */
-static void empty_slots_of_flagged_record(const uint16_t *a1)
+static void empty_slots_of_flagged_record(const struct ScriptRecord *a1)
 {
-    if (!(a1[8] & 0x8000))
+    if (!(a1->effect & 0x8000))
         return;
-    for (int p = 0; p < 6; p += 2) {
-        if (a1[p] != 1)
+    for (int p = 0; p < 3; p++) {
+        if (a1->condition[p].kind != 1)
             continue;
-        int16_t item = (int16_t)a1[p + 1];
+        int16_t item = a1->condition[p].argument;
         uint16_t state = table_14cf8[item].w[2];
 
         if (state != 2 && state != 0)
@@ -2173,9 +2173,9 @@ static struct Slot8 *first_free_slot8(struct Slot8 *list, int count)
  * number in the record's word +18 and the state 1; its byte in flags_39fde is set.  For the numbers 64 to 68 that is all; 83 sets
  * bit 2 of flags_3b0; the position and number are kept in words_34e (word_354 cleared) and the sound 48 is played (priority 30)
  * unless offsets_4cba says 4 for the number */
-static void kind_drop_item(const uint16_t *a1)
+static void kind_drop_item(const struct ScriptRecord *a1)
 {
-    int16_t x = (int16_t)a1[6], y = (int16_t)a1[7], number = (int16_t)a1[9];
+    int16_t x = (int16_t)a1->x, y = (int16_t)a1->y, number = (int16_t)a1->effect_argument;
     struct Slot8 *record = first_free_slot8(records_19b14, 200);
 
     if (record == 0)
@@ -2198,9 +2198,9 @@ static void kind_drop_item(const uint16_t *a1)
 }
 
 /* orig $018EB6 (kind 1): as kind 0 but the number is the word +18 plus 192 and no sound is played */
-static void kind_drop_192(const uint16_t *a1)
+static void kind_drop_192(const struct ScriptRecord *a1)
 {
-    int16_t x = (int16_t)a1[6], y = (int16_t)a1[7], number = (int16_t)(a1[9] + 0xC0);
+    int16_t x = (int16_t)a1->x, y = (int16_t)a1->y, number = (int16_t)(a1->effect_argument + 0xC0);
     struct Slot8 *record = first_free_slot8(records_19b14, 200);
 
     if (record == 0)
@@ -2229,21 +2229,21 @@ static int record_19334_at(int16_t x, int16_t y)
  * then plays the sound 7, priority 5): a free record gets the position of the record a1 (word +12 less 16 and rounded down to 32,
  * word +14 plus 8 rounded down to 16), the state 3 (kind 4) or 1 (kind 3) and the number of the word +18.  When a record is at the
  * position already ($019280) nothing is done */
-static void kind_place_19334(const uint16_t *a1, int twenty)
+static void kind_place_19334(const struct ScriptRecord *a1, int twenty)
 {
     struct Slot8 *record = first_free_slot8(records_19334, twenty ? 20 : 10);
 
     if (record == 0)
         return;
-    int16_t x = (int16_t)((a1[6] & 0xFFE0) - 0x10);
-    int16_t y = (int16_t)((a1[7] + 8) & 0xFFF0);
+    int16_t x = (int16_t)((a1->x & 0xFFE0) - 0x10);
+    int16_t y = (int16_t)((a1->y + 8) & 0xFFF0);
 
     if (record_19334_at(x, y))
         return;
     record->w[0] = x;
     record->w[1] = y;
     record->w[2] = twenty ? 1 : 3;
-    record->w[3] = (int16_t)a1[9];
+    record->w[3] = (int16_t)a1->effect_argument;
     if (twenty)
         play_sound(7, 5);
 }
@@ -2251,10 +2251,10 @@ static void kind_place_19334(const uint16_t *a1, int twenty)
 /* orig $0192A4 and $0192D6 (kind 2): the block of the tile map (ptr_0b86) at the record a1's position (x rounded to 32, y 8
  * further and rounded to 16) is set to six tiles counted up from tile_24d and the three cells of the second plane (+8192)
  * cleared; the sound 7 is played (priority 5) */
-static void kind_set_tiles(const uint16_t *a1)
+static void kind_set_tiles(const struct ScriptRecord *a1)
 {
-    int16_t x = (int16_t)(((a1[6] & 0xFFE0) + 12) & 0xFFE0);
-    int16_t y = (int16_t)((a1[7] + 8) & 0xFFF0);
+    int16_t x = (int16_t)(((a1->x & 0xFFE0) + 12) & 0xFFE0);
+    int16_t y = (int16_t)((a1->y + 8) & 0xFFF0);
     uint8_t *cell = ptr_0b86 + (int16_t)(x >> 5) + (int16_t)(y << 3);
     uint8_t base = tile_24d;
 
@@ -2275,10 +2275,10 @@ static void kind_set_tiles(const uint16_t *a1)
  * table_14cf8 entry has the word +4 at 4 is taken out (word +4 -1, +6 0) and makes a mark in records_316 (state 0, x less 8, y
  * (8 less for the number 96)), at most two, each with the sound 4 (priority 15); the marks go to the first free entry and on
  * from there (this may pass the end of the four, as in the original) */
-static void kind_burst(const uint16_t *a1)
+static void kind_burst(const struct ScriptRecord *a1)
 {
-    int16_t x0 = (int16_t)(a1[6] - 12), y0 = (int16_t)(a1[7] - 12);
-    int16_t x1 = (int16_t)(a1[6] + 12), y1 = (int16_t)(a1[7] + 12);
+    int16_t x0 = (int16_t)(a1->x - 12), y0 = (int16_t)(a1->y - 12);
+    int16_t x1 = (int16_t)(a1->x + 12), y1 = (int16_t)(a1->y + 12);
     int16_t *mark = records_316;
     int16_t hits = 0;
 
@@ -2314,9 +2314,9 @@ static void kind_burst(const uint16_t *a1)
 }
 
 /* orig $018F16 (kind 10): the slot_ref (6b6, 748, 7da) that equals the word +18 of the record a1 becomes -1; the first only */
-static void kind_free_slot_ref(const uint16_t *a1)
+static void kind_free_slot_ref(const struct ScriptRecord *a1)
 {
-    int16_t number = (int16_t)a1[9];
+    int16_t number = (int16_t)a1->effect_argument;
 
     if (slot_ref_6b6 == number)
         slot_ref_6b6 = -1;
@@ -2333,23 +2333,23 @@ static void kind_free_slot_ref(const uint16_t *a1)
  * (word +16 without the top bit) names in dispatch_18ba4 does its part (written in here: 0 to 6, 10 to 15; 11 to 13 and 15 do
  * nothing, 14 clears tick_count; 7, 8 and 9 ($19618, $19658, $193D4) did not run and are left out).  Nothing is done while
  * flag_230 */
-void finish_record_1895a(uint16_t *a0)
+void finish_record_1895a(struct EntryRef *a0)
 {
     if (flag_230)
         return;
 
-    const uint16_t *a1 = (const uint16_t *)(buffer_cb6 + (int32_t)((int16_t)a0[1] * 24));
+    const struct ScriptRecord *a1 = &buffer_cb6[a0->number];
 
     *(int32_t *)words_300 = -1;
     words_300[2] = -1;
-    call_by_kind((int16_t)a1[0], (int16_t)a1[1], &words_300[0]);
-    call_by_kind((int16_t)a1[2], (int16_t)a1[3], &words_300[1]);
-    call_by_kind((int16_t)a1[4], (int16_t)a1[5], &words_300[2]);
+    call_by_kind(a1->condition[0].kind, a1->condition[0].argument, &words_300[0]);
+    call_by_kind(a1->condition[1].kind, a1->condition[1].argument, &words_300[1]);
+    call_by_kind(a1->condition[2].kind, a1->condition[2].argument, &words_300[2]);
     if ((int16_t)(words_300[0] & words_300[1] & words_300[2]) >= 0)
         return;
-    a0[0] = 0xFFFF;
+    a0->state = 0xFFFF;
 
-    const int16_t *offset = (const int16_t *)(ptr_0cba + (uint16_t)(a1[10] * 2));
+    const int16_t *offset = (const int16_t *)(ptr_0cba + (uint16_t)(a1->message * 2));
 
     if (*offset >= 0) {
         message_next = ptr_0b66 + *offset;
@@ -2358,7 +2358,7 @@ void finish_record_1895a(uint16_t *a0)
     }
     empty_slots_of_record(a1);
     empty_slots_of_flagged_record(a1);
-    switch (a1[8] & 0x7FFF) {
+    switch (a1->effect & 0x7FFF) {
     case 0:
         kind_drop_item(a1);
         break;
@@ -2375,7 +2375,7 @@ void finish_record_1895a(uint16_t *a0)
         kind_place_19334(a1, 0);
         break;
     case 5:
-        run_cell_entry((int16_t)(a1[9] - 1));
+        run_cell_entry((int16_t)(a1->effect_argument - 1));
         break;
     case 6:
         kind_burst(a1);
@@ -3781,9 +3781,9 @@ void cell_entry_runs(const uint8_t *cell)
 /* orig $0127A0: the entry `index` (4 bytes each) of the table at ptr_0cbe is run as cell_entry_runs says */
 void run_cell_entry(int16_t index)
 {
-    uint16_t *entry = (uint16_t *)(ptr_0cbe + (int16_t)(index << 2));
+    struct EntryRef *entry = &ptr_0cbe[index];
 
-    if ((int16_t)entry[0] <= 0)
+    if ((int16_t)entry->state <= 0)
         return;
 
     struct CreatureType *type = (struct CreatureType *)table_199ac;
@@ -3792,7 +3792,7 @@ void run_cell_entry(int16_t index)
         if (type->bounds == 1)
             type->status = 0;
 
-    uint32_t routine = table_18714[(int16_t)(entry[0] - 1)];
+    uint32_t routine = table_18714[(int16_t)(entry->state - 1)];
 
     if (routine == 0x18900)
         take_record_to_18740(entry);
@@ -4230,12 +4230,12 @@ static void use_lever_3c94(void)
             continue;
 
         uint32_t place = ((uint32_t)(uint16_t)record->w[0] << 16) | (uint16_t)record->w[1];
-        uint16_t *entry = 0;
+        struct LeverFlag *entry = 0;
 
         for (int e = 0; e < 64; e++) {
-            uint16_t *p = (uint16_t *)flags_1c056 + 3 * e;
+            struct LeverFlag *p = &flags_1c056[e];
 
-            if ((((uint32_t)p[0] << 16) | p[1]) == place) {
+            if ((((uint32_t)p->x << 16) | p->y) == place) {
                 entry = p;
                 break;
             }
@@ -4245,11 +4245,11 @@ static void use_lever_3c94(void)
         if (!record_touches_player(record))
             continue;
         if (kind->w[0] == 288 || kind->w[0] == 290 || kind->w[0] == 292 || kind->w[0] == 232) {
-            ptr_0ba2 = entry;
+            ptr_0ba2 = &entry->x;
             word_2ba = 0;
         } else {
             record->w[2] ^= 1;
-            entry[2] ^= 1;
+            entry->state ^= 1;
         }
         play_sound(10, 6);
         return;
@@ -6003,12 +6003,12 @@ void copy_block_16bb4(void)
  * marked by the records are given back */
 void clear_cell_records(void)
 {
-    uint8_t *record = ptr_0c9e;
+    struct PathRecord *record = ptr_0c9e;
 
-    for (int i = 0; i < 25; i++, record += 24) {
-        *(int16_t *)record = -1;
-        *(int16_t *)(record + 2) = -1;
-        record[4] = 0xFF;
+    for (int i = 0; i < 25; i++, record++) {
+        record->x = -1;
+        record->y = -1;
+        record->kind = -1;
     }
     restore_saved_bytes((struct SavedByte *)entry_table, 49);
 }
@@ -6624,14 +6624,11 @@ void make_pairs_fb9a(void)
 
 /* orig $003DE0: the flags_1c056 entry (six bytes: the long (x << 16) | y and a word) for the point (x, y): its place or 0 when there is none.
  * The original leaves d1 negative when none is found; here the caller looks at the result */
-uint8_t *find_flag_entry(int16_t x, int16_t y)
+struct LeverFlag *find_flag_entry(int16_t x, int16_t y)
 {
-    uint32_t key = ((uint32_t)(uint16_t)x << 16) | (uint16_t)y;
-    uint8_t *entry = flags_1c056;
-
-    for (int i = 0; i < 64; i++, entry += 6)
-        if (*(uint32_t *)entry == key)
-            return entry;
+    for (int i = 0; i < 64; i++)
+        if (flags_1c056[i].x == (uint16_t)x && flags_1c056[i].y == (uint16_t)y)
+            return &flags_1c056[i];
     return 0;
 }
 
@@ -6648,12 +6645,12 @@ void fix_records_3d86(void)
             continue;
         if ((int16_t)table_14cf8[kind].w[2] != 3)
             continue;
-        uint8_t *entry = find_flag_entry((int16_t)record->w[0], (int16_t)record->w[1]);
+        struct LeverFlag *entry = find_flag_entry((int16_t)record->w[0], (int16_t)record->w[1]);
 
         if (entry == 0)
             record->w[2] = 0xFFFF;
         else
-            *(uint16_t *)(entry + 4) = record->w[2];
+            entry->state = record->w[2];
     }
     word_2ba = -1;
 }
@@ -7055,17 +7052,6 @@ void draw_start_frame(void)
 #define PATH_FLAT_LEFT 0x1835E
 #define PATH_STEEP_LEFT 0x18390
 
-struct PathState {
-    uint32_t loop;      /* +6 which loop it goes on in */
-    int16_t x;          /* +10 */
-    int16_t y;          /* +12 */
-    int16_t y_step;     /* +14 1 or -1 */
-    int16_t length;     /* +16 d2: the longer side */
-    int16_t shorter;    /* +18 d3 */
-    int16_t error;      /* +20 d5 */
-    int16_t count;      /* +22 d7 */
-};
-
 /* the steps of a line, from the loop `loop` with the registers of the state: at most word_185bc steps are made, then the state is kept.
  * Returns the number of steps left, less one (negative when the line is done) */
 static void path_run(struct PathState *s, uint32_t loop)
@@ -7153,47 +7139,47 @@ static void path_resume(struct PathState *s)
 }
 
 /* the waypoint k (1 to 4) of a description (28 bytes): a point (words at +6 + 4 (k - 1)) or none (x 0) */
-static int path_waypoint(const uint8_t *description, uint8_t *record, int k, int16_t *x, int16_t *y)
+static int path_waypoint(const struct PathDescription *description, struct PathRecord *record, int k, int16_t *x, int16_t *y)
 {
-    const int16_t *point = (const int16_t *)(description + 6 + 4 * (k - 1));
+    const struct PathPoint *point = &description->waypoint[k - 1];
 
-    if (point[0] == 0)
+    if (point->x == 0)
         return 0;
-    *x = point[0];
-    *y = point[1];
-    record[5] = (uint8_t)k;
-    record[4] = 2;
+    *x = point->x;
+    *y = point->y;
+    record->waypoint = (int8_t)k;
+    record->kind = 2;
     return 1;
 }
 
 /* orig $01813C (the table at $18284, whose routines are $018154, $018164, $018192, $0181C0, $0181D8, $0181F0, $018208, $018220, $018238, $018250 and $018268 inlined): which waypoint the line of the record goes to next, by the
  * kind in the description's byte at +22 + `variant`: the next one (kinds 2 to 5), the one before (7 to 10), the next of the row (0) or the
  * one before (1 and 6) */
-static void path_target(const uint8_t *description, uint8_t *record, int8_t kind, int16_t *x, int16_t *y)
+static void path_target(const struct PathDescription *description, struct PathRecord *record, int8_t kind, int16_t *x, int16_t *y)
 {
     int k;
 
     if (kind < 0) {
-        record[4] = 0xFF;
+        record->kind = (int8_t)0xFF;
         word_4a2--;
         return;   /* the target is where the line starts */
     }
     if (kind == 0) {
-        record[4] = 0;
-        k = (int8_t)record[5] + 1;
+        record->kind = 0;
+        k = record->waypoint + 1;
         if (k > 4)
             k = 1;
         path_target(description, record, (int8_t)(k + 1), x, y);
-        record[4] = 0;
+        record->kind = 0;
         return;
     }
     if (kind == 1 || kind == 6) {
-        record[4] = 1;
-        k = (int8_t)record[5] - 1;
+        record->kind = 1;
+        k = record->waypoint - 1;
         if (k < 1)
             k = 4;
         path_target(description, record, (int8_t)(6 + k), x, y);
-        record[4] = 1;
+        record->kind = 1;
         return;
     }
     if (kind >= 2 && kind <= 5) {
@@ -7211,55 +7197,52 @@ static void path_target(const uint8_t *description, uint8_t *record, int8_t kind
  * the second word) is put on its path: when the description has a waypoint the entry is taken (first word -1), the one that moves is
  * counted (word_4a2) and redraw_record_images is switched on; the line from where it is (or where its description puts it) to the
  * waypoint is walked and the record's place is where that left it */
-void start_record_path(uint16_t *entry, int16_t variant)
+void start_record_path(struct EntryRef *entry, int16_t variant)
 {
-    int16_t number = (int16_t)entry[1];
-    uint8_t *description = ptr_0c9a + number * 28;
-    uint8_t *record = ptr_0c9e + number * 24;
+    int16_t number = (int16_t)entry->number;
+    const struct PathDescription *description = &ptr_0c9a[number];
+    struct PathRecord *record = &ptr_0c9e[number];
     int16_t x, y, tx = 0, ty = 0;
-    struct PathState *state = (struct PathState *)(record + 6);
 
-    if ((*(int16_t *)(description + 6) | *(int16_t *)(description + 10) | *(int16_t *)(description + 14) | *(int16_t *)(description + 18)) == 0)
+    if ((description->waypoint[0].x | description->waypoint[1].x | description->waypoint[2].x | description->waypoint[3].x) == 0)
         return;
-    entry[0] = 0xFFFF;
+    entry->state = 0xFFFF;
     word_4a2++;
     word_17e9c = 0x4E71;
-    if ((int8_t)record[4] < 0) {
-        x = *(int16_t *)description;
-        y = *(int16_t *)(description + 2);
+    if (record->kind < 0) {
+        x = description->x;
+        y = description->y;
     } else {
-        x = *(int16_t *)record;
-        y = *(int16_t *)(record + 2);
+        x = record->x;
+        y = record->y;
     }
-    word_185bc = (int16_t)((int8_t)description[5] + 1);
-    record[5] = 0;
+    word_185bc = (int16_t)(description->speed + 1);
+    record->waypoint = 0;
     tx = x;
     ty = y;
-    path_target(description, record, (int8_t)description[22 + variant], &tx, &ty);
-    path_start(state, x, y, tx, ty);
-    *(int16_t *)record = state->x;
-    *(int16_t *)(record + 2) = state->y;
+    path_target(description, record, description->kind[variant], &tx, &ty);
+    path_start(&record->state, x, y, tx, ty);
+    record->x = record->state.x;
+    record->y = record->state.y;
 }
 
 /* orig $018072 (from $01808E on, with $018092 to $0180C6): the record goes on along its line: the place it reaches is kept in the
  * record; when the line is done the record is at its waypoint, and with a kind above 1 (byte +4) it is done with the path (byte +5
  * -1).  The kinds 0 and 1 go on to the next waypoint ($18106: not run) */
-void path_continue(uint8_t *record, const uint8_t *description)
+void path_continue(struct PathRecord *record, const struct PathDescription *description)
 {
-    struct PathState *state = (struct PathState *)(record + 6);
-
-    path_resume(state);
-    *(int16_t *)record = state->x;
-    *(int16_t *)(record + 2) = state->y;
-    if (state->count >= 0)
+    path_resume(&record->state);
+    record->x = record->state.x;
+    record->y = record->state.y;
+    if (record->state.count >= 0)
         return;
-    int16_t index = (int16_t)(((int8_t)record[5] - 1) << 2);
+    const struct PathPoint *point = &description->waypoint[record->waypoint - 1];
 
-    *(int16_t *)record = *(const int16_t *)(description + 6 + index);
-    *(int16_t *)(record + 2) = *(const int16_t *)(description + 8 + index);
-    if ((int8_t)record[4] <= 1)
+    record->x = point->x;
+    record->y = point->y;
+    if (record->kind <= 1)
         return;   /* goes on at $18106 */
-    record[5] = 0xFF;
+    record->waypoint = (int8_t)0xFF;
 }
 
 /* orig $012710: the cells of the map (ptr_0b86 + 8192) at the player are looked at, three rows of one column from the player's x + 16 (to a
@@ -7310,14 +7293,26 @@ static void loading_level_screen(void)
     show_text_screen((const char *)level_text);
 }
 
-/* the groups of creatures of the level (the entries at data_1b17e, 100 of them, 16 bytes: the file's calfils, loaded from the disk): their words are made the machine's own */
-static void creature_entries_from_disk(struct CreatureEntry *entry, int count)
+/* the tables of the level that the file calfils brings (7000 bytes from data_1aa66 on, loaded from the disk): the entries of the cells (ptr_0cbe, 253), the groups of creatures (ptr_0d0e, 100)
+ * and the things on paths (path_descriptions, 25) have words, which are made the machine's own */
+static void level_tables_from_disk(void)
 {
-    for (int i = 0; i < count; i++, entry++) {
+    for (int i = 0; i < 253; i++)
+        file_words(&ptr_0cbe[i], 2);
+    for (int i = 0; i < 100; i++) {
+        struct CreatureEntry *entry = &ptr_0d0e[i];
+
         file_words(&entry->start_x, 2);
         file_words(&entry->delay_step, 1);
         file_words(&entry->template_index, 1);
     }
+    for (int i = 0; i < 25; i++) {
+        struct PathDescription *description = &path_descriptions[i];
+
+        file_words(&description->x, 2);
+        file_words(description->waypoint, 8);
+    }
+    file_words(flags_1c056, 3 * 64);
 }
 
 /* orig $00323C: when the small font asked for it (menu_state_25a) it is loaded again: the asset set of the level's sprites */
@@ -7382,7 +7377,7 @@ void begin_quest(void)
     load_unpacked((const char *)names + NAME_ALFILS, background);
     for (int i = 0; i < 7000; i++)
         data_1aa66[i] = background[i];
-    creature_entries_from_disk((struct CreatureEntry *)data_1b17e, 100);
+    level_tables_from_disk();
     read_text_table_14852((const uint16_t *)(background + 7000), (uint16_t *)(data_1aa66 + 7000));
     place_pickups();
     {

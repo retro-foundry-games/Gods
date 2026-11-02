@@ -160,4 +160,77 @@ struct CreatureType {
 _Static_assert(sizeof(struct CreatureType) == 36, "creature type record");
 _Static_assert(sizeof(struct Creature) == 14, "creature record");
 
+
+/* the things that move along a path ($17E0A to $18400): a description (28 bytes, 25 of them, the program's data: where it starts, its picture, its waypoints and how it goes
+ * from one to the next)... */
+struct PathPoint {
+    int16_t x;
+    int16_t y;
+};
+
+struct PathDescription {
+    int16_t x;                    /* +0 where it starts */
+    int16_t y;
+    int8_t block;                 /* +4 the number of a 256-byte block of the background: its picture */
+    int8_t speed;                 /* +5 steps a frame, less one */
+    struct PathPoint waypoint[4]; /* +6 (x 0: none) */
+    int8_t kind[4];               /* +22 how it goes on from the end of a line, for each of the four ways it can be started */
+    uint8_t columns;              /* +26 bits 0 to 2: its picture's width in 32 pixel columns, less one; bit 7: it does not mark the map's cells */
+    int8_t rows;                  /* +27 its height in 16 line rows, less one */
+};
+_Static_assert(sizeof(struct PathDescription) == 28, "path description");
+
+/* the switches of the level (64 of 6 bytes, loaded with the level's tables): where one is (x, y of its record) and its state, bit 0 of which call_by_kind tests */
+struct LeverFlag {
+    uint16_t x;
+    uint16_t y;
+    uint16_t state;
+};
+_Static_assert(sizeof(struct LeverFlag) == 6, "lever flag");
+
+/* ... and a record (24 bytes, 25 of them): where it is, which way it goes and the state of its line (the original keeps the line's registers in the record and leaves
+ * the loop of the line by storing the address it goes on at; the four loops, the line steeper or flatter, left or right, are tagged by those addresses) */
+struct PathState {
+    uint32_t loop;      /* +6 which loop it goes on in */
+    int16_t x;          /* +10 */
+    int16_t y;          /* +12 */
+    int16_t y_step;     /* +14 1 or -1 */
+    int16_t length;     /* +16 d2: the longer side */
+    int16_t shorter;    /* +18 d3 */
+    int16_t error;      /* +20 d5 */
+    int16_t count;      /* +22 d7 */
+};
+
+struct PathRecord {
+    int16_t x;
+    int16_t y;
+    int8_t kind;        /* +4 negative: not in use; 0 and 1 go on to the next waypoint at the end of a line, above 1 stop there */
+    int8_t waypoint;    /* +5 the number of the waypoint it goes to, 1 to 4 (negative: it is done with its path) */
+    struct PathState state;
+};
+_Static_assert(sizeof(struct PathRecord) == 24, "path record");
+
+
+/* the entries of the cells of the level's map (4 bytes: ptr_0cbe, 253 of them, loaded from the disk): what the entry does (a state: how it is run, see run_cell_entry; negative or 0: nothing) and the number of the record it
+ * is about */
+struct EntryRef {
+    uint16_t state;
+    uint16_t number;
+};
+
+/* the level's script (24 bytes, 100 of them: buffer_cb6, loaded from the disk): up to three conditions (a kind and an argument, call_by_kind), and what happens when they all hold */
+struct ScriptRecord {
+    struct {
+        int16_t kind;
+        int16_t argument;
+    } condition[3];
+    int16_t x;                /* +12 where it is about (a position in the level) */
+    int16_t y;                /* +14 */
+    uint16_t effect;          /* +16 which routine of dispatch_18ba4 does its part (the top bit: another way) */
+    int16_t effect_argument;  /* +18 */
+    uint16_t message;         /* +20 the number of a message (the offset is in ptr_0cba), when it has one */
+    int16_t unused_22;
+};
+_Static_assert(sizeof(struct ScriptRecord) == 24, "script record");
+
 #endif
