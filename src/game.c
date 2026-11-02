@@ -1113,7 +1113,7 @@ static void panel_item(uint8_t *to, int16_t glyph)
     const uint16_t *p1 = (const uint16_t *)(source + stride);
     const uint16_t *p2 = (const uint16_t *)(source + 2 * stride);
     const uint16_t *p3 = (const uint16_t *)(source + 3 * stride);
-    const uint32_t keep = 0xf000ffff;
+    const uint32_t keep = 0xf0000fff;   /* the original's long $0000FFFF rotated right by 4 */
 
     for (int row = 0; row <= height; row++) {
         d0 = (d0 & 0xffff0000) | *p0++;
