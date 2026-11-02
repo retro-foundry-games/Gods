@@ -120,6 +120,13 @@ ITERVARS, ITERKEYS = {}, {}
 KIRQ = 0
 KLOG = {}
 ami.hook(0x1e2b8, function() KIRQ = KIRQ + 1; KLOG[#KLOG + 1] = string.format("%d it=%d frame=%d sr=%04x pc_ret=%x", KIRQ, ITER, ami.frame() - start, ami.reg("sr") & 0xffff, ami.peek32(ami.reg("a7") + 2)) end)
+-- hookmark=ADDR (hex): log the player and scroll words and the iteration each time the program reaches ADDR
+do
+    for hex in (args:match("hookmark=([%x,]+)") or ""):gmatch("%x+") do
+        local at = tonumber(hex, 16)
+        ami.hook(at, function() ami.log(string.format("HM %x it=%d px=%d sx=%d py=%d sy=%d sxa=%d", at, ITER, ami.peek16(0x1e0), ami.peek16(0x358), ami.peek16(0x1e2), ami.peek16(0x35a), ami.peek16(0x29a))) end)
+    end
+end
 PENDING_KEYS = {}
 function iter_top()
     ITER = ITER + 1
@@ -128,6 +135,10 @@ function iter_top()
     for _, k in ipairs(iter_keys[ITER - 1] or {}) do   -- the key table of the keyboard interrupt is set at once ($1E63A: $FF for a key held down, by raw key code): the interrupt is
         local raw = ({ [273] = 0x4c, [274] = 0x4d, [275] = 0x4e, [276] = 0x4f, [32] = 0x40 })[k[1]]   -- asynchronous, two events close together lose one by the original's timing
         if raw then ami.write(0x1e63a + raw, k[2] and "\xff" or "\x00") end
+    end
+    -- iterregion=N:ADDR:LEN:PATH (hex ADDR and LEN): at the top of the Nth iteration that part of the memory is written to PATH
+    for region_n, region_addr, region_len, region_path in (args:match("iterregion=(%S+)") or ""):gmatch("(%d+):(%x+):(%x+):([^,]+)") do
+        if tonumber(region_n) == ITER then ami.save_file(region_path, ami.read(tonumber(region_addr, 16), tonumber(region_len, 16))) end
     end
     if iter_shots[ITER] and shots_dir then ami.screenshot(string.format("%s/iter-%d.ppm", shots_dir, ITER)) end
 end
