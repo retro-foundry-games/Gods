@@ -1,41 +1,59 @@
-/* Gods, the menu program: showing the screens and the colours */
+/* Gods, the menu program: the screens, the colours and the copper list that shows them: the screen buffers, the shadow table of the colours, the fades and the
+ * frame tick.  The host has its own (sdl/display.c). */
 #include "../menu.h"
-#include "../screen.h"
 
-/* orig $004D3E: the fine scroll of a copper list for the pixel offset `x` (only the low byte counts): the scroll nibbles
- * for the two fields of BPLCON1, where the display fetch starts, and the modulos of the bitplane pointers.  x of 16 or more
- * uses the next word. */
-void set_scroll(uint8_t *copper_list, uint8_t x)
+/* orig $01CFAC: clear a screen buffer, 8448 longs */
+void clear_screen_buffer(uint32_t *buffer)
 {
-    uint8_t fetch = 0x38;
-    uint8_t words = 4;
-    uint8_t extra = (x & 0x10) ? 2 : 0;
-    uint8_t scroll = x & 15;
+    int i;
 
-    if (scroll != 0) {
-        uint8_t delay = 16 - scroll;
-
-        scroll = delay | (uint8_t)(delay << 4);
-        fetch = 0x30;
-        words = 2;
-    }
-    copper_list[0x1b] = scroll;
-    copper_list[0x13] = fetch;
-    copper_list[0x23] = words;
-    copper_list[0x27] = words;
-    copper_list[0x2f] = extra;
-    copper_list[0x37] = extra;
-    copper_list[0x3f] = extra;
-    copper_list[0x47] = extra;
+    for (i = 0; i < 0x2100; i++)
+        *buffer++ = 0;
 }
 
-/* orig $01D05C: wait for the next vertical blank */
-__attribute__((noinline)) void wait_vblank(void)
+/* orig $01CFE4: copy a screen buffer, 8448 longs */
+void copy_screen_buffer(const uint32_t *from, uint32_t *to)
 {
-    uint16_t seen = vbl_count;
+    int i;
 
-    while (vbl_count == seen)
-        ;
+    for (i = 0; i < 0x2100; i++)
+        *to++ = *from++;
+}
+
+/* orig $01D22A: in a copper list, the word after the first one that is the address of COLOR01 ($0182), or -1 if there
+ * is none below $5246 (the list is searched from `list` on, a word at a time) */
+const uint16_t *find_color01_move(const uint16_t *list)
+{
+    do {
+        if (*list++ == 0x0182)
+            return list;
+    } while ((int32_t)(uintptr_t)list < (int32_t)GUEST(0x5246));
+    return (const uint16_t *)(intptr_t)-1;
+}
+
+/* orig $01D2D8: set a word of the table */
+void shadow_set(uint16_t index, uint16_t value)
+{
+    shadow_table[(int16_t)(index * 2) / 2] = value;
+}
+
+/* orig $01D2EA: a word of the table */
+uint16_t shadow_get(uint16_t index)
+{
+    return shadow_table[(int16_t)(index * 2) / 2];
+}
+
+/* orig $01CFC0: clear both screens */
+void clear_both_screens(void)
+{
+    clear_screen_buffer((uint32_t *)screen_buffer);
+    clear_screen_buffer((uint32_t *)screen_other);
+}
+
+/* orig $01CFCE: copy the other screen over the one that is drawn on */
+void copy_other_screen(void)
+{
+    copy_screen_buffer((const uint32_t *)screen_other, (uint32_t *)screen_buffer);
 }
 
 /* orig $01D302: show the screen that was drawn and draw on the other: the per-screen state, the two screens and so which
@@ -53,7 +71,7 @@ void screens_flip(void)
     screen_other = swap;
     list = screen_other == screen_1 ? copper_list_a : copper_list_b;
     set_scroll(list, (uint8_t)x_offset);
-    custom->cop1lc = (uint32_t)(uintptr_t)list;
+    display_show(list);
     vbl_saturating = 0;
     wait_vblank();
 }
@@ -215,4 +233,55 @@ void fade_out(uint16_t delay, uint16_t arg)
     copper_move_b = 0x00865246;
     copper_colors_restore();
     palette_lit = 0;
+}
+
+/* ---- what the display needs of the chips ---- */
+
+/* orig $004D3E: the fine scroll of a copper list for the pixel offset `x` (only the low byte counts): the scroll nibbles
+ * for the two fields of BPLCON1, where the display fetch starts, and the modulos of the bitplane pointers.  x of 16 or more
+ * uses the next word. */
+void set_scroll(uint8_t *copper_list, uint8_t x)
+{
+    uint8_t fetch = 0x38;
+    uint8_t words = 4;
+    uint8_t extra = (x & 0x10) ? 2 : 0;
+    uint8_t scroll = x & 15;
+
+    if (scroll != 0) {
+        uint8_t delay = 16 - scroll;
+
+        scroll = delay | (uint8_t)(delay << 4);
+        fetch = 0x30;
+        words = 2;
+    }
+    copper_list[0x1b] = scroll;
+    copper_list[0x13] = fetch;
+    copper_list[0x23] = words;
+    copper_list[0x27] = words;
+    copper_list[0x2f] = extra;
+    copper_list[0x37] = extra;
+    copper_list[0x3f] = extra;
+    copper_list[0x47] = extra;
+}
+
+/* orig $01D05C: wait for the next vertical blank */
+__attribute__((noinline)) void wait_vblank(void)
+{
+    uint16_t seen = vbl_count;
+
+    while (vbl_count == seen)
+        ;
+}
+
+/* orig $01DFD8: wait until the blitter is done */
+void blitter_wait(void)
+{
+    while (custom->dmaconr & DMAF_BLTBUSY)
+        ;
+}
+
+/* tell the copper to run `list` (the copper list of the screen that is shown) */
+void display_show(const uint8_t *list)
+{
+    custom->cop1lc = (uint32_t)(uintptr_t)list;
 }

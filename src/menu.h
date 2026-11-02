@@ -23,16 +23,7 @@
 #include "file.h"
 #include "boot.h"
 #include "game.h"
-#include "game_a.h"
-#include "game_b.h"
-#include "game_c.h"
-#include "game_d.h"
-#include "game_e.h"
-#include "game_g.h"
-#include "game_f.h"
-#include "game_h.h"
 #include "ui.h"
-#include "screen.h"
 
 void clear_work_area(void);                                              /* orig $00F518 */
 uint32_t take_pending_request(void);                                     /* orig $01CF26 */

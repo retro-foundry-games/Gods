@@ -63,7 +63,7 @@ the sound as raw signed 16 bit stereo 44100 Hz.
 | `blitter.c` | the masked-image blit done directly (`blit_masked_image` of draw.c is replaced) and `blit_image`/`blit_image_wide` of the asm |
 | `blitter_regs.c` | the chip's blitter (minterms, shifts, masks, modulos, ascending and descending), run at the store to BLTSIZE (`blit_start`), for `game_b.c` and `game_d.c` |
 | `render.c` | the menu program's and the game's display: the copper lists' effect from the program's state (screen shown, scroll, colours, message line) |
-| `display_sdl.c` | `amiga/display.c` for the host |
+| `display.c` | `amiga/display.c` for the host: the same fades and flips, the chips' parts the host's |
 | `irq.c` | the vertical blank (from the main loop), the keyboard, `random_word`, `sr_set` |
 | `shims.c` | `message_draw` (reads text at address 0 on the Amiga), `game_loop`, `host_begin_quest` |
 | `sound.c` | the sound effects (see below) |

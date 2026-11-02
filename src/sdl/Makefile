@@ -31,8 +31,8 @@ HOST_CFLAGS := -m32 -std=gnu11 -O2 -g -Wall $(shell pkg-config --cflags sdl3)
 HOST_LIBS   := -m32 $(shell pkg-config --libs sdl3) -lpthread -lm
 
 # the program's modules (as native/Makefile's MENU_MODULES) and the C that replaces the Amiga parts
-MENU_MODULES := menu disk alloc decrunch input screen draw message ui file boot game game_a game_b game_c game_d game_e game_f game_g game_h menu_data
-GAME_OBJS := $(BUILD)/g_shims.o $(BUILD)/g_display_sdl.o $(MENU_MODULES:%=$(BUILD)/g_%.o) $(BUILD)/g_stubs.o
+MENU_MODULES := menu disk alloc decrunch input draw message ui file boot game menu_data
+GAME_OBJS := $(BUILD)/g_shims.o $(BUILD)/g_display.o $(MENU_MODULES:%=$(BUILD)/g_%.o) $(BUILD)/g_stubs.o
 HOST_OBJS := $(BUILD)/h_main.o $(BUILD)/h_guest.o $(BUILD)/h_files.o $(BUILD)/h_render.o $(BUILD)/h_blitter.o $(BUILD)/h_blitter_regs.o \
              $(BUILD)/h_irq.o $(BUILD)/h_sound.o
 
@@ -54,7 +54,7 @@ $(BUILD)/g_stubs.o: $(BUILD)/g_stubs.c
 	$(CC) $(GAME_CFLAGS) -w -MMD -MP -c $< -o $@
 $(BUILD)/g_shims.o: $(HERE)/shims.c | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
-$(BUILD)/g_display_sdl.o: $(HERE)/display_sdl.c | $(BUILD)
+$(BUILD)/g_display.o: $(HERE)/display.c | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/g_draw.o: $(SRC)/draw.c | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -fno-inline -MMD -MP -c $< -o $@   # (blit_masked_image is replaced by blitter.c: no copy of it inside)
