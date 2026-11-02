@@ -127,20 +127,12 @@ in the C disk is the start-up before the menu (frames below ~5400: the start stu
 file layer it uses, the protection stub amboot3 at $35DAC, the loader), the patched jump at $2C20, and Continue and the password route.
 (The host's coverage cannot be started at a later frame reliably: instructions reached before it are reported again; count addresses instead.)
 
-## End-to-end comparison C disk against the original disk (open)
+## End-to-end comparison C disk against the original disk
 
-The original disk is deterministic: two runs whose level starts 59 frames apart (fire pulses shifted) show pixel-identical screens at the same
-frame after the first game-loop iteration (k = 400..3200).  The C disk (boot, Begin Quest in C, game_frame) with the same joystick script
-is identical at k=20 and differs from k=60 on: at k=150..300 (no input yet) 344 pixels, all in the small animated pick-up item at the top
-left of the first screen (another animation frame), and enemy positions differ later (k=330 on: thousands of pixels).  The routines are
-exact per call on the replay (oracle), so the difference is in what the oracle does not compare: the state at the level's start made by
-the C `begin_quest` (checked only by the whole-RAM A/B of the C disk against itself), or the order inside `game_frame`.  Find it with
-the RAM of both disks at the same loop iteration (the host's stopat/ram= did not give a reliable dump of the original at an iteration;
-use hooks or the oracle's snapshots).  Script: the alignment is by the first hit of $2C20 (original) and of game_frame (C), from
-`trace=ADDR`.
-
-Narrowed down (track=ADDR trackdump=N trackfile=PATH in host/gods.lua: the bytes $0-$FFF at the Nth iteration of the loop): at iteration 60 the
-variables of $100-$FFF of the original disk and of the C disk are identical except `message_x` (the scroll phase of the message), a pointer at
-$CE5 and `restart_address` (a pointer).  So the difference in the pick-up's animation frame and in the enemies is in the memory above $1000
-(the record tables) or in the way the screens are drawn; reading 256 KB per iteration in the emulator's Lua is too slow (tracklen=40000
-gave no output): compare the record tables ($1036-$1400, $1294.., $3A0A6.. and so on) in blocks.
+Compared by loop iteration, not by frame: the C `game_frame` loop is a little slower than the original's while the level starts (about 3.3
+frames an iteration against 3.0), so frame-timed input and screenshots drift apart without any difference in behaviour.  With
+`iterhook=ADDR iterjoy=N:DIRS,... itershot=N,...` (host/gods.lua: the joystick and the screenshots at the Nth time the loop's top is reached;
+ADDR is $2C20 for the original disk and `_game_frame` + $C0000 for the C disk) both disks get the same input at the same iteration:
+screenshots at iterations 90, 400, 500, 650, 800, 900, 1000 and 1100 (walking, jumping, ladder, shooting, scrolling; score and enemies) are
+pixel-identical.  The ones at iterations 200 and 330 differ only in the message line at the bottom (rows 227 to 234: its scroll is timed by
+frames, not by iterations).  The original disk is deterministic (two runs whose level starts 59 frames apart are identical).

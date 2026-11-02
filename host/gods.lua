@@ -214,7 +214,7 @@ if track_at then
     ami.hook(track_at, function()
         n = n + 1
         if n < from or n > to then return end
-        local len = tonumber(args:match("tracklen=(%x+)") or "1000", 16)   -- tracklen=HEX: the bytes from 0 to look at (default $1000)
+        local len = 0x1000   -- (the sums are of $0-$FFF)   -- tracklen=HEX: the bytes from 0 to look at (default $1000)
         local ram = ami.read(0, len)
         local t = {}
         for b = 0, len // 512 - 1 do
@@ -224,8 +224,25 @@ if track_at then
         end
         ami.log(("track %d frame %d %s"):format(n, ami.frame() - base, table.concat(t, " ")))
         if n == tonumber(args:match("trackdump=(%d+)") or "") then
-            ami.save_file(args:match("trackfile=(%S+)"), ami.read(0, 0x1000))   -- trackdump=N trackfile=PATH: the bytes $0-$FFF at that time
+            ami.save_file(args:match("trackfile=(%S+)"), ami.read(tonumber(args:match("trackdumpfrom=(%x+)") or "0", 16), tonumber(args:match("trackdumplen=(%x+)") or "1000", 16)))   -- trackdump=N trackfile=PATH: the bytes $0-$FFF at that time
         end
+    end)
+end
+-- iterhook=ADDR (hex) with iterjoy=N:DIRS,... and itershot=N,...: the joystick (as joy=) is set and a screenshot (to shots=) taken at the Nth time the program reaches
+-- ADDR (the game loop's top): the input per iteration of the loop, the same for the original and for the C game whose iterations take another number of frames
+local iter_at = tonumber(args:match("iterhook=(%x+)") or "", 16)
+if iter_at then
+    local ijoy, ishot, n = {}, {}, 0
+    for k, dirs in (args:match("iterjoy=(%S+)") or ""):gmatch("(%d+):([%a+]+)") do
+        local st = {}
+        for d in dirs:gmatch("%a+") do if d ~= "none" then st[d] = true end end
+        ijoy[tonumber(k)] = st
+    end
+    for k in (args:match("itershot=([%d,]+)") or ""):gmatch("%d+") do ishot[tonumber(k)] = true end
+    ami.hook(iter_at, function()
+        n = n + 1
+        if ijoy[n] then ami.joystick(ijoy[n]) end
+        if ishot[n] then ami.screenshot(shots_dir .. "/iter-" .. n .. ".ppm") end
     end)
 end
 -- stopat=ADDR (hex) [ram=PATH]: at the first time the program reaches ADDR write the chip RAM (512 KiB) to ram= and quit
