@@ -19,6 +19,8 @@
 --   dump=PATH     the port's image and the original's at the first frame that differs are written to PATH.native.ppm and PATH.emulated.ppm
 local args = ami.args or ""
 local tick_synced = false
+local hashlog = args:match("hashlog=(%d+)-(%d+)") and { tonumber(args:match("hashlog=(%d+)")), tonumber(args:match("hashlog=%d+-(%d+)")) } or nil
+local meanlog = args:match("meanlog=(%d+)-(%d+)") and { tonumber(args:match("meanlog=(%d+)")), tonumber(args:match("meanlog=%d+-(%d+)")) } or nil
 local STATE = args:match("state=(%S+)") or "gods-level1-1m.state"
 local EXTRA = tonumber(args:match("extra=(%d+)")) or 2   -- (found by trying: with 3, the comparison starting at frame 5, the idle level is pixel for pixel the same)
 
@@ -272,6 +274,14 @@ lockstep.run {
             ami.log(("tick_count: the original's %d, the port's %d: %d added to the port's"):format(orig, port, orig - port))
         end
         if args:find("%f[%w]keylog%f[%W]") then ami.log(("frame %d: px %d table %02x"):format(ami.frame(), ami.read(0x1e0, 2):byte(1) * 256 + ami.read(0x1e0, 2):byte(2), ami.read(0x1e63a + 0x4e, 1):byte())) end
+        if hashlog then
+            local function hash(img) local h = 5381 for i = 1, #img, 7 do h = (h * 33 + img:byte(i)) % 4294967296 end return h end
+            if ami.frame() >= hashlog[1] and ami.frame() <= hashlog[2] then ami.log(("hash frame %d: original %x port %x"):format(ami.frame(), hash(emulated), hash(native))) end
+        end
+        if meanlog then
+            local function mean(img) local t = 0 for i = 1, #img, 61 do t = t + img:byte(i) end return t // (#img // 61) end
+            if ami.frame() >= meanlog[1] and ami.frame() <= meanlog[2] then ami.log(("mean frame %d: original %d port %d"):format(ami.frame(), mean(emulated), mean(native))) end
+        end
         if watching then watch_variables() end
         if track_at then track_long() end
         if color_n then track_color() end
