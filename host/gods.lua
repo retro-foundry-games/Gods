@@ -255,6 +255,10 @@ if iter_at then
         n = n + 1
         for _, k in ipairs(ikeys[n - 1] or {}) do ami.write(0x1e63a + k[1], k[2] and "\xff" or "\x00") end
         if ITERVARS_PATH then ITERVARS[#ITERVARS + 1] = ami.read(0x100, 0xf00) end
+        -- iterregion=N:ADDR:LEN:PATH (hex ADDR and LEN): at the top of the Nth iteration that part of the memory is written to PATH
+        for region_n, region_addr, region_len, region_path in (args:match("iterregion=(%S+)") or ""):gmatch("(%d+):(%x+):(%x+):([^,]+)") do
+            if tonumber(region_n) == n then ami.save_file(region_path, ami.read(tonumber(region_addr, 16), tonumber(region_len, 16))) end
+        end
         if ijoy[n] then ami.joystick(ijoy[n]) end
         if ishot[n] then ami.screenshot(shots_dir .. "/iter-" .. n .. ".ppm") end
     end)
