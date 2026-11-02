@@ -136,7 +136,7 @@ def interrupt() -> list[str]:
     it changed, count the frames and run the frame tick."""
     out = ["", "; ---- the vertical blank interrupt (orig $01CFF8-$01D056): the vector of level 3.  It calls input_poll and frame_tick (C).",
            "        xref _input_poll, _frame_tick", "        xdef _vbl_irq", ""]
-    return out + [l.replace("jsr $16c30(pc)", "jsr _frame_tick") for l in A.emit(MEM, 0x1CFF8, 0x1D058)]
+    return out + [l.replace("jsr $16c30(pc)", "jsr _frame_tick").replace("jsr (_shot_deltas+$7c).l", "jsr _frame_tick") for l in A.emit(MEM, 0x1CFF8, 0x1D058)]
 
 
 STUBS = [   # the original's routines that are C now, called from the file layer with their registers: (address, C name, arguments)
@@ -165,7 +165,8 @@ def file_layer() -> list[str]:
             out.append(f"        move.l {r},-(sp)")
         out += [f"        jsr _{name}", f"        lea {4 * len(regs)}(sp),sp" if regs else "", "        movem.l (sp)+,d0-d7/a0-a6", "        rts", ""]
     out = [ln for ln in out if ln != "" or True]
-    out += A.emit(MEM, FILE_LAYER[0], FILE_LAYER[1])
+    # the code at $1D608 pushes the address $1D61C (the rest of the routine) to return to: that is a label of this code, not the original's
+    out += [l.replace("move.l #$1d61c,-(a7)", "move.l #L1d61c,-(a7)") for l in A.emit(MEM, FILE_LAYER[0], FILE_LAYER[1], {0x1D61C})]
     out += ["drive_bits:", "        dc.w " + ",".join(f"${int.from_bytes(MEM[a:a + 2], 'big'):04x}" for a in range(0x1E254, 0x1E260, 2)), ""]
     return out
 

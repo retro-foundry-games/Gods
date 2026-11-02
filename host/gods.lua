@@ -103,8 +103,15 @@ local cover_path = args:match("cover=(%S+)")
 -- the executed set is re-armed every REARM frames so that code overlaid at the same address is seen again.
 local covered, cover_order = {}, {}
 local REARM = 1000
+local cover_from = tonumber(args:match("coverfrom=(%d+)") or "")   -- coverfrom=FRAME: the coverage starts at that frame (e.g. while the level is played)
+local cover_early = {}   -- the instructions reached before it: hooked again when it starts
 local function on_cover()
     local pc = ami.reg("pc")
+    if cover_from and ami.frame() - base < cover_from then
+        cover_early[#cover_early + 1] = pc
+        ami.unhook(pc)
+        return
+    end
     local bytes = ami.read(pc, 10)
     local seen = covered[pc]
     if not seen then
@@ -120,6 +127,10 @@ local function on_cover()
 end
 if cover_path then
     for a = 0, 0x7fffe, 2 do ami.hook(a, on_cover) end
+end
+local function cover_start()
+    for _, pc in ipairs(cover_early) do ami.hook(pc, on_cover) end
+    cover_early = {}
 end
 
 local function write_cover()
@@ -251,6 +262,7 @@ end
 if peer or cover_path then run_frames() end
 local events = {}
 for _, f in ipairs(frames_of("snap")) do events[#events + 1] = { f, "snap" } end
+if cover_path and cover_from then events[#events + 1] = { cover_from, "coverstart" } end
 if shots_dir then
     local list = frames_of("frames")
     if #list == 0 then list = { 300, 600, 1200, 2400 } end
@@ -296,6 +308,8 @@ for _, e in ipairs(events) do
         ami.mouse_button(0, e[3])
     elseif e[2] == "release" then
         ami.key(e[3], false)
+    elseif e[2] == "coverstart" then
+        cover_start()
     elseif e[2] == "snap" then
         local name = snap_name and (snap_name .. ".state") or ("gods-" .. e[1] .. ".state")
         ami.log("snapshot", name, ami.snapshot_save(name))

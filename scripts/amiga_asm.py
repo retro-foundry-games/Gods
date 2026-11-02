@@ -107,7 +107,8 @@ def text(i: Ins, targets: dict[int, str], final: bool) -> str:
         return f"{mn} {targets.get(jt) or LABELS.get(jt, f'L{jt:x}')}"
     m = re.search(r"\$([0-9a-f]+)\.l", op)
     if m and final:
-        sym = data_symbol(int(m.group(1), 16)) or ENTRIES.get(int(m.group(1), 16))
+        address = int(m.group(1), 16)
+        sym = (ENTRIES.get(address) if mn.split(".")[0] in ("jsr", "jmp") else None) or data_symbol(address) or ENTRIES.get(address)
         if sym:
             op = op.replace(m.group(0), f"({sym}).l")
     m = re.search(r"#\$([0-9a-f]+)", op)
@@ -119,6 +120,8 @@ def text(i: Ins, targets: dict[int, str], final: bool) -> str:
     if m and final and int(m.group(1), 16) in PC_LABELS:   # pc-relative to data in the code: keep it, by label
         op = op.replace(m.group(0), f"{PC_LABELS[int(m.group(1), 16)]}(pc" + (f",{m.group(2)})" if m.group(2) else ")"))
     m = re.search(r"\$([0-9a-f]+)\.w\b", op)
+    if m and final and mn.split(".")[0] in ("jsr", "jmp") and int(m.group(1), 16) in ENTRIES:   # a call by absolute short address to a routine that is here (or C)
+        return f"{mn} ({ENTRIES[int(m.group(1), 16)]}).l"
     if m and final:   # absolute short: a symbol is an equate (the variable is in another hunk)
         sym = short_symbol(int(m.group(1), 16))
         if not sym.startswith("$"):
