@@ -17,6 +17,7 @@
 --   from=N        the first difference that stops the run is at emulator frame N or later (a level above 1: 12)
 --   level=N       the original starts from gods-levelN-1m.state and the port begins level N (the game's levels have worlds: WORLD ONE COMPLETED is in the middle of level 1) (iter=N: the iteration of the game loop the saved state is at; world 2: 124)
 --   break=ADDR    pause at the end of the frame in which the original reaches the address (hex, several with commas; with --control PATH the sockets can then look at both sides)
+--   ram=PATH      (with state=ABSOLUTE.state) the port begins from that chip RAM of the original (gods_ramdump.lua; gods-sdl --quickload) instead of Begin Quest; the original starts from the state
 --   afterend      with break=: only once a level end record was used (ptr_0bc6 past the first), so break=374a stops at the teleport after "WORLD ONE COMPLETED"
 --   nosync        the port models the original's CPU time itself (host_iteration_cpu); by default the port's flips that end an iteration wait for the original's own (flipsync: `flips N` to the port)
 --   flipoff=N / nolag  tuning of that sync (the port's flip k goes with the original's k+N; nolag: the count of the same step, not the step before)
@@ -39,7 +40,8 @@ ami.machine{
     opt = { puae_chipmem_size = 2, puae_joyport_order = "2143" },   -- 1 MB chip RAM as the saved states have it, the joystick in port 1
     peers = {
         native = { ami.script_dir .. "/../native/build/sdl/gods-sdl", "--disks", ami.script_dir .. "/../local", "--skip-intro", "--lockstep",
-                   "--lockstep-extra", tostring(EXTRA), "--lockstep-level", tostring(LEVEL), "--lockstep-iteration", args:match("iter=(%d+)") or tostring(({ [2] = 124 })[LEVEL] or 129), "--keys", "300:40:1,320:40:0" },
+                   "--lockstep-extra", tostring(EXTRA), "--lockstep-level", tostring(LEVEL), "--lockstep-iteration", args:match("iter=(%d+)") or tostring(args:find("ram=") and 1 or ({ [2] = 124 })[LEVEL] or 129), "--keys", "300:40:1,320:40:0",
+                   table.unpack(args:match("ram=(%S+)") and { "--quickload", args:match("ram=(%S+)") } or {}) },
     },
 }
 ami.boot()
