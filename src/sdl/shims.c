@@ -243,6 +243,28 @@ __attribute__((weak)) void original_after_password(void)
 }
 
 /* the original's CPU work (a loop that clears a screen, the drawing of a frame) takes frames of the video; the host does it at once and waits for them */
+/* the lockstep with the original (`flipsync OFFSET`): the port's flips wait for the original's (the driver gives the count of the times the original reached its flip, $1D302), so
+ * the CPU time of an iteration is not modelled (host_iteration_cpu does nothing); the other waits stay, as the least time the original takes */
+volatile int host_flip_sync;
+volatile unsigned host_flips_orig;   /* the original's flips since the sync began */
+volatile int host_flips_offset;
+static unsigned flips_done;
+static int flip_bound;   /* the next flip ends an iteration (host_iteration_cpu): it waits for the original's */
+
+void host_flip_wait(void)
+{
+    extern void wait_vblank(void);
+
+    if (!host_flip_sync)
+        return;
+    if (flip_bound) {
+        while ((int)(flips_done + 1) - host_flips_offset > (int)host_flips_orig)
+            wait_vblank();
+        flip_bound = 0;
+    }
+    flips_done++;
+}
+
 void host_cpu_frames(unsigned frames)
 {
     extern void wait_vblank(void);
@@ -271,6 +293,11 @@ void host_iteration_cpu(unsigned frames)
 {
     extern void wait_vblank(void);
 
+    if (host_flip_sync) {
+        iteration_cpu_next = 0;
+        flip_bound = 1;
+        return;
+    }
     if (iteration_cpu_next) {
         frames = iteration_cpu_next;
         iteration_cpu_next = 0;

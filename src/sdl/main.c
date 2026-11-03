@@ -275,6 +275,15 @@ static int lockstep_commands(const uint32_t *pixels, int phase)
             fflush(stdout);
         } else if (sscanf(line, "tick %d", &a) == 1) {   /* `tick DELTA`: tick_count goes up by DELTA (the original's count includes the frames of its disk loading, which the port does not wait for; the lockstep driver gives the port the original's count) */
             *(volatile uint32_t *)guest_ptr(0xce2) += (uint32_t)a;   /* tick_count */
+        } else if (sscanf(line, "flipsync %d", &a) == 1) {   /* `flipsync OFFSET`: the port's flips wait for the original's (host_flip_wait) */
+            extern volatile int host_flip_sync, host_flips_offset;
+
+            host_flips_offset = a;
+            host_flip_sync = 1;
+        } else if (sscanf(line, "flips %d", &a) == 1) {   /* `flips N`: the original has flipped N times since the sync began */
+            extern volatile unsigned host_flips_orig;
+
+            host_flips_orig = (unsigned)a;
         } else if (!strncmp(line, "image", 5))
             lockstep_reply(pixels, phase);
         else if (!strncmp(line, "step", 4))

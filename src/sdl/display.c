@@ -67,6 +67,9 @@ void screens_flip(void)
     struct Rec6 state = buffer_state[0];
     uint8_t *list;
     uint8_t *swap;
+    extern void host_flip_wait(void);
+
+    host_flip_wait();
 
     buffer_state[0] = buffer_state[1];
     buffer_state[1] = state;
