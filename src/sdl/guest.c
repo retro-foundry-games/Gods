@@ -178,6 +178,8 @@ static void swap_entry_list(void)
     }
 }
 
+extern void level_tables_quickload(void);
+
 static int load_ram_image(const char *path, int slots)
 {
     FILE *f = fopen(path, "rb");
@@ -210,8 +212,10 @@ static int load_ram_image(const char *path, int slots)
     swap16_range((uint32_t)(uintptr_t)memory_base, 0x8500);      /* the background */
     swap16_range(0x4d8a, 0xa8);   /* the two copper lists (as guest_load_image does: the program changes their words, the display reads them as words) */
     swap16_range(0x4e3c, 0x530a - 0x4e3c);   /* (the first word, copper_colors, has its fixup) the colour bands of the level's copper list (copper_list_make) and the list at $5246 that the two lists go on at, up to its end ($FFFFFFFE) */
-    if (slots)
+    if (slots) {
         swap_entry_list();
+        level_tables_quickload();   /* game.c: the level's tables whose words the program makes native when it loads the level */
+    }
     return 0;
 }
 

@@ -8851,6 +8851,47 @@ static void level_tables_from_disk(void)
         file_words(&((struct UnitScript *)ptr_0cb2)[i].spacing, 1);
 }
 
+/* the quickload (the SDL port, guest.c): the memory of the original is in the machine's byte order and the words of the tables the program makes native when it loads a level are
+ * swapped here, once: the tables level_tables_from_disk handles (but the ones that are variables with a type, which guest.c's fixups swap), the two tables of the hints' texts,
+ * and the creatures of each group (their records are what struct CreatureType points to) */
+void level_tables_quickload(void)
+{
+    for (int i = 0; i < 253; i++)
+        file_words(&ptr_0cbe[i], 2);
+    for (int i = 0; i < 100; i++) {
+        struct CreatureEntry *entry = &ptr_0d0e[i];
+
+        file_words(&entry->start_x, 2);
+        file_words(&entry->delay_step, 1);
+        file_words(&entry->template_index, 1);
+    }
+    for (int i = 0; i < 25; i++) {
+        struct PathDescription *description = &path_descriptions[i];
+
+        file_words(&description->x, 2);
+        file_words(description->waypoint, 8);
+    }
+    file_words(flags_1c056, 3 * 64);
+    for (int i = 0; i < 100; i++)
+        file_words(&((struct UnitScript *)ptr_0cb2)[i].spacing, 1);
+    file_words(ptr_0cba, 40);
+    file_words(ptr_0cf2, 80);
+
+    struct CreatureType *type = (struct CreatureType *)table_199ac;
+
+    for (int i = 0; i < 10; i++, type++) {   /* (table_199ac is declared as bytes: the fields of each record are swapped here) */
+        file_longs(&type->creatures, 1);
+        file_words(&type->count, 4);
+        file_words(&type->delay_step, 1);
+        file_words(&type->draw_kind, 1);
+        file_longs(&type->move_routine, 1);
+        file_words(&type->box_width, 2);
+        file_longs(&type->step_routine, 1);
+        if (type->creatures && type->number)
+            file_words(type->creatures, 7 * type->number);
+    }
+}
+
 /* orig $00323C: when the small font asked for it (menu_state_25a) it is loaded again: the asset set of the level's sprites */
 static void reload_sprites(void)
 {

@@ -28,6 +28,7 @@ STRUCTS = {
     "Image": (8, [(0, 2), (2, 2), (4, 4)]),
     "Shot": (8, [(0, 2), (2, 2), (4, 2), (6, 2)]),
     "Voice": (148, []),
+    "Unit": (24, [(0, 2), (4, 2), (10, 4), (14, 2), (16, 2), (18, 4)]),
 }
 fixups: set[tuple[int, int, int]] = set()   # address, width, count
 for line in (src / "menu.symbols").read_text().splitlines():
