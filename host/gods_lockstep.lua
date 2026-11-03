@@ -17,6 +17,7 @@
 --   from=N        the first difference that stops the run is at emulator frame N or later (a level above 1: 12)
 --   level=N       the original starts from gods-levelN-1m.state and the port begins level N (the game's levels have worlds: WORLD ONE COMPLETED is in the middle of level 1) (iter=N: the iteration of the game loop the saved state is at; world 2: 124)
 --   break=ADDR    pause at the end of the frame in which the original reaches the address (hex, several with commas; with --control PATH the sockets can then look at both sides)
+--   afterend      with break=: only once a level end record was used (ptr_0bc6 past the first), so break=374a stops at the teleport after "WORLD ONE COMPLETED"
 --   nosync        the port models the original's CPU time itself (host_iteration_cpu); by default the port's flips that end an iteration wait for the original's own (flipsync: `flips N` to the port)
 --   flipoff=N / nolag  tuning of that sync (the port's flip k goes with the original's k+N; nolag: the count of the same step, not the step before)
 --   watch         (with continue=all) the first frame at which each of a few game variables differs between the two sides is logged (read from the port with `mem`)
@@ -57,7 +58,7 @@ local break_hit = nil
 for hex in (args:match("break=([%x,]+)") or ""):gmatch("%x+") do
     local at = tonumber(hex, 16)
     ami.hook(at, function()
-        if not break_hit then
+        if not break_hit and (not args:find("afterend") or ami.peek32(0xbc6) > 0x143d8) then   -- afterend: only once a level end record has been used (ptr_0bc6 past the first), e.g. the teleport that follows world one
             break_hit = at
             ami.log(("break at %x, frame %d: player %d,%d"):format(at, ami.frame(), ami.peek16(0x1e0), ami.peek16(0x1e2)))
         end
