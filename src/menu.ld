@@ -546,6 +546,7 @@ _ptr_0de0 = 0xde0;
 _ptr_26de = 0x26de;
 _text_pool = 0xcf6;
 _word_a4e = 0xa4e;
+_word_a50 = 0xa50;
 _word_a68 = 0xa68;
 _word_a9a = 0xa9a;
 _word_3a1fa = 0x3a1fa;

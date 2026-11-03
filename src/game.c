@@ -2885,6 +2885,33 @@ static void kind_close_tiles(const struct ScriptRecord *a1)
     play_sound(0x2B, 5);
 }
 
+/* orig $0195DA: the entry of table_19456 (twenty of three words: x, y, a state) whose place is (x, y), or 0 */
+static uint16_t *find_entry_19456(int16_t x, int16_t y)
+{
+    for (int i = 0; i < 20; i++)
+        if ((int16_t)table_19456[i * 3] == x && (int16_t)table_19456[i * 3 + 1] == y)
+            return &table_19456[i * 3];
+    return 0;
+}
+
+/* orig $019618 (kind 7: state 1, the tile of param_b's third byte, the second map 0, sound 7) and $019658 (kind 8: state 0, param_b's low byte, the second map 1, sound 43): the
+ * entry of table_19456 at the record a1's place (x, y) gets its state, and the cell of the map there (x / 32 across, y / 16 down) its tile and the cell of the second map its
+ * byte; the sound has priority 5.  Nothing is done when no entry is there */
+static void kind_set_entry(const struct ScriptRecord *a1, int on)
+{
+    uint16_t *entry = find_entry_19456(a1->x, a1->y);
+
+    if (entry == 0)
+        return;
+    entry[2] = on ? 1 : 0;
+
+    uint8_t *cell = ptr_0b86 + (int16_t)(a1->x >> 5) + (int16_t)(a1->y << 3);
+
+    cell[0] = on ? (uint8_t)(param_b >> 16) : (uint8_t)param_b;   /* ($251 and $253: bytes of the long at $250) */
+    cell[0x2000] = on ? 0 : 1;
+    play_sound(on ? 7 : 0x2B, 5);
+}
+
 /* orig $018C30 (kind 6): every record of records_19b14 within 12 of the record a1's position (words +12, +14) whose number's
  * table_14cf8 entry has the word +4 at 4 is taken out (word +4 -1, +6 0) and makes a mark in records_316 (state 0, x less 8, y
  * (8 less for the number 96)), at most two, each with the sound 4 (priority 15); the marks go to the first free entry and on
@@ -3006,8 +3033,10 @@ void finish_record_1895a(struct EntryRef *a0)
         tick_count = 0;
         break;
     case 7:
+        kind_set_entry(a1, 1);
+        break;
     case 8:
-        host_missing_routine(effect == 7 ? 0x19618 : 0x19658);   /* did not run */
+        kind_set_entry(a1, 0);
         break;
     default:
         break;
@@ -3115,11 +3144,58 @@ int16_t tile_one_at_player(void)
     return 0;
 }
 
-/* orig $015CC4: goes on at $15CCC when flag_a4c is negative (that did not run) */
+/* orig $015CC4: while a burst of particles goes on (flag_a4c negative): the counters word_a52 (by 2), word_a54, word_a4e (0 to 2: the picture) and word_a50 (0 to 7) count on; each of
+ * the 80 records of records_86c in use (x, y, and a word of two signed bytes: the speed across and down) is moved by its speeds (the speed down goes up by one when word_a50 is 0), drawn as
+ * the glyph 77 + word_a4e with its cells marked (mark_shot_cells with the byte $FC) when it is in the screen (8 outside it to the left, above, and 319 to the right, 191 down) and is
+ * freed when it is not; while word_a54 is not negative a random number at most twice (190 - word_a52) starts a new burst of particles at the particle (word_a54 -10).  When none was in
+ * use flag_a4c is 0 */
 void fn_15cc4_c(void)
 {
-    if (flag_a4c < 0)
-        return;   /* goes on at $15CCC */
+    static const int16_t shot_mark = (int16_t)0xFCFC;   /* ($15CB8: the byte $FC is the one it marks with) */
+
+    if (flag_a4c >= 0)
+        return;
+    word_a52 += 2;
+    word_a54++;
+    word_a4e++;
+    if (word_a4e >= 3)
+        word_a4e = 0;
+    word_a50 = (int16_t)((word_a50 + 1) & 7);
+
+    int16_t *record = records_86c;
+    int16_t live = 0;
+
+    for (int n = 0; n < 80; n++, record += 3) {
+        if (record[0] < 0)
+            continue;
+        live++;
+
+        int16_t x = (int16_t)(record[0] + (int8_t)(record[2] >> 8));
+        int16_t y = (int16_t)(record[1] + (int8_t)(record[2] & 0xFF));
+
+        record[0] = x;
+        record[1] = y;
+        if (word_a50 == 0)
+            record[2] = (int16_t)((record[2] & 0xFF00) | ((record[2] + 1) & 0xFF));
+
+        int16_t sx = (int16_t)(x - scroll_x);
+        int16_t sy = (int16_t)(y - scroll_y);
+
+        if (sx > 0x13F || sx < -8 || sy < -8 || sy > 0xBF) {
+            record[0] = -1;
+            continue;
+        }
+        mark_shot_cells(sx, sy, &shot_mark);
+        glyph_draw(sx, sy, (uint16_t)(0x4D + word_a4e));
+        if (word_a54 < 0)
+            continue;
+        if (random_word() > (uint16_t)((0xBE - word_a52) << 1))
+            continue;
+        word_a54 = -10;
+        spawn_particles_15c54(record[0], record[1]);
+    }
+    if (live == 0)
+        flag_a4c = 0;
 }
 
 /* orig $016AEE: goes on at $16AF6 when flag_aa8 is 1 (that did not run); $16AEC is a bare return */

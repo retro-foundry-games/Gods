@@ -484,6 +484,7 @@ extern const int16_t *ptr_0de0;   /* $00DE0  the clip rectangles (x0, x1, y0, y1
 extern uint8_t *ptr_26de;   /* $026DE  a place in the original's code that the start of a level stores a pointer to the sprites' name in */
 extern uint8_t *text_pool;   /* $00CF6  where the pool of texts ends (the texts of the level are put there) */
 extern int16_t word_a4e;   /* $00A4E */
+extern int16_t word_a50;   /* $00A50 */
 extern int16_t word_a68;   /* $00A68 */
 extern int16_t word_a9a;   /* $00A9A */
 extern uint16_t word_3a1fa;   /* $3A1FA */

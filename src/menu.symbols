@@ -539,6 +539,7 @@ ptr_0de0          0x00000de0  const int16_t *%s   the clip rectangles (x0, x1, y
 ptr_26de          0x000026de  uint8_t *%s     a place in the original's code that the start of a level stores a pointer to the sprites' name in
 text_pool         0x00000cf6  uint8_t *%s     where the pool of texts ends (the texts of the level are put there)
 word_a4e          0x00000a4e  int16_t %s
+word_a50          0x00000a50  int16_t %s
 word_a68          0x00000a68  int16_t %s
 word_a9a          0x00000a9a  int16_t %s
 word_3a1fa        0x0003a1fa  uint16_t %s
