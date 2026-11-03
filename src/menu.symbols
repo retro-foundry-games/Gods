@@ -308,7 +308,7 @@ word_185bc        0x000185bc int16_t %s
 ptr_0b82          0x00000b82 uint8_t *%s
 ptr_0c70          0x00000c70 uint8_t *%s    the graphics of the background tiles (256 bytes for each)
 word_4a2          0x000004a2 uint16_t %s
-sound_table_20bce 0x00020bce uint8_t %s[]   records of 6 bytes for each sound (the second byte names its voice entry)
+sound_last_variant 0x0001faca uint8_t %s   the last choice of the sounds that vary (variant 6): it is not chosen twice in a row
 voice_ids_207a6   0x000207a6 uint8_t %s[4]   the sound each of the four voices plays
 word_17e9c        0x00017e9c uint16_t %s   the first word of the routine at $17E9C (a nop; the routine makes it an rts, $4E75)
 word_3a0           0x000003a0 int16_t %s    the width word_39c had before check_hit_and_walls cut it
@@ -509,6 +509,10 @@ table table_5b9e   0x00005b9e uint32_t 4   for each level the first high score
 table table_5bb2   0x00005bb2 uint32_t 4   ... and the second
 table table_1c678  0x0001c678 uint32_t 8   for each level two pointers (ptr_0b7e, ptr_0b82)
 table sound1_name  0x0001d3d2 uint8_t 11   "sound1.bin"
+table sound_records 0x00020bce struct SoundRecord 67   the sounds: for each, its voices' tracks (the second byte names its voice entry)
+table sound_periods 0x0002080e uint16_t 144   the three tables of 48 periods of the notes (an instrument names one)
+table sound_tracks 0x00021c3a uint32_t 137   the address of the track (the commands of the sequencer) of each track number, 0 for none
+table sound_instruments 0x0003a38a struct SoundInstrument 53   the instruments: the sample, its loop, and the period table
 table objects_name 0x000196de uint8_t 8   "objects": the asset set of the objects
 block_16bb4       0x00016bb4  uint8_t %s[24]   twenty-four bytes of data the game changes (put back from block_16bcc)
 digit_font        0x000058f0  uint8_t %s[512]   sixteen digits of 8 rows of 4 bytes (a plane each); hud_digits_load makes the first ten from the picture of the digits

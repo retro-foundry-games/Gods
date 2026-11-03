@@ -291,7 +291,7 @@ extern int16_t word_185bc;   /* $185BC */
 extern uint8_t *ptr_0b82;   /* $00B82 */
 extern uint8_t *ptr_0c70;   /* $00C70  the graphics of the background tiles (256 bytes for each) */
 extern uint16_t word_4a2;   /* $004A2 */
-extern uint8_t sound_table_20bce[];   /* $20BCE  records of 6 bytes for each sound (the second byte names its voice entry) */
+extern uint8_t sound_last_variant;   /* $1FACA  the last choice of the sounds that vary (variant 6): it is not chosen twice in a row */
 extern uint8_t voice_ids_207a6[4];   /* $207A6  the sound each of the four voices plays */
 extern uint16_t word_17e9c;   /* $17E9C  the first word of the routine at $17E9C (a nop; the routine makes it an rts, $4E75) */
 extern int16_t word_3a0;   /* $003A0  the width word_39c had before check_hit_and_walls cut it */
@@ -605,6 +605,10 @@ extern const uint32_t table_5b9e[4];   /* $05B9E  for each level the first high 
 extern const uint32_t table_5bb2[4];   /* $05BB2  ... and the second */
 extern const uint32_t table_1c678[8];   /* $1C678  for each level two pointers (ptr_0b7e, ptr_0b82) */
 extern const uint8_t sound1_name[11];   /* $1D3D2  "sound1.bin" */
+extern const struct SoundRecord sound_records[67];   /* $20BCE  the sounds: for each, its voices' tracks (the second byte names its voice entry) */
+extern const uint16_t sound_periods[144];   /* $2080E  the three tables of 48 periods of the notes (an instrument names one) */
+extern const uint32_t sound_tracks[137];   /* $21C3A  the address of the track (the commands of the sequencer) of each track number, 0 for none */
+extern const struct SoundInstrument sound_instruments[53];   /* $3A38A  the instruments: the sample, its loop, and the period table */
 extern const uint8_t objects_name[8];   /* $196DE  "objects": the asset set of the objects */
 extern const uint8_t table_1c9e4[1024];   /* $1C9E4  two tables of 256 words (the first and the second word of each of 32 pairs, 32 bytes apart) make_pairs_fb9a reads */
 extern const uint16_t death_steps[14];   /* $00096  the seven pieces of the player's death: the steps (x, y) each starts with */

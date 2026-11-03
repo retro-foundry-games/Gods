@@ -6,39 +6,30 @@
  * records: a flag, where the loop starts, the length in words, the sample, the period table to use) at the period of the note (the
  * tables at $2080E) in a software mixer: Paula's rate (3546895 / period), 8 bit samples, voices 0 and 3 left, 1 and 2 right.
  * Not done: the volume envelopes (a note plays at its full volume), the period and volume slides, the random variations of some sounds.
- * The data is the Amiga's (big endian): in the RAM of the original's level run (--level1-image); the menu program on its own has no instrument
- * records (the original's start-up writes them), so the menu is silent. */
+ * The data is the program's own, typed: the table of sounds (struct SoundRecord), the track addresses (sound_tracks), the instruments (struct SoundInstrument) and the period
+ * tables (sound_periods) are tables of menu.symbols, native words; the tracks themselves are the commands in the program's image, bytes.  The voices' flags are the variables
+ * sound_busy_207a0 and voice_ids_207a6. */
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "guest.h"
-uint16_t random_word(void);   /* orig $00633E */
+#include "menu.h"
 
 #define VOICES 4
 #define STACK 16
 
-static unsigned be16(uint32_t address)
-{
-    const uint8_t *p = guest_ptr(address);
-
-    return (unsigned)(p[0] << 8 | p[1]);
-}
-
-static uint32_t be32(uint32_t address)
-{
-    return (uint32_t)be16(address) << 16 | be16(address + 2);
-}
+/* an address of the program's memory as a pointer (the guest memory is mapped at the Amiga's addresses, the first 64 KiB apart: the tracks and samples are all above) */
+#define ADDRESS(a) ((const void *)(uintptr_t)(a))
 
 struct SoundVoice {
     int active;
     unsigned id, priority, number;   /* number: the track the sound started the voice with (the original keeps it at $207A6 for stop_sound) */
-    uint32_t pc, start;            /* the track */
-    uint32_t stack[STACK];
+    const uint8_t *pc, *start;     /* the track */
+    const uint8_t *stack[STACK];
     int sp;
-    struct { uint32_t pc; unsigned count; } loop[STACK];
+    struct { const uint8_t *pc; unsigned count; } loop[STACK];
     int loops;
     unsigned wait, duration, volume, max_volume;
     int transposition;
@@ -49,50 +40,50 @@ struct SoundVoice {
     int looping;
     unsigned period, play_volume;
     uint32_t position;             /* 16.16 */
-    unsigned period_table;
-    uint32_t instrument;
+    const uint16_t *period_table;
+    const struct SoundInstrument *instrument;
 };
 
 static struct SoundVoice voice[VOICES];
 static unsigned tempo = 1;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
-/* the track of a sound number: the pointer in the table at $21C3A */
-static uint32_t track_of(unsigned number)
+/* the track of a sound number: the address in sound_tracks ($21C3A) */
+static const uint8_t *track_of(unsigned number)
 {
-    return be32(0x21c3a + 4 * number);
+    return number < sizeof sound_tracks / sizeof sound_tracks[0] ? (const uint8_t *)ADDRESS(sound_tracks[number]) : 0;
 }
 
 static void note_on(struct SoundVoice *v, unsigned note)
 {
-    uint32_t table = v->period_table == 0 ? 0x2080e : v->period_table == 1 ? 0x2086e : 0x208ce;
-    unsigned index = (note * 4 + (unsigned)v->transposition) * 2;
+    unsigned index = note * 4 + (unsigned)v->transposition;
 
-    if (!v->instrument)
+    if (!v->instrument || !v->period_table)
         return;
-    v->period = be16(table + index);
+    v->period = v->period_table[index];
     v->play_volume = v->volume;
     v->position = 0;
 }
 
 static void set_instrument(struct SoundVoice *v, unsigned n)
 {
-    uint32_t record = 0x3a38a + n * 14;
-    uint32_t sample = be32(record + 6);
+    const struct SoundInstrument *record = n < sizeof sound_instruments / sizeof sound_instruments[0] ? &sound_instruments[n] : 0;
 
+    if (!record)
+        return;
     v->instrument = record;
-    v->looping = (int16_t)be16(record) < 0;
-    v->loop_start = be16(record + 2);
-    v->length = be16(record + 4) * 2u;
-    v->sample = sample ? (const int8_t *)guest_ptr(sample) : 0;
-    v->period_table = be32(record + 10) & 0xff;   /* (the original looks at the low byte of the long only) */
+    v->looping = record->flags < 0;
+    v->loop_start = record->loop_start;
+    v->length = record->length * 2u;
+    v->sample = record->sample ? (const int8_t *)ADDRESS(record->sample) : 0;
+    v->period_table = record->period_table ? (const uint16_t *)ADDRESS(record->period_table) : 0;
 }
 
 /* read the commands of the track up to the next note or rest: the notes of the original's run_sequencer, without the slides and envelopes */
 static void run_track(struct SoundVoice *v)
 {
     for (int guard = 0; guard < 400; guard++) {
-        const uint8_t *p = guest_ptr(v->pc);
+        const uint8_t *p = v->pc;
         unsigned op = *p++;
 
         v->pc++;
@@ -139,6 +130,10 @@ static void run_track(struct SoundVoice *v)
             if (v->sp < STACK)
                 v->stack[v->sp++] = v->pc + 1;
             v->pc = track_of(*p);
+            if (!v->pc) {
+                v->active = 0;
+                return;
+            }
             break;
         case 0xb4:
             if (v->sp > 0)
@@ -181,6 +176,10 @@ static void run_track(struct SoundVoice *v)
             break;
         case 0xd4:
             v->pc = track_of(*p);
+            if (!v->pc) {
+                v->active = 0;
+                return;
+            }
             break;
         default:
             v->pc++;   /* a command this port does not know: its byte is skipped */
@@ -193,9 +192,8 @@ static void run_track(struct SoundVoice *v)
 /* the original keeps, for each voice, the priority of the sound it plays at $207A0 (a byte each; 0: free), which the game waits on (stop_game_sounds): kept the same here, under the lock */
 static void sync_busy(void)
 {
-    volatile uint8_t *busy = guest_ptr(0x207a0);
-
-    volatile uint8_t *ids = guest_ptr(0x207a6);
+    volatile uint8_t *busy = (volatile uint8_t *)&sound_busy_207a0;
+    volatile uint8_t *ids = voice_ids_207a6;
 
     for (int i = 0; i < VOICES && i < 4; i++) {
         busy[i] = voice[i].active ? (uint8_t)voice[i].priority : 0;
@@ -241,10 +239,10 @@ static unsigned scale_random(unsigned r, unsigned max)
  * record's byte 5 says how many (5: two, 6: more until the choice (0..5) is not the last one, 9: one and then the record of a variant
  * (0..2) is looked at in the same way, other values not zero: one).  The variation itself is not made (the tracks are not played with it) but the
  * index into the table must go on as the original's */
-static void take_variation_randoms(uint32_t record)
+static void take_variation_randoms(const struct SoundRecord *record)
 {
     for (;;) {
-        unsigned variant = guest_ptr(record)[5];
+        unsigned variant = record->variant;
         unsigned r;
 
         if (variant == 0)
@@ -255,16 +253,15 @@ static void take_variation_randoms(uint32_t record)
             return;
         }
         if (variant == 6) {
-            volatile uint8_t *last = guest_ptr(0x1faca);
             unsigned choice = scale_random(r, 5) & 0xff;
 
-            if (choice == *last)
+            if (choice == sound_last_variant)
                 continue;
-            *last = (uint8_t)choice;
+            sound_last_variant = (uint8_t)choice;
             return;
         }
         if (variant == 9) {
-            record += (scale_random(r, 2) + 1) * 6;
+            record += scale_random(r, 2) + 1;
             continue;
         }
         return;
@@ -274,13 +271,13 @@ static void take_variation_randoms(uint32_t record)
 /* orig $01FAF6: start the sound `id` with the priority `priority` */
 void play_sound(uint16_t id, uint16_t priority)
 {
-    uint32_t record = 0x20bce + id * 6u;
+    const struct SoundRecord *record = &sound_records[id];
     unsigned count, flags;
 
-    if (be32(0x21c3a + 4) == 0)
-        return;   /* no tracks: the sound data is not in memory */
+    if (id >= sizeof sound_records / sizeof sound_records[0] || sound_tracks[1] == 0)
+        return;   /* no such sound, or no tracks: the sound data is not in memory */
     pthread_mutex_lock(&lock);
-    flags = guest_ptr(record)[0];
+    flags = record->flags;
     count = (flags & 0x7f) + 1;
     if (flags & 0x80)   /* a sound that is not started again while it plays */
         for (int i = 0; i < VOICES; i++)
@@ -288,7 +285,7 @@ void play_sound(uint16_t id, uint16_t priority)
                 goto done;
     take_variation_randoms(record);
     for (unsigned k = 0; k < count && k < 4; k++) {
-        unsigned number = guest_ptr(record)[1 + k];
+        unsigned number = record->track[k];
         int chosen = -1;
 
         if (number == 0)

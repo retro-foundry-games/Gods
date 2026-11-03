@@ -46,9 +46,9 @@ $(shell mkdir -p $(BUILD); echo '$(GAME_CFLAGS) | $(HOST_CFLAGS)' | cmp -s - $(F
 
 # the program's modules (as native/Makefile's MENU_MODULES) and the C that replaces the Amiga parts
 MENU_MODULES := menu disk alloc decrunch input draw message file boot game menu_data
-GAME_OBJS := $(BUILD)/g_shims.o $(BUILD)/g_display.o $(MENU_MODULES:%=$(BUILD)/g_%.o) $(BUILD)/g_stubs.o
+GAME_OBJS := $(BUILD)/g_shims.o $(BUILD)/g_display.o $(BUILD)/g_sound.o $(MENU_MODULES:%=$(BUILD)/g_%.o) $(BUILD)/g_stubs.o
 HOST_OBJS := $(BUILD)/h_host.o $(BUILD)/h_guest.o $(BUILD)/h_files.o \
-             $(BUILD)/h_irq.o $(BUILD)/h_sound.o
+             $(BUILD)/h_irq.o
 
 .PHONY: all run clean
 all: $(BUILD)/gods-sdl $(BUILD)/gods-sdl-dev
@@ -69,6 +69,8 @@ $(BUILD)/g_stubs.o: $(BUILD)/g_stubs.c
 $(BUILD)/g_shims.o: $(HERE)/shims.c $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/g_display.o: $(HERE)/display.c $(FLAGS_STAMP) | $(BUILD)
+	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
+$(BUILD)/g_sound.o: $(HERE)/sound.c $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/g_draw.o: $(SRC)/draw.c $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -fno-inline -MMD -MP -c $< -o $@   # (blit_masked_image is replaced by display.c: no copy of it inside)

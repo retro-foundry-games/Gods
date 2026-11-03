@@ -39,6 +39,23 @@ struct Voice {
     uint16_t number;          /* +0x92 */
 };
 
+/* the sound system's data, in the program's image: a record of the table of sounds (6 bytes), and an instrument (14 bytes) */
+struct SoundRecord {
+    uint8_t flags;       /* bit 7: not started again while it plays; the low bits: the number of voices it uses, less one */
+    uint8_t track[4];    /* the track each voice plays (0: none, 22: the silent one: it stops the voice) */
+    uint8_t variant;     /* 5: two random numbers are taken; 6: more until the choice (0 to 5) is not the last; 9: one, and the record of a variant (0 to 2) follows; other: one */
+};
+_Static_assert(sizeof(struct SoundRecord) == 6, "sound record");
+
+struct SoundInstrument {
+    int16_t flags;            /* negative: the sample loops */
+    uint16_t loop_start;      /* where the loop starts (bytes of the sample) */
+    uint16_t length;          /* in words */
+    uint32_t sample;          /* the address of the 8 bit sample */
+    uint32_t period_table;    /* the address of one of the three tables of 48 periods (sound_periods) */
+};
+_Static_assert(sizeof(struct SoundInstrument) == 14, "sound instrument");
+
 /* a record of 8 bytes of the game's tables, a record of 12 bytes */
 struct Slot8 { int16_t w[4]; };
 struct Slot12 { int16_t w[6]; };

@@ -2445,11 +2445,11 @@ void take_record_to_18740(struct EntryRef *a0)
 }
 
 /* orig $01FA8C: the sound `id` is stopped when a voice plays it: the voice whose entry in voice_ids_207a6 equals the byte +1 of the
- * sound's record in sound_table_20bce.  When none does that is all; when one does its entry is cleared and $1FE3E runs
+ * sound's record in sound_records.  When none does that is all; when one does its entry is cleared and $1FE3E runs
  * (d0 = 22, d1 = the voice) */
 void stop_sound(uint16_t id)
 {
-    uint8_t wanted = sound_table_20bce[(uint16_t)(id * 6) + 1];
+    uint8_t wanted = sound_records[id].track[0];
 
     for (int i = 0; i < 4; i++)
         if (voice_ids_207a6[i] == wanted) {

@@ -64,6 +64,10 @@ SECTIONS {
         . = 0x1e5ae; *(.rodata.keymap) *(.data.keymap)
         . = 0x1e7f4; *(.rodata.font_8x8) *(.data.font_8x8)
         . = 0x1ecec; *(.rodata.asset_names) *(.data.asset_names)
+        . = 0x2080e; *(.rodata.sound_periods) *(.data.sound_periods)
+        . = 0x20bce; *(.rodata.sound_records) *(.data.sound_records)
+        . = 0x21c3a; *(.rodata.sound_tracks) *(.data.sound_tracks)
+        . = 0x3a38a; *(.rodata.sound_instruments) *(.data.sound_instruments)
     }
     .text 0xc0000 : { *(.text .text.*) *(.rodata .rodata.*) }
 }
@@ -353,7 +357,7 @@ _word_185bc = 0x185bc;
 _ptr_0b82 = 0xb82;
 _ptr_0c70 = 0xc70;
 _word_4a2 = 0x4a2;
-_sound_table_20bce = 0x20bce;
+_sound_last_variant = 0x1faca;
 _voice_ids_207a6 = 0x207a6;
 _word_17e9c = 0x17e9c;
 _word_3a0 = 0x3a0;
