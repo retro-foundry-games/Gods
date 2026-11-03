@@ -1,9 +1,13 @@
 /* Gods SDL port, the display: the screens, the colours and the copper list that shows them: the screen buffers, the shadow table of the colours, the fades and the
  * frame tick.  This is amiga/display.c for the host: the same logic (the colours are still in the copper lists, which render.c reads), the chips' parts are the host's: no copper scroll to set, a vertical blank wait that lets the other threads run, no blitter to wait for. */
-#include <stdio.h>
-#include "menu.h"
 #include <sched.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+
+#include "menu.h"
+#include "guest.h"
 
 /* orig $01CFAC: clear a screen buffer, 8448 longs */
 void clear_screen_buffer(uint32_t *buffer)
@@ -416,4 +420,332 @@ void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uin
     if (word_dde != 1 || (flags_0ddd & 4))
         return;   /* goes on at the routine of the table at $0D9A that word_dde and bit 2 of flags_0ddd name */
     blit_masked(source, screen_buffer + x, (int16_t)(modulo_ab >> 2), (uint16_t)(words + 1), modulo_cd, long_dd8, (uint16_t)(height + 1));
+}
+
+/* ================ the blits (was blitter.c) ================ */
+/* Gods SDL port: the blits.  The chip is not emulated: the program's routine that draws a masked image with the blitter
+ * (blit_masked_image of draw.c, orig $017208) is done here directly, and so are the two entries of the asm that call it
+ * (blit_image, blit_image_wide, orig $0171E4 and $0171F6).  The blit that follows BLTSIZE (sdl_blit_run, blitter_regs.c) is the chip's, for the routines of the
+ * game proper (game_b.c, game_d.c) that program the chip are not used by the menu.
+ *
+ * The picture: an image `words` words wide of four planes (`plane` bytes apart, a row `words * 2 + extra_modulo` bytes), its mask the planes
+ * ORed; both shifted `shift` pixels to the right (one word wider when extra_modulo is not negative), the first and the last word of a
+ * row cut by first_mask and last_mask; the screen's rows are 44 bytes and its planes blit_plane_stride apart.  The words are native. */
+
+
+extern uint16_t blit_extra_modulo;
+extern uint32_t blit_plane_stride;
+
+
+/* the mask word j of row r (words wide): the four planes ORed; the word after the last one is the first of the next row */
+static uint16_t mask_word(const uint8_t *src, unsigned plane, unsigned stride, unsigned words, unsigned rows, unsigned r, unsigned j)
+{
+    uint16_t mask = 0;
+
+    if (j >= words) {
+        j -= words;
+        r++;
+    }
+    if (r >= rows)
+        return 0;
+    for (unsigned i = 0; i < 4; i++)
+        mask |= *(const uint16_t *)(src + i * plane + r * stride + 2 * j);
+    return mask;
+}
+
+/* orig $017208 (draw.c): the arguments are the program's */
+volatile int gods_trace;   /* the lockstep's peer: GODS_TRACE=FIRST-LAST (ticks of the port): the draws near the top of the screen are written to stderr */
+extern uint8_t *screen_buffer;
+
+void blit_masked_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows, uint16_t words,
+                       uint16_t extra_modulo, uint16_t first_mask, uint16_t last_mask)
+{
+    int extra = (int16_t)extra_modulo < 0 ? 0 : (int16_t)extra_modulo;
+    unsigned stride = words * 2u + (unsigned)extra;
+    unsigned out_words = words + ((shift & 0xff) != 0 && (int16_t)extra_modulo >= 0 ? 1 : 0);
+    unsigned count = rows;
+    unsigned shift_bits = shift & 0xff;
+    int16_t plane_stride = (int16_t)blit_plane_stride;
+
+    if (gods_trace && (long)(dst - screen_buffer) < 44 * 6)
+        fprintf(stderr, "trace blit_masked_image row %ld col %ld words %u rows %u shift %u src %p first %04x last %04x\n", (long)(dst - screen_buffer) / 44, (long)(dst - screen_buffer) % 44, words, rows, shift, (const void *)src, first_mask, last_mask);
+    if (src == 0)
+        return;   /* an image the table has no data for: on the Amiga the vectors at address 0 are drawn */
+    blit_extra_modulo = extra_modulo;
+    if (shift_bits == 0)
+        last_mask = 0xffff;
+    for (unsigned i = 0; i < 4; i++) {
+        for (unsigned r = 0; r < count; r++) {
+            uint16_t *out = (uint16_t *)(dst + i * plane_stride + r * 44u);
+            uint32_t previous_a = 0, previous_b = 0;
+
+            for (unsigned j = 0; j < out_words; j++) {
+                uint16_t a = mask_word(src, plane, stride, words, count, r, j);
+                uint16_t b = *(const uint16_t *)(src + i * plane + r * stride + 2 * j);
+                uint16_t keep = 0xffff, a_shifted, b_shifted;
+
+                if (j == 0)
+                    keep &= first_mask;
+                if (j == out_words - 1)
+                    keep &= last_mask;
+                a &= keep;
+                a_shifted = (uint16_t)(((previous_a << 16 | a) >> shift_bits) & 0xffff);
+                b_shifted = (uint16_t)(((previous_b << 16 | b) >> shift_bits) & 0xffff);
+                previous_a = a;
+                previous_b = b;
+                out[j] = (uint16_t)((a_shifted & b_shifted) | (~a_shifted & out[j]));
+            }
+        }
+    }
+}
+
+/* orig $0171E4: draw an image one word wide */
+void blit_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows)
+{
+    blit_masked_image(dst, src, plane, shift, rows, 1, 0, 0xffff, 0);
+}
+
+/* orig $0171F6: ... and two words wide */
+void blit_image_wide(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows)
+{
+    blit_masked_image(dst, src, plane, shift, rows, 2, 0, 0xffff, 0);
+}
+
+
+/* ================ the picture (was render.c) ================ */
+/* Gods SDL port: the display.  The program's copper lists are not run: what they do is emulated from the state the program keeps.
+ *
+ *   - which screen is shown: COP1LC names copper_list_a (the first screen) or copper_list_b (the second); the screens are 44 bytes
+ *     a row, 192 rows, four bitplanes 8448 bytes apart;
+ *   - the fine scroll: set_scroll() (display.c of the program) makes the copper list show the screen from pixel x_offset & 31 on;
+ *   - the colours: the colour registers (the program writes them directly, the vertical blank copies the shadow table);
+ *   - the message line (message.c): below the screen, seven lines of one bitplane (work_area, 40 bytes a row) in the colours of
+ *     message_pairs on a background that goes from dark to lighter green and back.
+ * Low resolution, 320 pixels wide, from line 60 on.  The words of the bitplanes are native words. */
+
+
+#define FIRST_LINE 44   /* the first line of the picture on the screen (PAL) */
+#define SCREEN_TOP 60   /* the program's screen starts here */
+#define SCREEN_ROWS 192
+#define MESSAGE_TOP 253
+#define PLANE_SIZE 8448
+
+extern uint8_t copper_list_a[];
+extern uint8_t screen_1[];
+extern uint8_t screen_2[];
+extern uint32_t *work_area;
+extern const uint32_t message_pairs[8];
+extern uint16_t message_shown;
+extern uint16_t menu_active;
+
+/* what the display hardware has at the start of a frame: the copper restarts from COP1LC at the vertical blank, the scroll and the colours come from the
+ * copper list and the registers as they were then.  The program's thread sets them whenever it likes (it flips the screens just after the vertical blank
+ * that ended its wait), so they are latched before the blank of the frame is signalled, as the hardware does, and the frame is drawn from them */
+static uint32_t latched_cop1lc;
+static uint16_t latched_x_offset;
+extern uint8_t list_scroll[2];   /* display.c: the scroll set for each copper list */
+static uint16_t latched_colors[16];
+static uint16_t latched_list[1024];   /* the copper list that COP1LC names, as it was: the program's thread changes its colour moves whenever it likes (the fades) */
+static int latched_list_valid;
+
+void display_latch_colors(void);
+
+volatile int display_fresh_lag;   /* (with display_fresh) the fade's colours and list are shown a frame after they were made: the fade of the player's respawn */
+volatile int display_fresh;   /* set by the fades (display.c): their colours and copper list are shown as they are, not as they were two frames before */
+
+void display_latch(void)
+{
+    static uint32_t last_list;
+    static unsigned frames_since;
+    static int trace = -1;
+
+    if (trace < 0)
+        trace = getenv("GODS_FLIPTRACE") != 0;   /* GODS_FLIPTRACE=1: the frames between two changes of the shown screen, on stderr */
+    frames_since++;
+    if (trace && REG32(0x080) != last_list) {
+        fprintf(stderr, "flip after %u frames\n", frames_since);
+        frames_since = 0;
+        last_list = REG32(0x080);
+    }
+    /* (the screen and its scroll are not latched: the original shows a flip in the frame the program's logic makes it, the program's thread having flipped just after the blank) */
+    latched_cop1lc = REG32(0x080);
+    latched_x_offset = list_scroll[(uint8_t *)(uintptr_t)REG32(0x080) == copper_list_a ? 0 : 1];
+    display_latch_colors();
+    {
+        uint32_t cop1lc = REG32(0x080);
+        const uint16_t *list = cop1lc < 0x10000 ? (const uint16_t *)guest_ptr(cop1lc) : (const uint16_t *)(uintptr_t)cop1lc;
+
+        static uint16_t previous[1024], before_previous[1024];
+        static int previous_valid, before_previous_valid;
+
+        latched_list_valid = before_previous_valid;
+        memcpy(latched_list, before_previous, sizeof previous);
+        memcpy(before_previous, previous, sizeof previous);
+        before_previous_valid = previous_valid;
+        previous_valid = list != 0;
+        if (list)
+            memcpy(previous, list, sizeof previous);
+        if (display_fresh && list) {
+            latched_list_valid = 1;
+            memcpy(latched_list, list, sizeof previous);
+        }
+    }
+}
+
+/* the colour registers: the vertical blank interrupt (irq_vbl) writes them from the shadow table, so what the frame shows is what they hold after it; the program's thread (woken at the end of
+ * the interrupt) changes them later in the frame, which the hardware shows from that line on: the frame is drawn from what they were when it began */
+void display_latch_colors(void)
+{
+    static uint16_t previous[16];
+
+    static uint16_t before_previous[16];
+
+    memcpy(latched_colors, before_previous, sizeof previous);   /* (the colours two frames before) */
+    memcpy(before_previous, previous, sizeof previous);
+    for (int i = 0; i < 16; i++)
+        previous[i] = REG16(0x180 + 2 * i);
+    if (display_fresh)
+        memcpy(latched_colors, previous, sizeof previous);
+}
+
+/* in a fade: after the blank's interrupt has written the colour registers the frame shows them and the copper list as they are (called right after irq_vbl, before the program's thread goes on) */
+void display_latch_fresh(void)
+{
+    if (!display_fresh)
+        return;
+    if (!display_fresh_lag)
+        for (int i = 0; i < 16; i++)
+            latched_colors[i] = REG16(0x180 + 2 * i);
+    uint32_t cop1lc = REG32(0x080);
+    const uint16_t *list = cop1lc < 0x10000 ? (const uint16_t *)guest_ptr(cop1lc) : (const uint16_t *)(uintptr_t)cop1lc;
+
+    if (list) {
+        latched_list_valid = 1;
+        memcpy(latched_list, list, sizeof latched_list);
+    }
+}
+
+static uint32_t argb(uint16_t color)
+{
+    uint32_t r = (color >> 8 & 15) * 17, g = (color >> 4 & 15) * 17, b = (color & 15) * 17;
+
+    return 0xff000000u | r << 16 | g << 8 | b;
+}
+
+/* whether the first instructions of a list read as copper instructions in the machine's byte order and not in the other (a WAIT has bit 0 set, a MOVE names a register below $200) */
+static int list_looks_native(const uint16_t *list, int count)
+{
+    int native = 0, swapped = 0;
+
+    for (int i = 0; i + 1 < count && i < 24; i += 2) {
+        uint16_t first = list[i], other = (uint16_t)(first >> 8 | first << 8);
+
+        native += (first & 1) || (first < 0x200 && !(first & 1) && (first & 0x1fe) >= 0x80 && (first & 0x1fe) < 0x1c0);
+        swapped += (other & 1) || (other < 0x200 && !(other & 1) && (other & 0x1fe) >= 0x80 && (other & 0x1fe) < 0x1c0);
+    }
+    return native > swapped;
+}
+
+/* the colours of every line of the picture: what the colour registers hold, changed by the MOVEs to COLOR00..COLOR15 of the copper
+ * list that COP1LC names (a WAIT puts the following moves at its line; the horizontal position is not looked at).  The list is
+ * as the program made it: words of the machine, or (the lists that are in the program's image) big-endian ones; the one in which
+ * the list ends with $FFFF,$FFFE is read. */
+static void line_palettes(uint16_t colors[][16], int lines)
+{
+    /* (an address in the low 64 KiB is the program's, not the host's: the boot code leaves one there until the screens are set up) */
+    const uint16_t *list = latched_list_valid ? latched_list : 0;
+    uint16_t current[16];
+    int line = 0, swapped = 0, count = 0;
+
+    for (int i = 0; i < 16; i++)
+        current[i] = latched_colors[i];
+    if (list) {
+        for (int i = 0; i < 1024 && !count; i += 2) {
+            if (list[i] == 0xffff && list[i + 1] == 0xfffe)
+                count = i + 2;
+            else if (list[i] == 0xffff && list[i + 1] == 0xfeff)
+                count = i + 2, swapped = 1;
+        }
+        if (swapped && list_looks_native(list, count))
+            swapped = 0;   /* (the end of the list is the image's, big-endian, bytes, the moves before it were made by the program) */
+    }
+    for (int i = 0; i + 1 < count; i += 2) {
+        uint16_t first = list[i], second = list[i + 1];
+
+        if (swapped) {
+            first = (uint16_t)(first >> 8 | first << 8);
+            second = (uint16_t)(second >> 8 | second << 8);
+        }
+        if (first & 1) {   /* WAIT */
+            int wait = first >> 8;
+
+            if (wait < (line & 255))
+                wait += 256 * ((line >> 8) + 1);
+            else
+                wait += 256 * (line >> 8);
+            while (line < wait && line < lines)
+                memcpy(colors[line++], current, sizeof current);
+        } else if ((first & 0x1fe) >= 0x180 && (first & 0x1fe) < 0x1a0) {
+            current[((first & 0x1fe) - 0x180) / 2] = second;
+        }
+    }
+    while (line < lines)
+        memcpy(colors[line++], current, sizeof current);
+}
+
+void display_render(uint32_t *pixels)
+{
+    static uint16_t colors[320][16];
+    uint32_t palette[16];
+    latched_cop1lc = REG32(0x080);   /* the screen and the scroll as they are now (see display_latch) */
+    latched_x_offset = list_scroll[(uint8_t *)(uintptr_t)latched_cop1lc == copper_list_a ? 0 : 1];
+    const uint8_t *first_list = (const uint8_t *)(uintptr_t)latched_cop1lc;
+    const uint8_t *screen = first_list == copper_list_a ? screen_1 : screen_2;
+    int scroll = latched_x_offset & 31;
+
+    line_palettes(colors, 320);
+    for (int i = 0; i < 16; i++)
+        palette[i] = argb(latched_colors[i]);
+    for (int i = 0; i < SCREEN_W * SCREEN_H; i++)
+        pixels[i] = palette[0];
+
+    for (int row = 0; row < SCREEN_ROWS - 1; row++) {   /* (the display window ends a line early: the last row of the screen is not shown) */
+        uint32_t *out = pixels + (SCREEN_TOP - FIRST_LINE + row) * SCREEN_W;
+
+        for (int i = 0; i < 16; i++)
+            palette[i] = argb(colors[SCREEN_TOP + row][i]);
+        for (int x = 0; x < SCREEN_W; x++) {
+            int bx = x + scroll;
+            const uint8_t *word = screen + row * 44 + (bx >> 4) * 2;
+            int bit = 15 - (bx & 15), index = 0;
+
+            for (int plane = 0; plane < 4; plane++)
+                index |= (*(const uint16_t *)(word + plane * PLANE_SIZE) >> bit & 1) << plane;
+            out[x] = palette[index];
+        }
+    }
+
+    /* the message: seven lines, the colour of the text and of the background by line */
+    if (message_shown || !menu_active) {   /* (the band is there in the level also when no message is on show) */
+        static const uint16_t background[7] = { 0x030, 0x042, 0x060, 0x082, 0x060, 0x042, 0x030 };
+        static const int band[7] = { 0, 2, 4, 6, 5, 3, 1 };   /* which of message_pairs colours the text of the line */
+
+        for (int line = 0; line < 7; line++) {
+            uint32_t *out = pixels + (MESSAGE_TOP - FIRST_LINE + line) * SCREEN_W;
+            const uint16_t *text_color = (const uint16_t *)(uintptr_t)message_pairs[band[line]] + 1;
+            const uint16_t *bits = (const uint16_t *)((const uint8_t *)work_area + 40 * (line + 1));   /* words of the machine; the band shows the work area from its second row on (the text is drawn from there) */
+
+            for (int x = 0; x < SCREEN_W; x++)
+                out[x] = (message_shown && (bits[x >> 4] >> (15 - (x & 15)) & 1)) ? argb(*text_color) : argb(background[line]);
+        }
+    }
+}
+
+/* the chip's blitter is not emulated (the program's routines that programmed its registers are replaced above): said once if one is reached */
+void host_blitter_not_emulated(void)
+{
+    static int said;
+
+    if (!said++)
+        fprintf(stderr, "gods-sdl: a routine that programs the blitter's registers was reached (not emulated)\n");
 }

@@ -45,9 +45,9 @@ FLAGS_STAMP := $(BUILD)/.cflags
 $(shell mkdir -p $(BUILD); echo '$(GAME_CFLAGS) | $(HOST_CFLAGS)' | cmp -s - $(FLAGS_STAMP) || echo '$(GAME_CFLAGS) | $(HOST_CFLAGS)' > $(FLAGS_STAMP))
 
 # the program's modules (as native/Makefile's MENU_MODULES) and the C that replaces the Amiga parts
-MENU_MODULES := menu disk alloc decrunch input draw message ui file boot game menu_data
+MENU_MODULES := menu disk alloc decrunch input draw message file boot game menu_data
 GAME_OBJS := $(BUILD)/g_shims.o $(BUILD)/g_display.o $(MENU_MODULES:%=$(BUILD)/g_%.o) $(BUILD)/g_stubs.o
-HOST_OBJS := $(BUILD)/h_host.o $(BUILD)/h_guest.o $(BUILD)/h_files.o $(BUILD)/h_render.o $(BUILD)/h_blitter.o $(BUILD)/h_blitter_regs.o \
+HOST_OBJS := $(BUILD)/h_host.o $(BUILD)/h_guest.o $(BUILD)/h_files.o \
              $(BUILD)/h_irq.o $(BUILD)/h_sound.o
 
 .PHONY: all run clean
@@ -71,7 +71,7 @@ $(BUILD)/g_shims.o: $(HERE)/shims.c $(FLAGS_STAMP) | $(BUILD)
 $(BUILD)/g_display.o: $(HERE)/display.c $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/g_draw.o: $(SRC)/draw.c $(FLAGS_STAMP) | $(BUILD)
-	$(CC) $(GAME_CFLAGS) -fno-inline -MMD -MP -c $< -o $@   # (blit_masked_image is replaced by blitter.c: no copy of it inside)
+	$(CC) $(GAME_CFLAGS) -fno-inline -MMD -MP -c $< -o $@   # (blit_masked_image is replaced by display.c: no copy of it inside)
 $(BUILD)/g_%.o: $(SRC)/%.c $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/h_%.o: $(HERE)/%.c $(BUILD)/guest_tables.h $(BUILD)/guest_fixups.h $(FLAGS_STAMP) | $(BUILD)

@@ -19,7 +19,7 @@
 #include "intro_host.h"
 
 extern void menu_boot(void);    /* boot.c: the start-up (orig $039E50) */
-extern void menu_start(void);   /* ui.c: the menu (orig $006388) */
+extern void menu_start(void);   /* menu.c: the menu (orig $006388) */
 extern uint32_t heap_base;
 extern void sr_set(uint16_t value);
 extern uint8_t *mask_buffer;    /* shares its address with restart_address, which menu_boot sets to its own address: the original blits into the (finished) boot code */

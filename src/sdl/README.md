@@ -64,10 +64,7 @@ the sound as raw signed 16 bit stereo 44100 Hz.
 | `gen_guest.py`, `gen_fixups.py` | from `menu.symbols`: the variables as absolute symbols, stubs for the original's code (`fn_...`), the table list, the byte order list of the variables |
 | `guest.c` | the memory at the Amiga's addresses (the first 64 KiB at `0x01000000 +`: Linux does not map them), the chips' register pages, the menu image, the level image |
 | `files.c` | the disks (ADF): the directory in sector 22, `file_read`, the packer, the menu image (`bm.2` of disk 1, unpacked to `$84`) |
-| `blitter.c` | the masked-image blit done directly (`blit_masked_image` of draw.c is replaced) and `blit_image`/`blit_image_wide` of the asm |
-| `blitter_regs.c` | the chip's blitter (minterms, shifts, masks, modulos, ascending and descending), run at the store to BLTSIZE (`blit_start`), for `game_b.c` and `game_d.c` |
-| `render.c` | the menu program's and the game's display: the copper lists' effect from the program's state (screen shown, scroll, colours, message line) |
-| `display.c` | `amiga/display.c` for the host: the same fades and flips, the chips' parts the host's |
+| `display.c` | the screens' flip, the colours and fades, the masked-image blits done directly (`blit_masked_image` of draw.c is replaced, and `blit_image`/`blit_image_wide` of the asm) and the picture: the copper lists' effect from the program's state (screen shown, scroll, colours, message line); the chip's blitter itself is not emulated |
 | `irq.c` | the vertical blank (from the main loop), the keyboard, `random_word`, `sr_set` |
 | `shims.c` | `message_draw` (reads text at address 0 on the Amiga), `game_loop`, `host_begin_quest` |
 | `sound.c` | the sound effects (see below) |

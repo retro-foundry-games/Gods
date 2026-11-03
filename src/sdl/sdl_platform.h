@@ -12,12 +12,12 @@
 /* an address of the program's memory as a pointer's value */
 #define GUEST(address) ((uintptr_t)(address) < GODS_LOW_LIMIT ? (uintptr_t)(address) + GODS_LOW_BASE : (uintptr_t)(address))
 
-void sdl_blit_run(void);   /* sdl/blitter.c: do the blit the registers describe */
+void host_blitter_not_emulated(void);   /* display.c: the chip's blitter is not emulated: the program's routines that program its registers are replaced by C (said once on stderr if one is reached) */
 
 static inline void blit_start(uint16_t size)
 {
     custom->bltsize = size;
-    sdl_blit_run();
+    host_blitter_not_emulated();
 }
 
 /* the original's routine at `address` is not replicated and was reached: said once on stderr (sdl/shims.c), so that what the play needs and the port lacks is known */
