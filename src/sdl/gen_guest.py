@@ -8,7 +8,7 @@ except the first 64 KiB (Linux does not let a program map them): that part lives
   guest.ld            every variable of menu.symbols as an absolute symbol at its address
   g_stubs.c           the symbols that are routines of the original's code (`void fn_30c6(void)` ...) are not in the host program:
                       they are functions that log the call and return
-  guest_tables.h      the `table` lines (constant data of menu_data.c): guest.c copies them to their addresses; they are native-endian
+  guest_tables.h      the `table` lines (constant data of data.c): guest.c copies them to their addresses; they are native-endian
                       C data, the bytes of the disk image are not, so the loader keeps them
 """
 from __future__ import annotations

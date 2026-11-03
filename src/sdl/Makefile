@@ -45,7 +45,7 @@ FLAGS_STAMP := $(BUILD)/.cflags
 $(shell mkdir -p $(BUILD); echo '$(GAME_CFLAGS) | $(HOST_CFLAGS)' | cmp -s - $(FLAGS_STAMP) || echo '$(GAME_CFLAGS) | $(HOST_CFLAGS)' > $(FLAGS_STAMP))
 
 # the program's modules (as native/Makefile's MENU_MODULES) and the C that replaces the Amiga parts
-MENU_MODULES := menu disk alloc decrunch input draw message file boot game menu_data
+MENU_MODULES := menu disk alloc decrunch input draw message file boot game data
 GAME_OBJS := $(BUILD)/g_shims.o $(BUILD)/g_display.o $(BUILD)/g_sound.o $(MENU_MODULES:%=$(BUILD)/g_%.o) $(BUILD)/g_stubs.o
 HOST_OBJS := $(BUILD)/h_host.o $(BUILD)/h_guest.o $(BUILD)/h_files.o \
              $(BUILD)/h_irq.o
@@ -62,7 +62,7 @@ $(BUILD)/guest.ld $(BUILD)/g_stubs.c $(BUILD)/guest_tables.h: $(HERE)/gen_guest.
 $(BUILD)/guest_fixups.h: $(HERE)/gen_fixups.py $(SRC)/menu.symbols | $(BUILD)
 	$(PYTHON) $(HERE)/gen_fixups.py $(SRC) $(BUILD)
 
-$(BUILD)/g_menu_data.o: $(SRC)/menu_data.c $(FLAGS_STAMP) | $(BUILD)
+$(BUILD)/g_data.o: $(SRC)/data.c $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -w -MMD -MP -c $< -o $@
 $(BUILD)/g_stubs.o: $(BUILD)/g_stubs.c
 	$(CC) $(GAME_CFLAGS) -w -MMD -MP -c $< -o $@

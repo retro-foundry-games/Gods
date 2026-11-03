@@ -2,7 +2,7 @@
  *
  * The program keeps its variables at the Amiga's addresses (the symbols of guest.ld, made by gen_guest.py).  Here that memory is
  * mapped at the same addresses (the first 64 KiB are GUEST_LOW_BASE higher: Linux does not let a program map them), the pages
- * of the custom chips and the CIAs are mapped, and the memory the loader brings is made: the tables of menu_data.c are copied
+ * of the custom chips and the CIAs are mapped, and the memory the loader brings is made: the tables of data.c are copied
  * in, and the menu program's image (the file bm.2 of disk 1, unpacked to address $84) is copied in except where a table is (those
  * are native C data; the image has the Amiga's big-endian bytes).  The few words and longs of the image that the program reads
  * as native ones (the copper lists, the message colours) are made native here. */
@@ -140,7 +140,7 @@ void guest_load_image(const uint8_t *image, uint32_t size)
 }
 
 /* ---- a RAM image of the original in level 1 (a test of the level on the host: --level1-image) ---------------------------------------
- * The image is the original's chip RAM (big endian); the tables of menu_data.c stay as they are, the rest is copied in and then the words
+ * The image is the original's chip RAM (big endian); the tables of data.c stay as they are, the rest is copied in and then the words
  * and longs of the program's variables (guest_fixups.h, from menu.symbols' types) are made native, and so are the pictures: the two
  * screens, the sprites of the image table, the background.  What the image has that the C reads in other ways (the level's map, ...) is
  * not known here and is left as it is. */
