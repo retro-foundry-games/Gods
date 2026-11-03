@@ -5,7 +5,7 @@
 #   make menu-blob    the menu as a blob at $(MENU_BASE) for the checks against the original (build/menu.blob, menu_syms.lua)
 #   make adf          the disk whose game is the intro's C (build/..., local/gods-c-disk1.adf); needs the original disks in local/
 #   make regen        write the generated sources in src/ again (needs the recordings in build/, see ../PLAN.md)
-#   make sdl          the SDL3 port (src/sdl/), build/sdl/gods-sdl; make sdl-run builds and runs it
+#   make sdl          the SDL3 port (src/sdl/), build/sdl/gods-sdl and gods-sdl-dev; make sdl-run builds and runs gods-sdl
 #   make clean
 #
 # The toolchain is in the flake of this directory: outside its shell every target is run again inside it.  Variables:
@@ -85,7 +85,7 @@ regen:
 	$(PYTHON) ../scripts/gen_menu_symbols.py
 	$(PYTHON) ../scripts/gen_menu_amiga_asm.py
 
-# the SDL3 port for a Linux desktop (src/sdl/): make sdl builds build/sdl/gods-sdl, make sdl-run runs it
+# the SDL3 port for a Linux desktop (src/sdl/): make sdl builds build/sdl/gods-sdl (the game) and gods-sdl-dev (the tests), make sdl-run runs the game
 sdl:
 	$(MAKE) --no-print-directory -C $(SRC)/sdl
 sdl-run:

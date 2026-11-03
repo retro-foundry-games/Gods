@@ -1,7 +1,7 @@
 # Gods, SDL3 port (intro, menu, level 1 as a test)
 
 The C of the intro (`intro.c`) and of the menu program and the game (`menu.c` ... `game_*.c`), the same files the Amiga build uses, runs
-on a Linux desktop as one program: `gods-sdl` goes intro, menu, level in one process, one window and one audio stream.  The Amiga's
+on a Linux desktop as one program: `gods-sdl` (the game as it is played: no options) goes intro, menu, level in one process, one window and one audio stream.  The Amiga's
 chips, the disks and the sound are replaced by the C in this folder; nothing of the original's 68000 code runs.
 
 ## Build and run
@@ -9,9 +9,13 @@ chips, the disks and the sound are replaced by the C in this folder; nothing of 
 You need the original disk images `gods-disk1.adf` and `gods-disk2.adf` in `projects/gods/local/` (or in the folder `--disks` names).
 
     make -C projects/gods/native sdl          # build   (the flake's shell with the 32-bit gcc and SDL3 is entered by itself)
-    make -C projects/gods/native sdl-run      # run     (builds first; the same as build/sdl/gods-sdl --disks projects/gods/local)
+    make -C projects/gods/native sdl-run      # run     (builds first; runs build/sdl/gods-sdl, which finds the disks in projects/gods/local)
 
-Fire (space, left control, return) ends the intro as on the Amiga ("LOADING GAME") and the menu comes up in the same window.  Options:
+Two programs are built from the same machine (`host.c`): `gods-sdl` (`main.c`) just runs the game, with no options, no environment variables and no control channel;
+`gods-sdl-dev` (`devmain.c`, with `dev_game.c` for the game's thread) has everything the tests need: the options below, the lockstep with the original (`--lockstep`, see
+`projects/gods/host/gods_lockstep.lua`), the quicksave (F5) and quickload (F9), `--quickload FILE` and the `GODS_*` environment variables.
+
+Fire (space, left control, return) ends the intro as on the Amiga ("LOADING GAME") and the menu comes up in the same window.  Options of `gods-sdl-dev`:
 `--disks FOLDER`, `--scale N` (window size, default 3), `--skip-intro` (or `--start menu`), `--start level` (needs `--level1-image`).  F10 quits.
 
 How one program does what the loader does between the Amiga's programs: the intro and the menu program are separate programs with the same
@@ -27,7 +31,7 @@ they call `host_begin_quest()` (`shims.c`): without more it logs `Begin Quest: t
 takes its place when `original_begin` and the others get one (the hook functions are weak).  To see the level now, start it from a RAM
 image of the original (for testing only: nothing is embedded, it is not the default):
 
-    projects/gods/native/build/sdl/gods-sdl --disks projects/gods/local --level1-image projects/gods/native/build/game-ram.bin --start level
+    projects/gods/native/build/sdl/gods-sdl-dev --disks projects/gods/local --level1-image projects/gods/native/build/game-ram.bin --start level
 
 (or leave `--start level` out and choose Begin Quest in the menu).  The image is the Amiga's big-endian chip RAM: the words and longs of
 the program's variables (from the types of `menu.symbols`, `gen_fixups.py`), the two screens, the sprites' planes and the background are
@@ -36,7 +40,7 @@ swapped to native order; what the C reads in other ways (the level's map, ...) i
 
 ### Without a window (tests)
 
-    gods-sdl --headless --frames 1100 --dump /tmp/gods_ --dump-every 100 --keys 200:40:1,210:40:0,800:4d:1,810:4d:0,850:40:1,870:40:0
+    gods-sdl-dev --headless --frames 1100 --dump /tmp/gods_ --dump-every 100 --keys 200:40:1,210:40:0,800:4d:1,810:4d:0,850:40:1,870:40:0
 
 writes the picture of every 100th frame as `/tmp/gods_NNNNN.ppm` and presses the keys `frame:raw key code (hex):1 down or 0 up` (the frame
 count goes on across the programs; this one: fire in the intro, down and fire in the menu), at 50 frames a second.  `GODS_WAV=file` writes

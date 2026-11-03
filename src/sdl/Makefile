@@ -1,7 +1,8 @@
 # Gods, SDL3 port of the C intro and menu program for a Linux desktop.
 #
-#   make -C projects/gods/native/src/sdl            build projects/gods/native/build/sdl/gods-sdl (intro, menu and game in one program)
-#   make -C projects/gods/native/src/sdl run        build and run (disks from projects/gods/local)
+#   make -C projects/gods/native/src/sdl            build projects/gods/native/build/sdl/gods-sdl (the game as it is played: intro, menu and levels in one program, no options)
+#                                                   and gods-sdl-dev (the same with the options, the lockstep with the original and the tests)
+#   make -C projects/gods/native/src/sdl run        build and run gods-sdl (disks from GODS_DISKS)
 #   make -C projects/gods/native/src/sdl clean
 #
 # It compiles the Amiga program's C unchanged, as a 32-bit executable (the program keeps 32-bit pointers in its data and
@@ -46,11 +47,11 @@ $(shell mkdir -p $(BUILD); echo '$(GAME_CFLAGS) | $(HOST_CFLAGS)' | cmp -s - $(F
 # the program's modules (as native/Makefile's MENU_MODULES) and the C that replaces the Amiga parts
 MENU_MODULES := menu disk alloc decrunch input draw message ui file boot game menu_data
 GAME_OBJS := $(BUILD)/g_shims.o $(BUILD)/g_display.o $(MENU_MODULES:%=$(BUILD)/g_%.o) $(BUILD)/g_stubs.o
-HOST_OBJS := $(BUILD)/h_main.o $(BUILD)/h_guest.o $(BUILD)/h_files.o $(BUILD)/h_render.o $(BUILD)/h_blitter.o $(BUILD)/h_blitter_regs.o \
+HOST_OBJS := $(BUILD)/h_host.o $(BUILD)/h_guest.o $(BUILD)/h_files.o $(BUILD)/h_render.o $(BUILD)/h_blitter.o $(BUILD)/h_blitter_regs.o \
              $(BUILD)/h_irq.o $(BUILD)/h_sound.o
 
 .PHONY: all run clean
-all: $(BUILD)/gods-sdl
+all: $(BUILD)/gods-sdl $(BUILD)/gods-sdl-dev
 
 $(BUILD):
 	mkdir -p $@
@@ -75,6 +76,12 @@ $(BUILD)/g_%.o: $(SRC)/%.c $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/h_%.o: $(HERE)/%.c $(BUILD)/guest_tables.h $(BUILD)/guest_fixups.h $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(HOST_CFLAGS) -I$(BUILD) -MMD -MP -c $< -o $@
+# the regular program knows where the disks are (GODS_DISKS), it has no options
+$(BUILD)/h_main.o: $(HERE)/main.c $(HERE)/host.h $(FLAGS_STAMP) | $(BUILD)
+	$(CC) $(HOST_CFLAGS) -DGODS_DISKS_DEFAULT='"$(GODS_DISKS)"' -I$(BUILD) -MMD -MP -c $< -o $@
+# what the game's thread does for the tests (the development program only)
+$(BUILD)/g_dev_game.o: $(HERE)/dev_game.c $(FLAGS_STAMP) | $(BUILD)
+	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
 
 # the intro: its C and its data are compiled with the program's flags and linked into one object, in which every symbol but the few entry
 # points is made local (the intro's names are those of the menu program's: glyph_draw, screens_flip, blit_image ...)
@@ -89,12 +96,16 @@ $(BUILD)/intro_program.o: $(INTRO_OBJS)
 	nm --defined-only -g $(BUILD)/intro_all.o | awk '{print $$3}' | grep -v '^__x86' $(foreach s,$(INTRO_EXPORTS),| grep -vx $(s)) > $(BUILD)/intro_local.txt
 	objcopy --localize-symbols=$(BUILD)/intro_local.txt $(BUILD)/intro_all.o $@
 
-# one program: the intro, the menu and the game, and the machine around them
-$(BUILD)/gods-sdl: $(HOST_OBJS) $(BUILD)/h_intro_view.o $(BUILD)/intro_program.o $(GAME_OBJS) $(BUILD)/guest.ld
-	$(CC) -m32 -no-pie -Wl,--allow-multiple-definition -o $@ $(HOST_OBJS) $(BUILD)/h_intro_view.o $(BUILD)/intro_program.o $(GAME_OBJS) $(BUILD)/guest.ld $(HOST_LIBS)
+# one program: the intro, the menu and the game, and the machine around them: gods-sdl is the game as it is played (main.c: no options), gods-sdl-dev has the options, the lockstep
+# with the original and the other tests (devmain.c, dev_game.c)
+COMMON_OBJS := $(HOST_OBJS) $(BUILD)/h_intro_view.o $(BUILD)/intro_program.o $(GAME_OBJS) $(BUILD)/guest.ld
+$(BUILD)/gods-sdl: $(BUILD)/h_main.o $(COMMON_OBJS)
+	$(CC) -m32 -no-pie -Wl,--allow-multiple-definition -o $@ $(BUILD)/h_main.o $(COMMON_OBJS) $(HOST_LIBS)
+$(BUILD)/gods-sdl-dev: $(BUILD)/h_devmain.o $(BUILD)/g_dev_game.o $(COMMON_OBJS)
+	$(CC) -m32 -no-pie -Wl,--allow-multiple-definition -o $@ $(BUILD)/h_devmain.o $(BUILD)/g_dev_game.o $(COMMON_OBJS) $(HOST_LIBS)
 
 run: $(BUILD)/gods-sdl
-	$(BUILD)/gods-sdl --disks $(GODS_DISKS)
+	$(BUILD)/gods-sdl
 
 clean:
 	rm -rf $(BUILD)
