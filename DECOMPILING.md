@@ -21,10 +21,10 @@ which of its instructions ran.  `native/build/game-ram.bin` is the program's RAM
   comment: `/* inlined: $12BDA */` and the tool counts it as done).
 * Data: every variable the original keeps at an absolute address is a line in `native/src/menu.symbols`: `name 0xADDRESS type %s  comment`
   (the `%s` is where the name goes), or `table name 0xADDR uint8_t|uint16_t|uint32_t COUNT  comment` for constant data (tables are
-  copied from `native/build/game-ram.bin` into `menu_data.c`; use a plain variable for something the code changes).  Before you add
+  copied from `native/build/game-ram.bin` into `data.c`; use a plain variable for something the code changes).  Before you add
   a line, search the file for the address (`grep -i 0x0000ABCD`): reuse the name that is there.  Types of records are in
   `menu_types.h` (add yours).  Use `volatile` for what an interrupt changes.  The generated files (`menu_symbols.h`, `menu.ld`,
-  `menu_data.c`, `amiga/menu_amiga.asm`) are made by the build; do not edit them by hand.
+  `data.c`, `amiga/menu_amiga.asm`) are made by the build; do not edit them by hand.
 * The program is a 68000 program: arithmetic is on 16-bit words most of the time (`addw`, `subqw`); signed comparisons (`blt`, `bgt`,
   `bge`, `ble`) are signed, `bcs/bcc/bhi/bls` unsigned.  Copy the width exactly.  `d0`-`d7` arguments in a function's registers become
   C parameters; results that the caller uses come back as the return value.

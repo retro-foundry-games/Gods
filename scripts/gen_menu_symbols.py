@@ -1,10 +1,10 @@
-"""Write native/src/menu_symbols.h, native/src/menu_data.c and native/src/menu.ld from native/src/menu.symbols (the menu's data at the
+"""Write native/src/menu_symbols.h, native/src/data.c and native/src/menu.ld from native/src/menu.symbols (the menu's data at the
 addresses the original program keeps it at).
 
 menu.symbols has two kinds of lines:
   NAME ADDRESS DECLARATION   a variable: the declaration has %s for the name; the linker script gives the name its address
   table NAME ADDRESS TYPE COUNT   read-only data: COUNT values of TYPE (uint8_t, uint16_t, uint32_t, big endian) copied from
-                             the original program's memory (native/build/menu-ram.bin) into menu_data.c as C initializers; the linker
+                             the original program's memory (native/build/menu-ram.bin) into data.c as C initializers; the linker
                              script places the array at the address, so the C reads the same bytes at the same place
 After the two fields of a variable's comment or a table's, two or more spaces start a comment.
 
@@ -96,8 +96,8 @@ def main(code_base: int = 0xC0000) -> None:
             for i in range(0, count, per):
                 c.append("    " + ", ".join(f"0x{v:0{2 * w}x}" for v in vals[i:i + per]) + ",")
             c += ["};", ""]
-        (SRC / "menu_data.c").write_text("\n".join(c))
-    print(f"wrote menu_symbols.h, menu.ld and menu_data.c ({len(variables)} variables, {len(tables)} tables)")
+        (SRC / "data.c").write_text("\n".join(c))
+    print(f"wrote menu_symbols.h, menu.ld and data.c ({len(variables)} variables, {len(tables)} tables)")
 
 
 if __name__ == "__main__":
