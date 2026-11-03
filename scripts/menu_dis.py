@@ -25,7 +25,7 @@ import menu_analysis as M  # noqa: E402
 RAM = (PROJECT / "native" / "build" / os.environ.get("MENU_RAM", "menu-ram.bin")).read_bytes()   # e.g. game-ram.bin with MENU_COVERAGE=coverage-game.txt
 COVERAGE = PROJECT / "analysis" / os.environ.get("MENU_COVERAGE", "coverage-menu-handling.txt")   # e.g. coverage-menu.txt, coverage-game-start.txt
 SRC = PROJECT / "native" / "src"
-MENU_C = ["menu", "disk", "alloc", "decrunch", "input", "draw", "amiga/display", "message", "ui", "file", "boot", "game"]
+MENU_C = ["menu", "disk", "alloc", "decrunch", "input", "draw", "amiga/display", "message", "file", "boot", "game"]
 
 
 def decompiled() -> dict[int, str]:

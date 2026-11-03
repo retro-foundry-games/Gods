@@ -73,7 +73,7 @@ Commit in your worktree (message ending `[skip ci]`); do not push and do not com
 
 ## Begin Quest (the code from the menu's fire to the first frame of the game loop)
 
-`native/src/game_h.c` has it all in C (`begin_quest`, which `ui.c` calls instead of `original_begin`): the level's set-up ($651E,
+`native/src/game_h.c` has it all in C (`begin_quest`, which `menu.c` calls instead of `original_begin`): the level's set-up ($651E,
 $2452 to $2C08 and the routines it calls: the files, the map, the pictures, the copper list, the state, two frames drawn behind
 the loading screen).  How it was made and checked:
 
@@ -88,7 +88,7 @@ the loading screen).  How it was made and checked:
 * Other flags added to `host/gods.lua` for this: `stopat=ADDR ram=PATH` (the RAM the first time ADDR is reached, then quit),
   `trace=ADDR[,..]` (the registers and the return address the first 6 times) and `watch=ADDR` (a word's changes, by frame).
   A savestate holds the C blob: after every build make a new one.
-* The check of the whole: two builds of the disk, one with `original_begin()` and one with `begin_quest()` in `ui.c`, each run
+* The check of the whole: two builds of the disk, one with `original_begin()` and one with `begin_quest()` in `menu.c`, each run
   from its snapshot to the first frame of the loop (`stopat=2c20` and `stopat=<game_loop>`).  The 512 KB chip RAM of the two is the same
   except the interrupt vectors and the jump at $2C22 (the blob's addresses), the frame counters ($1D05A, $1E256) and the stack.
 * The oracle (`scenario = "begin_quest"` in `scripts/check_menu.py`: the original from `gods-menu-1m.state`, the fire at frame 20,

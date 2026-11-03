@@ -176,7 +176,7 @@ from it are checked in their own scenario.  To use the menu in the emulator the 
   listed in `host/menu_cases.lua` (the registers the arguments and the result are in).
 - The first batch, 15 leaf functions of the engine layer (MFM decode and encode, the unpacker, mouse and joystick polling,
   buffer copies, the colour shadow table, ...), match on 24 calls each spread over the first 9,000 frames.
-- The menu handling is decompiled completely (`menu_dis.py --todo` lists nothing): the screens are in `ui.c` (`menu_main` $63A2,
+- The menu handling is decompiled completely (`menu_dis.py --todo` lists nothing): the screens are in `menu.c` (`menu_main` $63A2,
   `menu_screen_draw`, `top_ten_screen`, `password_screen`), the message fade in `message.c`, the fades and the frame tick in
   `display.c`, the sound system (Paula driver, sequencer) and the vertical blank interrupt are generated asm in
   `menu_amiga.asm`.  Code that did not run in the menu (the disk load of the background, the rest of the password route,
