@@ -172,9 +172,9 @@ static void swap_entry_list(void)
 
         if (entry[1] < 6 || path < 0x10000 || path >= 0x200000)
             continue;
-        swap16_range(path, 2);
+        swap16_range(path, 4);   /* (two words: swap16_range counts bytes) */
         if (*(uint16_t *)guest_ptr(path) == 0x2345)
-            swap16_range(path + 2, 2);
+            swap16_range(path + 4, 2);   /* ... and the third */
     }
 }
 

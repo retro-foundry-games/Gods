@@ -8880,6 +8880,18 @@ void level_tables_quickload(void)
         file_words(&buffer_cb6[i], 12);
     file_words(ptr_0cda, word_1ec);   /* the colours of the level's copper list */
     file_words(ptr_0cc6, 256);   /* the table of random words */
+    for (int k = 0; k < 5; k++) {   /* the ten members of each unit (struct UnitMember, 20 bytes: four words, the path's address, four words; also the ones not in use: the
+                                     * words a unit does not set when it starts them stay as they were) */
+        struct UnitMember *member = (struct UnitMember *)ptr_0cfa[k];
+
+        if (member == 0)
+            continue;
+        for (int i = 0; i < 10; i++, member++) {
+            file_words(&member->x, 4);
+            file_longs(&member->path, 1);
+            file_words(&member->hp, 4);
+        }
+    }
 
     struct CreatureType *type = (struct CreatureType *)table_199ac;
 
