@@ -295,11 +295,13 @@ static void player_respawn(void)
         play_sound(66, 1);
 }
 
-/* orig $0039EE: the death is over: with things left (item_count not negative) the player comes back; otherwise the game is over ($39F6: not replicated yet) */
+/* orig $0039EE: the death is over: a life is taken (subq.w #1,item_count: the disk image that the original runs from has a tst.w there, a trainer: the lockstep puts the subq back); with
+ * things left (item_count not negative) the player comes back; otherwise the game is over ($39F6: not replicated yet) */
 static int player_came_back;   /* the death frame ends in $39EE: the player has come back and the original goes on at $2C20, the start of a frame, not at the end of this one ($2D54) */
 
 static void player_death_over(void)
 {
+    item_count--;
     if (item_count >= 0) {
         player_respawn();
         player_came_back = 1;
