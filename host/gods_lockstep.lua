@@ -14,6 +14,8 @@
 --   input=PATH    the keys you play are written to PATH ("step k keysym state", the format replay= reads) as they happen: a play can be given again
 --   replay=FILE   the keys of a recording (captures/input/level1-run1.txt: "frame k keysym state", by frame from the state) are given to both sides at the same steps, as if played
 --   dumpfrom=N    (with dump=) the first difference at emulator frame N or later
+--   nosync        the port models the original's CPU time itself (host_iteration_cpu); by default the port's flips that end an iteration wait for the original's own (flipsync: `flips N` to the port)
+--   flipoff=N / nolag  tuning of that sync (the port's flip k goes with the original's k+N; nolag: the count of the same step, not the step before)
 --   watch         (with continue=all) the first frame at which each of a few game variables differs between the two sides is logged (read from the port with `mem`)
 --   pause=F       pause both at emulator frame F (for lockstep_dump.py; the first difference does not stop the run when continue= is given)
 --   dump=PATH     the port's image and the original's at the first frame that differs are written to PATH.native.ppm and PATH.emulated.ppm
@@ -68,12 +70,23 @@ ami.hook(0x363a, function()
         end
     end
 end)
+-- flipsync: the port's flips wait for the original's (the original's CPU time is not modelled): `flips N`, the times the original has reached its flip ($1D302) since the sync began,
+-- goes to the port before every step; `flipoff=N` shifts which flip of the port goes with which of the original's (nosync: the port models the CPU time itself)
+local flip_sync = not args:find("%f[%w]nosync%f[%W]")
+local flip_offset = tonumber(args:match("flipoff=(-?%d+)")) or 0
+local orig_flips, flips_at_sync, sync_on, last_flips = 0, 0, false, 0
+local flip_lag = not args:find("%f[%w]nolag%f[%W]")   -- (the count the port gets is the one of the step before: the original's flip shows a frame after the one the count reaches)
+ami.hook(0x1d302, function() orig_flips = orig_flips + 1 end)
 local delayed = setmetatable({
     send = function(_, text)
         for line in text:gmatch("[^\n]+") do
             if not line:match("^key ") then
                 if line == "step" then
                     steps = steps + 1
+                    if sync_on then
+                        real:send(("flips %d\n"):format((flip_lag and last_flips or orig_flips) - flips_at_sync))
+                        last_flips = orig_flips
+                    end
                     for _, p in ipairs(pending) do real:send(p) end
                     pending = {}
                 end
@@ -261,6 +274,7 @@ lockstep.run {
     start = function() ami.wait(4) return true end,   -- the saved state is the start (a frame later it has been drawn)
     keymap = function(key) return KEYS[key] end,
     on_frame = function(count, native, emulated)
+        if false then ami.log(("endframe %d: %d"):format(ami.frame(), ami.cycles())) end
         if not tick_synced and ami.frame() >= 8 then
             -- the original's tick_count ($CE2: the frames since the level began) includes the frames of its disk loading, which the port does not wait for: the port is given the
             -- original's count (it matters where the script looks at the seconds, as the bonus that is given only in the first minute)
@@ -271,6 +285,10 @@ lockstep.run {
             local port = string.unpack("<I4", p:read(n))
             local orig = ami.peek32(0xce2)
             p:send(("tick %d\n"):format(orig - port))
+            if flip_sync then
+                sync_on, flips_at_sync = true, orig_flips
+                p:send(("flipsync %d\n"):format(flip_offset))
+            end
             ami.log(("tick_count: the original's %d, the port's %d: %d added to the port's"):format(orig, port, orig - port))
         end
         if args:find("%f[%w]keylog%f[%W]") then ami.log(("frame %d: px %d table %02x"):format(ami.frame(), ami.read(0x1e0, 2):byte(1) * 256 + ami.read(0x1e0, 2):byte(2), ami.read(0x1e63a + 0x4e, 1):byte())) end
