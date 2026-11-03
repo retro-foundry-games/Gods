@@ -1730,14 +1730,13 @@ void draw_energy_bar(void)
  * x, y, the step 0 to 7 (8: just turned) at +4 and the direction 0 or 1 at +10).  x is the object's x, y its y.  Every other
  * frame (frame_toggle) the step goes on and the walker moves 4 pixels in its direction; at a cell border (a multiple of 32) the map
  * is looked at: ground ahead or none below turns it round.  Results: the new x (*x_io) and the picture (the return value: word_7c50,
- * the first picture, plus the step, plus the direction times 9).  The original sets word_7c50 itself.  Where it goes on at $7CB0
+ * the first picture, plus the step, plus the direction times 9).  The entry of the routine sets word_7c50 (walker_first_picture).  Where it goes on at $7CB0
  * (type byte 18 set and a wall ahead walking left) did not run */
 static int16_t walk_pace(const uint8_t *type, int16_t *obj, int16_t *x_io, int16_t y)
 {
     int16_t x = *x_io;
     int16_t step;
 
-    word_7c50 = 496;
     step = obj[2];
     if (step > 7) {
         obj[2]--;
@@ -3993,19 +3992,48 @@ static void add_kill_score(uint8_t value)
     }
 }
 
-/* orig $007BA8 as the movement routine of a creature's record (the one at +22): the new x (d0) and the picture (d2).  Only the
- * walker ran.  The step of walk_pace_frame moves it 4 pixels in its direction (as the direction is before a turn) when its step
+/* orig $007B44 to $007BA8 (eleven entries of 10 bytes, each sets the first picture, word_7c50, and goes on at $7BC0: the walk, walk_pace): the first picture of the walker whose
+ * movement routine is at `routine`, or 0 when it is not one of them */
+static int16_t walker_first_picture(uint32_t routine)
+{
+    switch (routine) {
+    case 0x7B44:
+    case 0x7B58:
+    case 0x7B9E:
+        return 0x1D2;
+    case 0x7B4E:
+    case 0x7B6C:
+    case 0x7B76:
+    case 0x7B8A:
+        return 0x1C0;
+    case 0x7B62:
+        return 0x1E4;
+    case 0x7B80:
+    case 0x7B94:
+        return 0x1CC;
+    case 0x7BA8:
+        return 0x1F0;
+    default:
+        return 0;
+    }
+}
+
+/* orig $007B44 to $007BA8 as the movement routine of a creature's record (the one at +22): the new x (d0) and the picture (d2).  Only the
+ * walkers ran.  The step of walk_pace_frame moves it 4 pixels in its direction (as the direction is before a turn) when its step
  * is at most 7 and frame_toggle is set; the x is worked out here for that reason */
 static int call_move(const struct CreatureType *type, struct Creature *creature, int16_t *x, int16_t y)
 {
-    if (type->move_routine == 0x7BA8) {
+    int16_t first = walker_first_picture(type->move_routine);
+
+    if (first != 0) {
         int16_t old_x = *x;
 
+        word_7c50 = (uint16_t)first;
         if (creature->state <= 7 && frame_toggle != 0)
             *x += creature->direction == 0 ? -4 : 4;
         return walk_pace_frame((const uint8_t *)type, (int16_t *)creature, old_x, y);
     }
-    /* goes on at the routine the record names ($7B44 to $7B9E, $72E8, $7A0E, $7A36, ...): none of those ran */
+    /* goes on at the routine the record names ($7BB2, $72E8, $7A0E, $7A36, ...): none of those ran */
     return 0;
 }
 
