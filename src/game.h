@@ -36,6 +36,10 @@ void work_area_shift_left(void);                           /* orig $01700C */
 void message_ticker(void);                                 /* orig $016CA4 */
 
 void update_records_12a0(void);                           /* orig $009AE6 */
+uint8_t *walk_member_cell(const struct WalkMember *member);   /* orig $009F50 */
+int16_t walk_cell_wall(const struct WalkMember *member, const uint8_t *cell);         /* orig $00A264 */
+int16_t walk_cell_wall_below(const struct WalkMember *member, const uint8_t *cell);   /* orig $00A242 */
+void mark_target_cells(int16_t x, int16_t y);              /* orig $00A6EA */
 void update_records_1354(void);                           /* orig $008A54 */
 void next_table_entry(void);                              /* orig $00D47E */
 void mark_player_cells(void);                             /* orig $003C56 */

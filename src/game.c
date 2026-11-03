@@ -810,6 +810,53 @@ void update_records_12a0(void)
     }
 }
 
+/* orig $009F50: the cell of the level's second map (ptr_0b86 + 8192: a byte for each 32 by 16 pixels, 128 to a row; 1 is a wall) that holds the member's place (x, y): the same as map_cell */
+uint8_t *walk_member_cell(const struct WalkMember *member)
+{
+    return map_cell(member->x, member->y);
+}
+
+/* orig $00A264: whether there is a wall at the member's place, `cell` being its cell (walk_member_cell): 1 when the cell is a wall, or when the member is 8 pixels or more into its
+ * column of 32 and the cell to the right is one; else 0 */
+int16_t walk_cell_wall(const struct WalkMember *member, const uint8_t *cell)
+{
+    if (cell[0] == 1)
+        return 1;
+    if ((member->x & 31) >= 8 && cell[1] == 1)
+        return 1;
+    return 0;
+}
+
+/* orig $00A242: the same for the row two cells lower (the floor under the member's feet): cell[$100] and cell[$101] */
+int16_t walk_cell_wall_below(const struct WalkMember *member, const uint8_t *cell)
+{
+    if (cell[0x100] == 1)
+        return 1;
+    if ((member->x & 31) >= 8 && cell[0x101] == 1)
+        return 1;
+    return 0;
+}
+
+/* orig $00A6EA: in the map of the targets ptr_03ac (20 bytes a row, 400 bytes) the cell of the screen point (x, y) and the one under it are marked with $FF and bit 3 of flags_3b0 says something was
+ * marked; the cell is counted from the point less 8, with 5 columns and 4 rows before the map's own first cell; a place outside the map is left alone */
+void mark_target_cells(int16_t x, int16_t y)
+{
+    int16_t across = (int16_t)(((int16_t)(x - 8) >> 5) + 5);
+    int16_t row = (int16_t)((int16_t)(y - 8) >> 4);
+    int16_t offset = (int16_t)(across + (int16_t)(row << 2));
+
+    offset = (int16_t)(offset + (int16_t)(row << 4));
+    offset = (int16_t)(offset + 0x50);
+
+    uint8_t *cell = ptr_03ac + offset;
+
+    if (cell < ptr_03ac || cell >= ptr_03ac + 0x17C)
+        return;
+    cell[0] = 0xFF;
+    cell[0x14] = 0xFF;
+    flags_3b0 |= 8;
+}
+
 /* orig $00D47E: with param_index 1 the entry of table_ed0 index_1ea names (four words) is looked at: the one whose third word is
  * not 0 or that is not in the window of 9 by 11 cells (scroll in cells of 32 by 16) at the scroll is passed by: index_1ea goes on
  * 8, back to 0 at 256 or when the first long of the table is negative.  An entry in the window (third word 0) goes on at $D4E2,

@@ -153,6 +153,23 @@ struct __attribute__((packed)) Unit {
 };
 _Static_assert(sizeof(struct Unit) == 24, "unit");
 
+/* a member of a walking group (the records of 18 bytes at $12A0 each have members of 24 bytes; only the words the helper routines use are named) */
+struct WalkMember {
+    int16_t x;               /* +0 */
+    int16_t y;               /* +2 */
+    int16_t frame;           /* +4 */
+    uint16_t unused_6;
+    uint16_t unused_8;
+    uint16_t mode;           /* +10 */
+    uint16_t unused_12;
+    uint16_t unused_14;
+    uint16_t unused_16;
+    int16_t vy;              /* +18 */
+    uint16_t unused_20;
+    uint16_t unused_22;
+};
+_Static_assert(sizeof(struct WalkMember) == 24, "walk member");
+
 struct UnitMember {
     int16_t x;            /* +0 */
     int16_t y;            /* +2 */
