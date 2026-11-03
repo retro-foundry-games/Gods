@@ -147,6 +147,12 @@ void copper_colors_restore(void)
         *colour = *from++;
 }
 
+extern volatile int display_fresh_lag;   /* render.c: (with display_fresh) shown a frame late */
+void host_fade_lag(int on)
+{
+    display_fresh_lag = on;
+}
+
 extern volatile int display_fresh;   /* render.c: the fades show their colours and copper list as they are */
 
 /* orig $01D0C0: fade the colours in from black to the palette `target` (words, each colour a half of what it is on the

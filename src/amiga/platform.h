@@ -54,6 +54,11 @@ static inline int host_quickload(void)
     return 0;
 }
 
+static inline void host_fade_lag(int on)
+{
+    (void)on;
+}
+
 static inline void host_cpu_frames(unsigned frames)
 {
     (void)frames;

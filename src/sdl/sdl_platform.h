@@ -27,6 +27,7 @@ int host_quickload(void);   /* shims.c: --quickload FILE: the level is the origi
 void host_iteration_mark(void);   /* the start of a frame of the game (platform.h) */
 void host_iteration_cpu_next(unsigned frames);   /* the next host_iteration_cpu waits for that many frames instead */
 void host_iteration_cpu(unsigned frames);   /* wait until that many video frames have passed since the mark */
+void host_fade_lag(int on);   /* display.c: the next fade is shown a frame after its steps (the player's respawn) */
 void host_cpu_frames(unsigned frames);   /* the original's CPU work that takes that many video frames (platform.h) */
 
 /* a word and a long of the data of a loaded file (the files are big-endian) */

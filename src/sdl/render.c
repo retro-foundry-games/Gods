@@ -41,6 +41,7 @@ static int latched_list_valid;
 
 void display_latch_colors(void);
 
+volatile int display_fresh_lag;   /* (with display_fresh) the fade's colours and list are shown a frame after they were made: the fade of the player's respawn */
 volatile int display_fresh;   /* set by the fades (display.c): their colours and copper list are shown as they are, not as they were two frames before */
 
 void display_latch(void)
@@ -103,8 +104,9 @@ void display_latch_fresh(void)
 {
     if (!display_fresh)
         return;
-    for (int i = 0; i < 16; i++)
-        latched_colors[i] = REG16(0x180 + 2 * i);
+    if (!display_fresh_lag)
+        for (int i = 0; i < 16; i++)
+            latched_colors[i] = REG16(0x180 + 2 * i);
     uint32_t cop1lc = REG32(0x080);
     const uint16_t *list = cop1lc < 0x10000 ? (const uint16_t *)guest_ptr(cop1lc) : (const uint16_t *)(uintptr_t)cop1lc;
 

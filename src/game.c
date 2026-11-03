@@ -231,6 +231,7 @@ static void messages_reset_16ac8(void)
  * does ($2BD6) */
 static void player_respawn(void)
 {
+    host_fade_lag(1);   /* (the original shows the steps of this fade a frame after the registers have them; the other fades of the game do not) */
     fade_out(0, 0xFFFF);
     player_energy = 0x18;
     energy_shown = 1;
@@ -277,12 +278,14 @@ static void player_respawn(void)
     word_1f2 = 3;
     activate_records_now();
     draw_start_frame();
+    host_cpu_frames(2);   /* (the original's drawing of that frame takes 3 frames in all, as in the teleport) */
     screens_flip();
     stop_game_sounds();
     play_sound(60, 2);
     play_sound(9, 0x7F);
     palette_words[0] = 0;
     fade_in(palette_words, 0);
+    host_fade_lag(0);
     drives_idle();
     if (flag_aa8 != 0)
         play_sound(60, 2);
