@@ -277,8 +277,8 @@ static void player_respawn(void)
     word_370 = 0;
     word_1f2 = 3;
     activate_records_now();
+    host_cpu_frames(1);   /* (the original's drawing of that frame takes 3 frames in all, as in the teleport; they pass before the frame's sounds are started, which stop_game_sounds waits for) */
     draw_start_frame();
-    host_cpu_frames(2);   /* (the original's drawing of that frame takes 3 frames in all, as in the teleport) */
     screens_flip();
     stop_game_sounds();
     play_sound(60, 2);
@@ -296,10 +296,13 @@ static void player_respawn(void)
 }
 
 /* orig $0039EE: the death is over: with things left (item_count not negative) the player comes back; otherwise the game is over ($39F6: not replicated yet) */
+static int player_came_back;   /* the death frame ends in $39EE: the player has come back and the original goes on at $2C20, the start of a frame, not at the end of this one ($2D54) */
+
 static void player_death_over(void)
 {
     if (item_count >= 0) {
         player_respawn();
+        player_came_back = 1;
         return;
     }
     host_missing_routine(0x39F6);
@@ -542,7 +545,10 @@ void game_frame(void)
     energy_old = player_energy;
     if ((int16_t)energy_shown <= 0) {   /* the player is dead: $3A6C */
         player_death_frame();
-        game_frame_tail();
+        if (player_came_back)
+            player_came_back = 0;
+        else
+            game_frame_tail();
         return;
     }
     fill_buffer();

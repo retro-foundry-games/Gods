@@ -158,6 +158,7 @@ void host_fade_lag(int on)
 }
 
 extern volatile int display_fresh;   /* render.c: the fades show their colours and copper list as they are */
+extern volatile int display_fresh_tail;   /* render.c: one more frame of that after a fade that was shown a frame late (the last step is then shown a frame after it was made) */
 
 /* orig $01D0C0: fade the colours in from black to the palette `target` (words, each colour a half of what it is on the
  * screen), a step per `delay + 1` frames; the 15 steps change the shadow table, the copper list's colours follow */
@@ -189,6 +190,7 @@ void fade_in(const uint16_t *target, uint16_t delay)
             wait_vblank();
     }
     palette_lit = 0xff;
+    display_fresh_tail = display_fresh_lag;
     display_fresh = 0;
 }
 
@@ -257,6 +259,7 @@ void fade_out(uint16_t delay, uint16_t arg)
     copper_move_b = 0x00865246;
     copper_colors_restore();
     palette_lit = 0;
+    display_fresh_tail = display_fresh_lag;
     display_fresh = 0;
 }
 
@@ -551,6 +554,7 @@ static int latched_list_valid;
 void display_latch_colors(void);
 
 volatile int display_fresh_lag;   /* (with display_fresh) the fade's colours and list are shown a frame after they were made: the fade of the player's respawn */
+volatile int display_fresh_tail;   /* (after a fade shown a frame late) the next frame still shows as the fade did */
 volatile int display_fresh;   /* set by the fades (display.c): their colours and copper list are shown as they are, not as they were two frames before */
 
 void display_latch(void)
@@ -585,7 +589,7 @@ void display_latch(void)
         previous_valid = list != 0;
         if (list)
             memcpy(previous, list, sizeof previous);
-        if (display_fresh && list) {
+        if ((display_fresh || display_fresh_tail) && list) {
             latched_list_valid = 1;
             memcpy(latched_list, list, sizeof previous);
         }
@@ -604,8 +608,9 @@ void display_latch_colors(void)
     memcpy(before_previous, previous, sizeof previous);
     for (int i = 0; i < 16; i++)
         previous[i] = REG16(0x180 + 2 * i);
-    if (display_fresh)
+    if (display_fresh || display_fresh_tail)
         memcpy(latched_colors, previous, sizeof previous);
+    display_fresh_tail = 0;
 }
 
 /* in a fade: after the blank's interrupt has written the colour registers the frame shows them and the copper list as they are (called right after irq_vbl, before the program's thread goes on) */
