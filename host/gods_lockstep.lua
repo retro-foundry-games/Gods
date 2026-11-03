@@ -57,6 +57,9 @@ do
     ami.write(0x1e420, "\x4e\xb9\x00\x01\xe6\x08")
     ami.write(0x1e2f8, "\x4e\x71\x4e\x71")
 end
+-- the disk image has a trainer: at $39EE (the death is over) it has `tst.w $224` where the game has `subq.w #1,$224` (the lives: a death takes one, and the player comes back while it is not negative), so no life is ever lost.
+-- The original's instruction is put back (the same length, the same flags for the branch after it); the port does what the game does
+ami.write(0x39ee, "\x53\x78")
 
 -- break=ADDR[,ADDR...] (hex): the run pauses (both sides frozen, the control socket usable) at the end of the frame in which the original reaches one of those addresses
 local break_hit = nil
