@@ -1017,12 +1017,87 @@ void game_nothing(void)
 {
 }
 
-/* orig $004070: nothing is done while word_2ae is 0; the original goes on at $4076 otherwise, which did not run */
+/* the ten pieces a chest bursts into (orig $3A1FA: the second half of effects, ten of five words: x, y, the sideways speed, the fall speed (1 to 4), the sprite less 170, negative when the
+ * piece is not there) */
+static int16_t *chest_pieces(void)
+{
+    return effects + 50;
+}
+
+/* orig $00401A (the record: x, y and the number of an open chest): ten pieces start at the chest's place, each with a sideways speed of 1 to 8 (left when bit 7 of the random number is set)
+ * and a fall speed of -3 to -10 (the glyph from words_3fde, 16 bytes on for each chest); word_2ae is 1 */
+static void chest_burst(const struct Slot8 *record)
+{
+    int16_t x = record->w[0], y = record->w[1];
+    int16_t chest = (int16_t)(((record->w[2] - 12) >> 1) << 3);   /* (the original: 16 bytes for each chest of two numbers) */
+    const uint16_t *sprites = words_3fde + chest;
+    int16_t *piece = chest_pieces();
+
+    for (int i = 0; i < 10; i++, piece += 5) {
+        uint16_t random = random_word();
+        int16_t speed = (int16_t)((random & 7) + 1);
+
+        piece[0] = x;
+        piece[1] = y;
+        piece[2] = (random & 0x80) ? (int16_t)-speed : speed;
+        piece[3] = (int16_t)-(int16_t)((random_word() & 7) + 3);
+        piece[4] = (int16_t)*sprites++;
+    }
+    word_2ae = 1;
+}
+
+/* orig $004070: while word_2ae is set the pieces of a chest are moved by their speeds and drawn (glyph + 170); the fall speed goes up by one to 4 and the sideways speed
+ * towards 0; a piece that has both ends there (4 and 0) is a thing of its own on the ground: the first free of records_19b14 gets its place, its sprite number as the kind and 1, its byte in
+ * flags_39fde is set, and the piece is gone (no free record: it stays) */
 void game_step_4070(void)
 {
     if (word_2ae == 0)
         return;
-    /* goes on at $4076 */
+    word_2ae = 0;
+
+    int16_t *piece = chest_pieces();
+
+    for (int i = 0; i < 10; i++, piece += 5) {
+        if (piece[4] < 0)
+            continue;
+
+        int16_t x = (int16_t)(piece[0] + piece[2]);
+        int16_t y = (int16_t)(piece[1] + piece[3]);
+        int16_t sideways = piece[2];
+        int16_t fall = piece[3];
+
+        piece[0] = x;
+        piece[1] = y;
+        glyph_draw((int16_t)(x - scroll_x), (int16_t)(y - scroll_y), (uint16_t)(piece[4] + 170));
+        fall++;
+        if (fall >= 4)
+            fall = 4;
+        if (sideways >= 0) {
+            sideways--;
+            if (sideways < 0)
+                sideways = 0;
+        } else {
+            sideways++;
+            if (sideways >= 0)
+                sideways = 0;
+        }
+        if (fall == 4 && sideways == 0) {
+            struct Slot8 *record = find_free_record_19b14();
+
+            if (record == 0)
+                continue;
+            record->w[0] = x;
+            record->w[1] = y;
+            record->w[2] = piece[4];
+            record->w[3] = 1;
+            piece[4] = -1;
+            flags_39fde[record - records_19b14] = 0xff;
+            continue;
+        }
+        piece[2] = sideways;
+        piece[3] = fall;
+        word_2ae = 1;
+    }
 }
 
 /* the shutter's rows: for each of the 12 steps (word_2c0) a word with a bit for each of the 24 rows of its columns (12 from the top, then 12
@@ -3584,8 +3659,31 @@ int16_t player_touch_record(int16_t x, int16_t y, struct Slot8 *record, int16_t 
     if (kind > 1)
         return 1;
     if (kind == 1) {
-        if (id >= 12 && id < 18)
-            return 0;   /* goes on at $45DC (the keys), which did not run */
+        if (id >= 12 && id < 18) {   /* $45D6: the keys (even) and the chests they open (odd: open) */
+            if (id & 1) {
+                record->w[3] = 1;
+                return 0;
+            }
+
+            int16_t wanted = (int16_t)(((id - 12) >> 1) + 0x15);
+
+            for (int i = 0; i < 4; i++) {
+                if (item_slots[i] != wanted)
+                    continue;
+                play_sound(0x20, 5);   /* $4676 */
+                item_slots[i] = -1;
+                record->w[2] = (int16_t)(id | 1);
+                record->w[3] = 1;
+                item_message(id);
+                int16_t points = (int16_t)info->w[3];
+
+                score_total_1fc += points;
+                score_add_carry(points >> 3, (points >> 2) & 1);
+                chest_burst(record);
+                return 0;
+            }
+            return 0;
+        }
         play_sound(6, 6);
         record->w[2] = -1;
         record->w[3] = 0;
@@ -8709,7 +8807,7 @@ void begin_quest(void)
     uint8_t letter = 'a';
     uint8_t c;
 
-    param_index = 1;
+    param_index = host_start_level();
     word_0248 = 1;
     menu_active = 0;
     word_0266 = 0;

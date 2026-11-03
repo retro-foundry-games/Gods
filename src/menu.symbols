@@ -466,6 +466,7 @@ table fall_steps_f2   0x000000f2 uint8_t 52    game_d: signed bytes: how far a t
 table frames_44b4 0x000044b4 uint16_t 4   game_d: the four glyphs of the sprite 280, by counter_2b4
 table frames_44bc 0x000044bc uint16_t 4   game_d: ... of the sprite 279
 table frames_44c4 0x000044c4 uint16_t 4   game_d: ... of the glyph 253, by counter_24a
+table words_3fde 0x00003fde uint16_t 26   game_d: the sprites (less 170) of the ten pieces a chest bursts into, for each chest (every 16 bytes)
 table frames_493a 0x0000493a uint16_t 4   game_d: the second glyph of glyph 225, by the column
 table frames_4942 0x00004942 uint16_t 4   game_d: ... of glyph 251
 table frames_494a 0x0000494a uint16_t 4   game_d: ... of glyph 252

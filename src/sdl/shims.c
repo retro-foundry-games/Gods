@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include "menu.h"
+#include "guest.h"
 
 /* orig $016ECA (message.c): draw message_text in the work area, 40 characters at most, centred, and start the colours fading in.
  * The program calls it with message_text 0 when it fades a message out with nothing to follow: on the Amiga the text is then read
@@ -274,6 +275,13 @@ void host_cpu_frames(unsigned frames)
 }
 
 static uint16_t iteration_mark;
+
+int host_lockstep_level;   /* set by main.c: --lockstep-level */
+
+int16_t host_start_level(void)
+{
+    return host_lockstep_level ? (int16_t)host_lockstep_level : 1;
+}
 
 void host_iteration_mark(void)
 {

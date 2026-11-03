@@ -42,6 +42,12 @@ static inline void host_missing_routine(uint32_t address)
 }
 
 /* the original's CPU work takes `frames` video frames here (a loop of clr.l, the drawing of a frame); the Amiga's own time is that, the host waits for them */
+/* the level Begin Quest starts: always the first (the lockstep with the original may start another) */
+static inline int16_t host_start_level(void)
+{
+    return 1;
+}
+
 static inline void host_cpu_frames(unsigned frames)
 {
     (void)frames;

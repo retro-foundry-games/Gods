@@ -15,6 +15,7 @@ SECTIONS {
         . = 0x2a0a; *(.rodata.shift_tables) *(.data.shift_tables)
         . = 0x3232; *(.rodata.small_font_name) *(.data.small_font_name)
         . = 0x3864; *(.rodata.respawn_search) *(.data.respawn_search)
+        . = 0x3fde; *(.rodata.words_3fde) *(.data.words_3fde)
         . = 0x44b4; *(.rodata.frames_44b4) *(.data.frames_44b4)
         . = 0x44bc; *(.rodata.frames_44bc) *(.data.frames_44bc)
         . = 0x44c4; *(.rodata.frames_44c4) *(.data.frames_44c4)

@@ -22,6 +22,7 @@ static inline void blit_start(uint16_t size)
 
 /* the original's routine at `address` is not replicated and was reached: said once on stderr (sdl/shims.c), so that what the play needs and the port lacks is known */
 void host_missing_routine(uint32_t address);
+int16_t host_start_level(void);   /* the level Begin Quest starts: 1, or the lockstep's (platform.h) */
 void host_iteration_mark(void);   /* the start of a frame of the game (platform.h) */
 void host_iteration_cpu_next(unsigned frames);   /* the next host_iteration_cpu waits for that many frames instead */
 void host_iteration_cpu(unsigned frames);   /* wait until that many video frames have passed since the mark */

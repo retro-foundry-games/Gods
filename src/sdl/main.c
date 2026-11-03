@@ -26,6 +26,7 @@ extern uint32_t heap_base;
 extern void sr_set(uint16_t value);
 extern uint8_t *mask_buffer;    /* shares its address with restart_address, which menu_boot sets to its own address: the original blits into the (finished) boot code */
 extern void host_begin_quest(void);   /* shims.c: the menu's Begin Quest */
+extern int host_lockstep_level;   /* shims.c: --lockstep-level */
 extern const char *host_level_image;  /* shims.c: --level1-image */
 void intro_render(uint32_t *pixels);   /* intro_view.c */
 
@@ -306,7 +307,8 @@ int main(int argc, char **argv)
     SDL_Renderer *renderer = 0;
     SDL_Texture *texture = 0;
     SDL_AudioStream *audio = 0;
-    int lockstep = 0, lockstep_extra = 0;   /* --lockstep, --lockstep-extra N: see lockstep_commands */
+    int lockstep = 0, lockstep_extra = 0;
+    unsigned lockstep_iteration = 129;   /* --lockstep-level N: Begin Quest starts level N (host_start_level); --lockstep-iteration N: the lockstep begins at that iteration of the game loop (the original's saved state is N - 1 iterations into the level) */   /* --lockstep, --lockstep-extra N: see lockstep_commands */
     int window_x = -1, window_y = -1, diff_x = -1, diff_y = -1;   /* --window-pos, --diff-pos: where the windows go (the diff window is for GODS_FOLLOW) */
     int follow = getenv("GODS_FOLLOW") != 0;                      /* the original is played live and this port follows it: it takes no keys of its own */
     SDL_Window *diff_window = 0;
@@ -321,6 +323,10 @@ int main(int argc, char **argv)
             scale = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--lockstep"))
             lockstep = headless = 1;
+        else if (!strcmp(argv[i], "--lockstep-level") && i + 1 < argc)
+            host_lockstep_level = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--lockstep-iteration") && i + 1 < argc)
+            lockstep_iteration = (unsigned)atoi(argv[++i]);
         else if (!strcmp(argv[i], "--lockstep-extra") && i + 1 < argc)
             lockstep_extra = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--window-pos") && i + 1 < argc)
@@ -497,7 +503,7 @@ int main(int argc, char **argv)
                 fprintf(stderr, "gods-sdl: lockstep boot: step %u, phase %d, iteration %u\n", lockstep_ticks, phase, gods_iteration);
             if (lockstep_ready)
                 lockstep_reply(pixels, phase);
-            else if (gods_iteration >= 129 && lockstep_extra-- <= 0)   /* (the level runs inside the menu's phase: Begin Quest calls the game loop) */
+            else if (gods_iteration >= lockstep_iteration && lockstep_extra-- <= 0)   /* (the level runs inside the menu's phase: Begin Quest calls the game loop) */
                 lockstep_ready = 1;
         }
         if (follow && phase == PHASE_LEVEL)
