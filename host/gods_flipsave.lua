@@ -20,7 +20,7 @@ for _ = 1, 200 do
     if reached then break end
 end
 assert(reached, "the original did not flip")
-ami.wait(1)   -- (the frame in which it flipped is over: it waits for the next blank)
+-- (the frame in which it flipped is over: it waits in the flip for the next blank; its next iteration has not begun)
 assert(ami.snapshot_save(OUT .. ".state"))
 ami.save_file(OUT .. ".ram", ami.read(0, 0x100000))
 ami.log(("flipsave: %s at frame %d"):format(OUT, ami.frame()))

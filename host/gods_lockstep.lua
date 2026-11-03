@@ -34,7 +34,7 @@ local meanlog = args:match("meanlog=(%d+)-(%d+)") and { tonumber(args:match("mea
 local LEVEL = tonumber(args:match("%f[%w]level=(%d)")) or 1   -- level=N: the original starts from gods-levelN-1m.state and the port begins level N (param_index; a level has worlds: the end texts are WORLD ONE, WORLD TWO, ... and LEVEL ONE COMPLETED) (iter=N: the iteration of the game loop the saved state is at; world 2: 124)
 local START_SKIP = tonumber(args:match("from=(%d+)")) or (LEVEL > 1 and 12 or 0)   -- from=N: differences before the emulator frame N are only logged (a state saved in the middle of an iteration: the first frames differ a little)
 local STATE = args:match("%f[%w]state=(%S+)") or ("gods-level" .. LEVEL .. "-1m.state")
-local EXTRA = tonumber(args:match("extra=(%d+)")) or 2   -- (found by trying: with 3, the comparison starting at frame 5, the idle level is pixel for pixel the same)
+local EXTRA = tonumber(args:match("extra=(%d+)")) or (args:find("ram=") and 0 or 2)   -- (a quickload from a state saved at a flip: the port begins its first iteration with the first step)   -- (found by trying: with 3, the comparison starting at frame 5, the idle level is pixel for pixel the same)
 
 ami.machine{
     name = "Gods lockstep", model = "A500", system = "../local/system", save = "../local/save", files = "..",
@@ -106,11 +106,11 @@ ami.hook(0x1d302, function() orig_flips = orig_flips + 1; flip_in_frame = true e
 local AUTO_SECONDS = args:find("noautosave") and 0 or tonumber(args:match("autosave=(%d+)")) or (args:find("replay=") and 0 or 30)
 local AUTO_DIR = ami.script_dir .. "/../captures/quicksave/auto"
 local auto_next = AUTO_SECONDS * 50
-local auto_slot, auto_pending = 0, nil
+local auto_slot = 0
 local function autosave_step()
     if AUTO_SECONDS <= 0 then flip_in_frame = false return end
     local f = ami.frame()
-    if auto_pending and f >= auto_pending then
+    if f >= auto_next and flip_in_frame then   -- (this frame is over; the original flipped in it and waits in the flip for the next blank: its next iteration has not begun)
         local base = ("%s/auto-%d"):format(AUTO_DIR, auto_slot)
         if ami.snapshot_save(base .. ".state") then
             ami.save_file(base .. ".ram", ami.read(0, 0x100000))
@@ -118,10 +118,7 @@ local function autosave_step()
             ami.log(("autosave: %s.state and .ram at emulator frame %d"):format(base, f))
             auto_slot = (auto_slot + 1) % 5
         end
-        auto_pending = nil
         auto_next = f + AUTO_SECONDS * 50
-    elseif not auto_pending and f >= auto_next and flip_in_frame then
-        auto_pending = f + 1
     end
     flip_in_frame = false
 end
@@ -319,7 +316,7 @@ lockstep.run {
     peer = delayed,
     width = 320, height = 256,
     window = { x = 40, y = 18, sx = 2 },   -- where the port's image sits in the original's 720x287 frame (tools/lockstep_align.py)
-    start = function() ami.wait(4) return true end,   -- the saved state is the start (a frame later it has been drawn)
+    start = function() if not args:find("ram=") then ami.wait(4) end return true end,   -- (a quickload begins with the first step: the port's first iteration goes with the original's next)   -- the saved state is the start (a frame later it has been drawn)
     keymap = function(key) return KEYS[key] end,
     on_frame = function(count, native, emulated)
         autosave_step()
@@ -330,7 +327,7 @@ lockstep.run {
             if bf and ami.frame() == tonumber(bf) then ami.trace_writes(true) end
             if bf and ami.frame() == tonumber(bf) + 1 then ami.save_file(bp, ami.take_writes()); ami.trace_writes(false) end
         end
-        if not tick_synced and ami.frame() >= 8 then
+        if not tick_synced and ami.frame() >= (args:find("ram=") and 2 or 8) then
             -- the original's tick_count ($CE2: the frames since the level began) includes the frames of its disk loading, which the port does not wait for: the port is given the
             -- original's count (it matters where the script looks at the seconds, as the bonus that is given only in the first minute)
             tick_synced = true
