@@ -606,7 +606,7 @@ extern const uint32_t table_5bb2[4];   /* $05BB2  ... and the second */
 extern const uint32_t table_1c678[8];   /* $1C678  for each level two pointers (ptr_0b7e, ptr_0b82) */
 extern const uint8_t sound1_name[11];   /* $1D3D2  "sound1.bin" */
 extern const struct SoundRecord sound_records[67];   /* $20BCE  the sounds: for each, its voices' tracks (the second byte names its voice entry) */
-extern const uint16_t sound_periods[144];   /* $2080E  the three tables of 48 periods of the notes (an instrument names one) */
+extern const uint16_t sound_periods[480];   /* $2080E  the period tables: an instrument names where its table starts (word 0, 48 or 96); a note indexes it by 4 words, so they run into each other up to the sounds table */
 extern const uint32_t sound_tracks[137];   /* $21C3A  the address of the track (the commands of the sequencer) of each track number, 0 for none */
 extern const struct SoundInstrument sound_instruments[53];   /* $3A38A  the instruments: the sample, its loop, and the period table */
 extern const uint8_t objects_name[8];   /* $196DE  "objects": the asset set of the objects */

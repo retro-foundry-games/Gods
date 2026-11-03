@@ -510,7 +510,7 @@ table table_5bb2   0x00005bb2 uint32_t 4   ... and the second
 table table_1c678  0x0001c678 uint32_t 8   for each level two pointers (ptr_0b7e, ptr_0b82)
 table sound1_name  0x0001d3d2 uint8_t 11   "sound1.bin"
 table sound_records 0x00020bce struct SoundRecord 67   the sounds: for each, its voices' tracks (the second byte names its voice entry)
-table sound_periods 0x0002080e uint16_t 144   the three tables of 48 periods of the notes (an instrument names one)
+table sound_periods 0x0002080e uint16_t 480   the period tables: an instrument names where its table starts (word 0, 48 or 96); a note indexes it by 4 words, so they run into each other up to the sounds table
 table sound_tracks 0x00021c3a uint32_t 137   the address of the track (the commands of the sequencer) of each track number, 0 for none
 table sound_instruments 0x0003a38a struct SoundInstrument 53   the instruments: the sample, its loop, and the period table
 table objects_name 0x000196de uint8_t 8   "objects": the asset set of the objects
