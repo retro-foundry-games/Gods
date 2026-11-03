@@ -235,8 +235,13 @@ extern uint16_t flag_236;   /* $00236 */
 extern int16_t flag_244;   /* $00244 */
 extern uint8_t *temp_bb6;   /* $00BB6  the pointer a loop over records with a block of its own each keeps */
 extern uint16_t records_12a0[90];   /* $012A0  ten records of 18 bytes (the first word is 0 for one that is free) */
-extern uint16_t records_1354[2140];   /* $01354  ten records of 428 bytes (the first word is 0 for one that is free) */
+extern struct Monster records_1354[10];   /* $01354  ten records of 428 bytes (the first word is 0 for one that is free) */
 extern uint32_t value_1296;   /* $01296 */
+extern int16_t count_242;   /* $00242  how many monsters of the record being run are free */
+extern int16_t index_246;   /* $00246  which monster of the record is being run */
+extern int16_t x_4ac;   /* $004AC  where the monster was in x before its step */
+extern int16_t vx_4b2;   /* $004B2  its speed before the step */
+extern int16_t vy_4b4;   /* $004B4 */
 extern uint16_t index_1ea;   /* $001EA */
 extern int16_t table_ed0[128];   /* $00ED0  entries of four words */
 extern uint16_t flag_721c;   /* $0721C  non-zero while a record of records_721e is in use */

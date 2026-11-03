@@ -810,19 +810,6 @@ void update_records_12a0(void)
     }
 }
 
-/* orig $008A54: the same for the ten records of 428 bytes at $1354, with blocks of 400 bytes at ptr_0cee; value_1296 is set to $121C
- * first; a record that is not free goes on at $8A98 or $891C, which did not run */
-void update_records_1354(void)
-{
-    flag_244 = 0;
-    value_1296 = GUEST(0x121c);
-    for (int i = 0; i < 10; i++) {
-        temp_bb6 = ptr_0cee + 400 * i;
-        if (records_1354[i * 214] != 0)
-            return;
-    }
-}
-
 /* orig $00D47E: with param_index 1 the entry of table_ed0 index_1ea names (four words) is looked at: the one whose third word is
  * not 0 or that is not in the window of 9 by 11 cells (scroll in cells of 32 by 16) at the scroll is passed by: index_1ea goes on
  * 8, back to 0 at 256 or when the first long of the table is negative.  An entry in the window (third word 0) goes on at $D4E2,
@@ -4657,6 +4644,1059 @@ static void aimed_shot(int16_t x, int16_t y, int16_t speed, int16_t kind)
     (void)speed;
     (void)kind;
     host_missing_routine(0x183BC);
+}
+
+/* ======== the monsters: $8A54, with the routines between $891C and $9A00 ======== */
+
+/* orig $00AEB2: the cells (of the map's 48 columns) round a monster that push it away, and $00AF12 the push of each (x and y) */
+static const int16_t monster_wall_cells[48] = {
+    -49, -48, -47, -46, -45, -44, -1, 47, 95, 143, 4, 52,
+    100, 148, 191, 192, 193, 194, 195, 196, -98, -97, -96, -95,
+    -94, -93, -92, -91, -50, -2, 46, 94, 142, 190, -43, 5,
+    53, 101, 149, 197, 238, 239, 240, 241, 242, 243, 244, 245,
+};
+static const int16_t monster_wall_push[96] = {
+    4, 4, 3, 4, 2, 4, -2, 4, -3, 4, -4, 4,
+    4, 3, 4, 2, 4, -2, 4, -3, -4, 3, -4, 2,
+    -4, -2, -4, -3, 4, -4, 3, -4, 2, -4, -2, -4,
+    -3, -4, -4, -4, 3, 3, 2, 3, 2, 3, 1, 3,
+    -1, 3, -2, 3, -2, 3, -3, 3, 3, 2, 3, 2,
+    3, 1, 3, -1, 3, -2, 3, -2, -3, 2, -3, 2,
+    -3, 1, -3, -1, -3, -2, -3, -2, 3, -3, 2, -3,
+    2, -3, 1, -3, -1, -3, -2, -3, -2, -3, -3, -3,
+};
+
+/* orig $009498: for 2 to 10 monsters in the chain (a row of ten bytes each) where each is on the circle of 128 */
+static const uint8_t monster_circle[90] = {
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 64, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 42, 85, 0, 0, 0, 0, 0, 0, 0,
+    0, 32, 64, 96, 0, 0, 0, 0, 0, 0,
+    0, 26, 51, 77, 102, 0, 0, 0, 0, 0,
+    0, 21, 43, 64, 85, 107, 0, 0, 0, 0,
+    0, 18, 37, 55, 73, 91, 110, 0, 0, 0,
+    0, 16, 32, 48, 64, 80, 96, 112, 0, 0,
+    0, 13, 26, 38, 51, 64, 77, 90, 102, 0,
+};
+
+/* orig $0004A4: the pictures a monster of the first level goes through (a word each) */
+static const int16_t monster_steps[4] = { 0, 1, 2, 1 };
+
+/* orig $0098C2: which of the seven zones of zone_limits (1 to 7) the monster's box of 32 by 32 is in; 0 when in none */
+static int16_t monster_zone(const struct MonsterPart *m)
+{
+    int16_t x = (int16_t)(m->x - scroll_x);
+    int16_t y = (int16_t)(m->y - scroll_y);
+
+    for (int i = 0; i < 7; i++) {
+        const uint16_t *limit = &zone_limits[i * 4];
+
+        if ((int16_t)(x + 32) < (int16_t)limit[0] || (int16_t)(y + 32) < (int16_t)limit[1] || x > (int16_t)limit[2] || y > (int16_t)limit[3])
+            continue;
+        return (int16_t)(i + 1);
+    }
+    return 0;
+}
+
+/* orig $00AE3C: the monster shows up: sound 18, a puff (the first free record of records_721e) where it is, and it waits five frames more (hp -3).  Without a free record nothing else happens */
+static void monster_puff(struct MonsterPart *m)
+{
+    int16_t *record = records_721e;
+    int i;
+
+    play_sound(18, 4);
+    for (i = 0; i < 10; i++, record += 3)
+        if (record[2] < 0)
+            break;
+    if (i == 10)
+        return;
+    record[0] = m->x;
+    record[1] = m->y;
+    record[2] = 7;
+    m->timer = 5;
+    flag_721c = 1;
+    m->hp = -3;
+}
+
+/* orig $00AE78: the monster (at the screen place x, y) is hit as a box of 32 by 32: check_hit_and_walls with its hit points gives what is left; below 0 it dies */
+static void monster_hit(struct MonsterPart *m, int16_t x, int16_t y)
+{
+    word_39c = 0x20;
+    word_39e = 0x20;
+    m->hp = check_hit_and_walls((int16_t)(x + scroll_x), (int16_t)(y + scroll_y), m->hp);
+    if (m->hp < 0) {
+        m->frame = -1;
+        m->timer = 0;
+    }
+}
+
+/* orig $008D1E: the picture of the monster: the first word of its template, a flying one (the template's picture $1EE: eight pictures) or the $1E4 (six) goes through its pictures; the
+ * count down in anim_timer sets how fast, from the monster's speed.  The other templates have four pictures (the first levels' take them in the order of monster_steps) and
+ * the one that looks left is 3 or 4 on */
+static int16_t monster_picture(const struct MonsterType *type, struct MonsterPart *m)
+{
+    const struct CreatureTemplate *template = &((const struct CreatureTemplate *)ptr_0b7e)[type->picture];
+    int16_t picture = (int16_t)template->unused;
+
+    if (picture == 0x1EE) {
+        if ((int8_t)--m->anim_timer < 0) {
+            m->frame = (int16_t)((m->frame + 1) & 7);
+            m->anim_timer = (uint8_t)((10 - m->speed) >> 2);
+        }
+        return (int16_t)(picture + m->frame);
+    }
+    if (picture == 0x1E4) {
+        if ((int8_t)--m->anim_timer < 0) {
+            m->frame++;
+            if (m->frame >= 6)
+                m->frame = 0;
+            m->anim_timer = (uint8_t)((10 - m->speed) >> 2);
+        }
+        return (int16_t)(picture + m->frame);
+    }
+    if ((int8_t)--m->anim_timer < 0) {
+        m->frame = (int16_t)((m->frame + 1) & 3);
+        m->anim_timer = (uint8_t)((10 - m->speed) >> 2);
+    }
+    if (param_index < 2) {
+        picture = (int16_t)(picture + monster_steps[m->frame]);
+        if (m->facing == 0)
+            picture += 3;
+    } else {
+        picture = (int16_t)(picture + m->frame);
+        if (m->facing == 0)
+            picture += 4;
+    }
+    return picture;
+}
+
+/* the smaller of the monster's speed and the type's byte 12 (the lower limit used by $8ED8) */
+static int16_t monster_limit_c(const struct MonsterType *type, const struct MonsterPart *m)
+{
+    int16_t limit = type->limit_c;
+
+    return m->speed > limit ? limit : m->speed;
+}
+
+/* orig $008ED8: the monster's speed changes towards its target (a cell of 32 by 32 pixels it is in is the target's: it slows down there and, with a rank above 1, is
+ * at the target when the places are the same to 8 pixels); elsewhere a eighth of the way, up to the limit, is added to the speed */
+static void monster_steer(const struct MonsterType *type, struct MonsterPart *m)
+{
+    int16_t x = m->x, y = m->y;
+    int16_t tx = m->target_x, ty = m->target_y;
+    int16_t limit = monster_limit_c(type, m);
+
+    if ((int16_t)((tx + 16) & 0xFFE0) != (int16_t)((x + 16) & 0xFFE0) || (int16_t)((ty + 16) & 0xFFE0) != (int16_t)((y + 16) & 0xFFE0)) {
+        int16_t dx = (int16_t)((int16_t)(tx - x) >> 3);
+        int16_t dy = (int16_t)((int16_t)(ty - y) >> 3);
+
+        if (dx >= 0) {
+            if (dx > limit)
+                dx = limit;
+        } else if (dx < -limit) {
+            dx = (int16_t)-limit;
+        }
+        if (dy >= 0) {
+            if (dy > limit)
+                dy = limit;
+        } else if (dy < -limit) {
+            dy = (int16_t)-limit;
+        }
+        m->vx = (int16_t)(m->vx + dx);
+        m->vy = (int16_t)(m->vy + dy);
+        return;
+    }
+
+    int16_t vx = m->vx, vy = m->vy;
+
+    if (vx >= 0) {
+        vx = (int16_t)(vx - limit);
+        if (vx < 0)
+            vx = 0;
+    } else {
+        vx = (int16_t)(vx + limit);
+        if (vx >= 0)
+            vx = 0;
+    }
+    if (vy >= 0) {
+        vy = (int16_t)(vy - limit);
+        if (vy < 0)
+            vy = 0;
+    } else {
+        vy = (int16_t)(vy + limit);
+        if (vy >= 0)
+            vy = 0;
+    }
+    m->vx = vx;
+    m->vy = vy;
+    m->new_target = 1;
+    if (m->rank != 0 && m->rank != 1) {
+        if ((int16_t)((x + 4) & 0xFFF8) == (int16_t)((tx + 4) & 0xFFF8) && (int16_t)((y + 4) & 0xFFF8) == (int16_t)((ty + 4) & 0xFFF8))
+            m->reached = 1;
+    }
+}
+
+/* orig $0090A2: how the cells round the monster (monster_wall_cells from the cell at its place, on the map line_text + 100: a cell that is not 0, and for the monsters that look for
+ * what lies about without a goal also $FD) push it: the first two give their push; the steps along the lists are 16 less the type's byte 15 (at most 15) */
+static void monster_wall_push_sum(const struct MonsterType *type, const struct MonsterPart *m, int16_t *push_x, int16_t *push_y)
+{
+    int16_t px = 0, py = 0;
+    int16_t step = (int16_t)((int16_t)(int8_t)(0x0F - type->wall) + 1) & 0x0F;
+    int16_t x = (int16_t)(m->x - scroll_x);
+    int16_t y = (int16_t)(m->y - scroll_y);
+
+    *push_x = 0;
+    *push_y = 0;
+    if (x >= 0x140 || x <= -32 || y <= -16 || y >= 0xC0)
+        return;
+
+    const uint8_t *cell = line_text + 100;
+
+    if (x & 4)
+        cell++;
+    cell += x >> 3;
+    cell += (y & -8) * 6;
+
+    const int16_t *offset = monster_wall_cells;
+    const int16_t *push = monster_wall_push;
+    int hits = 0;
+    int16_t left = 0x2F;
+
+    if (step == 0)
+        return;   /* (the original does not end) */
+
+    int every = m->mode != 0 && m->goal != 0;
+
+    do {
+        uint8_t value = cell[*offset++];
+
+        if (every ? value != 0 : (value != 0 && value != 0xFD)) {
+            if (hits < 2) {
+                hits++;
+                px = (int16_t)(px + push[0]);
+                py = (int16_t)(py + push[1]);
+            }
+        }
+        push += 2 * step;
+        left = (int16_t)(left - step);
+    } while (left >= 0);
+    *push_x = px;
+    *push_y = py;
+}
+
+/* orig $009040: a monster with a wall push (the type's byte 15) that is pushed away by the cells round it gets that as its speed (twice, within the limit of byte 12, and what it had
+ * before the step added), moves at once (speed 10) and is no longer at its target */
+static void monster_bump(const struct MonsterType *type, struct MonsterPart *m)
+{
+    int16_t dx, dy;
+
+    if (type->wall == 0)
+        return;
+    monster_wall_push_sum(type, m, &dx, &dy);
+    if ((dx | dy) == 0)
+        return;
+    m->speed = 10;
+    m->reached = 0;
+    dx = (int16_t)(dx * 2);
+    dy = (int16_t)(dy * 2);
+
+    int16_t limit = type->limit_c;
+
+    if (dx != 0) {
+        if (dx < 0) {
+            if (dx < -limit)
+                dx = (int16_t)-limit;
+        } else if (dx > limit) {
+            dx = limit;
+        }
+    }
+    if (dy != 0) {
+        if (dy < 0) {
+            if (dy < -limit)
+                dy = (int16_t)-limit;
+        } else if (dy > limit) {
+            dy = limit;
+        }
+    }
+    m->vx = (int16_t)(dx + vx_4b2);
+    m->vy = (int16_t)(dy + vy_4b4);
+}
+
+/* orig $009002: the speed is kept within the type's byte 11 (the step is what is left) */
+static void monster_limit_speed(const struct MonsterType *type, struct MonsterPart *m, int16_t *dx, int16_t *dy)
+{
+    int16_t limit = type->limit_b;
+    int16_t vx = m->vx, vy = m->vy;
+
+    if (vx >= 0) {
+        if (vx > limit)
+            vx = limit;
+    } else if (vx < -limit) {
+        vx = (int16_t)-limit;
+    }
+    if (vy >= 0) {
+        if (vy > limit)
+            vy = limit;
+    } else if (vy < -limit) {
+        vy = (int16_t)-limit;
+    }
+    m->vx = vx;
+    m->vy = vy;
+    *dx = vx;
+    *dy = vy;
+}
+
+/* orig $008FE0: the monster moves by its step (when timer_306 is 0): to its target when it is at it (reached) */
+static void monster_move(struct MonsterPart *m, int16_t dx, int16_t dy)
+{
+    if (timer_306 != 0)
+        return;
+    if (m->reached != 0) {
+        m->x = m->target_x;
+        m->y = m->target_y;
+        return;
+    }
+    m->x = (int16_t)(m->x + dx);
+    m->y = (int16_t)(m->y + dy);
+}
+
+/* orig $0091EE: the monster shoots when its count down (fire_timer) is over: low nibble of the type's byte 6 (how often), high nibble the speed.  Type bits 4 and 5 are how: 0 a shot
+ * sideways (to the side it moves, with flag_244 negative one by the monster's mode), 1 a bolt at the player with a spread ($183C8, not replicated), 2 and 3 a bolt at the player
+ * ($183BC: aimed_shot) */
+static void monster_fire(const struct MonsterType *type, struct MonsterPart *m)
+{
+    uint8_t rate = type->fire;
+
+    if (rate == 0 || (rate & 0x0F) == 0)
+        return;
+    if (--m->fire_timer != 0)
+        return;
+    m->fire_timer = (int16_t)((int16_t)(int8_t)(16 - (rate & 0x0F)) * 4);
+
+    int16_t kind = (int16_t)((type->flags >> 4) & 3);
+    int16_t speed = (int16_t)((rate & 0xF0) >> 4);
+
+    if (kind != 0) {
+        if (kind == 1) {
+            int16_t x = (int16_t)(player_x + 8);
+            int16_t y = (int16_t)(player_y + 6);
+
+            x = (int16_t)(x + (int16_t)(random_word() & 0x3F) - 0x1F);
+            y = (int16_t)(y + (int16_t)(random_word() & 0x3F) - 0x1F);
+            (void)x;
+            (void)y;
+            host_missing_routine(0x183C8);   /* the bolt at that place did not run */
+            return;
+        }
+        aimed_shot((int16_t)(m->x + 0x10), m->y, speed, 0);
+        return;
+    }
+
+    int right;
+
+    if (flag_244 < 0)
+        right = ((0x15u >> (m->mode & 63)) & 1) == 0;   /* $9A1C: the long $15 */
+    else if (m->vx == 0)
+        return;
+    else
+        right = m->vx > 0;
+    if (right) {
+        word_2e4 = speed;
+        enemy_shot((int16_t)(m->x + 0x20), m->y, 1);
+    } else {
+        word_2e4 = (int16_t)-speed;
+        enemy_shot((int16_t)(m->x - 8), m->y, 0);
+    }
+}
+
+/* orig $00985C: the chain is over (its first has died): all the monsters of the record lose their rank and look for what lies about (mode 1) again */
+static void monster_end_chain(struct Monster *rec, const struct MonsterType *type, struct MonsterPart *block)
+{
+    rec->chain = 0;
+    rec->mask = 0;
+    for (int i = 0; i < type->count; i++) {
+        block[i].rank = 0;
+        block[i].reached = 0;
+        block[i].mode = 1;
+        block[i].goal = -1;
+    }
+}
+
+/* orig $00988C: a monster of the chain has died (its rank, m->rank, is still there): the ones behind it (higher rank) move up one */
+static void monster_close_gap(struct Monster *rec, const struct MonsterType *type, struct MonsterPart *m, struct MonsterPart *block)
+{
+    uint16_t mask = rec->mask;
+
+    if (rec->chain <= 1)
+        return;
+    for (int i = 0; i < type->count; i++) {
+        int carry = mask & 1;
+
+        mask >>= 1;
+        if (carry && m->rank < block[i].rank) {
+            block[i].rank--;
+            block[i].reached = 0;
+        }
+    }
+}
+
+/* orig $0097DE: while there is a chain its phase (round the circle) goes on.  Without one there is a chance (the type's byte 10, of 128) that a monster that is alive (hit points above 0)
+ * becomes the first of one: the one the record picked (special), or one by chance */
+static void monster_recruit(struct Monster *rec, const struct MonsterType *type, struct MonsterPart *block)
+{
+    if (rec->chain != 0) {
+        rec->phase = (uint8_t)((rec->phase + 1) & 0x7F);
+        return;
+    }
+    if (!((int8_t)(random_word() & 0x7F) < (int8_t)type->chance))
+        return;
+
+    int8_t who = rec->special;
+
+    if (who < 0) {
+        int16_t count = type->count;
+        uint16_t value = random_word();
+        uint16_t step = count > 0 ? (uint16_t)(0xFFFF / count) : 0xFFFF;
+        uint16_t limit = step;
+        int16_t k = 0;
+
+        while (!(value < limit)) {
+            limit = (uint16_t)(limit + step);
+            k++;
+        }
+        who = (int8_t)k;
+    }
+
+    struct MonsterPart *chosen = &block[who];
+
+    if (chosen->hp <= 0)
+        return;
+    chosen->rank = 1;
+    rec->chain = 1;
+    rec->mask = (uint16_t)(1u << (who & 31));
+    rec->lead = 0;
+    rec->index = 0;
+}
+
+/* orig $009606: the monster takes up the object of the list (x, y, kind): the first record of records_19b14 (from the last) with that kind and place goes into the monster's hands */
+static void monster_take(struct MonsterPart *m, int16_t x, int16_t y, int16_t kind)
+{
+    for (int i = 199; i >= 0; i--) {
+        struct Slot8 *record = &records_19b14[i];
+
+        if (record->w[3] == 0 || record->w[2] < 0)
+            continue;
+        if (record->w[2] != kind || record->w[0] != x || record->w[1] != y)
+            continue;
+        m->item_x = x;
+        m->item_y = y;
+        m->item = kind;
+        record->w[2] = -1;
+        record->w[3] = 0;
+        return;
+    }
+}
+
+/* orig $00957C: a monster without an object that is near (to 48 pixels up and left, 16 right and down) one of the objects in the list at $121C that the type takes (bits 0 and 1 of
+ * the type's flags for the common ones, 2 and 3 for the ones from kind $C0 on) takes it up */
+static void monster_pickup(const struct MonsterType *type, struct MonsterPart *m)
+{
+    if (list_count_1294 == 0 || m->item >= 0)
+        return;
+
+    const int16_t *list = (const int16_t *)GUEST(0x121c);
+    int16_t count = (int16_t)list_count_1294;
+    int16_t x = (int16_t)(m->x - 8);
+    int16_t y = (int16_t)(m->y - 8);
+
+    if (count > 20)
+        count = 20;
+    for (int16_t n = 0; n < count; n++, list += 3) {
+        uint16_t takes = type->flags;
+
+        if (list[2] >= 0xC0)
+            takes >>= 2;
+        if ((takes & 3) == 0)
+            continue;
+
+        int16_t ox = (int16_t)(list[0] + 8 + scroll_x);
+        int16_t oy = (int16_t)(list[1] + 8 + scroll_y);
+
+        if (x > ox || y > oy)
+            continue;
+        ox = (int16_t)(ox - 0x30);
+        oy = (int16_t)(oy - 0x30);
+        if (x < ox || y < oy)
+            continue;
+        monster_take(m, (int16_t)(list[0] + scroll_x), (int16_t)(list[1] + scroll_y), list[2]);
+        return;
+    }
+}
+
+/* orig $009370 (mode 4): the target is where the monster in front (the rank before) was: in the history of the first, 16 places for each rank less 8 bytes back.  The type's bits 6 and
+ * 7: 0 that place, 2 a circle round the place of the first ($942E, monster_circle), 1 and 3 that place turned by the angle of the rank (table_1c9e4) */
+static void monster_follow(struct Monster *rec, const struct MonsterType *type, struct MonsterPart *m)
+{
+    if (m->speed < 2)
+        m->speed = 2;
+
+    int16_t back = (int16_t)((m->rank - 1) * 16);
+    int16_t at = (int16_t)(rec->index - (back - 8));
+
+    if (at < 0)
+        at = (int16_t)(at + 0x190);
+
+    int16_t x = rec->history[at >> 2].x;
+    int16_t y = rec->history[at >> 2].y;
+    uint16_t how = type->flags & 0xC0;
+
+    if (how == 0) {
+        m->target_x = x;
+        m->target_y = y;
+        return;
+    }
+
+    int16_t last = (int16_t)(rec->index - 4);
+
+    if (last < 0)
+        last = (int16_t)(last + 0x190);
+    if (how == 0x80) {
+        int16_t row = (int16_t)(rec->chain - 2);
+        uint8_t around = (uint8_t)(monster_circle[row * 10 + (m->rank - 2)] + rec->phase);
+        int16_t angle;
+
+        if (around & 0x80)
+            around = (uint8_t)(around - 0x80);
+        angle = (int16_t)(around * 8);
+
+        int16_t dx = (int16_t)(*(const int16_t *)(table_1c9e4 + angle) >> 10);
+        int16_t dy = (int16_t)(*(const int16_t *)(table_1c9e4 + 0x100 + angle) >> 10);
+
+        m->target_x = (int16_t)(rec->history[last >> 2].x + dx);
+        m->target_y = (int16_t)(rec->history[last >> 2].y + dy);
+        return;
+    }
+
+    int16_t px = rec->history[last >> 2].x;
+    int16_t py = rec->history[last >> 2].y;
+    int16_t dx = (int16_t)(x - px);
+    int16_t dy = (int16_t)(y - py);
+    int16_t offset = (int16_t)((((m->rank - 2) & 1)) << 7);
+    int16_t sine = *(const int16_t *)(table_1c9e4 + offset);
+    int16_t cosine = *(const int16_t *)(table_1c9e4 + 0x100 + offset);
+    int16_t tx = (int16_t)(((int32_t)dy * sine >> 15) + ((int32_t)dx * cosine >> 15));
+    int16_t ty = (int16_t)(((int32_t)dy * cosine >> 15) - ((int32_t)dx * sine >> 15));
+
+    m->target_x = (int16_t)(tx + px);
+    m->target_y = (int16_t)(ty + py);
+}
+
+/* orig $009652 (mode 1): the monster looks for a zone (zone_limits) to go to: by the chance of the type's byte 13 the one most of the group's zones are in (zone_counts, by the
+ * player's place), else one by chance (1 to 7); if it is not in it already the zone next to it on the shorter way (through zones where zone_counts is not 0; on a tie the one with more, or
+ * one by chance) is its next, and a place by chance in that zone is its target */
+static void monster_zone_goal(const struct MonsterType *type, struct MonsterPart *m)
+{
+    int16_t aim;
+    int16_t here;
+    int16_t up, down;
+
+    m->goal = -1;
+    if (!((int8_t)(random_word() & 0x7F) > (int8_t)type->zone_chance)) {
+        int16_t best = 0;
+
+        aim = 1;
+        for (int16_t i = 1; i <= 6; i++) {
+            if ((int8_t)zone_counts[i] > best) {
+                best = (int8_t)zone_counts[i];
+                aim = i;
+            }
+        }
+    } else {
+        do
+            aim = (int16_t)(random_word() & 7);
+        while (aim == 0);
+    }
+
+    here = monster_zone(m);
+    int8_t zone = (int8_t)here;
+
+    if (zone != (int8_t)aim) {
+        int16_t z = zone;
+
+        up = 0;
+        for (;;) {
+            up++;
+            z++;
+            if (z >= 7)
+                z = 1;
+            if ((int8_t)aim == (int8_t)z)
+                break;
+            if (zone_counts[z] == 0) {
+                up = -1;
+                break;
+            }
+        }
+        z = zone;
+        down = 0;
+        for (;;) {
+            down++;
+            z--;
+            if (z == 0)
+                z = 6;
+            if ((int8_t)aim == (int8_t)z)
+                break;
+            if (z < 0 || zone_counts[z] == 0) {   /* (a monster in no zone goes below 0 in the original, which reads what lies before zone_counts) */
+                down = -1;
+                break;
+            }
+        }
+        if (up < 0)
+            goto back;
+        if (down < 0)
+            goto forward;
+        if (up == down) {
+            int16_t next = (int16_t)(zone + 1);
+            int16_t before = (int16_t)(zone - 1);
+
+            if (next >= 7)
+                next = 1;
+            if (before == 0)
+                before = 6;
+            if ((int8_t)zone_counts[before] > (int8_t)zone_counts[next])
+                goto back;
+            if ((int8_t)zone_counts[before] < (int8_t)zone_counts[next])
+                goto forward;
+            if ((random_word() & 1) == 0)
+                goto back;
+            goto forward;
+        }
+        if (down > up)
+            goto back;
+forward:
+        zone = (int8_t)(zone + 1);
+        if (zone >= 7)
+            zone = 1;
+        goto chosen;
+back:
+        if (down < 0)
+            goto chosen;
+        zone = (int8_t)(zone - 1);
+        if (zone == 0)
+            zone = 6;
+    }
+chosen:
+    if ((uint8_t)zone == m->zone && m->new_target == 0)
+        return;
+    m->zone = (uint8_t)zone;
+    if (zone < 1)
+        return;   /* (the original reads the eight bytes before zone_limits) */
+
+    const uint16_t *limit = &zone_limits[(zone - 1) * 4];
+    int16_t x = (int16_t)limit[0], y = (int16_t)limit[1];
+    int16_t wide = (int16_t)(limit[2] - x), high = (int16_t)(limit[3] - y);
+
+    x = (int16_t)(x + (int16_t)((int16_t)((random_word() & 0x7F) * wide) >> 7));
+    y = (int16_t)(y + (int16_t)((int16_t)((random_word() & 0x7F) * high) >> 7));
+    m->target_x = (int16_t)(x - 0x10 + scroll_x);
+    m->target_y = (int16_t)(y - 0x10 + scroll_y);
+    m->new_target = 0;
+    (void)type;
+}
+
+/* orig $009270: where the monster goes.  With a goal (0 the player, 4 the chain) that; without one (-1) a monster of the record that is not in the chain may join it (a chance by the chain's
+ * length), else the type's byte 8 (two modes, the low nibble first, the swap by the chance of byte 9) says: 0 the player, 1 a zone, 2 what lies about, 3 start a chain, 4 follow it */
+static void monster_target(struct Monster *rec, const struct MonsterType *type, struct MonsterPart *m, struct MonsterPart *block)
+{
+    uint8_t first, second;
+    int16_t value;
+
+    if (m->goal >= 0) {
+        first = second = (uint8_t)m->goal;
+        goto dispatch;
+    }
+    if (rec->chain != 0 && !((rec->mask >> index_246) & 1)) {
+        int8_t chance = (int8_t)type->chance;
+
+        value = (int16_t)(random_word() & 0x7F);
+        if ((int8_t)value < chance) {
+            int16_t eight = (int16_t)((int16_t)rec->chain * 2 * 4);
+
+            if (!(eight > rec->lead)) {
+                rec->chain++;
+                m->rank = rec->chain;
+                rec->mask = (uint16_t)(rec->mask | (1u << (index_246 & 31)));
+                m->goal = 4;
+                monster_follow(rec, type, m);
+                return;
+            }
+        }
+    }
+    first = type->mode & 0x0F;
+    second = (type->mode & 0xF0) >> 4;
+    if ((int8_t)type->mode_chance < (int8_t)(random_word() & 0x7F)) {
+        uint8_t swap = first;
+
+        first = second;
+        second = swap;
+    }
+
+dispatch:
+    switch ((int8_t)(uint8_t)(first << 2)) {
+    case 0:   /* $931E: the player */
+        if ((m->goal << 8 | m->reached) != 0 && type->chance != 0) {
+            int different;
+
+            if (m->rank == 1) {
+                int16_t d4 = rec->alive;
+                uint32_t dividend = (uint32_t)(int32_t)(int16_t)((int16_t)rec->chain << 7);
+                uint16_t quotient = d4 != 0 ? (uint16_t)(dividend / (uint16_t)d4) : 0xFFFF;
+
+                different = (int16_t)quotient < (int8_t)type->chance;
+            } else {
+                different = (int16_t)(random_word() & 0x7F) <= type->chance;   /* (the original compares with a word whose high byte was left from before: taken as 0) */
+            }
+            if (different) {
+                uint8_t swap = first;
+
+                first = second;
+                second = swap;
+                goto dispatch;
+            }
+        }
+        m->goal = 0;
+        m->target_x = player_x;
+        m->target_y = (int16_t)(player_y + 8);
+        return;
+    case 4:   /* $9652: a zone */
+        monster_zone_goal(type, m);
+        return;
+    case 8:   /* $94F2: what lies about */
+        if (m->item < 0 && list_count_1294 != 0) {
+            const int16_t *entry = (const int16_t *)(uintptr_t)value_1296;
+            int16_t x = (int16_t)(entry[0] + scroll_x - 8);
+            int16_t y = (int16_t)(entry[1] + scroll_y - 8);
+            uint16_t takes = type->flags;
+
+            if (entry[2] >= 0xC0)
+                takes >>= 2;
+            if ((takes & 3) == 0) {
+                x = (int16_t)(x + (int16_t)(random_word() & 0x0F) - 8);
+                y = (int16_t)(y + (int16_t)(random_word() & 0x0F) - 8);
+            }
+            m->target_x = x;
+            m->target_y = y;
+            m->new_target = 0;
+            monster_pickup(type, m);
+            return;
+        }
+        if (first == second) {
+            monster_zone_goal(type, m);
+            return;
+        }
+        {
+            uint8_t swap = first;
+
+            first = second;
+            second = swap;
+        }
+        goto dispatch;
+    case 12:   /* $97DE */
+        monster_recruit(rec, type, block);
+        return;
+    case 16:   /* $9370 */
+        monster_follow(rec, type, m);
+        return;
+    default:
+        host_missing_routine(0x930A + (uint32_t)(uint8_t)(first << 2));
+        return;
+    }
+}
+
+/* orig $008B22: one step of a monster that is there (hit points above 0): it chooses its target, steers, moves and shoots; the first of a chain adds its place to the history; it is hit (by
+ * the player's shots and the cells) and drawn; the monster the record picked gets two glyphs (the marks 131 and 132) above and below it, and a monster that carries an object draws it
+ * (glyph $AA more than its kind, or $12E more from kind $C0) coming after it; the object is dropped when the monster's type lets it (type flags bits 0 to 3, 0 at once, 2 never, else by chance) */
+static void monster_step(struct Monster *rec, const struct MonsterType *type, struct MonsterPart *m, struct MonsterPart *block)
+{
+    x_4ac = m->x;
+    m->speed--;
+    if (m->speed < 1)
+        m->speed = 1;
+    monster_target(rec, type, m, block);
+    vx_4b2 = m->vx;
+    vy_4b4 = m->vy;
+    monster_steer(type, m);
+    monster_bump(type, m);
+
+    int16_t dx, dy;
+
+    monster_limit_speed(type, m, &dx, &dy);
+    monster_move(m, dx, dy);
+    monster_fire(type, m);
+
+    int16_t x = m->x;
+    int16_t y = m->y;
+
+    if (m->rank == 1) {
+        rec->lead++;
+        if (rec->lead >= 100)
+            rec->lead = 100;
+        rec->history[rec->index >> 2].x = x;
+        rec->history[rec->index >> 2].y = y;
+        rec->index += 4;
+        if (rec->index >= 0x190)
+            rec->index = 0;
+    }
+    int16_t moved = (int16_t)(x_4ac - x);
+
+    if (moved != 0) {
+        if (moved > 0) {
+            if (moved >= 2)
+                m->facing = 1;
+        } else if (moved <= -2) {
+            m->facing = 0;
+        }
+    }
+    x = (int16_t)(x - scroll_x);
+    y = (int16_t)(y - scroll_y);
+
+    int16_t picture = monster_picture(type, m);
+
+    word_3a6 = 1;
+    monster_hit(m, x, y);
+    word_3a6 = 0;
+    if (m->hp < 0)
+        add_kill_score(type->life);   /* $9DDA: the same adding as $9DEA (did not run) */
+    sprite_draw(x, y, (uint16_t)picture);
+
+    if ((int8_t)index_246 == rec->special) {
+        int16_t mx = (int16_t)(m->x - scroll_x + 8);
+        int16_t my = (int16_t)(m->y - scroll_y);
+
+        glyph_draw(mx, (int16_t)(my - 10), 0x83);
+        glyph_draw(mx, (int16_t)(my + 0x21), 0x84);
+    }
+    if (m->item < 0)
+        return;
+
+    int16_t ix = m->item_x;
+    int16_t iy = m->item_y;
+
+    ix = (int16_t)(ix + (int16_t)((int16_t)(m->x + 8 - ix) >> 1));
+    iy = (int16_t)(iy + (int16_t)((int16_t)(m->y + 0x18 - iy) >> 1));
+    m->item_x = ix;
+    m->item_y = iy;
+
+    int16_t sx = (int16_t)(ix - scroll_x);
+    int16_t sy = (int16_t)(iy - scroll_y);
+    int16_t kind = m->item;
+
+    if (kind < 0xC0) {
+        glyph_draw(sx, sy, (uint16_t)(kind + 0xAA));
+        switch (type->flags & 3) {
+        case 2:
+            return;
+        case 0:
+            break;
+        default:
+            if ((random_word() & 0x7F) != 0)
+                return;
+            break;
+        }
+        drop_record(m->item_x, m->item_y, (int16_t)(m->item + 0x0B));
+    } else {
+        glyph_draw(sx, sy, (uint16_t)(kind - 0xC0 + 0x12E));
+        switch (type->flags & 0x0C) {
+        case 8:
+            return;
+        case 0:
+            break;
+        default:
+            if ((random_word() & 0x7F) != 0)
+                return;
+            break;
+        }
+        drop_record(m->item_x, m->item_y, (int16_t)(m->item - 0xC0));
+    }
+    m->item = -1;
+}
+
+/* orig $008E84 (and $008DD8): a monster that is not there.  Hit points -2: it waits (timer) and shows up with a puff; -3: it waits again and then gets its hit points from the
+ * type (twice for the one the record picked); any other negative number it is dying: the first time its place is kept (word_7f74, word_7f76), the object it carries dropped and,
+ * in a chain, the chain closed up (or ended when it was the first); then its pictures (the glyph 91 on) go on until the 17th, when it is free */
+static void monster_dying(struct Monster *rec, const struct MonsterType *type, struct MonsterPart *m, struct MonsterPart *block, int16_t remaining)
+{
+    if (m->hp == -2) {
+        if (--m->timer == 0)
+            monster_puff(m);
+        return;
+    }
+    if (m->hp == -3) {
+        if (--m->timer != 0)
+            return;
+
+        int16_t life = type->life;
+
+        if ((uint8_t)remaining == (uint8_t)rec->special)
+            life = (int16_t)(life * 2);
+        m->hp = life;
+        return;
+    }
+    word_6ebe++;
+    if (m->frame < 0) {
+        word_7f74 = m->x;
+        word_7f76 = m->y;
+        if (m->item >= 0) {
+            int16_t kind = m->item;
+
+            kind = kind >= 0xC0 ? (int16_t)(kind - 0xC0) : (int16_t)(kind + 0x0B);
+            drop_thing(m->item_x, m->item_y, kind);
+        }
+        if (m->rank != 0) {
+            int16_t rank = m->rank;
+
+            if (rank == 1) {
+                monster_end_chain(rec, type, block);
+            } else {
+                rec->chain--;
+                rec->mask = (uint16_t)(rec->mask & ~(1u << (rank & 31)));
+                monster_close_gap(rec, type, m, block);
+            }
+        }
+    }
+    m->frame++;
+    if (m->frame >= 0x11) {
+        m->hp = 0;
+        m->timer = 0;
+        return;
+    }
+    sprite_draw((int16_t)(m->x - scroll_x), (int16_t)(m->y - scroll_y), (uint16_t)(m->frame + 0x5B));
+}
+
+/* orig $00891C: a record to start (state 2): the type's bytes are set (the original tests the code at $F6C0, which is never 0: speed limits 10, mode 0, wall push 15), the monsters are
+ * put at the start cell one after the other (their timers add the type's delay), the first one shows up with a puff, and the record goes on (state 1); a record whose type has bit 8 picks
+ * a monster by chance */
+static void monster_start(struct Monster *rec, struct MonsterPart *block)
+{
+    struct MonsterType *type = rec->type;
+    struct MonsterPart *m = block;
+
+    type->limit_b = 10;
+    type->limit_c = 10;
+    type->mode = 0;
+    type->wall = 0x0F;
+
+    int16_t remaining = (int16_t)(type->count - 1);
+
+    if (remaining < 0)
+        return;
+
+    int16_t timer = 0;
+
+    do {
+        int16_t x = (int16_t)(((type->start >> 8) & 0xFF) << 5 & 0xFFE0);
+        int16_t y = (int16_t)((type->start & 0xFF) << 4 & 0xFFF0);
+
+        m->x = x;
+        m->y = y;
+        m->target_x = x;
+        m->target_y = x;
+        m->zone = (uint8_t)monster_zone(m);
+        m->frame = 0;
+        m->anim_timer = 2;
+        m->facing = 0;
+        m->hp = -2;
+        m->timer = timer;
+        if (timer == 0)
+            monster_puff(m);
+        if ((type->fire & 0x0F) != 0)
+            m->fire_timer = (int16_t)((int16_t)(int8_t)(16 - (type->fire & 0x0F)) * 4);
+        m->mode = 0;
+        m->goal = -1;
+        m->vx = 0;
+        m->vy = 0;
+        m->new_target = 1;
+        m->unused_24 = 0;
+        m->rank = 0;
+        m->reached = 0;
+        m->speed = 2;
+        m->unused_12 = -1;
+        m->item = -1;
+        timer = (int16_t)(timer + type->spacing);
+        m++;
+    } while (--remaining != -1);
+    rec->state--;
+    rec->dropped = 0;
+    rec->special = -1;
+    if (type->flags & 0x100) {
+        int16_t count = type->count;
+        uint16_t value = random_word();
+        uint16_t step = count > 0 ? (uint16_t)(0xFFFF / count) : 0xFFFF;
+        uint16_t limit = step;
+        int16_t k = 0;
+
+        while (!(value < limit)) {
+            limit = (uint16_t)(limit + step);
+            k++;
+        }
+        rec->special = (int8_t)k;
+    }
+    rec->chain = 0;
+    rec->mask = 0;
+    rec->phase = 0;
+    rec->field_6 = type->delay;
+}
+
+/* orig $008A98: a record that runs (state 1): its monsters one after the other (index_246 counts them on): free ones (hit points 0) are counted (count_242), the ones that are not there
+ * (negative) are monster_dying, the others monster_step.  Then the chain may be started (monster_recruit); when none is left (free or dying) the group's drop is made where the last one
+ * died (once) and a record in which all are free is free again */
+static void monster_run(struct Monster *rec, struct MonsterPart *block)
+{
+    const struct MonsterType *type = rec->type;
+    struct MonsterPart *m = block;
+    int16_t remaining = (int16_t)(type->count & 0xFF);
+
+    remaining--;
+    count_242 = 0;
+    word_6ebe = 0;
+    index_246 = 0;
+    do {
+        if (m->hp < 0)
+            monster_dying(rec, type, m, block, remaining);
+        else if (m->hp == 0)
+            count_242++;
+        else
+            monster_step(rec, type, m, block);
+        index_246++;
+        m++;
+    } while (--remaining != -1);
+    rec->alive = (int8_t)(type->count - count_242 - word_6ebe);
+    monster_recruit(rec, type, block);
+    if ((uint8_t)(count_242 + word_6ebe) == (uint8_t)type->count && rec->dropped == 0) {
+        if (type->item >= 0)
+            drop_thing((int16_t)(word_7f74 + 8), (int16_t)(word_7f76 + 8), type->item);
+        rec->dropped = 1;
+    }
+    if ((int8_t)count_242 >= type->count)
+        rec->state = 0;
+}
+
+/* orig $008A54: the ten records of 428 bytes at $1354 (struct Monster), with blocks of 400 bytes (ten struct MonsterPart) at ptr_0cee: a record that is free (state 0) is passed by, one
+ * that runs (1) is monster_run, one to start (any other) monster_start; value_1296 is set to $121C first (the list monster_pickup looks at) */
+void update_records_1354(void)
+{
+    flag_244 = 0;
+    value_1296 = GUEST(0x121c);
+    for (int i = 0; i < 10; i++) {
+        struct MonsterPart *block = (struct MonsterPart *)(ptr_0cee + 400 * i);
+
+        temp_bb6 = (uint8_t *)block;
+        if (records_1354[i].state == 0)
+            continue;
+        if (records_1354[i].state == 1)
+            monster_run(&records_1354[i], block);
+        else
+            monster_start(&records_1354[i], block);
+    }
 }
 
 /* ======== the waves of enemies ("units"): $E486, with its four copies $E76C, $EA52, $ED38 and $F01E, and the routines the templates name ======== */
@@ -8882,10 +9922,22 @@ static void loading_level_screen(void)
     show_text_screen((const char *)level_text);
 }
 
+/* the level file's monster types (struct MonsterType, 22 bytes, fifty of them from ptr_0ce6): the words (flags, drop and start cell) are made the machine's own */
+static void monster_types_from_disk(void)
+{
+    struct MonsterType *type = (struct MonsterType *)ptr_0ce6;
+
+    for (int i = 0; i < 50; i++, type++) {
+        file_words(&type->flags, 1);
+        file_words(&type->item, 2);
+    }
+}
+
 /* the tables of the level that the file calfils brings (7000 bytes from data_1aa66 on, loaded from the disk): the entries of the cells (ptr_0cbe, 253), the groups of creatures (ptr_0d0e, 100)
  * and the things on paths (path_descriptions, 25) have words, which are made the machine's own */
 static void level_tables_from_disk(void)
 {
+    monster_types_from_disk();
     for (int i = 0; i < 253; i++)
         file_words(&ptr_0cbe[i], 2);
     for (int i = 0; i < 100; i++) {
@@ -8913,6 +9965,13 @@ static void level_tables_from_disk(void)
  * and the creatures of each group (their records are what struct CreatureType points to) */
 void level_tables_quickload(void)
 {
+    monster_types_from_disk();
+    for (int i = 0; i < 100; i++) {   /* the ten monsters of each of the ten groups (struct MonsterPart): the words are x to speed and the two targets and the object's place */
+        struct MonsterPart *part = &((struct MonsterPart *)ptr_0cee)[i];
+
+        file_words(part, 12);
+        file_words(&part->target_x, 4);
+    }
     for (int i = 0; i < 253; i++)
         file_words(&ptr_0cbe[i], 2);
     for (int i = 0; i < 100; i++) {

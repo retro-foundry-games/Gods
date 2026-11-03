@@ -289,4 +289,77 @@ struct ScriptRecord {
 };
 _Static_assert(sizeof(struct ScriptRecord) == 24, "script record");
 
+
+/* the monsters of a level: ten records of 428 bytes (struct Monster, at $1354) each run a group of up to ten monsters (struct MonsterPart, 40 bytes, in a block of 400 bytes of its own at
+ * ptr_0cee) whose kind is a struct MonsterType of the level's file (22 bytes, at ptr_0ce6).  The group's monsters fly to a target (the player, an object lying about or a zone of the
+ * screen), the first of a chain is followed by the others along the places it has been (history), and they shoot and carry the objects they pick up. */
+struct MonsterType {
+    int8_t count;         /* +0 how many monsters */
+    uint8_t life;         /* +1 hit points of one (doubled for the one the record picked), and its score */
+    uint8_t pad_2[2];
+    uint16_t flags;       /* +4 bits 0 to 3: who takes objects up (by the kind of object), 4 and 5: how it shoots (0 sideways, 1 aimed at a place near the player, 2 and 3 aimed), 6 and 7: how the chain
+                           * follows (0 the places, 2 a circle, 1 and 3 turned), 8: the first to leave is chosen by chance */
+    uint8_t fire;         /* +6 low nibble: how often it shoots, high: the speed of the shot */
+    uint8_t picture;      /* +7 the template (CreatureTemplate) whose first word is its picture */
+    uint8_t mode;         /* +8 the two things it does (low and high nibble: 0 the player, 1 a zone, 2 objects, 3 starts a chain, 4 follows) */
+    uint8_t mode_chance;  /* +9 the chance of the high one (of 128) */
+    uint8_t chance;       /* +10 */
+    int8_t limit_b;       /* +11 the greatest speed in x and y */
+    int8_t limit_c;       /* +12 the greatest change of speed */
+    uint8_t zone_chance;  /* +13 the chance of going where most of the group's zones are */
+    uint8_t delay;        /* +14 frames before the first one shows up */
+    uint8_t wall;         /* +15 how far the walls push it away (0 not) */
+    int16_t item;         /* +16 what it drops when all are gone, negative none */
+    uint16_t start;       /* +18 the cell it starts in: x in the high byte, y in the low (32 by 16 pixels) */
+    uint8_t spacing;      /* +20 the delay between one monster and the next */
+    uint8_t pad_21;
+};
+_Static_assert(sizeof(struct MonsterType) == 22, "monster type");
+
+struct MonsterPart {
+    int16_t x;            /* +0 */
+    int16_t y;            /* +2 */
+    int16_t frame;        /* +4 the step of its picture (negative: just hit, then counts up while it dies) */
+    int16_t timer;        /* +6 */
+    int16_t hp;           /* +8 0 free, -2 and -3 about to show up, other negative dying */
+    int16_t mode;         /* +10 */
+    int16_t unused_12;    /* +12 */
+    int16_t fire_timer;   /* +14 */
+    int16_t item;         /* +16 the kind of object it carries (negative none) */
+    int16_t vx;           /* +18 */
+    int16_t vy;           /* +20 */
+    int16_t speed;        /* +22 */
+    uint8_t unused_24;    /* +24 */
+    int8_t rank;          /* +25 0 free, 1 the first of the chain, then the places behind it */
+    uint8_t zone;         /* +26 the zone it was sent to */
+    uint8_t new_target;   /* +27 */
+    int16_t target_x;     /* +28 */
+    int16_t target_y;     /* +30 */
+    int16_t item_x;       /* +32 where the object it carries is drawn */
+    int16_t item_y;       /* +34 */
+    int8_t goal;          /* +36 -1 chooses, 0 the player, 4 follows the chain */
+    uint8_t reached;      /* +37 */
+    uint8_t anim_timer;   /* +38 */
+    uint8_t facing;       /* +39 */
+};
+_Static_assert(sizeof(struct MonsterPart) == 40, "monster part");
+
+struct Monster {
+    uint16_t state;       /* +0 0 free, 1 running, 2 to start */
+    struct MonsterType *type;   /* +2 */
+    int16_t field_6;      /* +6 */
+    uint8_t unused_8[8];  /* +8 */
+    uint8_t dropped;      /* +16 the drop of the group has been made */
+    int8_t special;       /* +17 the monster that is picked (negative none) */
+    int8_t chain;         /* +18 how many are in the chain (0 none) */
+    int8_t alive;         /* +19 */
+    uint16_t mask;        /* +20 which monsters are in the chain */
+    int16_t lead;         /* +22 how many places the first has made (up to 100) */
+    struct { int16_t x, y; } history[100];   /* +24 where the first has been */
+    uint16_t index;       /* +424 where the next goes (in bytes) */
+    uint8_t phase;        /* +426 */
+    uint8_t pad_427;
+};
+_Static_assert(sizeof(struct Monster) == 428, "monster record");
+
 #endif

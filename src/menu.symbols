@@ -251,8 +251,13 @@ flag_236           0x00000236 uint16_t %s
 flag_244           0x00000244 int16_t %s
 temp_bb6           0x00000bb6 uint8_t *%s    the pointer a loop over records with a block of its own each keeps
 records_12a0       0x000012a0 uint16_t %s[90]   ten records of 18 bytes (the first word is 0 for one that is free)
-records_1354       0x00001354 uint16_t %s[2140]   ten records of 428 bytes (the first word is 0 for one that is free)
+records_1354       0x00001354 struct Monster %s[10]   ten records of 428 bytes (the first word is 0 for one that is free)
 value_1296         0x00001296 uint32_t %s
+count_242          0x00000242 int16_t %s    how many monsters of the record being run are free
+index_246          0x00000246 int16_t %s    which monster of the record is being run
+x_4ac              0x000004ac int16_t %s    where the monster was in x before its step
+vx_4b2             0x000004b2 int16_t %s    its speed before the step
+vy_4b4             0x000004b4 int16_t %s
 index_1ea          0x000001ea uint16_t %s
 table_ed0          0x00000ed0 int16_t %s[128]    entries of four words
 flag_721c          0x0000721c uint16_t %s    non-zero while a record of records_721e is in use
