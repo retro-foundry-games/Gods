@@ -76,7 +76,11 @@ static void set_instrument(struct SoundVoice *v, unsigned n)
     v->loop_start = record->loop_start;
     v->length = record->length * 2u;
     v->sample = record->sample ? (const int8_t *)ADDRESS(record->sample) : 0;
-    v->period_table = record->period_table ? (const uint16_t *)ADDRESS(record->period_table) : 0;
+    /* orig $020300 (select_period_table): the low byte of the long picks the table: 0 the first, 1 the second, anything else the third (the data holds the tables' addresses there,
+     * whose low bytes are not 0 or 1: the original plays every instrument with the third table) */
+    unsigned which = record->period_table & 0xff;
+
+    v->period_table = &sound_periods[which == 0 ? 0 : which == 1 ? 48 : 96];
 }
 
 /* read the commands of the track up to the next note or rest: the notes of the original's run_sequencer, without the slides and envelopes */
