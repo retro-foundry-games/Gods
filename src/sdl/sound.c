@@ -44,7 +44,7 @@ struct SoundVoice {
     const struct SoundInstrument *instrument;
 };
 
-static struct SoundVoice voice[VOICES];
+static struct SoundVoice sound_voice[VOICES];
 static unsigned tempo = 1;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -196,8 +196,8 @@ static void sync_busy(void)
     volatile uint8_t *ids = voice_ids_207a6;
 
     for (int i = 0; i < VOICES && i < 4; i++) {
-        busy[i] = voice[i].active ? (uint8_t)voice[i].priority : 0;
-        ids[i] = voice[i].active ? (uint8_t)voice[i].number : 0;
+        busy[i] = sound_voice[i].active ? (uint8_t)sound_voice[i].priority : 0;
+        ids[i] = sound_voice[i].active ? (uint8_t)sound_voice[i].number : 0;
     }
 }
 
@@ -220,7 +220,7 @@ static void start_voice(struct SoundVoice *v, unsigned number, unsigned id, unsi
 void sound_reset(void)
 {
     pthread_mutex_lock(&lock);
-    memset(voice, 0, sizeof voice);
+    memset(sound_voice, 0, sizeof sound_voice);
     tempo = 1;
     pthread_mutex_unlock(&lock);
 }
@@ -281,7 +281,7 @@ void play_sound(uint16_t id, uint16_t priority)
     count = (flags & 0x7f) + 1;
     if (flags & 0x80)   /* a sound that is not started again while it plays */
         for (int i = 0; i < VOICES; i++)
-            if (voice[i].active && voice[i].id == id)
+            if (sound_voice[i].active && sound_voice[i].id == id)
                 goto done;
     take_variation_randoms(record);
     for (unsigned k = 0; k < count && k < 4; k++) {
@@ -292,17 +292,17 @@ void play_sound(uint16_t id, uint16_t priority)
             continue;
         if (number == 0x16) {   /* the silent track: the voice stops */
             for (int i = 0; i < VOICES; i++)
-                voice[i].active = 0;
+                sound_voice[i].active = 0;
             continue;
         }
         for (int i = 0; i < VOICES && chosen < 0; i++)
-            if (!voice[i].active)
+            if (!sound_voice[i].active)
                 chosen = i;
         for (int i = 0; i < VOICES && chosen < 0; i++)
-            if (voice[i].priority <= priority)
+            if (sound_voice[i].priority <= priority)
                 chosen = i;
         if (chosen >= 0)
-            start_voice(&voice[chosen], number, id, priority);
+            start_voice(&sound_voice[chosen], number, id, priority);
     }
 done:
     sync_busy();
@@ -315,7 +315,7 @@ void voice_start(uint16_t sound, uint16_t index)
     if (sound != 22 || index >= VOICES)
         return;
     pthread_mutex_lock(&lock);
-    voice[index].active = 0;
+    sound_voice[index].active = 0;
     sync_busy();
     pthread_mutex_unlock(&lock);
 }
@@ -329,7 +329,7 @@ void sound_tick(void)
 {
     pthread_mutex_lock(&lock);
     for (int i = 0; i < VOICES; i++) {
-        struct SoundVoice *v = &voice[i];
+        struct SoundVoice *v = &sound_voice[i];
 
         if (!v->active)
             continue;
@@ -350,7 +350,7 @@ void sound_mix(int16_t *out)
     memset(mix, 0, sizeof mix);
     pthread_mutex_lock(&lock);
     for (int i = 0; i < VOICES; i++) {
-        struct SoundVoice *v = &voice[i];
+        struct SoundVoice *v = &sound_voice[i];
         int right = (i == 1 || i == 2);
 
         if (!v->sample || !v->period || !v->play_volume)
