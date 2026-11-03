@@ -180,7 +180,21 @@ static void swap_entry_list(void)
 
 extern void level_tables_quickload(void);
 
+volatile int host_irq_hold;   /* set while the memory of the program is loaded from an image (main.c does not run the vertical blank interrupt then) */
+
+static int load_ram_image_held(const char *path, int slots);
+
 static int load_ram_image(const char *path, int slots)
+{
+    int result;
+
+    host_irq_hold = 1;
+    result = load_ram_image_held(path, slots);
+    host_irq_hold = 0;
+    return result;
+}
+
+static int load_ram_image_held(const char *path, int slots)
 {
     FILE *f = fopen(path, "rb");
     uint8_t *image;

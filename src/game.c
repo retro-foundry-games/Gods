@@ -1944,8 +1944,7 @@ void step_d898(void)
 /* orig $016AEE: nothing is done unless flag_aa8 is 1; the original then goes on at $16AF6, which did not run */
 void step_16aee(void)
 {
-    if (flag_aa8 != 1)
-        return;
+    fn_16aee_c();
 }
 
 /* orig $01843E: nothing is done when word_186be is 0; the original goes on at $18446, which did not run */
@@ -3201,11 +3200,57 @@ void fn_15cc4_c(void)
         flag_a4c = 0;
 }
 
-/* orig $016AEE: goes on at $16AF6 when flag_aa8 is 1 (that did not run); $16AEC is a bare return */
+/* orig $016B6E: the cells of the map at line_text + 100 (48 columns of 8 pixels) under the screen point (x, y) are marked with $FE: the cell 48 bytes (a row) before it when bit 3 of y is 0,
+ * the one a row after when it is 1; nothing when the cell is outside the map (before line_text + 48 or from line_text + 1500) */
+static void mark_cell_16b6e(int16_t x, int16_t y)
+{
+    const uint8_t *map = line_text;
+    int16_t offset = (int16_t)(y & (int16_t)0xFFF8);
+    uint8_t *cell = (uint8_t *)(map + 0x64) + (int16_t)(x >> 3);
+
+    offset = (int16_t)(offset << 1);
+    cell += offset;
+    offset = (int16_t)(offset << 1);
+    cell += offset;
+    if (cell < map + 0x30 || cell >= map + 0x5DC)
+        return;
+    if ((y & 8) == 0)
+        cell[-0x30] = 0xFE;
+    else
+        cell[0x30] = 0xFE;
+}
+
+/* orig $016AEE: the invulnerability (flag_aa8 is 1): four sparkles go round the player, each at a place of the circle orbit_offsets (the four places are the words words_a9e, going on by 2 a frame,
+ * modulo 64); the cells under each are marked ($16B6E) and the sparkle is drawn as the glyph 87 + ((its number * 2 + cursor_frame) & 3); cursor_frame goes on every other frame (when frame_toggle is 0);
+ * word_a9a counts down and, below 0, the invulnerability is over (flag_aa8 0, the sound 60 stopped) */
 void fn_16aee_c(void)
 {
-    if (flag_aa8 == 1)
-        return;   /* goes on at $16AF6 */
+    if (flag_aa8 != 1)
+        return;
+    /* (the original's bytes at $FBF2: thirty-two places of a circle, x then y) */
+    static const int8_t orbit_offsets[64] = {
+        11, 50, 15, 50, 20, 48, 24, 45, 27, 41, 30, 36, 33, 31, 34, 25,
+        34, 19, 34, 12, 33, 6, 30, 1, 27, -4, 24, -8, 20, -11, 15, -13,
+        11, -13, 7, -13, 2, -11, -2, -8, -5, -4, -8, 1, -11, 6, -12, 12,
+        -12, 19, -12, 25, -11, 31, -8, 36, -5, 41, -2, 45, 2, 48, 7, 50,
+    };
+    uint16_t *place = words_a9e;
+
+    for (int n = 3; n >= 0; n--, place++) {
+        int16_t x = (int16_t)(orbit_offsets[*place] + player_x - scroll_x);
+        int16_t y = (int16_t)(orbit_offsets[*place + 1] + player_y - scroll_y);
+
+        mark_cell_16b6e(x, y);
+        glyph_draw(x, y, (uint16_t)(((n * 2 + cursor_frame) & 3) + 0x57));
+        *place = (uint16_t)((*place + 2) & 0x3F);
+    }
+    if (frame_toggle == 0)
+        cursor_frame = (uint16_t)((cursor_frame + 1) & 3);
+    word_a9a--;
+    if (word_a9a < 0) {
+        flag_aa8 = 0;
+        stop_sound(0x3C);
+    }
 }
 
 /* orig $01290C: the sprite of index `index` is drawn where the player is, relative to the scroll kept while the loop runs */

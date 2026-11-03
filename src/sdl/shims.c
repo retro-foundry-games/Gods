@@ -101,6 +101,7 @@ static void quick_do(int request)
     FILE *f = fopen(host_quicksave_file, request == 1 ? "wb" : "rb");
     uint32_t magic = QUICK_MAGIC;
     int ok = f != 0;
+    extern volatile int host_irq_hold;
 
     if (!f) {
         fprintf(stderr, "gods-sdl: quick%s: cannot open %s\n", request == 1 ? "save" : "load", host_quicksave_file);
@@ -119,9 +120,11 @@ static void quick_do(int request)
             ok = main_memory && low && chips && fread(main_memory, 1, QUICK_MAIN_SIZE, f) == QUICK_MAIN_SIZE && fread(low, 1, QUICK_LOW, f) == QUICK_LOW
                  && fread(chips, 1, 0x1000, f) == 0x1000;
             if (ok) {
+                host_irq_hold = 1;   /* (the interrupt must not run on half of the memory) */
                 memcpy((void *)(uintptr_t)0x10000, main_memory, QUICK_MAIN_SIZE);
                 memcpy(guest_ptr(0), low, QUICK_LOW);
                 memcpy((void *)(uintptr_t)0xdff000, chips, 0x1000);
+                host_irq_hold = 0;
             }
             free(main_memory);
             free(low);

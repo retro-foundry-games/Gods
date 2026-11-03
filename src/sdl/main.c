@@ -469,13 +469,22 @@ int main(int argc, char **argv)
                 next += 20000000ull;
             }
         }
+        {
+            extern volatile int host_irq_hold;
+
+            while (host_irq_hold)   /* the program's thread is loading memory (quickload): the frame waits, it would read half of it */
+                SDL_DelayNS(200000);
+        }
         for (int tick = 0; tick < due; tick++) {
             if (phase == PHASE_INTRO) {
                 ih_vbl();
                 ih_music_mix(samples, 882, 44100);
             } else {
+                extern volatile int host_irq_hold;
+
                 display_latch();
-                irq_vbl();
+                if (!host_irq_hold)   /* (the quickload or the quick load of the program's thread is writing the memory: the interrupt would run on half of it) */
+                    irq_vbl();
                 {
                     extern void display_latch_fresh(void);
 
@@ -487,6 +496,12 @@ int main(int argc, char **argv)
             }
             if (vsync && audio && SDL_GetAudioStreamQueued(audio) < 44100 / 5 * 4)
                 SDL_PutAudioStreamData(audio, samples, sizeof samples);
+        }
+        {
+            extern volatile int host_irq_hold;
+
+            while (host_irq_hold)
+                SDL_DelayNS(200000);
         }
         if (phase == PHASE_INTRO)
             intro_render(pixels);
