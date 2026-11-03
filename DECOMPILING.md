@@ -24,7 +24,7 @@ which of its instructions ran.  `native/build/game-ram.bin` is the program's RAM
   copied from `native/build/game-ram.bin` into `data.c`; use a plain variable for something the code changes).  Before you add
   a line, search the file for the address (`grep -i 0x0000ABCD`): reuse the name that is there.  Types of records are in
   `menu_types.h` (add yours).  Use `volatile` for what an interrupt changes.  The generated files (`menu_symbols.h`, `menu.ld`,
-  `data.c`, `amiga/menu_amiga.asm`) are made by the build; do not edit them by hand.
+  `data.c`, `amiga/amiga.asm`) are made by the build; do not edit them by hand.
 * The program is a 68000 program: arithmetic is on 16-bit words most of the time (`addw`, `subqw`); signed comparisons (`blt`, `bgt`,
   `bge`, `ble`) are signed, `bcs/bcc/bhi/bls` unsigned.  Copy the width exactly.  `d0`-`d7` arguments in a function's registers become
   C parameters; results that the caller uses come back as the return value.
@@ -122,7 +122,7 @@ Checked with `count=ADDR` (hits of an address in the emulator; the counts are on
 boot to level 1 played with the joystick: the original's frame tick ($16C30..), message ticker ($16C78), sound driver ($1FCB8..$20344), file
 layer ($1D4CA..$1E252) and random routine ($633E) are not run once the C is in (hits 0 from boot to frame 9400).  Earlier they were: the
 generated asm called them by absolute address (`jsr $633e.w`, the VBL's `jsr $16c30`, a pushed return address $1D61C); amiga_asm.py and
-gen_menu_amiga_asm.py now send these calls to the copies in menu_amiga.asm or to the C functions.  What still runs from the original's code
+gen_menu_amiga_asm.py now send these calls to the copies in amiga.asm or to the C functions.  What still runs from the original's code
 in the C disk is the start-up before the menu (frames below ~5400: the start stub $240C, the original's load_unpacked/load_directory and the
 file layer it uses, the protection stub amboot3 at $35DAC, the loader), the patched jump at $2C20, and Continue and the password route.
 (The host's coverage cannot be started at a later frame reliably: instructions reached before it are reported again; count addresses instead.)

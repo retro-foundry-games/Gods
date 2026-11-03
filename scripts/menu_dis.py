@@ -37,16 +37,16 @@ def decompiled() -> dict[int, str]:
             out[int(c.group(1), 16)] = c.group(2)
             for extra in re.findall(r"\$([0-9A-Fa-f]{4,6})", c.group(0).split("\n")[0])[1:]:   # `orig $A, $B and $C`: the same function at more addresses
                 out[int(extra, 16)] = c.group(2)
-    # the routines that are the original's instructions in menu_amiga.asm: `; void name(...), orig $ADDR` (or after the name)
-    asm = (SRC / "amiga" / "menu_amiga.asm").read_text()
+    # the routines that are the original's instructions in amiga.asm: `; void name(...), orig $ADDR` (or after the name)
+    asm = (SRC / "amiga" / "amiga.asm").read_text()
     for a in re.finditer(r"^; (?:void|uint\d+_t|int\d+_t) (\w+)\([^\n]*orig \$([0-9A-Fa-f]+)", asm, re.M):
         out[int(a.group(2), 16)] = a.group(1)
     return out
 
 
 def asm_ranges() -> list[tuple[int, int]]:
-    """The code that menu_amiga.asm has from the original: `orig $FIRST-$LAST` in its comments."""
-    text = (SRC / "amiga" / "menu_amiga.asm").read_text()
+    """The code that amiga.asm has from the original: `orig $FIRST-$LAST` in its comments."""
+    text = (SRC / "amiga" / "amiga.asm").read_text()
     return [(int(a, 16), int(b, 16)) for a, b in re.findall(r"orig \$([0-9A-Fa-f]{6})-\$([0-9A-Fa-f]{6})", text)]
 
 
