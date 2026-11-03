@@ -14,6 +14,9 @@
 --   input=PATH    the keys you play are written to PATH ("step k keysym state", the format replay= reads) as they happen: a play can be given again
 --   replay=FILE   the keys of a recording (captures/input/level1-run1.txt: "frame k keysym state", by frame from the state) are given to both sides at the same steps, as if played
 --   dumpfrom=N    (with dump=) the first difference at emulator frame N or later
+--   from=N        the first difference that stops the run is at emulator frame N or later (a world above 1: 12)
+--   world=N       the original starts from gods-levelN-1m.state and the port begins world N (iter=N: the iteration of the game loop the saved state is at; world 2: 124)
+--   break=ADDR    pause at the end of the frame in which the original reaches the address (hex, several with commas; with --control PATH the sockets can then look at both sides)
 --   nosync        the port models the original's CPU time itself (host_iteration_cpu); by default the port's flips that end an iteration wait for the original's own (flipsync: `flips N` to the port)
 --   flipoff=N / nolag  tuning of that sync (the port's flip k goes with the original's k+N; nolag: the count of the same step, not the step before)
 --   watch         (with continue=all) the first frame at which each of a few game variables differs between the two sides is logged (read from the port with `mem`)
@@ -23,7 +26,9 @@ local args = ami.args or ""
 local tick_synced = false
 local hashlog = args:match("hashlog=(%d+)-(%d+)") and { tonumber(args:match("hashlog=(%d+)")), tonumber(args:match("hashlog=%d+-(%d+)")) } or nil
 local meanlog = args:match("meanlog=(%d+)-(%d+)") and { tonumber(args:match("meanlog=(%d+)")), tonumber(args:match("meanlog=%d+-(%d+)")) } or nil
-local STATE = args:match("state=(%S+)") or "gods-level1-1m.state"
+local WORLD = tonumber(args:match("world=(%d)")) or 1   -- world=N: the original starts from gods-levelN-1m.state (the worlds are called levels there) and the port begins world N (iter=N: the iteration of the game loop the saved state is at; world 2: 124)
+local START_SKIP = tonumber(args:match("from=(%d+)")) or (WORLD > 1 and 12 or 0)   -- from=N: differences before the emulator frame N are only logged (a state saved in the middle of an iteration: the first frames differ a little)
+local STATE = args:match("%f[%w]state=(%S+)") or ("gods-level" .. WORLD .. "-1m.state")
 local EXTRA = tonumber(args:match("extra=(%d+)")) or 2   -- (found by trying: with 3, the comparison starting at frame 5, the idle level is pixel for pixel the same)
 
 ami.machine{
@@ -33,7 +38,7 @@ ami.machine{
     opt = { puae_chipmem_size = 2, puae_joyport_order = "2143" },   -- 1 MB chip RAM as the saved states have it, the joystick in port 1
     peers = {
         native = { ami.script_dir .. "/../native/build/sdl/gods-sdl", "--disks", ami.script_dir .. "/../local", "--skip-intro", "--lockstep",
-                   "--lockstep-extra", tostring(EXTRA), "--keys", "300:40:1,320:40:0" },
+                   "--lockstep-extra", tostring(EXTRA), "--lockstep-level", tostring(WORLD), "--lockstep-iteration", args:match("iter=(%d+)") or tostring(({ [2] = 124 })[WORLD] or 129), "--keys", "300:40:1,320:40:0" },
     },
 }
 ami.boot()
@@ -47,6 +52,17 @@ do
     ami.write(0x1e2f8, "\x4e\x71\x4e\x71")
 end
 
+-- break=ADDR[,ADDR...] (hex): the run pauses (both sides frozen, the control socket usable) at the end of the frame in which the original reaches one of those addresses
+local break_hit = nil
+for hex in (args:match("break=([%x,]+)") or ""):gmatch("%x+") do
+    local at = tonumber(hex, 16)
+    ami.hook(at, function()
+        if not break_hit then
+            break_hit = at
+            ami.log(("break at %x, frame %d: player %d,%d"):format(at, ami.frame(), ami.peek16(0x1e0), ami.peek16(0x1e2)))
+        end
+    end)
+end
 local lockstep = ami.import("amiga/lockstep")
 -- The port is given the keys at the frame the original's game reads them (the hook at its input routine, $363A, sees the key table as the game takes it; what changed since the last read is
 -- sent before the port's next step, which is the step of that same iteration: the port's logic and the original's are in the same phase).  The keys the window forwards are not used.  The
@@ -305,6 +321,8 @@ lockstep.run {
         if color_n then track_color() end
         if trace then ami.log(("different pixels: %d"):format(count)) end
         if pause_at and ami.frame() >= pause_at then return true end
+        if break_hit then return true end
+        if START_SKIP > 0 and not args:find("continue=all") and count > 0 and ami.frame() >= START_SKIP then return true end   -- (the first differences are not looked at, then the first stops)
         if dump and count > 0 and not dumped and ami.frame() >= (tonumber(args:match("dumpfrom=(%d+)")) or 0) then
             dumped = true
             ami.save_file(dump .. ".native.ppm", "P6\n320 256\n255\n" .. native)
@@ -314,5 +332,5 @@ lockstep.run {
     -- the message band: a message shows in the port one frame before the original's CPU gets to draw it (the raster has passed the band by then), a one frame difference each time
     ignore = { { 0, 209, 320, 7 } },
     schedule = schedule,
-    continue_for = args:find("continue=all") and -1 or tonumber(args:match("continue=(%d+)")) or 0,
+    continue_for = (args:find("continue=all") or START_SKIP > 0) and -1 or tonumber(args:match("continue=(%d+)")) or 0,
 }

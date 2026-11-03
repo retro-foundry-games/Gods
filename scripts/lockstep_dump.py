@@ -23,7 +23,7 @@ def main() -> int:
     sock.unlink(missing_ok=True)
     with open(log, "w") as f:
         host = subprocess.Popen([str(ROOT / "tools/engine9000/ami9000_host"), "--headless", "--frames", frames, "--control", str(sock), str(ROOT / "projects/gods/host/gods_lockstep.lua"),
-                                 "--script-args", f"replay={replay}" + (f" continue=all pause={pause}" if pause else "")], stdout=f, stderr=subprocess.STDOUT, cwd=ROOT, start_new_session=True)
+                                 "--script-args", f"replay={replay}" + (f" continue=all pause={pause}" if pause else "") + (" " + sys.argv[sys.argv.index("--extra") + 1] if "--extra" in sys.argv else "")], stdout=f, stderr=subprocess.STDOUT, cwd=ROOT, start_new_session=True)
         try:
             for _ in range(600):
                 if "DIFFERENT" in log.read_text() or "lockstep stopped" in log.read_text():
