@@ -18,6 +18,8 @@
 --   level=N       the original starts from gods-levelN-1m.state and the port begins level N (the game's levels have worlds: WORLD ONE COMPLETED is in the middle of level 1) (iter=N: the iteration of the game loop the saved state is at; world 2: 124)
 --   break=ADDR    pause at the end of the frame in which the original reaches the address (hex, several with commas; with --control PATH the sockets can then look at both sides)
 --   ram=PATH      (with state=ABSOLUTE.state) the port begins from that chip RAM of the original (gods_ramdump.lua; gods-sdl --quickload) instead of Begin Quest; the original starts from the state
+--   blitlog=F=PATH the original's custom register writes (with the pc) of the emulator frame F are written to PATH
+--   mask=X,Y,W,H[;..] image regions (in the 320x256 picture) left out of the comparison
 --   afterend      with break=: only once a level end record was used (ptr_0bc6 past the first), so break=374a stops at the teleport after "WORLD ONE COMPLETED"
 --   nosync        the port models the original's CPU time itself (host_iteration_cpu); by default the port's flips that end an iteration wait for the original's own (flipsync: `flips N` to the port)
 --   flipoff=N / nolag  tuning of that sync (the port's flip k goes with the original's k+N; nolag: the count of the same step, not the step before)
@@ -294,6 +296,12 @@ lockstep.run {
     keymap = function(key) return KEYS[key] end,
     on_frame = function(count, native, emulated)
         if false then ami.log(("endframe %d: %d"):format(ami.frame(), ami.cycles())) end
+        -- blitlog=FRAME=PATH: the custom register writes of the emulator frame FRAME (the blitter's pointers and sizes, with the program counter) are written to PATH
+        do
+            local bf, bp = args:match("blitlog=(%d+)=(%S+)")
+            if bf and ami.frame() == tonumber(bf) then ami.trace_writes(true) end
+            if bf and ami.frame() == tonumber(bf) + 1 then ami.save_file(bp, ami.take_writes()); ami.trace_writes(false) end
+        end
         if not tick_synced and ami.frame() >= 8 then
             -- the original's tick_count ($CE2: the frames since the level began) includes the frames of its disk loading, which the port does not wait for: the port is given the
             -- original's count (it matters where the script looks at the seconds, as the bonus that is given only in the first minute)
@@ -333,7 +341,11 @@ lockstep.run {
         end
     end or nil,
     -- the message band: a message shows in the port one frame before the original's CPU gets to draw it (the raster has passed the band by then), a one frame difference each time
-    ignore = { { 0, 209, 320, 7 } },
+    ignore = (function()   -- the strip at the foot, and mask=X,Y,W,H[;X,Y,W,H...]: image regions left out of the comparison
+        local list = { { 0, 209, 320, 7 } }
+        for x, y, w, h in (args:match("mask=(%S+)") or ""):gmatch("(%d+),(%d+),(%d+),(%d+)") do list[#list + 1] = { tonumber(x), tonumber(y), tonumber(w), tonumber(h) } end
+        return list
+    end)(),
     schedule = schedule,
     continue_for = (args:find("continue=all") or START_SKIP > 0) and -1 or tonumber(args:match("continue=(%d+)")) or 0,
 }
