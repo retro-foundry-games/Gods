@@ -208,6 +208,8 @@ static int load_ram_image(const char *path, int slots)
         REG16(0x180 + 2 * i) = shadow_table[i];
     swap16_range((uint32_t)(uintptr_t)asset_memory, 0x21d68);   /* the sprites' planes */
     swap16_range((uint32_t)(uintptr_t)memory_base, 0x8500);      /* the background */
+    swap16_range(0x4d8a, 0xa8);   /* the two copper lists (as guest_load_image does: the program changes their words, the display reads them as words) */
+    swap16_range(0x4e3c, 0x530a - 0x4e3c);   /* (the first word, copper_colors, has its fixup) the colour bands of the level's copper list (copper_list_make) and the list at $5246 that the two lists go on at, up to its end ($FFFFFFFE) */
     if (slots)
         swap_entry_list();
     return 0;
