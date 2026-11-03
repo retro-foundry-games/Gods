@@ -321,6 +321,21 @@ lockstep.run {
     on_frame = function(count, native, emulated)
         autosave_step()
         if false then ami.log(("endframe %d: %d"):format(ami.frame(), ami.cycles())) end
+        -- audlog=PATH: every write of the original to a sound register (AUDxLC/LEN/PER/VOL, DMACON) with the emulator frame, written to PATH every 100 frames (the port's sound.c logs its notes the same way)
+        do
+            local ap = args:match("audlog=(%S+)")
+            if ap then
+                audlog_lines = audlog_lines or {}
+                local cur = ami.read(0x207a0, 16)
+                if cur ~= audlog_prev then
+                    audlog_prev = cur
+                    local hex = {}
+                    for k = 1, #cur do hex[#hex + 1] = ("%02x"):format(cur:byte(k)) end
+                    audlog_lines[#audlog_lines + 1] = ("f%d busy/ids %s"):format(ami.frame(), table.concat(hex, " "))
+                end
+                if ami.frame() % 100 == 0 then ami.save_file(ap, table.concat(audlog_lines, "\n")) end
+            end
+        end
         -- blitlog=FRAME=PATH: the custom register writes of the emulator frame FRAME (the blitter's pointers and sizes, with the program counter) are written to PATH
         do
             local bf, bp = args:match("blitlog=(%d+)=(%S+)")
