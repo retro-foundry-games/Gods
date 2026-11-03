@@ -8883,6 +8883,10 @@ void begin_quest(void)
     uint8_t letter = 'a';
     uint8_t c;
 
+    if (host_quickload()) {   /* (not in the original) */
+        game_loop();
+        return;
+    }
     param_index = host_start_level();
     word_0248 = 1;
     menu_active = 0;

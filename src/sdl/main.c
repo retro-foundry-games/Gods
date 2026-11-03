@@ -26,6 +26,9 @@ extern uint32_t heap_base;
 extern void sr_set(uint16_t value);
 extern uint8_t *mask_buffer;    /* shares its address with restart_address, which menu_boot sets to its own address: the original blits into the (finished) boot code */
 extern void host_begin_quest(void);   /* shims.c: the menu's Begin Quest */
+extern const char *host_quickload_file;   /* shims.c: --quickload */
+extern volatile int host_quick_request;   /* shims.c: F5 1, F9 2 */
+extern const char *host_quicksave_file;   /* shims.c: --quicksave */
 extern int host_lockstep_level;   /* shims.c: --lockstep-level */
 extern const char *host_level_image;  /* shims.c: --level1-image */
 void intro_render(uint32_t *pixels);   /* intro_view.c */
@@ -323,6 +326,10 @@ int main(int argc, char **argv)
             scale = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--lockstep"))
             lockstep = headless = 1;
+        else if (!strcmp(argv[i], "--quicksave") && i + 1 < argc)
+            host_quicksave_file = argv[++i];
+        else if (!strcmp(argv[i], "--quickload") && i + 1 < argc)
+            host_quickload_file = argv[++i];
         else if (!strcmp(argv[i], "--lockstep-level") && i + 1 < argc)
             host_lockstep_level = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--lockstep-iteration") && i + 1 < argc)
@@ -420,6 +427,10 @@ int main(int argc, char **argv)
 
                 if (event.type == SDL_EVENT_KEY_DOWN && event.key.scancode == SDL_SCANCODE_F10)
                     exit(0);
+                if (event.type == SDL_EVENT_KEY_DOWN && (event.key.scancode == SDL_SCANCODE_F5 || event.key.scancode == SDL_SCANCODE_F9)) {   /* the quicksave and the quickload (shims.c) */
+                    host_quick_request = event.key.scancode == SDL_SCANCODE_F5 ? 1 : 2;
+                    continue;
+                }
                 if (event.key.scancode == SDL_SCANCODE_LCTRL && phase == PHASE_INTRO)
                     code = 0x40;
                 if (code >= 0 && !follow)

@@ -157,7 +157,7 @@ static void swap_image_table(void)
     }
 }
 
-int guest_load_level_image(const char *path)
+static int load_ram_image(const char *path, int slots)
 {
     FILE *f = fopen(path, "rb");
     uint8_t *image;
@@ -176,7 +176,7 @@ int guest_load_level_image(const char *path)
     }
     fclose(f);
     for (uint32_t i = IMAGE_BASE; i < (uint32_t)size; i++)
-        if (!in_table(i))
+        if (!in_table(i) || (slots && i >= 0x14988 && i < 0x14988 + 880))   /* (object_slot_image is the table of what the slots start as; the slots themselves, the weapons, are there) */
             *guest_ptr(i) = image[i];
     free(image);
     apply_fixups(size);
@@ -188,4 +188,15 @@ int guest_load_level_image(const char *path)
     swap16_range((uint32_t)(uintptr_t)asset_memory, 0x21d68);   /* the sprites' planes */
     swap16_range((uint32_t)(uintptr_t)memory_base, 0x8500);      /* the background */
     return 0;
+}
+
+int guest_load_level_image(const char *path)
+{
+    return load_ram_image(path, 0);
+}
+
+/* the quickload: the chip RAM of the original at some moment of a level (gods_ramdump.lua writes it from a saved state), the weapons and everything else the game keeps in it */
+int guest_load_quick(const char *path)
+{
+    return load_ram_image(path, 1);
 }

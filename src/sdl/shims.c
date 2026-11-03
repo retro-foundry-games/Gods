@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "menu.h"
 #include "guest.h"
@@ -85,6 +86,52 @@ static int record_key(int raw, int down, void *arg)
     return 1;
 }
 
+/* the quicksave (F5) and the quickload (F9): the window asks (host_quick_request), the program's thread does it at the top of an iteration of the loop, where nothing of the game
+ * is half done on its stack: the memory the program has (the main memory, the low 64 KiB, the chips' registers) is written to a file or read back from it, as the host has it (native
+ * words).  The state is what the memory holds; what the host keeps outside it (the sound mixer's voices, the window) is not. */
+volatile int host_quick_request;   /* main.c: 1 F5, 2 F9 */
+const char *host_quicksave_file = "gods-quicksave.bin";
+#define QUICK_MAGIC 0x31535147u   /* "GQS1" */
+#define QUICK_END 0x200000u   /* (GUEST_END of guest.c) */
+#define QUICK_LOW 0x10000u   /* (GUEST_LOW_LIMIT) */
+#define QUICK_MAIN_SIZE (QUICK_END - 0x10000)
+
+static void quick_do(int request)
+{
+    FILE *f = fopen(host_quicksave_file, request == 1 ? "wb" : "rb");
+    uint32_t magic = QUICK_MAGIC;
+    int ok = f != 0;
+
+    if (!f) {
+        fprintf(stderr, "gods-sdl: quick%s: cannot open %s\n", request == 1 ? "save" : "load", host_quicksave_file);
+        return;
+    }
+    if (request == 1) {
+        ok = fwrite(&magic, 4, 1, f) == 1 && fwrite((const void *)(uintptr_t)0x10000, 1, QUICK_MAIN_SIZE, f) == QUICK_MAIN_SIZE
+             && fwrite(guest_ptr(0), 1, QUICK_LOW, f) == QUICK_LOW && fwrite((const void *)(uintptr_t)0xdff000, 1, 0x1000, f) == 0x1000;
+    } else {
+        uint32_t found = 0;
+
+        ok = fread(&found, 4, 1, f) == 1 && found == QUICK_MAGIC;
+        if (ok) {   /* (the file is read to the end before the memory is touched) */
+            uint8_t *main_memory = malloc(QUICK_MAIN_SIZE), *low = malloc(QUICK_LOW), *chips = malloc(0x1000);
+
+            ok = main_memory && low && chips && fread(main_memory, 1, QUICK_MAIN_SIZE, f) == QUICK_MAIN_SIZE && fread(low, 1, QUICK_LOW, f) == QUICK_LOW
+                 && fread(chips, 1, 0x1000, f) == 0x1000;
+            if (ok) {
+                memcpy((void *)(uintptr_t)0x10000, main_memory, QUICK_MAIN_SIZE);
+                memcpy(guest_ptr(0), low, QUICK_LOW);
+                memcpy((void *)(uintptr_t)0xdff000, chips, 0x1000);
+            }
+            free(main_memory);
+            free(low);
+            free(chips);
+        }
+    }
+    fclose(f);
+    fprintf(stderr, "gods-sdl: quick%s %s (%s)\n", request == 1 ? "save" : "load", ok ? "done" : "failed", host_quicksave_file);
+}
+
 volatile int gods_waiting;   /* the program waits for the original (GODS_FOLLOW): the machine's time does not go on */
 unsigned gods_iteration;   /* the iteration of the loop now running (for the debugger) */
 
@@ -145,6 +192,28 @@ void game_loop(void)
         region_text = 0;
     sr_set(0x2000);
     for (;;) {
+        {   /* GODS_QUICKTEST=SAVE_ITERATION:LOAD_ITERATION: the F5 and the F9 at those iterations (a test without a window) */
+            static unsigned test_save, test_load;
+            static int test_read;
+
+            if (!test_read) {
+                const char *t = getenv("GODS_QUICKTEST");
+
+                test_read = 1;
+                if (t)
+                    sscanf(t, "%u:%u", &test_save, &test_load);
+            }
+            if (test_save && iteration + 1 == test_save)
+                host_quick_request = 1;
+            if (test_load && iteration + 1 == test_load)
+                host_quick_request = 2;
+        }
+        if (host_quick_request) {
+            int request = host_quick_request;
+
+            host_quick_request = 0;
+            quick_do(request);
+        }
         iteration++;
         gods_iteration = iteration;
         if (max_iterations && iteration > max_iterations)
@@ -226,6 +295,21 @@ void host_begin_quest(void)
     sr_set(0x2000);   /* the interrupts on */
     for (;;)
         game_frame();
+}
+
+/* the quickload (--quickload FILE): begin_quest takes the level from a RAM image of the original instead of loading it */
+const char *host_quickload_file;
+extern int guest_load_quick(const char *path);
+
+int host_quickload(void)
+{
+    if (!host_quickload_file)
+        return 0;
+    if (guest_load_quick(host_quickload_file) != 0) {
+        fprintf(stderr, "gods-sdl: cannot read %s\n", host_quickload_file);
+        exit(1);
+    }
+    return 1;
 }
 
 __attribute__((weak)) void original_begin(void)

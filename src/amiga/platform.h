@@ -48,6 +48,12 @@ static inline int16_t host_start_level(void)
     return 1;
 }
 
+/* the SDL port's quickload (--quickload FILE): not on the Amiga */
+static inline int host_quickload(void)
+{
+    return 0;
+}
+
 static inline void host_cpu_frames(unsigned frames)
 {
     (void)frames;
