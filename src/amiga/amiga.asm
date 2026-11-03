@@ -723,7 +723,7 @@ play_sound_body:
         moveq #$3,d5
 .L1fb2e:
         cmp.b (a1)+,d0
-        beq.w L1fc52
+        beq.w .play_sound_exit
         dbra d5,.L1fb2e
 .L1fb38:
         move.b $5(a0),d6
@@ -779,8 +779,8 @@ play_sound_body:
 .L1fbc0:
         tst.b (a1)
         bne.b .L1fbca
-        bsr.w L1fc02
-        beq.b L1fc22
+        bsr.w .store_variation_byte
+        beq.b .sync_busy_flags
 .L1fbca:
         addq.w #$1,a1
         addq.w #$1,a2
@@ -797,14 +797,14 @@ play_sound_body:
         bcs.b .L1fbf8
 .L1fbee:
         clr.b $6(a1)
-        bsr.w L1fc02
-        beq.b L1fc22
+        bsr.w .store_variation_byte
+        beq.b .sync_busy_flags
 .L1fbf8:
         addq.w #$1,a1
         addq.w #$1,a2
         dbra d5,.L1fbe2
-        bra.b L1fc52
-L1fc02:
+        bra.b .play_sound_exit
+.store_variation_byte:
         move.b $1(a0,d2.w),(a2)
         tst.b d6
         beq.w .L1fc1a
@@ -819,7 +819,7 @@ L1fc02:
         addq.w #$1,d2
 .L1fc20:
         rts 
-L1fc22:
+.sync_busy_flags:
         lea.l (_sound_busy_207a0).l,a1
         lea.l $207aa.l,a2
         move.b d1,d6
@@ -839,7 +839,7 @@ L1fc22:
         addq.w #$1,a1
         addq.b #$1,d1
         dbra d2,.L1fc34
-L1fc52:
+.play_sound_exit:
         movem.l (a7)+,d0-d7/a0-a6
         rts 
 feed_voice:
@@ -885,13 +885,13 @@ _sound_tick:
         rts 
 voices_to_hardware:
         lea.l (_voice).l,a4
-        bsr.b voice_to_hardware
+        bsr.b .voice_to_hardware
         lea.l (_voice+$94).l,a4
-        bsr.b voice_to_hardware
+        bsr.b .voice_to_hardware
         lea.l (_voice+$128).l,a4
-        bsr.b voice_to_hardware
+        bsr.b .voice_to_hardware
         lea.l (_voice+$1bc).l,a4
-voice_to_hardware:
+.voice_to_hardware:
         movea.l $8(a4),a5
         move.w $48(a4),$6(a5)
         move.w $2c(a4),$8(a5)
@@ -918,15 +918,15 @@ voice_to_hardware:
         rts 
 voices_envelope:
         lea.l (_voice).l,a4
-        bsr.w voice_envelope
+        bsr.w .voice_envelope
         lea.l (_voice+$94).l,a4
-        bsr.w voice_envelope
+        bsr.w .voice_envelope
         lea.l (_voice+$128).l,a4
-        bsr.w voice_envelope
+        bsr.w .voice_envelope
         lea.l (_voice+$1bc).l,a4
-voice_envelope:
+.voice_envelope:
         tst.l $3a(a4)
-        beq.w L1fde8
+        beq.w .envelope_done
         move.l $14(a4),d0
         beq.b .L1fd9a
         movea.l d0,a3
@@ -935,38 +935,38 @@ voice_envelope:
         subq.b #$1,$30(a4)
         bne.b .L1fd9a
 .L1fd96:
-        bsr.w L1fd9c
+        bsr.w .envelope_step
 .L1fd9a:
         rts 
-L1fd9c:
+.envelope_step:
         tst.w $32(a4)
-        beq.b L1fe0c
+        beq.b .envelope_release
         move.w $34(a4),d0
-        bne.b L1fdc8
+        bne.b .envelope_not_attack
         move.b $1(a3),$30(a4)
         move.w $2c(a4),d0
         add.b (a3),d0
         cmp.w $44(a4),d0
-        bcs.b L1fdc2
+        bcs.b .envelope_store_level
         addq.w #$1,$34(a4)
         move.w $44(a4),d0
-L1fdc2:
+.envelope_store_level:
         move.w d0,$2c(a4)
         rts 
-L1fdc8:
+.envelope_not_attack:
         cmpi.w #$1,d0
-        beq.b L1fdea
-L1fdce:
+        beq.b .envelope_decay
+.envelope_sustain:
         moveq #$0,d0
         move.b $4(a3),d0
         move.w d0,$2c(a4)
         move.w $3e(a4),d0
         cmp.b $5(a3),d0
-        bgt.w L1fde8
+        bgt.w .envelope_done
         clr.w $32(a4)
-L1fde8:
+.envelope_done:
         rts 
-L1fdea:
+.envelope_decay:
         move.b $3(a3),$30(a4)
         move.w $2c(a4),d0
         sub.b $2(a3),d0
@@ -975,10 +975,10 @@ L1fdea:
         clr.w d0
 .L1fe00:
         cmp.b $4(a3),d0
-        bcc.b L1fdc2
+        bcc.b .envelope_store_level
         addq.w #$1,$34(a4)
-        bra.b L1fdce
-L1fe0c:
+        bra.b .envelope_sustain
+.envelope_release:
         clr.w $34(a4)
         tst.w $2c(a4)
         beq.b .L1fe2c
@@ -1050,13 +1050,13 @@ run_sequencer:
         lea.l (_voice).l,a4
         lea.l $dff000.l,a5
         lea.l tempo(pc),a6
-L1ff26:
+sequencer_voice_loop:
         move.w d1,-(a7)
         movea.l $18(a4),a3
         tst.l $3a(a4)
-        beq.w L20124
+        beq.w sequencer_next_voice
         tst.w $3e(a4)
-        bne.w L20066
+        bne.w sequencer_wait
         tst.w $26(a4)
         bne.b .L1ff74
         move.w $2(a4),$96(a5)
@@ -1070,9 +1070,9 @@ L1ff26:
         move.w (a4),$96(a5)
 .L1ff74:
         move.l $3a(a4),d0
-        beq.w L20102
+        beq.w sequencer_finish_voice
         movea.l d0,a2
-L1ff7e:
+sequencer_next_byte:
         moveq #$0,d0
         move.b (a2)+,d0
         bpl.b .L1ffe8
@@ -1137,7 +1137,7 @@ cmd_90:
         move.l a2,$3a(a4)
         move.l a3,$18(a4)
         move.w $40(a4),$3e(a4)
-L20066:
+sequencer_wait:
         subq.w #$1,$3e(a4)
         tst.l $14(a4)
         bne.b .L200ba
@@ -1194,11 +1194,11 @@ L20066:
         dbra d3,.L200c0
 .L200f2:
         tst.w d2
-        bne.b L20102
+        bne.b sequencer_finish_voice
         btst.b #$1,$8a(a4)
-        beq.b L20102
+        beq.b sequencer_finish_voice
         bsr.w reset_volume_slides
-L20102:
+sequencer_finish_voice:
         tst.l $14(a4)
         bne.b .L20118
         move.w $44(a4),d0
@@ -1209,10 +1209,10 @@ L20102:
         move.w $46(a4),d0
         add.w $88(a4),d0
         move.w d0,$48(a4)
-L20124:
+sequencer_next_voice:
         lea.l $94(a4),a4
         move.w (a7)+,d1
-        dbra d1,L1ff26
+        dbra d1,sequencer_voice_loop
         bsr.w voices_envelope
         bsr.w voices_to_hardware
         clr.w (_sound_lock).l
@@ -1220,26 +1220,26 @@ L20124:
 cmd_80:
         move.b (a2)+,d0
         move.w d0,$44(a4)
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 cmd_84:
         move.b (a2)+,d0
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 cmd_88:
         movea.l $36(a4),a2
         move.l a2,$3a(a4)
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 cmd_8c:
         move.b (a2)+,d0
         move.w (a6),d1
         mulu.w d1,d0
         move.w d0,$40(a4)
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 cmd_94:
         move.b (a2)+,d0
         move.l #$2ee,d1
         divu.w d0,d1
         move.w d1,(a6)
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 cmd_98:
         moveq #$0,d1
         move.b (a2)+,d1
@@ -1253,7 +1253,7 @@ cmd_98:
         move.w (a6),d0
         mulu.w d0,d2
         move.w d2,$40(a4)
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 cmd_9c:
         andi.b #$fc,$8a(a4)
         move.b (a2)+,d0
@@ -1275,17 +1275,17 @@ cmd_9c:
         move.w d0,$56(a4)
         move.w d0,$86(a4)
         move.w d0,$88(a4)
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 cmd_a0:
         move.b (a2)+,d0
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 cmd_a4:
         move.b (a2)+,d0
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 cmd_a8:
         move.b (a2)+,d0
         or.b d0,$8a(a4)
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 cmd_ac:
         move.w d0,$3e(a4)
         movem.l d0/a4,-(a7)
@@ -1307,54 +1307,54 @@ cmd_b0:
         add.w d0,d0
         movea.l #_sound_tracks,a0
         movea.l (a0,d0.w),a2
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 cmd_b4:
         movea.l (a3)+,a2
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 cmd_b8:
         move.b (a2)+,d0
         beq.b .L20254
         ext.w d0
         add.w d0,$8c(a4)
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 .L20254:
         move.w d0,$8c(a4)
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 cmd_bc:
         move.b (a2)+,d0
         ext.w d0
         move.w d0,$8c(a4)
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 cmd_c0:
         move.b (a2)+,d0
         beq.b .L20274
         move.l a2,-(a3)
         move.w d0,-(a3)
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 .L20274:
         move.l d0,-(a3)
         move.w d0,-(a3)
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 cmd_c4:
         tst.l $2(a3)
         beq.w .L20296
         movea.l $2(a3),a2
         subq.w #$1,(a3)
-        bne.w L1ff7e
+        bne.w sequencer_next_byte
         move.l d0,$2(a3)
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 .L20296:
         addq.w #$6,a3
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 cmd_c8:
         move.b (a2)+,d0
         asl.w #$3,d0
         addi.l #$20f5e,d0
         move.l d0,$14(a4)
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 cmd_cc:
         move.l d0,$14(a4)
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 cmd_d0:
         move.b (a2)+,d0
         mulu.w #$e,d0
@@ -1366,7 +1366,7 @@ cmd_d0:
         move.l (a0)+,$1c(a4)
         move.l (a0)+,d0
         bsr.w select_period_table
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 select_period_table:
         move.l #$2080e,$10(a4)
         tst.b d0
@@ -1383,7 +1383,7 @@ cmd_d4:
         add.w d0,d0
         movea.l #_sound_tracks,a0
         movea.l (a0,d0.w),a2
-        bra.w L1ff7e
+        bra.w sequencer_next_byte
 reset_volume_slides:
         moveq #$2,d0
         movea.l a4,a1
@@ -1525,22 +1525,22 @@ stub_message_tick:
         movem.l (sp)+,d0-d7/a0-a6
         rts
 
-L1d4ca:
+cache_add_block:
         movea.l (_mem_lists+$10).l,a1
         move.w ($1d41a).l,d0
         move.w d0,(a2)+
         move.l a1,(a2)+
-        jsr L1d4e4
+        jsr copy_block_512
         move.l a1,(_mem_lists+$10).l
         rts 
-L1d4e4:
+copy_block_512:
         lsl.w #$7,d0
         subq.w #$1,d0
 .L1d4e8:
         move.l (a0)+,(a1)+
         dbra d0,.L1d4e8
         rts 
-L1d4f0:
+find_file_entry:
         movem.l d0-d3/a0-a3,-(a7)
         movea.l d7,a0
         cmpi.b #$5c,(a0)
@@ -1584,7 +1584,7 @@ load_body:
         bne.b .L1d54c
         bclr.b #$7,(_drives_present).l
         beq.b .L1d54c
-        bsr.w L1d8f6
+        bsr.w .drives_detect
 .L1d54c:
         move.l d7,-(a7)
         move.l d0,d7
@@ -1594,7 +1594,7 @@ load_body:
         addi.b #$2d,d0
         move.b d0,$1d472.l
 .L1d56c:
-        bsr.b L1d586
+        bsr.b .load_with_message
         bpl.b .L1d580
         move.w #$ffff,d0
 .L1d574:
@@ -1604,7 +1604,7 @@ load_body:
 .L1d580:
         movem.l (a7)+,d7
         rts 
-L1d586:
+.load_with_message:
         movem.l d1-d7/a0-a6,-(a7)
         movem.l d0-d7/a0-a6,-(a7)
         tst.w (Addr_tick_hold_38a).w
@@ -1628,7 +1628,7 @@ L1d586:
         tst.l (a2)
         beq.w .L1d6ea
         move.l d7,-(a7)
-        bsr.w L1d4f0
+        bsr.w find_file_entry
         bpl.b .L1d5e4
         move.l (a7)+,d7
         bra.w .L1d6ea
@@ -1644,7 +1644,7 @@ L1d586:
         addq.w #$4,a7
         movea.l (a1)+,a1
         exg.l a0,a1
-        bsr.w L1d4e4
+        bsr.w copy_block_512
         movem.l (a7)+,d1-d7/a0-a6
         moveq #$0,d0
         rts 
@@ -1655,7 +1655,7 @@ L1d586:
         movem.l d1-d7/a0-a6,-(a7)
         bra.w .L1d6ea
 .L1d61c:
-        bsr.w L1d4ca
+        bsr.w cache_add_block
         movem.l (a7)+,d1-d7/a0-a6
         moveq #$0,d0
         rts 
@@ -1671,7 +1671,7 @@ L1d586:
         movea.l a1,a2
         move.w $10(a2),d0
         adda.w d0,a2
-        bsr.w L1d4f0
+        bsr.w find_file_entry
         bmi.b .L1d6ca
         tst.b $1d474.l
         beq.b .L1d680
@@ -1681,7 +1681,7 @@ L1d586:
         lea.l $1e40(a1),a1
         movea.l (Addr_screen_buffer).w,a0
         lea.l $4680(a0),a0
-        jsr L1d794
+        jsr .screen_save_planes
         movem.l (a7)+,d0-d7/a0-a6
 .L1d680:
         move.w d7,d0
@@ -1698,7 +1698,7 @@ L1d586:
         moveq #$0,d3
         movea.l (Addr_screen_buffer).w,a1
         move.w #$8250,$dff096.l
-        jsr L1d9e2
+        jsr disk_transfer
         move.w #$10,$dff096.l
 .L1d6be:
         movem.l (a7)+,d1-d7/a0-a6
@@ -1722,7 +1722,7 @@ L1d586:
 .L1d6e4:
         move.w d0,$1d488.l
 .L1d6ea:
-        bsr.w L1d8bc
+        bsr.w .draw_loading_text
         bra.w .L1d628
 .L1d6f2:
         addq.b #$1,$1d44a.l
@@ -1747,7 +1747,7 @@ L1d586:
         moveq #$0,d3
         movea.l (Addr_screen_buffer).w,a1
         move.w #$8250,$dff096.l
-        jsr L1d9e2
+        jsr disk_transfer
         move.w #$10,$dff096.l
         tst.b $1d474.l
         bne.b .L1d78c
@@ -1756,14 +1756,14 @@ L1d586:
         lea.l $1e40(a1),a1
         movea.l (Addr_screen_buffer).w,a0
         lea.l $4680(a0),a0
-        jsr L1d7ac
+        jsr .screen_restore_planes
         move.w #$b0,(_text_y).l
         lea.l ($1d45f).l,a0
         jsr (stub_text_draw_centered_other).l
 .L1d78c:
         movem.l (a7)+,d0-d7/a0-a6
         bra.w .L1d6e4
-L1d794:
+.screen_save_planes:
         move.w #$af,d0
 .L1d798:
         move.l (a0)+,(a1)+
@@ -1772,7 +1772,7 @@ L1d794:
         move.l (a0)+,$62fc(a1)
         dbra d0,.L1d798
         rts 
-L1d7ac:
+.screen_restore_planes:
         move.w #$af,d0
 .L1d7b0:
         move.l (a1)+,(a0)+
@@ -1825,7 +1825,7 @@ L1d7ac:
         moveq #$1,d3
         movea.l (Addr_screen_buffer).w,a1
         move.w #$8250,$dff096.l
-        jsr L1d9e2
+        jsr disk_transfer
         move.w #$10,$dff096.l
         tst.w d0
         bne.b .L1d866
@@ -1857,7 +1857,7 @@ L1d7ac:
         move.w (a7)+,d7
         dbra d7,.L1d8aa
         rts 
-L1d8bc:
+.draw_loading_text:
         movem.l d1-d7/a0-a6,-(a7)
         movea.l (Addr_screen_buffer).w,a0
         lea.l $3e80(a0),a0
@@ -1867,11 +1867,11 @@ L1d8bc:
         moveq #$0,d3
         movea.l (Addr_screen_buffer).w,a1
         move.w #$8250,$dff096.l
-        jsr L1d9e2
+        jsr disk_transfer
         move.w #$10,$dff096.l
         movem.l (a7)+,d1-d7/a0-a6
         rts 
-L1d8f6:
+.drives_detect:
         movem.l d0-d7/a0-a6,-(a7)
         clr.w (Addr_message_arg).w
         clr.w (Addr_message_shown).w
@@ -1880,29 +1880,29 @@ L1d8f6:
         bsr.w stub_message_request
         clr.b (_drives_present).l
         moveq #$3,d0
-        bsr.b L1d97e
+        bsr.b drive_select
         bne.b .L1d926
         bset.b #$0,(_drives_present).l
 .L1d926:
-        bsr.w L1d9b4
+        bsr.w drive_deselect
         moveq #$4,d0
-        bsr.b L1d97e
+        bsr.b drive_select
         bne.b .L1d938
         bset.b #$1,(_drives_present).l
 .L1d938:
-        bsr.b L1d9b4
+        bsr.b drive_deselect
         moveq #$5,d0
-        bsr.b L1d97e
+        bsr.b drive_select
         bne.b .L1d948
         bset.b #$2,(_drives_present).l
 .L1d948:
-        bsr.b L1d9b4
+        bsr.b drive_deselect
         moveq #$6,d0
-        bsr.b L1d97e
+        bsr.b drive_select
         bne.b .L1d958
         bset.b #$3,(_drives_present).l
 .L1d958:
-        bsr.b L1d9b4
+        bsr.b drive_deselect
         jsr (stub_clear_work_area).l
         movem.l (a7)+,d0-d7/a0-a6
         rts 
@@ -1913,12 +1913,12 @@ drives_idle_body:
 .L1d96e:
         lsr.b #$1,d1
         bcc.b .L1d976
-        bsr.w L1d9b4
+        bsr.w drive_deselect
 .L1d976:
         addq.w #$1,d0
         dbra d2,.L1d96e
         rts 
-L1d97e:
+drive_select:
         bset.b d0,$bfd100.l
         nop 
         bclr.b #$7,$bfd100.l
@@ -1935,7 +1935,7 @@ L1d97e:
         dbra d1,.L1d9a2
         btst.b #$5,$bfe001.l
         rts 
-L1d9b4:
+drive_deselect:
         bset.b #$7,$bfd100.l
         nop 
         nop 
@@ -1950,7 +1950,7 @@ L1d9b4:
         nop 
         bset.b d0,$bfd100.l
         rts 
-L1d9e2:
+disk_transfer:
         movem.l d1-d7/a0-a5,-(a7)
         link.w a6,#$ffdc
         move.w d0,d4
@@ -1981,10 +1981,10 @@ L1d9e2:
         move.w d1,-$12(a6)
         swap d1
         move.w d1,-$10(a6)
-        bsr.w L1e10a
+        bsr.w .drive_motor_on
         tst.b -$1d(a6)
         beq.b .L1da54
-        bsr.w L1debc
+        bsr.w .mfm_fill_track
 .L1da54:
         move.w -$10(a6),d0
         moveq #$b,d1
@@ -1994,11 +1994,11 @@ L1d9e2:
         move.w -$20(a6),d1
 .L1da66:
         move.w d1,-$e(a6)
-        bsr.w L1dadc
+        bsr.w .disk_read_track
         bne.b .L1daa4
         tst.b -$1d(a6)
         beq.b .L1da7c
-        bsr.w L1dbca
+        bsr.w .disk_write_track
         bne.b .L1daa4
 .L1da7c:
         move.w -$20(a6),d0
@@ -2015,8 +2015,8 @@ L1d9e2:
         bra.b .L1da54
 .L1daa4:
         move.l d0,-(a7)
-        bsr.w L1e0dc
-        bsr.w L1dfd8
+        bsr.w .drive_motor_off
+        bsr.w .wait_blitter
         move.l (a7)+,d0
         beq.b .L1dad2
         moveq #$0,d1
@@ -2034,14 +2034,14 @@ L1d9e2:
         tst.l d0
         movem.l (a7)+,d1-d7/a0-a5
         rts 
-L1dadc:
+.disk_read_track:
         moveq #$4,d4
 .L1dade:
         clr.w -$4(a6)
         clr.w -$6(a6)
         clr.w -$8(a6)
         move.w -$12(a6),d2
-        bsr.w L1e124
+        bsr.w .drive_seek
         bne.w .L1dbb2
         moveq #$1d,d0
         btst.b #$2,$bfe001.l
@@ -2053,17 +2053,17 @@ L1dadc:
         lea.l $400(a5),a5
         move.l #$aaaaaaaa,(a5)
         move.w #$4489,$4(a5)
-        bsr.w L1de42
-        bsr.w L1dfd8
-        bsr.w L1dc9e
+        bsr.w .sector_clear_headers
+        bsr.w .wait_blitter
+        bsr.w .disk_read_sectors
         bne.w .L1dbb2
         move.w -$c(a6),d0
         beq.b .L1db88
         mulu.w #$440,d0
         lea.l $6(a5),a0
-        bsr.w L1e066
+        bsr.w .dma_read_start
         lea.l $dff01e.l,a4
-        bsr.w L1dcf6
+        bsr.w .disk_process_track
         bne.b .L1dbc0
         cmpi.b #$1,-$1d(a6)
         beq.b .L1db64
@@ -2079,16 +2079,16 @@ L1dadc:
         move.l #$aaaaaaaa,(a5)
         move.w #$4489,$4(a5)
         movea.l a5,a0
-        bsr.w L1e01c
+        bsr.w .mfm_fix_clock_bits
 .L1db88:
         move.w -$a(a6),d0
         beq.b .L1dba6
         mulu.w #$440,d0
         lea.l $6(a5),a0
-        bsr.w L1e066
+        bsr.w .dma_read_start
         lea.l -$2(a6),a4
         clr.w (a4)
-        bsr.w L1dcf6
+        bsr.w .disk_process_track
         bne.b .L1dbc0
 .L1dba6:
         move.w -$6(a6),d0
@@ -2098,26 +2098,26 @@ L1dadc:
 .L1dbb2:
         move.l d0,-(a7)
         moveq #$2,d2
-        bsr.w L1e124
-        bsr.w L1e178
+        bsr.w .drive_seek
+        bsr.w .drive_wait_ready
         move.l (a7)+,d0
 .L1dbc0:
         dbra d4,.L1dade
 .L1dbc4:
-        bsr.w L1e0c8
+        bsr.w .dma_stop
         rts 
-L1dbca:
+.disk_write_track:
         moveq #$4,d4
         clr.w -$6(a6)
         cmpi.b #$2,-$1d(a6)
         bne.b .L1dbe4
         move.w -$12(a6),d0
         movea.l -$18(a6),a0
-        bsr.w L1dc58
+        bsr.w .track_build_mfm
 .L1dbe4:
-        bsr.w L1e1d8
+        bsr.w .drive_write_select
         move.l #$64,d0
-        bsr.w L1e218
+        bsr.w .delay_ticks
         moveq #$1c,d0
         btst.b #$3,$bfe001.l
         beq.b .L1dc4c
@@ -2134,16 +2134,16 @@ L1dbca:
         move.w #$2,$9c(a0)
         move.w #$d961,$24(a0)
         move.w #$d961,$24(a0)
-        bsr.w L1e0a4
+        bsr.w .dma_read_wait
         beq.b .L1dc4c
         dbra d4,.L1dbe4
 .L1dc4c:
         move.l d0,-(a7)
         moveq #$2,d0
-        bsr.w L1e218
+        bsr.w .delay_ticks
         move.l (a7)+,d0
         rts 
-L1dc58:
+.track_build_mfm:
         move.l d0,d3
         ori.w #$ff00,d3
         swap d3
@@ -2153,40 +2153,40 @@ L1dc58:
         addq.w #$4,a0
         move.l #$44894489,(a0)+
         move.l d3,d0
-        bsr.w L1e00e
+        bsr.w .mfm_encode_long
         lea.l -$8(a0),a0
-        bsr.w L1e01c
+        bsr.w .mfm_fix_clock_bits
         moveq #$28,d1
-        bsr.w L1dea2
-        bsr.w L1e00e
+        bsr.w .checksum_words
+        bsr.w .mfm_encode_long
         lea.l -$8(a0),a0
-        bsr.w L1e01c
+        bsr.w .mfm_fix_clock_bits
         lea.l $410(a0),a0
         addi.w #$100,d3
         subq.b #$1,d3
         bne.b .L1dc68
         rts 
-L1dc9e:
+.disk_read_sectors:
         moveq #$a,d2
 .L1dca0:
         lea.l $6(a5),a0
         move.w #$40,d0
-        bsr.w L1e066
-        bsr.w L1e0a4
+        bsr.w .dma_read_start
+        bsr.w .dma_read_wait
         bne.b .L1dce8
-        bsr.w L1de8c
+        bsr.w .sector_verify_header
         beq.b .L1dcbe
         dbra d2,.L1dca0
-        bra.b L1dcea
+        bra.b .error_18
 .L1dcbe:
-        bsr.w L1de54
-        bne.b L1dcee
+        bsr.w .sector_decode_header
+        bne.b .error_1b
         cmp.w -$12(a6),d1
-        bne.b L1dcee
+        bne.b .error_1b
         cmp.b #$b,d2
-        bge.b L1dcee
+        bge.b .error_1b
         cmp.b #$b,d3
-        bgt.b L1dcee
+        bgt.b .error_1b
         subq.b #$1,d3
         move.w d3,-$c(a6)
         move.w #$b,-$a(a6)
@@ -2194,46 +2194,46 @@ L1dc9e:
         moveq #$0,d0
 .L1dce8:
         rts 
-L1dcea:
+.error_18:
         moveq #$18,d0
         rts 
-L1dcee:
+.error_1b:
         moveq #$1b,d0
         rts 
-L1dcf2:
+.error_19:
         moveq #$19,d0
         rts 
-L1dcf6:
+.disk_process_track:
         movea.l -$18(a6),a5
         lea.l $400(a5),a5
         move.w -$8(a6),d0
         mulu.w #$440,d0
         adda.l d0,a5
         move.l #$1770,d0
-        bsr.w L1e23a
+        bsr.w .timer_start
 .L1dd12:
         btst.b #$1,$1(a4)
         bne.w .L1de1a
-        bsr.w L1e22c
+        bsr.w .timer_poll
         beq.w .L1de1e
         tst.l $440(a5)
         beq.b .L1dd12
-        bsr.w L1de8c
-        bne.b L1dcea
-        bsr.w L1de54
-        bne.b L1dcee
+        bsr.w .sector_verify_header
+        bne.b .error_18
+        bsr.w .sector_decode_header
+        bne.b .error_1b
         cmp.w -$12(a6),d1
-        bne.b L1dcee
+        bne.b .error_1b
         move.w d2,d3
         lea.l $8(a5),a0
-        bsr.w L1de76
+        bsr.w .mfm_decode_long
         move.b #$b,d0
         sub.b -$7(a6),d0
         lea.l $8(a5),a0
-        bsr.w L1e00e
-        bsr.w L1de9c
+        bsr.w .mfm_encode_long
+        bsr.w .sector_header_checksum
         lea.l $30(a5),a0
-        bsr.w L1e00e
+        bsr.w .mfm_encode_long
         cmp.w -$10(a6),d3
         blt.w .L1de0c
         move.w -$e(a6),d0
@@ -2247,63 +2247,63 @@ L1dcf6:
         bne.w .L1de0c
         cmpi.b #$1,-$1d(a6)
         bne.b .L1ddca
-        bsr.w L1de22
+        bsr.w .sector_offset
         movea.l -$1c(a6),a0
         adda.l d1,a0
         lea.l $40(a5),a1
-        bsr.w L1df24
+        bsr.w .blitter_encode_start
         btst.b #$1,$1(a4)
         bne.w .L1de1a
         lea.l $40(a5),a0
         move.w #$400,d1
-        bsr.w L1dea2
+        bsr.w .checksum_words
         lea.l $38(a5),a0
-        bsr.w L1e00e
-        bsr.w L1de32
+        bsr.w .mfm_encode_long
+        bsr.w .sector_mark_done
         bra.b .L1de0c
 .L1ddca:
         lea.l $40(a5),a0
         move.w #$400,d1
-        bsr.w L1dea2
+        bsr.w .checksum_words
         move.l d0,-(a7)
         lea.l $38(a5),a0
-        bsr.w L1de76
+        bsr.w .mfm_decode_long
         cmp.l (a7)+,d0
-        bne.w L1dcf2
+        bne.w .error_19
         btst.b #$1,$1(a4)
         bne.b .L1de1a
-        bsr.b L1de22
+        bsr.b .sector_offset
         lea.l $40(a5),a0
         movea.l -$1c(a6),a1
         adda.l d1,a1
-        bsr.w L1deee
-        bsr.w L1de32
+        bsr.w .blitter_decode_start
+        bsr.w .sector_mark_done
         move.w -$6(a6),d0
         cmp.w -$e(a6),d0
         beq.b .L1de1a
 .L1de0c:
         addq.w #$1,-$8(a6)
         cmpi.w #$b,-$8(a6)
-        bne.w L1dcf6
+        bne.w .disk_process_track
 .L1de1a:
         moveq #$0,d0
         rts 
 .L1de1e:
         moveq #$ff,d0
         rts 
-L1de22:
+.sector_offset:
         move.l d3,d1
         sub.w -$10(a6),d1
         move.l #$200,d0
         mulu.w d0,d1
         rts 
-L1de32:
+.sector_mark_done:
         move.w -$4(a6),d0
         bset.l d3,d0
         move.w d0,-$4(a6)
         addq.w #$1,-$6(a6)
         rts 
-L1de42:
+.sector_clear_headers:
         movea.l a5,a0
         moveq #$a,d1
         moveq #$0,d0
@@ -2312,9 +2312,9 @@ L1de42:
         move.l d0,(a0)
         dbra d1,.L1de48
         rts 
-L1de54:
+.sector_decode_header:
         lea.l $8(a5),a0
-        bsr.w L1de76
+        bsr.w .mfm_decode_long
         move.w d0,d3
         andi.w #$ff,d3
         move.w d0,d2
@@ -2325,7 +2325,7 @@ L1de54:
         lsr.w #$8,d0
         cmp.b #$ff,d0
         rts 
-L1de76:
+.mfm_decode_long:
         move.l (a0)+,d0
         move.l (a0)+,d1
         andi.l #$55555555,d0
@@ -2333,17 +2333,17 @@ L1de76:
         add.l d0,d0
         or.l d1,d0
         rts 
-L1de8c:
-        bsr.w L1de9c
+.sector_verify_header:
+        bsr.w .sector_header_checksum
         move.l d0,-(a7)
         lea.l $30(a5),a0
-        bsr.b L1de76
+        bsr.b .mfm_decode_long
         cmp.l (a7)+,d0
         rts 
-L1de9c:
+.sector_header_checksum:
         lea.l $8(a5),a0
         moveq #$28,d1
-L1dea2:
+.checksum_words:
         move.l d2,-(a7)
         lsr.w #$2,d1
         subq.w #$1,d1
@@ -2355,7 +2355,7 @@ L1dea2:
         move.l (a7)+,d2
         andi.l #$55555555,d0
         rts 
-L1debc:
+.mfm_fill_track:
         movea.l -$18(a6),a0
         move.l #$aaaaaaaa,d0
         move.l d0,d1
@@ -2374,9 +2374,9 @@ L1debc:
         cmpa.l a1,a0
         bne.b .L1dee4
         rts 
-L1deee:
+.blitter_decode_start:
         move.l a2,-(a7)
-        bsr.w L1dfe4
+        bsr.w .blitter_init
         adda.l d0,a0
         subq.l #$1,a0
         move.l a0,$50(a2)
@@ -2392,9 +2392,9 @@ L1deee:
         move.w d0,$58(a2)
         movea.l (a7)+,a2
         rts 
-L1df24:
+.blitter_encode_start:
         movem.l d1-d3/a2,-(a7)
-        bsr.w L1dfe4
+        bsr.w .blitter_init
         move.w d0,d1
         lsl.w #$2,d1
         ori.w #$8,d1
@@ -2404,13 +2404,13 @@ L1df24:
         move.w #$1db1,$40(a2)
         move.w #$0,$42(a2)
         move.w d1,$58(a2)
-        bsr.w L1dfd8
+        bsr.w .wait_blitter
         move.l a0,$50(a2)
         move.l a1,$4c(a2)
         move.l a1,$54(a2)
         move.w #$2d8c,$40(a2)
         move.w d1,$58(a2)
-        bsr.w L1dfd8
+        bsr.w .wait_blitter
         move.l a0,d2
         add.l d0,d2
         subq.l #$2,d2
@@ -2424,7 +2424,7 @@ L1df24:
         move.w #$db1,$40(a2)
         move.w #$1002,$42(a2)
         move.w d1,$58(a2)
-        bsr.w L1dfd8
+        bsr.w .wait_blitter
         move.l a1,d3
         add.l d0,d3
         move.l a0,$50(a2)
@@ -2433,23 +2433,23 @@ L1df24:
         move.w #$1d8c,$40(a2)
         move.w #$0,$42(a2)
         move.w d1,$58(a2)
-        bsr.w L1dfd8
+        bsr.w .wait_blitter
         move.l d0,d1
         movea.l a1,a0
-        bsr.w L1e01c
+        bsr.w .mfm_fix_clock_bits
         adda.l d1,a0
-        bsr.w L1e01c
+        bsr.w .mfm_fix_clock_bits
         adda.l d1,a0
-        bsr.b L1e01c
+        bsr.b .mfm_fix_clock_bits
         movem.l (a7)+,d1-d3/a2
         rts 
-L1dfd8:
+.wait_blitter:
         btst.b #$6,$dff002.l
-        bne.b L1dfd8
+        bne.b .wait_blitter
         rts 
-L1dfe4:
+.blitter_init:
         lea.l $dff000.l,a2
-        bsr.b L1dfd8
+        bsr.b .wait_blitter
         move.w #$8040,$96(a2)
         move.l #$ffffffff,$44(a2)
         move.w #$5555,$70(a2)
@@ -2457,13 +2457,13 @@ L1dfe4:
         clr.w $62(a2)
         clr.w $66(a2)
         rts 
-L1e00e:
+.mfm_encode_long:
         move.l d0,-(a7)
         lsr.l #$1,d0
-        bsr.w L1e03a
+        bsr.w .mfm_spread_bits
         move.l (a7)+,d0
-        bsr.w L1e03a
-L1e01c:
+        bsr.w .mfm_spread_bits
+.mfm_fix_clock_bits:
         move.b (a0),d0
         btst.b #$0,-$1(a0)
         bne.b .L1e032
@@ -2477,7 +2477,7 @@ L1e01c:
         move.b d0,(a0)
 .L1e038:
         rts 
-L1e03a:
+.mfm_spread_bits:
         andi.l #$55555555,d0
         move.l d0,d2
         eori.l #$55555555,d2
@@ -2493,7 +2493,7 @@ L1e03a:
 .L1e062:
         move.l d0,(a0)+
         rts 
-L1e066:
+.dma_read_start:
         lea.l $dff000.l,a1
         move.w #$4000,$24(a1)
         move.w #$8010,$96(a1)
@@ -2507,30 +2507,30 @@ L1e066:
         move.w d0,$24(a1)
         move.w d0,$24(a1)
         rts 
-L1e0a4:
+.dma_read_wait:
         lea.l $dff000.l,a1
         move.l #$1770,d0
-        bsr.w L1e23a
+        bsr.w .timer_start
 .L1e0b4:
         btst.b #$1,$1f(a1)
         bne.b .L1e0c6
-        bsr.w L1e22c
+        bsr.w .timer_poll
         bne.b .L1e0b4
         moveq #$ff,d0
-        bra.b L1e0c8
+        bra.b .dma_stop
 .L1e0c6:
         moveq #$0,d0
-L1e0c8:
+.dma_stop:
         move.w #$2,$dff09c.l
         move.w #$4000,$dff024.l
         tst.l d0
         rts 
-L1e0dc:
+.drive_motor_off:
         move.w #$400,$dff09e.l
         tst.w -$1e(a6)
-        bpl.b L1e108
+        bpl.b .drive_motor_off_end
         moveq #$ff,d1
-L1e0ec:
+.drive_motor_pulse:
         move.b d1,$bfd100.l
         move.w -$24(a6),d0
         addq.l #$3,d0
@@ -2538,26 +2538,26 @@ L1e0ec:
         move.b d1,$bfd100.l
         bset.l d0,d1
         move.b d1,$bfd100.l
-L1e108:
+.drive_motor_off_end:
         rts 
-L1e10a:
+.drive_motor_on:
         moveq #$ff,d1
         move.b d1,$bfd100.l
         bclr.l #$7,d1
-        bsr.b L1e0ec
+        bsr.b .drive_motor_pulse
         move.l #$c8,d0
-        bsr.w L1e218
+        bsr.w .delay_ticks
         rts 
-L1e124:
+.drive_seek:
         movem.l d2-d3,-(a7)
         move.l d2,d3
-        bsr.w L1e1d8
+        bsr.w .drive_write_select
         move.w -$24(a6),d0
         add.w d0,d0
-        lea.l drive_bits(pc),a0
+        lea.l .drive_bits(pc),a0
         move.w (a0,d0.w),d0
         bpl.b .L1e144
-        bsr.w L1e178
+        bsr.w .drive_wait_ready
         bne.b .L1e172
 .L1e144:
         lsr.w #$1,d0
@@ -2570,20 +2570,20 @@ L1e124:
         neg.w d2
 .L1e154:
         moveq #$3,d0
-        bsr.w L1e1ae
+        bsr.w .drive_side_direction
         subq.w #$1,d2
         bne.b .L1e154
 .L1e15e:
         move.w -$24(a6),d0
         add.w d0,d0
-        lea.l drive_bits(pc),a0
+        lea.l .drive_bits(pc),a0
         move.w d3,(a0,d0.w)
-        bsr.w L1e1d8
+        bsr.w .drive_write_select
         moveq #$0,d0
 .L1e172:
         movem.l (a7)+,d2-d3
         rts 
-L1e178:
+.drive_wait_ready:
         movem.l d2,-(a7)
         moveq #$55,d2
 .L1e17e:
@@ -2591,22 +2591,22 @@ L1e178:
         beq.b .L1e198
         moveq #$3,d0
         moveq #$ff,d1
-        bsr.w L1e1ae
+        bsr.w .drive_side_direction
         dbra d2,.L1e17e
         moveq #$1e,d0
         bra.b .L1e1a8
 .L1e198:
         move.w -$24(a6),d0
         add.w d0,d0
-        lea.l drive_bits(pc),a0
+        lea.l .drive_bits(pc),a0
         clr.w (a0,d0.w)
         moveq #$0,d0
 .L1e1a8:
         movem.l (a7)+,d2
         rts 
-L1e1ae:
+.drive_side_direction:
         move.l d0,-(a7)
-        bsr.w L1e1e4
+        bsr.w .drive_select_bits
         tst.b d1
         bmi.b .L1e1bc
         bclr.l #$1,d0
@@ -2616,13 +2616,13 @@ L1e1ae:
         bset.l #$0,d0
         move.b d0,$bfd100.l
         move.l (a7)+,d0
-        bsr.w L1e218
+        bsr.w .delay_ticks
         rts 
-L1e1d8:
-        bsr.w L1e1e4
+.drive_write_select:
+        bsr.w .drive_select_bits
         move.b d0,$bfd100.l
         rts 
-L1e1e4:
+.drive_select_bits:
         movem.w d1-d2,-(a7)
         move.w -$24(a6),d0
         move.b $bfd100.l,d2
@@ -2631,7 +2631,7 @@ L1e1e4:
         bclr.l d0,d2
         subi.b #$3,d0
         add.w d0,d0
-        move.w drive_bits(pc,d0.w),d1
+        move.w .drive_bits(pc,d0.w),d1
         btst.l #$0,d1
         beq.b .L1e210
         bclr.l #$2,d2
@@ -2639,26 +2639,26 @@ L1e1e4:
         move.b d2,d0
         movem.w (a7)+,d1-d2
         rts 
-L1e218:
-        bsr.w L1e23a
+.delay_ticks:
+        bsr.w .timer_start
 .L1e21c:
         btst.b #$0,$bfde00.l
         bne.b .L1e21c
         subq.l #$1,d0
-        bne.b L1e218
+        bne.b .delay_ticks
         rts 
-L1e22c:
+.timer_poll:
         btst.b #$0,$bfde00.l
-        bne.b L1e252
+        bne.b .timer_done
         subq.l #$1,d0
-        beq.b L1e252
-L1e23a:
+        beq.b .timer_done
+.timer_start:
         move.b #$8,$bfde00.l
         move.b #$cc,$bfd400.l
         move.b #$2,$bfd500.l
-L1e252:
+.timer_done:
         rts 
-drive_bits:
+.drive_bits:
         dc.w $ffff,$ffff,$ffff,$ffff,$4e75,$4e75
 
 
@@ -2679,7 +2679,7 @@ _keyboard_irq:
         dbra d1,.L1e2f0
         ; (the original tests the serial flag here and skips the key without it: it lost the second of two close key events)
         bsr.w key_translate
-L1e300:
+keyboard_irq_exit:
         andi.b #$bf,$bfee01.l
         move.b $bfed01.l,d0
         move.b #$1,$bfed01.l
