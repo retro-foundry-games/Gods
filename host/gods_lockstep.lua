@@ -3,7 +3,7 @@
 --   tools/engine9000/ami9000_host --scale 2 projects/gods/host/gods_lockstep.lua [--script-args "[state=NAME.state] [extra=N] [continue=all|N] [trace]"]
 --
 -- The original starts from the saved state of level 1 (128 iterations into the level) and you play it with the keyboard (arrows and space); every frame the keys are given to the SDL
--- port (native/build/sdl/gods-sdl --lockstep: no window, the protocol on stdin/stdout), which boots to the same place by itself, is stepped one video frame, and what both show is
+-- port (native/build/sdl/gods-sdl-dev --lockstep: no window, the protocol on stdin/stdout), which boots to the same place by itself, is stepped one video frame, and what both show is
 -- compared exactly.  The panels right of the original's frame show the port's image and the difference.  At the first difference the original is paused (silent, frozen) and the port
 -- is not stepped again: the control socket (--control PATH, tools/ami9000_host/ctl.py) can look at both.
 --
@@ -17,7 +17,7 @@
 --   from=N        the first difference that stops the run is at emulator frame N or later (a level above 1: 12)
 --   level=N       the original starts from gods-levelN-1m.state and the port begins level N (the game's levels have worlds: WORLD ONE COMPLETED is in the middle of level 1) (iter=N: the iteration of the game loop the saved state is at; world 2: 124)
 --   break=ADDR    pause at the end of the frame in which the original reaches the address (hex, several with commas; with --control PATH the sockets can then look at both sides)
---   ram=PATH      (with state=ABSOLUTE.state) the port begins from that chip RAM of the original (gods_ramdump.lua; gods-sdl --quickload) instead of Begin Quest; the original starts from the state
+--   ram=PATH      (with state=ABSOLUTE.state) the port begins from that chip RAM of the original (gods_ramdump.lua; gods-sdl-dev --quickload) instead of Begin Quest; the original starts from the state
 --   blitlog=F=PATH the original's custom register writes (with the pc) of the emulator frame F are written to PATH
 --   mask=X,Y,W,H[;..] image regions (in the 320x256 picture) left out of the comparison
 --   autosave=SECONDS the original's state is saved every SECONDS seconds (default 30; noautosave: off; not with replay=) to captures/quicksave/auto/auto-K.state/.ram, 5 slots going round (latest.txt)
@@ -42,7 +42,7 @@ ami.machine{
     content = "../local/gods.m3u", roms = { { "kick34005.A500", 0xc4f0f55f } },
     opt = { puae_chipmem_size = 2, puae_joyport_order = "2143" },   -- 1 MB chip RAM as the saved states have it, the joystick in port 1
     peers = {
-        native = { ami.script_dir .. "/../native/build/sdl/gods-sdl", "--disks", ami.script_dir .. "/../local", "--skip-intro", "--lockstep",
+        native = { ami.script_dir .. "/../native/build/sdl/gods-sdl-dev", "--disks", ami.script_dir .. "/../local", "--skip-intro", "--lockstep",
                    "--lockstep-extra", tostring(EXTRA), "--lockstep-level", tostring(LEVEL), "--lockstep-iteration", args:match("iter=(%d+)") or tostring(args:find("ram=") and 1 or ({ [2] = 124 })[LEVEL] or 129), "--keys", "300:40:1,320:40:0",
                    table.unpack(args:match("ram=(%S+)") and { "--quickload", args:match("ram=(%S+)") } or {}) },
     },
