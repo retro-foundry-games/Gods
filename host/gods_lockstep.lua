@@ -226,7 +226,7 @@ end
 -- calllog=ADDR[,ADDR...] (hex): the emulator frame and the registers d0, d1, d7 of every time the original reaches those addresses (once per call, whatever frames)
 for hex in (args:match("calllog=([%x,]+)") or ""):gmatch("%x+") do
     local at = tonumber(hex, 16)
-    ami.hook(at, function() ami.log(("reached %x at frame %d (cycles %d): d0 %x d1 %x d7 %x"):format(at, ami.frame(), ami.cycles(), ami.reg("d0") & 0xffff, ami.reg("d1") & 0xffff, ami.reg("d7") & 0xffff)) end)
+    ami.hook(at, function() ami.log(("reached %x at frame %d (cycles %d): d0 %x d1 %x d7 %x player %d,%d"):format(at, ami.frame(), ami.cycles(), ami.reg("d0") & 0xffff, ami.reg("d1") & 0xffff, ami.reg("d7") & 0xffff, ami.peek16(0x1e0), ami.peek16(0x1e2))) end)
 end
 -- randlog=FIRST-LAST: the original's calls of its random routine ($633E) in those emulator frames, with who called and the table index
 local rl_first, rl_last = args:match("randlog=(%d+)-(%d+)")

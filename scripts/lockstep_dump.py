@@ -33,7 +33,7 @@ def main() -> int:
                 print("no difference found")
                 return 1
             ctl = [sys.executable, str(ROOT / "tools/ami9000_host/ctl.py"), str(sock)]
-            for name, base, length in (("m", 0x10000, 0x70000), ("v", 0x100, 0xF00)):
+            for name, base, length in (("m", 0x10000, 0x70000), ("v", 0x100, 0xF00), ("l", 0x4c00, 0x600)):
                 line = (f"local p=ami.import('amiga/lockstep').peer; p:send('mem {base:x} {length:x}\\n'); local h=p:readline(); local n=tonumber(h:match('mem (%d+)')); "
                         f"ami.save_file('{out}/p{name}.bin', p:read(n)); ami.save_file('{out}/o{name}.bin', ami.read({base}, {length})); return n")
                 subprocess.run(ctl + [line], check=True, capture_output=True)
