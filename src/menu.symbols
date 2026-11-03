@@ -565,7 +565,7 @@ bytes_10b0        0x000010b0  uint8_t %s[140]
 records_737e      0x0000737e  uint32_t %s[20]   ten records of two longs
 records_7544      0x00007544  int16_t %s[210]   forty-two records of 10 bytes
 table_1a30c       0x0001a30c  uint16_t %s[120]  forty records of 6 bytes
-records_1a154     0x0001a154  uint8_t %s[440]   twenty records of 22 bytes
+records_1a154     0x0001a154  struct Bolt %s[20]   twenty records of 22 bytes
 table_1c1d6       0x0001c1d6  int16_t %s[90]   thirty entries of three words (the gem's x, and two words that say where it sends the player) of the level (loaded data)
 table_1c28a       0x0001c28a  uint16_t %s[60]   twenty entries of three words (x, y, kind) of the level's pick-ups
 table_19456       0x00019456  uint16_t %s[60]   ... copied by place_pickups

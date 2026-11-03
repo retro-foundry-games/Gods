@@ -1934,11 +1934,152 @@ void step_16aee(void)
     fn_16aee_c();
 }
 
-/* orig $01843E: nothing is done when word_186be is 0; the original goes on at $18446, which did not run */
+static void start_debris_at(int16_t x, int16_t y);
+
+/* orig $0185A8 and the loops $0185E2, $018614, $018660 and $018692 (which the record keeps the address of): the bolt goes on along its line by `speed` steps.  The line goes in
+ * x (length_x the longer) or in y; error is the Bresenham error, count what the original counts down without looking at it */
+static void aimed_bolt_steps(struct Bolt *bolt)
+{
+    int16_t x = bolt->x, y = bolt->y;
+    int16_t error = bolt->error;
+    uint16_t steps = (uint16_t)bolt->speed;
+
+    do {
+        switch (bolt->routine) {
+        case 0x185E2:
+            error = (int16_t)(error - bolt->length_y);
+            if (error < 0) {
+                error = (int16_t)(error + bolt->length_x);
+                y = (int16_t)(y + bolt->dir);
+            }
+            x++;
+            break;
+        case 0x18614:
+            y = (int16_t)(y + bolt->dir);
+            error = (int16_t)(error - bolt->length_x);
+            if (error < 0) {
+                error = (int16_t)(error + bolt->length_y);
+                x++;
+            }
+            break;
+        case 0x18660:
+            error = (int16_t)(error - bolt->length_y);
+            if (error < 0) {
+                error = (int16_t)(error + bolt->length_x);
+                y = (int16_t)(y + bolt->dir);
+            }
+            x--;
+            break;
+        default:   /* $18692 */
+            y = (int16_t)(y + bolt->dir);
+            error = (int16_t)(error - bolt->length_x);
+            if (error < 0) {
+                error = (int16_t)(error + bolt->length_y);
+                x--;
+            }
+            break;
+        }
+    } while (--steps != 0);
+    bolt->x = x;
+    bolt->y = y;
+    bolt->error = error;
+    bolt->count--;
+}
+
+/* orig $0183C8 (with $0185BE and $018640): a bolt is shot from (x, y) at (target_x, target_y) with `speed` steps a frame and the kind `kind` (bit 0): it takes the first free of the
+ * twenty records, goes its first steps at once and word_186be says there are bolts.  Without a free record nothing happens */
+static void aimed_bolt_start(int16_t x, int16_t y, int16_t target_x, int16_t target_y, int16_t speed, int16_t kind)
+{
+    for (int i = 0; i < 20; i++) {
+        struct Bolt *bolt = &records_1a154[i];
+
+        if ((int32_t)bolt->routine >= 0)
+            continue;
+        bolt->speed = speed;
+        bolt->kind = (int16_t)(kind & 1);
+
+        int left = x > target_x;
+        int16_t length_x = (int16_t)(left ? x - target_x : target_x - x);
+        int16_t length_y = (int16_t)(target_y - y);
+
+        bolt->dir = 1;
+        if (length_y < 0) {
+            length_y = (int16_t)-length_y;
+            bolt->dir = -1;
+        }
+        bolt->x = x;
+        bolt->y = y;
+        bolt->length_x = length_x;
+        bolt->length_y = length_y;
+        if ((uint16_t)length_x < (uint16_t)length_y) {
+            bolt->count = length_y;
+            bolt->error = (int16_t)((uint16_t)length_y >> 1);
+            bolt->routine = left ? 0x18692 : 0x18614;
+        } else {
+            bolt->count = length_x;
+            bolt->error = (int16_t)((uint16_t)length_x >> 1);
+            bolt->routine = left ? 0x18660 : 0x185E2;
+        }
+        aimed_bolt_steps(bolt);
+        word_186be = 1;
+        return;
+    }
+}
+
+/* orig $0184EE: a bolt at the screen place (x, y) that is in the box of the player (from 6 pixels right of the bolt's place; the player's box is 32 by 48, from 24 lower when the
+ * player is in the states 18 and 19) and the player not invulnerable (flag_aa8): the energy goes down by 2 and the bolt is over, with a spark */
+static void aimed_bolt_hits_player(struct Bolt *bolt, int16_t x, int16_t y)
+{
+    int16_t hit_x = (int16_t)(x + 4 + scroll_x + 2);
+    int16_t hit_y = (int16_t)(y + 4 + scroll_y);
+    int16_t top = player_y;
+
+    if (word_19c >= 0x12 && word_19c <= 0x13)
+        top = (int16_t)(top + 0x18);
+    if (hit_y < top || hit_x < player_x)
+        return;
+    if (hit_x > (int16_t)(player_x + 0x20) || hit_y > (int16_t)(player_y + 0x30))
+        return;
+    if (flag_aa8 != 0)
+        return;
+    player_energy -= 2;
+    bolt->routine = 0xFFFFFFFF;
+    start_debris_at((int16_t)(x - 2), (int16_t)(y - 2));
+}
+
+/* orig $01843E: the bolts (while word_186be says there are some) go on by their steps; one that is in a wall (a cell of the second map, 32 by 16, that is 1) or that has left the
+ * screen is over (the wall with a spark), the others hit the player (aimed_bolt_hits_player) and are drawn as the glyph 75 + (frame_toggle & 1) */
 void step_1843e(void)
 {
     if (word_186be == 0)
         return;
+    word_186be = 0;
+    for (int i = 0; i < 20; i++) {
+        struct Bolt *bolt = &records_1a154[i];
+
+        if ((int32_t)bolt->routine < 0)
+            continue;
+        word_186be = 1;
+        aimed_bolt_steps(bolt);
+
+        int16_t x = bolt->x, y = bolt->y;
+        int16_t cell = (int16_t)(((x + 3) & 0xFFE0) >> 5);
+
+        cell = (int16_t)(cell + (int16_t)(((y + 3) & 0xFFF0) << 3));
+        if (ptr_0b86[0x2000 + cell] == 1) {
+            bolt->routine = 0xFFFFFFFF;
+            start_debris_at((int16_t)(x - 3 - scroll_x), (int16_t)(y - 3 - scroll_y));
+            continue;
+        }
+        x = (int16_t)(x - scroll_x);
+        y = (int16_t)(y - scroll_y);
+        if (x < 0 || y < 0 || x >= 0x13C || y >= 0xBC) {
+            bolt->routine = 0xFFFFFFFF;
+            continue;
+        }
+        aimed_bolt_hits_player(bolt, x, y);
+        glyph_draw(x, y, (uint16_t)((frame_toggle & 1) + 0x4B));
+    }
 }
 
 /* orig $0190F2: the sparkle of a thing that was dropped (words_34e: where, and the number), while word_354 is not negative: the glyph
@@ -4636,14 +4777,10 @@ static void update_falling_slots(void)
         code_e3a2 = 0x4E75;
 }
 
-/* orig $0183BC: an aimed shot (a bolt) from (x, y) at the player, `speed` and the kind `d6`: the bolts are not replicated yet */
+/* orig $0183BC: a bolt from (x, y) at the player (the place 8 right and 6 below player_x, player_y), `speed` steps a frame and the kind `kind` (aimed_bolt_start) */
 static void aimed_shot(int16_t x, int16_t y, int16_t speed, int16_t kind)
 {
-    (void)x;
-    (void)y;
-    (void)speed;
-    (void)kind;
-    host_missing_routine(0x183BC);
+    aimed_bolt_start(x, y, (int16_t)(player_x + 8), (int16_t)(player_y + 6), speed, kind);
 }
 
 /* ======== the monsters: $8A54, with the routines between $891C and $9A00 ======== */
@@ -4681,6 +4818,24 @@ static const uint8_t monster_circle[90] = {
 
 /* orig $0004A4: the pictures a monster of the first level goes through (a word each) */
 static const int16_t monster_steps[4] = { 0, 1, 2, 1 };
+
+/* the unsigned division of the original's divu.w (a word by a word, by 0 the quotient is 65535) done by shifts and subtractions: the 68000 has no 32-bit division in the library */
+static uint16_t monster_divide(uint32_t value, uint16_t divisor)
+{
+    uint32_t rest = 0;
+    uint32_t quotient = 0;
+
+    if (divisor == 0)
+        return 0xFFFF;
+    for (int bit = 31; bit >= 0; bit--) {
+        rest = (rest << 1) | ((value >> bit) & 1);
+        if (rest >= divisor) {
+            rest -= divisor;
+            quotient |= 1u << bit;
+        }
+    }
+    return (uint16_t)quotient;
+}
 
 /* orig $0098C2: which of the seven zones of zone_limits (1 to 7) the monster's box of 32 by 32 is in; 0 when in none */
 static int16_t monster_zone(const struct MonsterPart *m)
@@ -4961,7 +5116,7 @@ static void monster_move(struct MonsterPart *m, int16_t dx, int16_t dy)
 }
 
 /* orig $0091EE: the monster shoots when its count down (fire_timer) is over: low nibble of the type's byte 6 (how often), high nibble the speed.  Type bits 4 and 5 are how: 0 a shot
- * sideways (to the side it moves, with flag_244 negative one by the monster's mode), 1 a bolt at the player with a spread ($183C8, not replicated), 2 and 3 a bolt at the player
+ * sideways (to the side it moves, with flag_244 negative one by the monster's mode), 1 a bolt at a place near the player (aimed_bolt_start, $183C8), 2 and 3 a bolt at the player
  * ($183BC: aimed_shot) */
 static void monster_fire(const struct MonsterType *type, struct MonsterPart *m)
 {
@@ -4983,9 +5138,7 @@ static void monster_fire(const struct MonsterType *type, struct MonsterPart *m)
 
             x = (int16_t)(x + (int16_t)(random_word() & 0x3F) - 0x1F);
             y = (int16_t)(y + (int16_t)(random_word() & 0x3F) - 0x1F);
-            (void)x;
-            (void)y;
-            host_missing_routine(0x183C8);   /* the bolt at that place did not run */
+            aimed_bolt_start((int16_t)(m->x + 0x10), m->y, x, y, speed, 0);
             return;
         }
         aimed_shot((int16_t)(m->x + 0x10), m->y, speed, 0);
@@ -5056,7 +5209,7 @@ static void monster_recruit(struct Monster *rec, const struct MonsterType *type,
     if (who < 0) {
         int16_t count = type->count;
         uint16_t value = random_word();
-        uint16_t step = count > 0 ? (uint16_t)(0xFFFF / count) : 0xFFFF;
+        uint16_t step = count > 0 ? monster_divide(0xFFFF, (uint16_t)count) : 0xFFFF;
         uint16_t limit = step;
         int16_t k = 0;
 
@@ -5349,7 +5502,7 @@ dispatch:
             if (m->rank == 1) {
                 int16_t d4 = rec->alive;
                 uint32_t dividend = (uint32_t)(int32_t)(int16_t)((int16_t)rec->chain << 7);
-                uint16_t quotient = d4 != 0 ? (uint16_t)(dividend / (uint16_t)d4) : 0xFFFF;
+                uint16_t quotient = monster_divide(dividend, (uint16_t)d4);
 
                 different = (int16_t)quotient < (int8_t)type->chance;
             } else {
@@ -5630,7 +5783,7 @@ static void monster_start(struct Monster *rec, struct MonsterPart *block)
     if (type->flags & 0x100) {
         int16_t count = type->count;
         uint16_t value = random_word();
-        uint16_t step = count > 0 ? (uint16_t)(0xFFFF / count) : 0xFFFF;
+        uint16_t step = count > 0 ? monster_divide(0xFFFF, (uint16_t)count) : 0xFFFF;
         uint16_t limit = step;
         int16_t k = 0;
 
@@ -8545,7 +8698,7 @@ void clear_markers(void)
 void clear_records_1a154(void)
 {
     for (int i = 0; i < 20; i++)
-        *(uint32_t *)(records_1a154 + i * 22) = 0xFFFFFFFF;
+        records_1a154[i].routine = 0xFFFFFFFF;
     word_186be = 0;
 }
 
@@ -9966,11 +10119,16 @@ static void level_tables_from_disk(void)
 void level_tables_quickload(void)
 {
     monster_types_from_disk();
-    for (int i = 0; i < 100; i++) {   /* the ten monsters of each of the ten groups (struct MonsterPart): the words are x to speed and the two targets and the object's place */
-        struct MonsterPart *part = &((struct MonsterPart *)ptr_0cee)[i];
+    for (int i = 0; i < 10; i++) {   /* the monsters of the groups that run (struct MonsterPart, ten to a group; the blocks of the others may overlap other tables): the words are x to speed
+                                      * and the two targets and the object's place */
+        if (records_1354[i].state == 0)
+            continue;
+        for (int k = 0; k < 10; k++) {
+            struct MonsterPart *part = &((struct MonsterPart *)ptr_0cee)[10 * i + k];
 
-        file_words(part, 12);
-        file_words(&part->target_x, 4);
+            file_words(part, 12);
+            file_words(&part->target_x, 4);
+        }
     }
     for (int i = 0; i < 253; i++)
         file_words(&ptr_0cbe[i], 2);

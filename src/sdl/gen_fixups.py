@@ -29,6 +29,7 @@ STRUCTS = {
     "Shot": (8, [(0, 2), (2, 2), (4, 2), (6, 2)]),
     "Voice": (148, []),
     "Monster": (428, [(0, 2), (2, 5), (6, 2), (20, 2), (22, 2)] + [(24 + 2 * i, 2) for i in range(200)] + [(424, 2)]),
+    "Bolt": (22, [(0, 4)] + [(4 + 2 * i, 2) for i in range(9)]),
     "Unit": (24, [(0, 2), (4, 2), (10, 4), (14, 2), (16, 2), (18, 4)]),
 }
 fixups: set[tuple[int, int, int]] = set()   # address, width, count

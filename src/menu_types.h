@@ -362,4 +362,21 @@ struct Monster {
 };
 _Static_assert(sizeof(struct Monster) == 428, "monster record");
 
+
+/* the bolts the enemies shoot at the player ($183BC): twenty records of 22 bytes at $1A154.  The bolt goes along a line from where it was shot to where the player was (the
+ * Bresenham line of $185BE: the original keeps in the record the address of the loop that goes on with it) by `speed` steps a frame */
+struct Bolt {
+    uint32_t routine;     /* +0 the original's loop ($185E2 and $18614 going right, $18660 and $18692 going left; negative: free) */
+    int16_t x;            /* +4 */
+    int16_t y;            /* +6 */
+    int16_t dir;          /* +8 the step in y, 1 or -1 */
+    int16_t length_x;     /* +10 */
+    int16_t length_y;     /* +12 */
+    int16_t error;        /* +14 */
+    int16_t count;        /* +16 */
+    int16_t speed;        /* +18 steps a frame */
+    int16_t kind;         /* +20 */
+};
+_Static_assert(sizeof(struct Bolt) == 22, "bolt");
+
 #endif
