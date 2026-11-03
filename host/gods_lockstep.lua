@@ -20,6 +20,7 @@
 --   ram=PATH      (with state=ABSOLUTE.state) the port begins from that chip RAM of the original (gods_ramdump.lua; gods-sdl --quickload) instead of Begin Quest; the original starts from the state
 --   blitlog=F=PATH the original's custom register writes (with the pc) of the emulator frame F are written to PATH
 --   mask=X,Y,W,H[;..] image regions (in the 320x256 picture) left out of the comparison
+--   autosave=SECONDS the original's state is saved every SECONDS seconds (default 30; noautosave: off; not with replay=) to captures/quicksave/auto/auto-K.state/.ram, 5 slots going round (latest.txt)
 --   afterend      with break=: only once a level end record was used (ptr_0bc6 past the first), so break=374a stops at the teleport after "WORLD ONE COMPLETED"
 --   nosync        the port models the original's CPU time itself (host_iteration_cpu); by default the port's flips that end an iteration wait for the original's own (flipsync: `flips N` to the port)
 --   flipoff=N / nolag  tuning of that sync (the port's flip k goes with the original's k+N; nolag: the count of the same step, not the step before)
@@ -97,7 +98,33 @@ local flip_sync = not args:find("%f[%w]nosync%f[%W]")
 local flip_offset = tonumber(args:match("flipoff=(-?%d+)")) or 0
 local orig_flips, flips_at_sync, sync_on, last_flips = 0, 0, false, 0
 local flip_lag = not args:find("%f[%w]nolag%f[%W]")   -- (the count the port gets is the one of the step before: the original's flip shows a frame after the one the count reaches)
-ami.hook(0x1d302, function() orig_flips = orig_flips + 1 end)
+local flip_in_frame = false   -- (the autosave looks for a frame in which the original flipped)
+ami.hook(0x1d302, function() orig_flips = orig_flips + 1; flip_in_frame = true end)
+-- autosave=SECONDS (default 30; 0 or `noautosave` off; not while replaying): every SECONDS seconds of play (50 frames each) the original's state is saved, the frame after one in which it flipped (so its iteration has
+-- just ended: a quickload of the port begins one at its top), with its chip RAM: captures/quicksave/auto/auto-K.state and .ram, K going round 0 to 4 (latest.txt names the newest).  A play that stops at a
+-- difference is then started again from the last one: ... state=PATH/auto-K.state ram=PATH/auto-K.ram
+local AUTO_SECONDS = args:find("noautosave") and 0 or tonumber(args:match("autosave=(%d+)")) or (args:find("replay=") and 0 or 30)
+local AUTO_DIR = ami.script_dir .. "/../captures/quicksave/auto"
+local auto_next = AUTO_SECONDS * 50
+local auto_slot, auto_pending = 0, nil
+local function autosave_step()
+    if AUTO_SECONDS <= 0 then flip_in_frame = false return end
+    local f = ami.frame()
+    if auto_pending and f >= auto_pending then
+        local base = ("%s/auto-%d"):format(AUTO_DIR, auto_slot)
+        if ami.snapshot_save(base .. ".state") then
+            ami.save_file(base .. ".ram", ami.read(0, 0x100000))
+            ami.save_file(AUTO_DIR .. "/latest.txt", ("auto-%d frame %d\n"):format(auto_slot, f))
+            ami.log(("autosave: %s.state and .ram at emulator frame %d"):format(base, f))
+            auto_slot = (auto_slot + 1) % 5
+        end
+        auto_pending = nil
+        auto_next = f + AUTO_SECONDS * 50
+    elseif not auto_pending and f >= auto_next and flip_in_frame then
+        auto_pending = f + 1
+    end
+    flip_in_frame = false
+end
 local delayed = setmetatable({
     send = function(_, text)
         for line in text:gmatch("[^\n]+") do
@@ -295,6 +322,7 @@ lockstep.run {
     start = function() ami.wait(4) return true end,   -- the saved state is the start (a frame later it has been drawn)
     keymap = function(key) return KEYS[key] end,
     on_frame = function(count, native, emulated)
+        autosave_step()
         if false then ami.log(("endframe %d: %d"):format(ami.frame(), ami.cycles())) end
         -- blitlog=FRAME=PATH: the custom register writes of the emulator frame FRAME (the blitter's pointers and sizes, with the program counter) are written to PATH
         do
