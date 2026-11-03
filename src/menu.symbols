@@ -321,6 +321,10 @@ word_284          0x00000284 int16_t %s    game_b: non-zero: check_hit_and_walls
 word_3a4          0x000003a4 int16_t %s    game_b: the strength check_hit_and_walls leaves after a hit on a cell
 word_8892         0x00008892 int16_t %s    game_b: the damage a cell of type -1 does
 word_8894         0x00008894 int16_t %s    game_b: what the pick-up of a thing that is kind 8 raises
+level_end_counter 0x00013182 uint32_t %s   the bonus counted up so far (a long in the level end's code)
+level_end_step   0x0001026c uint32_t %s   what the level end adds to the score at a step (BCD)
+level_end_unit   0x00010270 uint32_t %s   what it takes off the bonus at a step
+digits_started   0x00010062 uint8_t %s    a digit that is not 0 has been drawn in the number that is being drawn
 records_86c       0x0000086c int16_t %s[240]  game_b: eighty records of three words (x, y, two signed speed bytes; negative first word: free), the particles of spawn_particles_15c54
 word_a52          0x00000a52 int16_t %s    game_b: counter of the particle burst (spawn_particles_15c54 clears it)
 word_a54          0x00000a54 int16_t %s    game_b: set to -10 by spawn_particles_15c54

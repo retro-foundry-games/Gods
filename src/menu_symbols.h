@@ -304,6 +304,10 @@ extern int16_t word_284;   /* $00284  game_b: non-zero: check_hit_and_walls lets
 extern int16_t word_3a4;   /* $003A4  game_b: the strength check_hit_and_walls leaves after a hit on a cell */
 extern int16_t word_8892;   /* $08892  game_b: the damage a cell of type -1 does */
 extern int16_t word_8894;   /* $08894  game_b: what the pick-up of a thing that is kind 8 raises */
+extern uint32_t level_end_counter;   /* $13182  the bonus counted up so far (a long in the level end's code) */
+extern uint32_t level_end_step;   /* $1026C  what the level end adds to the score at a step (BCD) */
+extern uint32_t level_end_unit;   /* $10270  what it takes off the bonus at a step */
+extern uint8_t digits_started;   /* $10062  a digit that is not 0 has been drawn in the number that is being drawn */
 extern int16_t records_86c[240];   /* $0086C  game_b: eighty records of three words (x, y, two signed speed bytes; negative first word: free), the particles of spawn_particles_15c54 */
 extern int16_t word_a52;   /* $00A52  game_b: counter of the particle burst (spawn_particles_15c54 clears it) */
 extern int16_t word_a54;   /* $00A54  game_b: set to -10 by spawn_particles_15c54 */

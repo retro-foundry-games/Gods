@@ -180,10 +180,12 @@ uint8_t *next_message_slot(void)
     return slot;
 }
 
+static void level_end_screen(void);   /* orig $012E08 (below) */
+
 /* orig $001D2FC: wait until more than `frames` frames have passed since the last flip (vbl_saturating counts them), then flip */
 static void wait_frames_then_flip(uint16_t frames)
 {
-    host_iteration_cpu(2);   /* (the work of the frame, which took the original two frames) */
+    host_iteration_cpu(2);   /* (the work of the frame, which took the original two frames; one for the first after a level end: host_iteration_cpu_next) */
     while ((int16_t)(frames - vbl_saturating) >= 0)
         ;
     screens_flip();
@@ -495,7 +497,7 @@ static void game_frame_tail(void)
     if (request == 70)
         return;   /* goes on at $39F6 */
     if (flag_230)
-        fn_12e08();
+        level_end_screen();
     else
         wait_frames_then_flip(frame_wait);
     if ((int16_t)flag_290 >= 0)
@@ -1297,6 +1299,308 @@ void score_add_carry(int16_t points, int carry_in)
         if (points == 0)
             return;
     }
+}
+
+/* ---- the end of a level (or of one of its parts): the screen with the bonus, orig $012E08 ---- */
+
+
+/* the original's divs.w #10: the quotient of the long and the word, the remainder as the word of the result that swap brings down.  When the quotient does
+ * not fit in a word the long is left as it is: the digit is its upper word and the next quotient its lower word as a long */
+static uint16_t level_end_divide10(int32_t *value)
+{
+    uint32_t magnitude = *value < 0 ? (uint32_t)(-*value) : (uint32_t)*value;
+    uint32_t quotient = 0;
+    uint16_t rest = 0;
+
+    for (int shift = 24; shift >= 0; shift -= 8) {   /* a byte at a time: the 68000 divides no long, and the compiler has no routine for it here */
+        rest = (uint16_t)((rest << 8) | ((magnitude >> shift) & 255));
+        quotient = (quotient << 8) | (uint16_t)(rest / 10);
+        rest = (uint16_t)(rest % 10);
+    }
+    int32_t signed_quotient = *value < 0 ? -(int32_t)quotient : (int32_t)quotient;
+
+    if (signed_quotient > 32767 || signed_quotient < -32768) {
+        uint16_t upper = (uint16_t)((uint32_t)*value >> 16);
+
+        *value = (int16_t)(uint16_t)*value;
+        return upper;
+    }
+    *value = signed_quotient;
+    return (uint16_t)(*value < 0 || signed_quotient < 0 ? -(int16_t)rest : rest);
+}
+
+/* orig $01461C (and $014622 without the first line): the number `value` is drawn from (x, y) in glyphs 156 on, 16 pixels each: the six digits from the
+ * left, those before the first digit that is not 0 left out, then the last digit always.  The digits are left in the words the original keeps them in */
+static void draw_level_end_number(int16_t x, int16_t y, int32_t value, int clear_started)
+{
+    uint16_t last, next[5];
+
+    if (clear_started)
+        digits_started = 0;
+    last = level_end_divide10(&value);   /* $1026A */
+    next[0] = level_end_divide10(&value);
+    word_234 = next[0];
+    next[1] = level_end_divide10(&value);
+    word_232 = next[1];
+    next[2] = level_end_divide10(&value);
+    word_2fe = next[2];
+    next[3] = level_end_divide10(&value);
+    word_2fc = next[3];
+    uint16_t top = level_end_divide10(&value);
+    uint16_t order[5] = { top, word_2fc, word_2fe, word_232, word_234 };
+
+    for (int i = 0; i < 5; i++) {
+        uint16_t digit = order[i];
+
+        if (digit != 0)
+            digits_started = (uint8_t)digit;
+        if (digit != 0 || digits_started != 0)
+            glyph_draw(x, y, (uint16_t)(digit + 0x9C));
+        x += 16;
+    }
+    glyph_draw(x, y, (uint16_t)(last + 0x9C));
+    digits_started = 1;
+}
+
+/* orig $01D7E8 and $01D7C4: the 16 rows of 24 bytes in four planes at the screen_buffer's row 40 (+$1774) are copied to the buffer line_text points at (one long of
+ * each plane after the other) and back */
+static void level_end_save_rect(void)
+{
+    const uint8_t *from = screen_buffer + 0x1774;
+    uint32_t *to = (uint32_t *)(uintptr_t)line_text;
+
+    for (int row = 0; row < 16; row++, from += 44)
+        for (int i = 0; i < 6; i++)
+            for (int plane = 0; plane < 4; plane++)
+                *to++ = *(const uint32_t *)(from + i * 4 + plane * 8448);
+}
+
+static void level_end_restore_rect(void)
+{
+    uint8_t *to = screen_buffer + 0x1774;
+    const uint32_t *from = (const uint32_t *)(uintptr_t)line_text;
+
+    for (int row = 0; row < 16; row++, to += 44)
+        for (int i = 0; i < 6; i++)
+            for (int plane = 0; plane < 4; plane++)
+                *(uint32_t *)(to + i * 4 + plane * 8448) = *from++;
+}
+
+/* orig $013186: the picture under the bonus is put back and the bonus counted so far is drawn over it */
+static void level_end_draw_counter(void)
+{
+    level_end_restore_rect();
+    draw_level_end_number(0xAC, 0x88, (int32_t)level_end_counter, 0);
+}
+
+/* orig $0134E6: the sounds of the level are stopped and the sound system waited for until it has nothing to play (at most 1000 frames) */
+static void level_end_quiet(void)
+{
+    static const uint8_t sounds[6] = { 0x13, 0x17, 0x34, 0x3C, 0x3A, 0x42 };
+
+    for (int i = 0; i < 6; i++)
+        stop_sound(sounds[i]);
+    int16_t frames = 0x3E8;
+
+    for (;;) {
+        wait_vblank();
+        if (--frames < 0)
+            break;
+        if (sound_busy_207a0 == 0)
+            break;
+    }
+}
+
+/* orig $01CF38: wait for `frames` video frames, not for longer than a key (or the like: pending_request) is not waiting */
+static void wait_frames_or_request(uint16_t frames)
+{
+    pending_request = 0;
+    for (;;) {
+        if (take_pending_request() != 0)
+            return;
+        wait_vblank();
+        if (--frames == 0)
+            return;
+    }
+}
+
+/* orig $01CFCE and the time it takes the original: copying the 33792 bytes of a screen with a loop of move.l takes about a frame */
+static void level_end_copy(void)
+{
+    copy_other_screen();
+    host_cpu_frames(1);
+}
+
+/* orig $0130AC: `count * unit` is added to the counted bonus, the counter is drawn, sound 54 is played, the row of things is drawn and the screen shows it */
+static void level_end_count(uint16_t count, uint16_t unit)
+{
+    level_end_counter += (uint32_t)count * unit;
+    level_end_draw_counter();
+    play_sound(0x36, 5);
+    draw_item_row();
+    host_cpu_frames(1);   /* (the numbers and the row of things take the original most of a frame to draw) */
+    screens_flip();
+    level_end_copy();
+}
+
+/* orig $005AA8: the BCD byte `step` is added to the score's first word's low byte, the carry on through the other three words */
+static void level_end_add_score(uint8_t step)
+{
+    int carry = 0;
+
+    for (int word = 0; word < 4; word++) {
+        uint8_t sum = bcd_add((uint8_t)score_words[word], word == 0 ? step : 0, &carry);
+
+        score_words[word] = (uint16_t)((score_words[word] & 0xFF00) | sum);
+    }
+    flag_2d0 = 1;
+}
+
+/* orig $0131E2: the routines the level end's bits name run, the bit 10 first (the table at $13234 backwards).  The ones that did not run in the recording are not written */
+static void level_end_effects(const struct LevelEnd *record)
+{
+    static const uint32_t handlers[11] = { 0x13234, 0x135C6, 0x1361C, 0x13614, 0x1366E, 0x1368A, 0x13690, 0x13532, 0x143B6, 0x13646, 0x13532 };
+
+    flag_230 = 0;
+    for (int bit = 10; bit >= 0; bit--) {
+        if (!(record->effects & (1u << bit)))
+            continue;
+        switch (handlers[10 - bit]) {
+        case 0x1361C:   /* the things in the slots that are not kept (their entry's word +4 not 0) are put away */
+            for (int i = 0; i < 4; i++) {
+                int16_t item = item_slots[i];
+
+                if (item >= 0 && table_14cf8[item].w[2] != 0)
+                    item_slots[i] = -1;
+            }
+            break;
+        case 0x1366E:   /* the list of the teleport gems goes on where the level end says */
+            ptr_0b76 = (const uint8_t *)(uintptr_t)table_1077a[(int16_t)(param_index - 1)] + record->list_offset;
+            break;
+        default:
+            host_missing_routine(handlers[10 - bit]);
+            break;
+        }
+    }
+}
+
+/* orig $012E08: the level end (flag_230): the next record of ptr_0bc6 is taken; with a bonus the screen shows what the level's end is called, the bonus of the things
+ * the player has (2000 each), the energy (80 each) and the score earned (an eighth of it), counted up in turn in the number at the foot, and the bonus is
+ * then counted into the score (90, 10 and 1 at a time) with the score panel drawn each time; then the routines of the record's bits run */
+static void level_end_screen(void)
+{
+    const struct LevelEnd *record = ptr_0bc6;
+
+    ptr_0bc6++;
+    host_iteration_cpu(2);   /* (the work of the frame, which took the original two frames, as before the loop's own flip) */
+    screens_flip();
+    level_end_copy();
+    if (record->bonus == 0) {
+        level_end_effects(record);
+        return;
+    }
+    flag_268 = 0;
+    level_end_quiet();
+    host_cpu_frames(1);   /* (the voices of the game's sounds are free a frame later on the Amiga than the host's note it) */
+    play_sound(record->bonus >= 0x3E8 ? 0x24 : 0x25, 0x79);
+    level_end_counter = 0;
+    text_draw_at((const char *)record->text, 0, 0x12);
+    text_draw_at("COMPLETED", 0x58, 0x26);
+    text_draw_at("BONUS", 0x30, 0x88);
+    ((volatile uint8_t *)&word_ddc)[0] = 0;
+    word_dde = 1;
+    flags_0ddd |= 2;
+    flags_0ddd |= 8;
+    flags_0ddd &= (uint8_t)~1;
+    level_end_save_rect();
+    level_end_draw_counter();
+    screens_flip();
+    level_end_copy();
+    level_end_quiet();
+
+    int16_t saved_energy_shown = energy_shown;
+
+    draw_level_end_number(0x2C, 0x40, item_count, 1);
+    sprite_draw(0x30, 0x3B, 0x77);
+    glyph_draw(0x34, 0x3F, 0xD4);
+    text_draw_at("X  _]]]", 0x9A, 0x40);
+    screens_flip();
+    level_end_copy();
+    if (item_count != 0)
+        level_end_count((uint16_t)item_count, 0x7D0);
+    wait_frames_or_request(0x1E);
+
+    draw_level_end_number(0x2C, 0x58, player_energy, 1);
+    {
+        uint8_t *saved = screen_buffer;
+
+        screen_buffer -= 0xD0C;
+        update_energy_display();
+        draw_energy_bar();
+        screen_buffer = saved;
+    }
+    text_draw_at("X    e]", 0x9A, 0x58);
+    screens_flip();
+    level_end_copy();
+    if (player_energy != 0) {
+        level_end_count(player_energy, 0x50);
+    }
+    wait_frames_or_request(0x1E);
+
+    int32_t earned = (int32_t)score_total_1fc;
+
+    if (earned != 0)
+        earned = (int32_t)((uint32_t)earned >> 3);
+    earned = (int16_t)earned;
+    draw_level_end_number(0xAC, 0x70, earned, 1);
+    text_draw_at("^ X", 0x7A, 0x70);
+    sprite_draw(0x30, 0x6C, 0x77);
+    glyph_draw(0x34, 0x70, 0xAF);
+    screens_flip();
+    level_end_copy();
+    if (earned != 0)
+        level_end_count((uint16_t)earned, 1);
+    wait_frames_or_request(0x1E);
+
+    int32_t left = (int32_t)level_end_counter;
+    uint16_t beat = 0;
+
+    level_end_step = 0x90;
+    level_end_unit = 0x5A;
+    for (;;) {
+        if (left == 0)
+            break;
+        left -= (int32_t)level_end_unit;
+        if (left < 0) {
+            left += (int32_t)level_end_unit;
+            if ((uint8_t)level_end_unit != 0x0A) {
+                level_end_step = 0x10;
+                level_end_unit = 0x0A;
+            } else {
+                level_end_step = 1;
+                level_end_unit = 1;
+            }
+            continue;
+        }
+        level_end_add_score((uint8_t)level_end_step);
+        update_score_display();
+        draw_score_panel();
+        draw_item_row();
+        level_end_counter = (uint32_t)left;
+        level_end_draw_counter();
+        beat++;
+        if (beat >= 3) {
+            play_sound(0x37, 5);
+            beat = 0;
+        }
+        draw_item_row();
+        screens_flip();
+    }
+    energy_shown = saved_energy_shown;
+    wait_frames_or_request(0x32);
+    level_end_quiet();
+    level_end_effects(record);
+    host_iteration_cpu_next(1);
 }
 
 /* the same with the carry clear */
@@ -2483,6 +2787,30 @@ static void kind_set_tiles(const struct ScriptRecord *a1)
     play_sound(7, 5);
 }
 
+/* orig $0193D4 (kind 9): the block of the tile map at the record a1's position (as kind 2 finds it) is closed again: the six tiles are the byte of
+ * param_a's low word, and 10 and 20 more under it, with the byte of param_c next to them, and the three cells of the second plane are 1; the sound 43
+ * is played (priority 5) */
+static void kind_close_tiles(const struct ScriptRecord *a1)
+{
+    int16_t x = (int16_t)(((a1->x & 0xFFE0) + 12) & 0xFFE0);
+    int16_t y = (int16_t)((a1->y + 8) & 0xFFF0);
+    uint8_t *cell = ptr_0b86 + (int16_t)(x >> 5) + (int16_t)(y << 3);
+    uint8_t tile = (uint8_t)param_a;
+    uint8_t other = (uint8_t)param_c;
+
+    cell[0] = tile;
+    cell[0x80] = (uint8_t)(tile + 10);
+    cell[0x100] = (uint8_t)(tile + 20);
+    cell[1] = other;
+    cell[0x81] = other;
+    cell[0x101] = other;
+    cell += 0x2000;
+    cell[0] = 1;
+    cell[0x80] = 1;
+    cell[0x100] = 1;
+    play_sound(0x2B, 5);
+}
+
 /* orig $018C30 (kind 6): every record of records_19b14 within 12 of the record a1's position (words +12, +14) whose number's
  * table_14cf8 entry has the word +4 at 4 is taken out (word +4 -1, +6 0) and makes a mark in records_316 (state 0, x less 8, y
  * (8 less for the number 96)), at most two, each with the sound 4 (priority 15); the marks go to the first free entry and on
@@ -2543,7 +2871,7 @@ static void kind_free_slot_ref(const struct ScriptRecord *a1)
  * record a0 is finished: its first word becomes -1, a message of the record's word +20 is requested when it has one (priority
  * 50), the slots its items are in are emptied (empty_slots_of_record, empty_slots_of_flagged_record) and the routine its kind
  * (word +16 without the top bit) names in dispatch_18ba4 does its part (written in here: 0 to 6, 10 to 15; 11 to 13 and 15 do
- * nothing, 14 clears tick_count; 7, 8 and 9 ($19618, $19658, $193D4) did not run and are left out).  Nothing is done while
+ * nothing, 14 clears tick_count, 9 closes a block of tiles; 7 and 8 ($19618, $19658) did not run and are left out).  Nothing is done while
  * flag_230 */
 void finish_record_1895a(struct EntryRef *a0)
 {
@@ -2570,7 +2898,9 @@ void finish_record_1895a(struct EntryRef *a0)
     }
     empty_slots_of_record(a1);
     empty_slots_of_flagged_record(a1);
-    switch (a1->effect & 0x7FFF) {
+    int effect = a1->effect & 0x7FFF;
+
+    switch (effect) {
     case 0:
         kind_drop_item(a1);
         break;
@@ -2595,11 +2925,18 @@ void finish_record_1895a(struct EntryRef *a0)
     case 10:
         kind_free_slot_ref(a1);
         break;
+    case 9:
+        kind_close_tiles(a1);
+        break;
     case 14:
         tick_count = 0;
         break;
+    case 7:
+    case 8:
+        host_missing_routine(effect == 7 ? 0x19618 : 0x19658);   /* did not run */
+        break;
     default:
-        break;   /* 7, 8 and 9 go to $19618, $19658 and $193D4, which did not run */
+        break;
     }
 }
 

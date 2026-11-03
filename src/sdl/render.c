@@ -121,6 +121,20 @@ static uint32_t argb(uint16_t color)
     return 0xff000000u | r << 16 | g << 8 | b;
 }
 
+/* whether the first instructions of a list read as copper instructions in the machine's byte order and not in the other (a WAIT has bit 0 set, a MOVE names a register below $200) */
+static int list_looks_native(const uint16_t *list, int count)
+{
+    int native = 0, swapped = 0;
+
+    for (int i = 0; i + 1 < count && i < 24; i += 2) {
+        uint16_t first = list[i], other = (uint16_t)(first >> 8 | first << 8);
+
+        native += (first & 1) || (first < 0x200 && !(first & 1) && (first & 0x1fe) >= 0x80 && (first & 0x1fe) < 0x1c0);
+        swapped += (other & 1) || (other < 0x200 && !(other & 1) && (other & 0x1fe) >= 0x80 && (other & 0x1fe) < 0x1c0);
+    }
+    return native > swapped;
+}
+
 /* the colours of every line of the picture: what the colour registers hold, changed by the MOVEs to COLOR00..COLOR15 of the copper
  * list that COP1LC names (a WAIT puts the following moves at its line; the horizontal position is not looked at).  The list is
  * as the program made it: words of the machine, or (the lists that are in the program's image) big-endian ones; the one in which
@@ -141,6 +155,8 @@ static void line_palettes(uint16_t colors[][16], int lines)
             else if (list[i] == 0xffff && list[i + 1] == 0xfeff)
                 count = i + 2, swapped = 1;
         }
+        if (swapped && list_looks_native(list, count))
+            swapped = 0;   /* (the end of the list is the image's, big-endian, bytes, the moves before it were made by the program) */
     }
     for (int i = 0; i + 1 < count; i += 2) {
         uint16_t first = list[i], second = list[i + 1];

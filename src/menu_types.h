@@ -233,13 +233,14 @@ struct LeverFlag {
 _Static_assert(sizeof(struct LeverFlag) == 6, "lever flag");
 
 /* what the end of a level shows and how many spots end it (34 bytes, a list for each level at the addresses table_143b8 names; the list of the first level has four): the number of
- * spots remembered (word_22e) that ends the level, the bonus, the text (two lines of eleven characters), and where the score goes */
+ * spots remembered (word_22e) that ends the level, the bonus, the text (the first line of the screen), and the routines to run */
 struct __attribute__((packed)) LevelEnd {
     uint16_t spots;
     uint32_t bonus;
-    uint8_t text[22];
-    uint32_t score_place;
-    uint16_t last;
+    uint8_t text[20];
+    uint16_t unused_26;
+    uint32_t effects;   /* +28 one bit for each of the routines the level's end runs (bit 8: the things in the slots that are not kept are put away, bit 6: where the list of the teleport gems goes on, ...) */
+    uint16_t list_offset;   /* +32 */
 };
 _Static_assert(sizeof(struct LevelEnd) == 34, "level end");
 

@@ -260,10 +260,21 @@ void host_iteration_mark(void)
 
 /* the drawing and moving of a frame of the game takes the original's CPU about two video frames, so a frame that is not held back by the wait for the last flip (the first
  * after a fade) still ends two frames after it began */
+static unsigned iteration_cpu_next;
+
+void host_iteration_cpu_next(unsigned frames)
+{
+    iteration_cpu_next = frames;
+}
+
 void host_iteration_cpu(unsigned frames)
 {
     extern void wait_vblank(void);
 
+    if (iteration_cpu_next) {
+        frames = iteration_cpu_next;
+        iteration_cpu_next = 0;
+    }
     while ((uint16_t)(vbl_count - iteration_mark) < frames)
         wait_vblank();
 }

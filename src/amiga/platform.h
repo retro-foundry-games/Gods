@@ -57,4 +57,9 @@ static inline void host_iteration_cpu(unsigned frames)
     (void)frames;
 }
 
+static inline void host_iteration_cpu_next(unsigned frames)
+{
+    (void)frames;
+}
+
 #endif

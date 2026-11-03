@@ -136,12 +136,13 @@ void drives_idle(void)
 /* orig $01E260: the packer of the program's picture files (decrunch.c), and then the words of the picture made native */
 uint8_t *unpack(uint8_t *to, const uint8_t *from)
 {
-    uint8_t *start = to;
+    uint8_t *first = to, *start = to;
 
     for (;;) {
         uint32_t length = from[0] | (from[1] << 8);
         const uint8_t *end;
 
+        start = to;   /* the offsets of the copies of a block are from where the block's output begins ($01E262: a1 = a0 at each block) */
         from += 2;
         if ((uint16_t)length == 0)
             break;
@@ -175,7 +176,7 @@ uint8_t *unpack(uint8_t *to, const uint8_t *from)
         }
     }
     if (unpack_swaps)
-        for (uint8_t *p = start; p + 1 < to; p += 2) {
+        for (uint8_t *p = first; p + 1 < to; p += 2) {
             uint8_t t = p[0];
 
             p[0] = p[1];
