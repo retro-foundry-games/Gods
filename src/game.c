@@ -8876,6 +8876,10 @@ void level_tables_quickload(void)
         file_words(&((struct UnitScript *)ptr_0cb2)[i].spacing, 1);
     file_words(ptr_0cba, 40);
     file_words(ptr_0cf2, 80);
+    for (int i = 0; i < 100; i++)   /* the 2400 bytes load_buffer_2400 fills */
+        file_words(&buffer_cb6[i], 12);
+    file_words(ptr_0cda, word_1ec);   /* the colours of the level's copper list */
+    file_words(ptr_0cc6, 256);   /* the table of random words */
 
     struct CreatureType *type = (struct CreatureType *)table_199ac;
 
