@@ -42,6 +42,6 @@ void blit_masked(const uint8_t *source, uint8_t *dest, int16_t modulo_ab, uint16
 void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uint8_t *source, const int16_t *clip);   /* orig $01F0AA */
 void copy_screen(const uint8_t *from, uint8_t *to);             /* orig $017814: the whole screen (4 planes of 192 rows) from one place to another */
 
-void vbl_irq(void);                                            /* orig $01CFF8, menu_amiga.asm: the level 3 interrupt */
+void vbl_irq(void);                                            /* orig $01CFF8, amiga.asm: the level 3 interrupt */
 
 #endif

@@ -1,4 +1,4 @@
-/* Gods SDL port: the sound effects, at a higher layer than the original.  The original's sound system (menu_amiga.asm: four voices, a
+/* Gods SDL port: the sound effects, at a higher layer than the original.  The original's sound system (amiga.asm: four voices, a
  * sequencer that reads the command bytes of the tracks, an envelope and slide engine, the interrupt that feeds Paula) is not ported.  What is
  * done here: play_sound(id, priority) looks the id up in the table of sounds ($20BCE, 6 bytes each: the number of voices less one, the
  * track of each voice, a mode), the tracks ($21C3A) are followed note by note once a frame (the commands that set the volume, the

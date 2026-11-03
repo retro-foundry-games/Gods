@@ -1,4 +1,4 @@
-/* Gods SDL port: the interrupts and the small asm routines of menu_amiga.asm.  The main thread raises the vertical blank interrupt
+/* Gods SDL port: the interrupts and the small asm routines of amiga.asm.  The main thread raises the vertical blank interrupt
  * 50 times a second (irq_vbl), the program runs on its own thread, as it runs under the interrupt on the Amiga. */
 #include <stdint.h>
 #include <stdio.h>
@@ -18,13 +18,13 @@ extern uint8_t *ptr_0cc6;
 
 static volatile int interrupts_on;
 
-/* menu_amiga.asm: the status register; the program sets $2000 when the vectors and the chips are ready */
+/* amiga.asm: the status register; the program sets $2000 when the vectors and the chips are ready */
 void sr_set(uint16_t value)
 {
     interrupts_on = (value & 0x0700) == 0;
 }
 
-/* menu_amiga.asm: the stack is changed and the code entered: not needed on the host */
+/* amiga.asm: the stack is changed and the code entered: not needed on the host */
 void jump_with_stack(void (*address)(void), uint8_t *stack)
 {
     (void)stack;

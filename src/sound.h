@@ -1,4 +1,4 @@
-/* Gods, the menu program: the sound system (sound_amiga.asm is Amiga hardware, generated in menu_amiga.asm) */
+/* Gods, the menu program: the sound system (sound_amiga.asm is Amiga hardware, generated in amiga.asm) */
 #ifndef MENU_SOUND_H
 #define MENU_SOUND_H
 

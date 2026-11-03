@@ -8,7 +8,7 @@
 #include "amiga/hw.h"
 #include "menu_symbols.h"
 
-/* menu_amiga.asm: the original's masked blit (orig $0171E4 and $0171F6): draw an image of `rows` rows, one word (two words)
+/* amiga.asm: the original's masked blit (orig $0171E4 and $0171F6): draw an image of `rows` rows, one word (two words)
  * wide, with its planes `plane` bytes apart at `src`, to the screen at `dst`, `shift` pixels to the right */
 void blit_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows);
 void blit_image_wide(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows);

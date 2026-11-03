@@ -3,7 +3,7 @@
  * releases) is not here. */
 #include "menu.h"
 
-/* menu_amiga.asm: the status register (a value of $2000 is the supervisor state with all interrupts enabled) */
+/* amiga.asm: the status register (a value of $2000 is the supervisor state with all interrupts enabled) */
 void sr_set(uint16_t value);
 void keyboard_irq(void);
 void audio_irq(void);

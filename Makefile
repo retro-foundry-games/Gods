@@ -66,7 +66,7 @@ $(BUILD)/menu_%.o: $(SRC)/%.c | $(BUILD)
 	$(CC) $(MENU_CFLAGS) $(WARN) -MMD -MP -c $< -o $@
 $(BUILD)/menu_display.o: $(AMIGA)/display.c | $(BUILD)
 	$(CC) $(MENU_CFLAGS) $(WARN) -MMD -MP -c $< -o $@
-$(BUILD)/menu_amiga.o: $(AMIGA)/menu_amiga.asm | $(BUILD)
+$(BUILD)/menu_amiga.o: $(AMIGA)/amiga.asm | $(BUILD)
 	$(AS) -Fhunk -no-opt -quiet -nowarn=62 -I$(AMIGA) -o $@ $<
 $(BUILD)/menu: $(MENU_OBJS) $(SRC)/menu.ld
 	$(LD) -m amiga -T $(SRC)/menu.ld -Map $(BUILD)/menu.map -o $@ $(MENU_OBJS)
