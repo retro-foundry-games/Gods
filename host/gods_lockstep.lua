@@ -14,8 +14,8 @@
 --   input=PATH    the keys you play are written to PATH ("step k keysym state", the format replay= reads) as they happen: a play can be given again
 --   replay=FILE   the keys of a recording (captures/input/level1-run1.txt: "frame k keysym state", by frame from the state) are given to both sides at the same steps, as if played
 --   dumpfrom=N    (with dump=) the first difference at emulator frame N or later
---   from=N        the first difference that stops the run is at emulator frame N or later (a world above 1: 12)
---   world=N       the original starts from gods-levelN-1m.state and the port begins world N (iter=N: the iteration of the game loop the saved state is at; world 2: 124)
+--   from=N        the first difference that stops the run is at emulator frame N or later (a level above 1: 12)
+--   level=N       the original starts from gods-levelN-1m.state and the port begins level N (the game's levels have worlds: WORLD ONE COMPLETED is in the middle of level 1) (iter=N: the iteration of the game loop the saved state is at; world 2: 124)
 --   break=ADDR    pause at the end of the frame in which the original reaches the address (hex, several with commas; with --control PATH the sockets can then look at both sides)
 --   nosync        the port models the original's CPU time itself (host_iteration_cpu); by default the port's flips that end an iteration wait for the original's own (flipsync: `flips N` to the port)
 --   flipoff=N / nolag  tuning of that sync (the port's flip k goes with the original's k+N; nolag: the count of the same step, not the step before)
@@ -26,9 +26,9 @@ local args = ami.args or ""
 local tick_synced = false
 local hashlog = args:match("hashlog=(%d+)-(%d+)") and { tonumber(args:match("hashlog=(%d+)")), tonumber(args:match("hashlog=%d+-(%d+)")) } or nil
 local meanlog = args:match("meanlog=(%d+)-(%d+)") and { tonumber(args:match("meanlog=(%d+)")), tonumber(args:match("meanlog=%d+-(%d+)")) } or nil
-local WORLD = tonumber(args:match("world=(%d)")) or 1   -- world=N: the original starts from gods-levelN-1m.state (the worlds are called levels there) and the port begins world N (iter=N: the iteration of the game loop the saved state is at; world 2: 124)
-local START_SKIP = tonumber(args:match("from=(%d+)")) or (WORLD > 1 and 12 or 0)   -- from=N: differences before the emulator frame N are only logged (a state saved in the middle of an iteration: the first frames differ a little)
-local STATE = args:match("%f[%w]state=(%S+)") or ("gods-level" .. WORLD .. "-1m.state")
+local LEVEL = tonumber(args:match("%f[%w]level=(%d)")) or 1   -- level=N: the original starts from gods-levelN-1m.state and the port begins level N (param_index; a level has worlds: the end texts are WORLD ONE, WORLD TWO, ... and LEVEL ONE COMPLETED) (iter=N: the iteration of the game loop the saved state is at; world 2: 124)
+local START_SKIP = tonumber(args:match("from=(%d+)")) or (LEVEL > 1 and 12 or 0)   -- from=N: differences before the emulator frame N are only logged (a state saved in the middle of an iteration: the first frames differ a little)
+local STATE = args:match("%f[%w]state=(%S+)") or ("gods-level" .. LEVEL .. "-1m.state")
 local EXTRA = tonumber(args:match("extra=(%d+)")) or 2   -- (found by trying: with 3, the comparison starting at frame 5, the idle level is pixel for pixel the same)
 
 ami.machine{
@@ -38,7 +38,7 @@ ami.machine{
     opt = { puae_chipmem_size = 2, puae_joyport_order = "2143" },   -- 1 MB chip RAM as the saved states have it, the joystick in port 1
     peers = {
         native = { ami.script_dir .. "/../native/build/sdl/gods-sdl", "--disks", ami.script_dir .. "/../local", "--skip-intro", "--lockstep",
-                   "--lockstep-extra", tostring(EXTRA), "--lockstep-level", tostring(WORLD), "--lockstep-iteration", args:match("iter=(%d+)") or tostring(({ [2] = 124 })[WORLD] or 129), "--keys", "300:40:1,320:40:0" },
+                   "--lockstep-extra", tostring(EXTRA), "--lockstep-level", tostring(LEVEL), "--lockstep-iteration", args:match("iter=(%d+)") or tostring(({ [2] = 124 })[LEVEL] or 129), "--keys", "300:40:1,320:40:0" },
     },
 }
 ami.boot()
