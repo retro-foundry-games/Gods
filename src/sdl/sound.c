@@ -38,6 +38,7 @@ struct SoundVoice {
     const int8_t *sample;
     unsigned length, loop_start;   /* bytes */
     int looping;
+    int finished;                  /* a sample that is not looped has played to its end: it sounds again with the next note (note_on), the pointer stays */
     unsigned period, play_volume;
     uint32_t position;             /* 16.16 */
     const uint16_t *period_table;
@@ -63,6 +64,7 @@ static void note_on(struct SoundVoice *v, unsigned note)
     v->period = v->period_table[index];
     v->play_volume = v->volume;
     v->position = 0;
+    v->finished = 0;
 }
 
 static void set_instrument(struct SoundVoice *v, unsigned n)
@@ -357,7 +359,7 @@ void sound_mix(int16_t *out)
         struct SoundVoice *v = &sound_voice[i];
         int right = (i == 1 || i == 2);
 
-        if (!v->sample || !v->period || !v->play_volume)
+        if (!v->sample || !v->period || !v->play_volume || v->finished)
             continue;
         uint32_t step = (uint32_t)(((uint64_t)3546895 << 16) / ((uint64_t)v->period * 44100));
 
@@ -366,7 +368,7 @@ void sound_mix(int16_t *out)
 
             if (index >= v->length) {
                 if (!v->looping || v->length <= v->loop_start) {
-                    v->sample = 0;
+                    v->finished = 1;
                     break;
                 }
                 v->position -= (v->length - v->loop_start) << 16;
