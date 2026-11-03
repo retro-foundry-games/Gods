@@ -3253,6 +3253,15 @@ void shot_hit_tile(const struct Object *object, struct Shot *shot, int16_t x, in
     shot->active = 0;   /* the original's $16A04 (no free record) */
 }
 
+/* how a shot of a direction moves: the first twelve words of the table are what the power-ups change (block_16bb4, the same memory as the table on the Amiga; on the host the table
+ * the C reads is a copy, so the words the program changes are read from the memory it changes) */
+static int16_t shot_delta(int index)
+{
+    if (index < 12)
+        return (int16_t)((const uint16_t *)block_16bb4)[index];
+    return (int16_t)shot_deltas[index];
+}
+
 /* orig $01673E and $0167CE: the nine shots of a list of an object (handler 0 of the table at $15260) are moved by the delta of their
  * direction, and the ones that are on the screen are drawn as the object's draw type says (type 0: a glyph, after the test against the
  * tiles); one that has left the screen (32 or more outside to the left or up, 320 or 192 on) is cleared.  Then the object's frame goes on
@@ -3270,8 +3279,8 @@ static void update_shots(struct ShotList *list, struct Object *object)
 
         shot_prev_x = x;
         shot_prev_y = y;
-        x += (int16_t)shot_deltas[shot->direction * 2];
-        y += (int16_t)shot_deltas[shot->direction * 2 + 1];
+        x += shot_delta(shot->direction * 2);
+        y += shot_delta(shot->direction * 2 + 1);
         shot->x = x;
         shot->y = y;
         x -= scroll_x;
@@ -7154,8 +7163,8 @@ void update_shots_sliding(struct ShotList *list, struct Object *object)
 
         shot_prev_x = x;
         shot_prev_y = y;
-        x += (int16_t)shot_deltas[direction * 2];
-        y += (int16_t)shot_deltas[direction * 2 + 1];
+        x += shot_delta(direction * 2);
+        y += shot_delta(direction * 2 + 1);
         int16_t column = (int16_t)(shot->active - word_fb2c - 1);
 
         y += shot_offsets_6a4[column];
