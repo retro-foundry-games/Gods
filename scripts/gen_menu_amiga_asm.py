@@ -45,6 +45,25 @@ LABELS = {
     0x172DE: "draw_planes", 0x172FC: "wait_second_plane", 0x17314: "wait_third_plane", 0x1732C: "wait_fourth_plane",
     0x17346: "wait_shifted_draw", 0x1736A: "shifted_modulo", 0x17372: "shifted_set_modulos",
 }
+LABELS.update({
+    0x1FC02: "store_variation_byte", 0x1FC22: "sync_busy_flags", 0x1FC52: "play_sound_exit", 0x1FD9C: "envelope_step",
+    0x1FDC2: "envelope_store_level", 0x1FDC8: "envelope_not_attack", 0x1FDCE: "envelope_sustain", 0x1FDE8: "envelope_done",
+    0x1FDEA: "envelope_decay", 0x1FE0C: "envelope_release", 0x1FF26: "sequencer_voice_loop", 0x1FF7E: "sequencer_next_byte",
+    0x20066: "sequencer_wait", 0x20102: "sequencer_finish_voice", 0x20124: "sequencer_next_voice", 0x1D4CA: "cache_add_block",
+    0x1D4E4: "copy_block_512", 0x1D4F0: "find_file_entry", 0x1D586: "load_with_message", 0x1D794: "screen_save_planes",
+    0x1D7AC: "screen_restore_planes", 0x1D8BC: "draw_loading_text", 0x1D8F6: "drives_detect", 0x1D97E: "drive_select",
+    0x1D9B4: "drive_deselect", 0x1D9E2: "disk_transfer", 0x1DADC: "disk_read_track", 0x1DBCA: "disk_write_track",
+    0x1DC58: "track_build_mfm", 0x1DC9E: "disk_read_sectors", 0x1DCEA: "error_18", 0x1DCEE: "error_1b",
+    0x1DCF2: "error_19", 0x1DCF6: "disk_process_track", 0x1DE22: "sector_offset", 0x1DE32: "sector_mark_done",
+    0x1DE42: "sector_clear_headers", 0x1DE54: "sector_decode_header", 0x1DE76: "mfm_decode_long", 0x1DE8C: "sector_verify_header",
+    0x1DE9C: "sector_header_checksum", 0x1DEA2: "checksum_words", 0x1DEBC: "mfm_fill_track", 0x1DEEE: "blitter_decode_start",
+    0x1DF24: "blitter_encode_start", 0x1DFD8: "wait_blitter", 0x1DFE4: "blitter_init", 0x1E00E: "mfm_encode_long",
+    0x1E01C: "mfm_fix_clock_bits", 0x1E03A: "mfm_spread_bits", 0x1E066: "dma_read_start", 0x1E0A4: "dma_read_wait",
+    0x1E0C8: "dma_stop", 0x1E0DC: "drive_motor_off", 0x1E0EC: "drive_motor_pulse", 0x1E108: "drive_motor_off_end",
+    0x1E10A: "drive_motor_on", 0x1E124: "drive_seek", 0x1E178: "drive_wait_ready", 0x1E1AE: "drive_side_direction",
+    0x1E1D8: "drive_write_select", 0x1E1E4: "drive_select_bits", 0x1E218: "delay_ticks", 0x1E22C: "timer_poll",
+    0x1E23A: "timer_start", 0x1E252: "timer_done", 0x1E300: "keyboard_irq_exit",
+})
 LABELS.update({t: f"cmd_{0x80 + 4 * n:02x}" for n, t in enumerate(COMMAND_TARGETS)})
 SIZES = {"char": 1, "uint8_t": 1, "int8_t": 1, "uint16_t": 2, "int16_t": 2, "uint32_t": 4, "int32_t": 4, "struct Rec6": 6, "struct Rec10": 10,
          "struct Rec80": 80, "struct Entry8": 8, "struct MemLists": 20, "struct Image": 8, "struct AssetEntry": 8, "struct Voice": 148, "void": 2, "struct Slot8": 8, "struct Slot12": 12, "struct SavedByte": 6, "struct PathDescription": 28, "struct LeverFlag": 6, "struct LevelEnd": 34, "struct Unit": 24, "struct Monster": 428, "struct Bolt": 22}
@@ -228,7 +247,7 @@ def main() -> None:
     lines += interrupt()
     lines += file_layer()
     lines += keyboard()
-    OUT.write_text("\n".join(A.localize(lines)) + "\n")
+    OUT.write_text("\n".join(A.localize(lines, calls_global=False)) + "\n")
     print(f"wrote {OUT}")
 
 

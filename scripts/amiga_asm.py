@@ -203,7 +203,7 @@ LABEL_DEF = re.compile(r"^([A-Za-z_]\w*):\s*$")
 CALL = re.compile(r"^\s+(bsr|jsr|jmp)\b")
 
 
-def localize(lines: list[str]) -> list[str]:
+def localize(lines: list[str], calls_global: bool = True) -> list[str]:
     """Labels that are only branched to from inside their own routine become local (`.name`, scoped to the preceding
     global label); a routine's single `*_loop` label is called `.loop`.  Labels that are called, jumped to from another
     routine or exported stay global."""
@@ -221,7 +221,7 @@ def localize(lines: list[str]) -> list[str]:
             if re.search(r"(?<![\w.])" + re.escape(name) + r"(?!\w)", code):
                 refs[name].append((n, bool(CALL.match(code))))
     glob = {name for name in defs if name in exported or name.startswith("_") or not refs[name]
-            or any(call for _, call in refs[name])}
+            or (calls_global and any(call for _, call in refs[name]))}
     while True:
         starts = sorted(defs[g] for g in glob)
 
