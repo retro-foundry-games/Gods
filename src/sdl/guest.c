@@ -157,6 +157,27 @@ static void swap_image_table(void)
     }
 }
 
+/* what load_pattern_data (the loader of the creatures' paths) makes native when the files are read: the hundred longs of the list entry_list points at (an address and a size
+ * for each unit, ending with an address that is negative) and, for each unit of six bytes or more, the first two words of its path (three when the first is $2345); the
+ * rest of a path is bytes */
+static void swap_entry_list(void)
+{
+    uint32_t list = *(uint32_t *)guest_ptr(0xcae);   /* (entry_list, made native by the fixups) */
+
+    if (list < 0x10000 || list >= 0x200000)
+        return;
+    swap32_range(list, 100 * 4);
+    for (const uint32_t *entry = (const uint32_t *)guest_ptr(list); (int32_t)entry[0] >= 0 && entry < (const uint32_t *)guest_ptr(list) + 100; entry += 2) {
+        uint32_t path = entry[0];
+
+        if (entry[1] < 6 || path < 0x10000 || path >= 0x200000)
+            continue;
+        swap16_range(path, 2);
+        if (*(uint16_t *)guest_ptr(path) == 0x2345)
+            swap16_range(path + 2, 2);
+    }
+}
+
 static int load_ram_image(const char *path, int slots)
 {
     FILE *f = fopen(path, "rb");
@@ -187,6 +208,8 @@ static int load_ram_image(const char *path, int slots)
         REG16(0x180 + 2 * i) = shadow_table[i];
     swap16_range((uint32_t)(uintptr_t)asset_memory, 0x21d68);   /* the sprites' planes */
     swap16_range((uint32_t)(uintptr_t)memory_base, 0x8500);      /* the background */
+    if (slots)
+        swap_entry_list();
     return 0;
 }
 

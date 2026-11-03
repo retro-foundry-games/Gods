@@ -31,7 +31,7 @@ STRUCTS = {
 }
 fixups: set[tuple[int, int, int]] = set()   # address, width, count
 for line in (src / "menu.symbols").read_text().splitlines():
-    if not line.strip() or line.startswith("#") or line.startswith("table") or "(void)" in line:
+    if not line.strip() or line.startswith("#") or line.split()[0] == "table" or "(void)" in line:
         continue
     parts = line.split()
     addr = int(parts[1], 16)
