@@ -227,6 +227,7 @@ end
 local function f5_step()
     if not (f5_requested and flip_in_frame) then return end
     f5_requested = false
+    while ami.file_size(("captures/quicksave/f5-%d.state"):format(f5_slot)) do f5_slot = f5_slot + 1 end   -- (the first number not used: a save is never overwritten)
     local base = ("%s/../captures/quicksave/f5-%d"):format(ami.script_dir, f5_slot)
     f5_slot = f5_slot + 1
     if ami.snapshot_save(base .. ".state") then
