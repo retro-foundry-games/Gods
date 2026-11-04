@@ -297,8 +297,10 @@ void play_sound(uint16_t id, uint16_t priority)
         if (number == 0)
             continue;
         if (number == 0x16) {   /* the silent track: the voice stops */
-            for (int i = 0; i < VOICES; i++)
+            for (int i = 0; i < VOICES; i++) {
                 sound_voice[i].active = 0;
+                sound_voice[i].play_volume = 0;
+            }
             continue;
         }
         for (int i = 0; i < VOICES && chosen < 0; i++)
@@ -322,6 +324,7 @@ void voice_start(uint16_t sound, uint16_t index)
         return;
     pthread_mutex_lock(&lock);
     sound_voice[index].active = 0;
+    sound_voice[index].play_volume = 0;
     sync_busy();
     pthread_mutex_unlock(&lock);
 }
@@ -360,6 +363,8 @@ void sound_mix(int16_t *out)
         int right = (i == 1 || i == 2);
 
         if (!v->sample || !v->period || !v->play_volume || v->finished)
+            continue;
+        if (!v->active && v->looping)   /* a track that has ended or been stopped no longer feeds its looped sample (it would sound for ever) */
             continue;
         uint32_t step = (uint32_t)(((uint64_t)3546895 << 16) / ((uint64_t)v->period * 44100));
 
