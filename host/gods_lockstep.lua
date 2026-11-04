@@ -27,6 +27,7 @@
 --   watch         (with continue=all) the first frame at which each of a few game variables differs between the two sides is logged (read from the port with `mem`)
 --   pause=F       pause both at emulator frame F (for lockstep_dump.py; the first difference does not stop the run when continue= is given)
 --   memcmp[=FROM] [memstop]  the record tables of the game (monster/walker groups, archers, things, bolts...) in the original and the port at every frame: logs the first frame each differs, with the words; memstop pauses there
+--   highlight=NAME  every run of different frames is saved when it ends (captures/highlights/NAME/: original, port and the differing pixels in red) and listed in runs.txt; use with continue=all
 --   weapons=ITEM:N,ITEM:N  both sides pick up the weapon ITEM (0 knife .. 5 throwing star, 4 lightning bolt, ..., 10 mace) N times at the top of the first iteration (not a regular play)
 --   wordlog=F1-F2:ADDR,ADDR  (hex) the words at those addresses, original/port, at each emulator frame F1 to F2
 --   peeklog=F:ADDR,ADDR  (hex) the longs at those addresses, in the original and in the port, at emulator frame F
@@ -34,6 +35,43 @@
 --   dump=PATH     the port's image and the original's at the first frame that differs are written to PATH.native.ppm and PATH.emulated.ppm
 local args = ami.args or ""
 local tick_synced = false
+-- highlight=NAME: every run of different frames (the play goes on, as with continue=all) is saved when it ends to captures/highlights/NAME/runNNN-fFIRST-LAST.ppm: the original, the port and the
+-- differing pixels (red, on the original dimmed), of the frame of the run that differed the most; captures/highlights/NAME/runs.txt lists the runs (first and last frame, frames, most pixels, where)
+local highlight = args:match("highlight=(%S+)")
+local highlight_run, highlight_runs = nil, {}
+local function highlight_regions()
+    local list = { { 0, 209, 320, 7 } }
+    for x, y, w, h in (args:match("mask=(%S+)") or ""):gmatch("(%d+),(%d+),(%d+),(%d+)") do list[#list + 1] = { tonumber(x), tonumber(y), tonumber(w), tonumber(h) } end
+    return list
+end
+local function highlight_finish(run)
+    local ignore = highlight_regions()
+    local rows, x0, y0, x1, y1 = {}, 320, 256, -1, -1
+    local a, b = run.emulated, run.native
+    for y = 0, 255 do
+        local original, port, mask = {}, {}, {}
+        for x = 0, 319 do
+            local i = (y * 320 + x) * 3 + 1
+            local pa, pb = a:sub(i, i + 2), b:sub(i, i + 2)
+            local skip = false
+            for _, r in ipairs(ignore) do if x >= r[1] and x < r[1] + r[3] and y >= r[2] and y < r[2] + r[4] then skip = true break end end
+            original[#original + 1], port[#port + 1] = pa, pb
+            if pa ~= pb and not skip then
+                mask[#mask + 1] = "\255\0\0"
+                if x < x0 then x0 = x end if x > x1 then x1 = x end if y < y0 then y0 = y end if y > y1 then y1 = y end
+            else
+                mask[#mask + 1] = string.char(pa:byte(1) // 4, pa:byte(2) // 4, pa:byte(3) // 4)
+            end
+        end
+        rows[#rows + 1] = table.concat(original) .. table.concat(port) .. table.concat(mask)
+    end
+    local n = #highlight_runs + 1
+    local path = ("%s/../captures/highlights/%s/run%03d-f%d-%d.ppm"):format(ami.script_dir, highlight, n, run.first, run.last)
+    ami.save_file(path, "P6\n960 256\n255\n" .. table.concat(rows))
+    highlight_runs[n] = ("run %d: frames %d-%d (%d frames), most %d pixels at frame %d, in x %d-%d y %d-%d: %s"):format(n, run.first, run.last, run.frames, run.max, run.frame, x0, x1, y0, y1, path:match("[^/]+$"))
+    ami.save_file(("%s/../captures/highlights/%s/runs.txt"):format(ami.script_dir, highlight), table.concat(highlight_runs, "\n") .. "\n")
+    ami.log("HIGHLIGHT " .. highlight_runs[n])
+end
 local memcmp_on = args:find("memcmp") ~= nil
 local memcmp_from = tonumber(args:match("memcmp=(%d+)")) or 0
 local memcmp_stop = args:find("memstop") ~= nil   -- (memstop: the lockstep pauses on the first frame a table differs)
@@ -518,6 +556,20 @@ lockstep.run {
                     out[#out + 1] = ("%x: %04x/%04x"):format(address, string.unpack(">I2", ami.read(address, 2)), string.unpack("<I2", bytes))
                 end
                 ami.log(("words frame %d (original/port): %s"):format(ami.frame(), table.concat(out, "  ")))
+            end
+        end
+        if highlight then
+            if count > 0 then
+                highlight_run = highlight_run or { first = ami.frame(), max = 0, frames = 0 }
+                highlight_run.frames = highlight_run.frames + 1
+                highlight_run.last = ami.frame()
+                if count > highlight_run.max then
+                    highlight_run.max, highlight_run.frame, highlight_run.native, highlight_run.emulated = count, ami.frame(), native, emulated
+                end
+            elseif highlight_run then
+                local run = highlight_run
+                highlight_run = nil
+                highlight_finish(run)
             end
         end
         if watching then watch_variables() end
