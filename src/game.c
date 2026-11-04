@@ -461,7 +461,7 @@ static void teleport_player(void)
     word_2aa = scroll_y;
     fade_out(1, 0xFFFF);
     draw_start_frame();
-    host_cpu_frames(2);   /* (the original's drawing of that frame takes 3 frames in all) */
+    host_cpu_frames(1);   /* (the original's fade-in begins 16 frames after the fade-out ended: its drawing of the frame and the flip take this much; with 2 the fade began a frame late) */
     screens_flip();
     copper_setup_done = 0;
     fade_in(palette_words, 1);
