@@ -312,7 +312,12 @@ void record_list_draw(void)
         int16_t x = draw_string_16(record, 20, y);
 
         record += 16;
-        draw_hex_bytes(record, x + 40, y);
+        {   /* the score is a native long in the record: its four bytes are drawn as the big-endian ones that the original's record has */
+            uint32_t score = *(const uint32_t *)record;
+            const uint8_t bytes[4] = { (uint8_t)(score >> 24), (uint8_t)(score >> 16), (uint8_t)(score >> 8), (uint8_t)score };
+
+            draw_hex_bytes(bytes, x + 40, y);
+        }
         record += 4;
         y += 13;
     }

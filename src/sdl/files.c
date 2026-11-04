@@ -6,7 +6,8 @@
  *
  * Words the program reads as native ones: the files ending in ".dat" are tables of words (swapped here), and the picture files
  * ("c" + name) are packed: unpack() below does the unpacking of the original's and then makes the words of the picture native.
- * Everything else in the files is bytes. */
+ * The high score file (hiscores.bin) has longs - the ten scores (at +16 of each record of 20 bytes) and the four scrambled codes (+200) -
+ * which are made native here as well.  Everything else in the files is bytes. */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -110,6 +111,17 @@ int files_read(const char *name, int prefer, uint8_t *dest)
         return 0;
     memcpy(dest, file, size);
     unpack_swaps = ends_with(name, ".pi1");
+    if (ends_with(name, "hiscores.bin") && size >= 216)
+        for (uint32_t i = 0; i < 14; i++) {
+            uint8_t *p = dest + (i < 10 ? 16 + 20 * i : 200 + 4 * (i - 10));
+            uint8_t t = p[0];
+
+            p[0] = p[3];
+            p[3] = t;
+            t = p[1];
+            p[1] = p[2];
+            p[2] = t;
+        }
     if (ends_with(name, ".dat"))
         for (uint32_t i = 0; i + 1 < size; i += 2) {
             uint8_t t = dest[i];
