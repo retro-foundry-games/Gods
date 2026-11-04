@@ -251,7 +251,7 @@ effects            0x0003a196 int16_t %s[100]   ten effects of five words (x, y,
 flag_236           0x00000236 uint16_t %s
 flag_244           0x00000244 int16_t %s
 temp_bb6           0x00000bb6 uint8_t *%s    the pointer a loop over records with a block of its own each keeps
-records_12a0       0x000012a0 uint16_t %s[90]   ten records of 18 bytes (the first word is 0 for one that is free)
+records_12a0       0x000012a0 struct WalkGroup %s[10]   ten records of 18 bytes (the first word is 0 for one that is free)
 records_1354       0x00001354 struct Monster %s[10]   ten records of 428 bytes (the first word is 0 for one that is free)
 value_1296         0x00001296 uint32_t %s
 count_242          0x00000242 int16_t %s    how many monsters of the record being run are free
@@ -612,3 +612,6 @@ death_particles   0x000000b2  int16_t %s[28]  ... and where each is (x, y) and i
 words_a9e         0x00000a9e  uint16_t %s[4]   the first four words of the list of message lines ($16AC8 sets them to 0, 16, 32, 48)
 callback_514      0x00000514  void (*%s)(void)
 table respawn_search 0x00003864 uint16_t 45  fifteen records of three words: where, from the cell the player was last at, the cell that is looked for (an offset into the collision map, then the step of x and y)
+planner           0x000004be  struct Planner %s   the path planner of the walkers (orig $A492)
+plan_queue        0x0001971c  struct PlanItem %s[32]   the places the planner has still to look at (x and y 0: free)
+plan_list         0x0001981c  struct PlanItem %s[50]   the places along the floor that the planner has been to

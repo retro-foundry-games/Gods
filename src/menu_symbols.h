@@ -235,7 +235,7 @@ extern int16_t effects[100];   /* $3A196  ten effects of five words (x, y, ?, gl
 extern uint16_t flag_236;   /* $00236 */
 extern int16_t flag_244;   /* $00244 */
 extern uint8_t *temp_bb6;   /* $00BB6  the pointer a loop over records with a block of its own each keeps */
-extern uint16_t records_12a0[90];   /* $012A0  ten records of 18 bytes (the first word is 0 for one that is free) */
+extern struct WalkGroup records_12a0[10];   /* $012A0  ten records of 18 bytes (the first word is 0 for one that is free) */
 extern struct Monster records_1354[10];   /* $01354  ten records of 428 bytes (the first word is 0 for one that is free) */
 extern uint32_t value_1296;   /* $01296 */
 extern int16_t count_242;   /* $00242  how many monsters of the record being run are free */
@@ -550,6 +550,9 @@ extern uint16_t code_17cc0;   /* $17CC0  the first word of the routine at $17CC0
 extern int16_t death_particles[28];   /* $000B2  ... and where each is (x, y) and its steps (dx, dy), on the screen */
 extern uint16_t words_a9e[4];   /* $00A9E  the first four words of the list of message lines ($16AC8 sets them to 0, 16, 32, 48) */
 extern void (*callback_514)(void);   /* $00514 */
+extern struct Planner planner;   /* $004BE  the path planner of the walkers (orig $A492) */
+extern struct PlanItem plan_queue[32];   /* $1971C  the places the planner has still to look at (x and y 0: free) */
+extern struct PlanItem plan_list[50];   /* $1981C  the places along the floor that the planner has been to */
 extern const struct CreatureTemplate creature_templates[49];   /* $1C698  what a group is: its draw kind, move and step routines and its box (the pointers of table_1c678 point into it) */
 extern const uint16_t clip_rectangles[6];   /* $00128  the clip rectangles of image_draw_clipped (x0, x1, y0, y1: the whole screen; a negative x0 ends the list) */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */

@@ -616,3 +616,6 @@ _code_17cc0 = 0x17cc0;
 _death_particles = 0xb2;
 _words_a9e = 0xa9e;
 _callback_514 = 0x514;
+_planner = 0x4be;
+_plan_queue = 0x1971c;
+_plan_list = 0x1981c;

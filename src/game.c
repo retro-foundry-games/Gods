@@ -843,18 +843,6 @@ void message_ticker(void)
     message_wide++;
 }
 
-/* orig $009AE6: the ten records of 18 bytes at $12A0, each with a block of 240 bytes (at asset_directory + 240 a record) of its own:
- * a record that is not free (first word not 0) goes on at $9B24 or $9A20, which did not run */
-void update_records_12a0(void)
-{
-    flag_244 = -1;
-    for (int i = 0; i < 10; i++) {
-        temp_bb6 = asset_directory + 240 * i;
-        if (records_12a0[i * 9] != 0)
-            return;
-    }
-}
-
 /* orig $009F50: the cell of the level's second map (ptr_0b86 + 8192: a byte for each 32 by 16 pixels, 128 to a row; 1 is a wall) that holds the member's place (x, y): the same as map_cell */
 uint8_t *walk_member_cell(const struct WalkMember *member)
 {
@@ -6037,6 +6025,22 @@ void take_record_to_1354(struct EntryRef *a0)
     }
 }
 
+/* orig $008898 (the entry 4 of the table at $18714): the same for the groups of walkers: the type is 50 on in the level's file (at ptr_0ce6 + $44C), the record one of the ten at $12A0 */
+void take_record_to_12a0(struct EntryRef *a0)
+{
+    struct MonsterType *type = (struct MonsterType *)(ptr_0ce6 + 0x44c + (int16_t)a0->number * 22);
+    struct WalkGroup *group = (struct WalkGroup *)records_12a0;
+
+    a0->state = 0xFFFF;
+    for (int i = 0; i < 10; i++, group++) {
+        if (group->state == 0) {
+            group->state = 2;
+            group->type = type;
+            return;
+        }
+    }
+}
+
 /* orig $008A54: the ten records of 428 bytes at $1354 (struct Monster), with blocks of 400 bytes (ten struct MonsterPart) at ptr_0cee: a record that is free (state 0) is passed by, one
  * that runs (1) is monster_run, one to start (any other) monster_start; value_1296 is set to $121C first (the list monster_pickup looks at) */
 void update_records_1354(void)
@@ -6053,6 +6057,1068 @@ void update_records_1354(void)
             monster_run(&records_1354[i], block);
         else
             monster_start(&records_1354[i], block);
+    }
+}
+
+/* ======== the walking groups: $9AE6, the walkers that follow the player along the floors of the level, and the path planner they ask ($A492) ======== */
+
+/* the step the vertical speed (an index, twice it the byte offset the original uses) goes: $A33A on, 8 down (falling) to $A358 (0) then up (negative) */
+static const int16_t walk_steps[31] = {
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 4, 2, 1, 1, 0, -1, -1, -2, -4, -8, -8, -8, -8, -8, -8, -8, -8, -8, -8, -8
+};
+
+static int16_t walk_step(int16_t index)
+{
+    return walk_steps[15 + index];
+}
+
+/* orig $009EB2: where the object a walker carries is drawn from its picture (two bytes, x and y, for each of the twenty pictures; forty bytes for each of the levels 2, 3 and 4) */
+static const int8_t walk_item_offsets[120] = {
+    20, 25, 17, 25, 12, 24, 8, 21, 5, 21,
+    8, 21, 12, 24, 17, 25, 20, 23, -3, 25,
+    0, 25, 5, 24, 9, 21, 12, 21, 9, 21,
+    5, 24, 0, 25, -3, 23, 0, 0, 0, 0,
+    20, 27, 17, 27, 12, 26, 8, 23, 5, 23,
+    8, 23, 12, 26, 17, 27, 20, 25, -3, 27,
+    0, 27, 5, 26, 9, 23, 12, 23, 9, 23,
+    5, 26, 0, 27, -3, 25, 0, 0, 0, 0,
+    21, 9, 21, 10, 21, 11, 21, 10, 21, 9,
+    21, 10, 21, 11, 21, 10, 21, 14, -4, 9,
+    -4, 10, -4, 11, -4, 10, -4, 9, -4, 10,
+    -4, 11, -4, 10, -4, 14, 0, 0, 0, 0,
+};
+
+/* orig $0099DC: the picture each way of walking starts at (added to the template's picture and the step) */
+static const uint8_t walk_picture_base[8] = { 0, 9, 8, 0x11, 8, 0x11, 8, 0x11 };
+
+static struct PlanItem *plan_tail;   /* a6 of the original: where the next place of plan_list goes */
+
+/* orig $00A872: the cell of the planner's map of the places (ptr_03ac, 20 bytes a row) that the level's point (x, y) is in */
+static uint8_t *plan_target(int16_t x, int16_t y)
+{
+    int16_t across = (int16_t)(((int16_t)(x - scroll_x) >> 5) + 5);
+    int16_t row = (int16_t)((int16_t)(y - scroll_y) >> 4);
+
+    across = (int16_t)(across + (int16_t)(row << 2));
+    across = (int16_t)(across + (int16_t)(row << 4));
+    return ptr_03ac + (int16_t)(across + 0x50);
+}
+
+/* orig $00A59A: a place that the planner is to look at is put at the first free of the 32 places of plan_queue (one with x and y 0 is free); with 32 waiting nothing is done */
+static void plan_push(int16_t x, int16_t y, int16_t dir, int16_t cost)
+{
+    if (planner.queued >= 32)
+        return;
+    for (int i = 0; i < 32; i++) {
+        if (plan_queue[i].x == 0 && plan_queue[i].y == 0) {
+            plan_queue[i].x = x;
+            plan_queue[i].y = y;
+            plan_queue[i].cost = cost;
+            plan_queue[i].dir = dir;
+            planner.queued++;
+            return;
+        }
+    }
+}
+
+/* orig $00AC74: from (x, y), standing on the floor, the walk to the right along it: each cell of 32 pixels is put in plan_list with what it cost (up to the type's byte 13) until a wall, the
+ * edge of the screen or a cell that has been reached for less; a walk that ends in the air is kept in pending[0] (where it falls from), one that reaches a place the planner is looking for
+ * is the way to it */
+static void plan_right(const struct MonsterType *type, int16_t x, int16_t y)
+{
+    const uint8_t *cell = map_cell(x, y);
+    uint8_t *target = plan_target(x, y) + 0x14;
+    int16_t cost = planner.cost;
+    int16_t sx;
+    int16_t dir;
+
+    if (cell[0x100] != 1)
+        return;
+    plan_tail = plan_list;
+    if ((int8_t)cost > (int8_t)*target)
+        return;
+    sx = (int16_t)(x - scroll_x);
+    dir = planner.dir;
+    if (cost == 0)
+        dir = 1;
+    for (;;) {
+        plan_tail->x = x;
+        plan_tail->y = y;
+        plan_tail->cost = cost;
+        plan_tail->dir = dir;
+        plan_tail++;
+        *target = (uint8_t)cost;
+        planner.visited++;
+        cost++;
+        if ((int8_t)cost >= (int8_t)type->zone_chance)
+            return;
+        target++;
+        x = (int16_t)(x + 32);
+        sx = (int16_t)(sx + 32);
+        if (sx >= 0x160)
+            return;
+        cell++;
+        if (cell[0] == 1 || cell[0x80] == 1)
+            return;
+        if (*target != 0) {
+            if ((int8_t)*target < 0) {   /* a place the planner looks for */
+                int16_t first = planner.dir;
+
+                planner.visited = 0;
+                if (planner.cost == 0)
+                    first = 1;
+                if ((uint16_t)cost < planner.best) {
+                    planner.result = first;
+                    planner.best = (uint16_t)cost;
+                }
+                return;
+            }
+            if ((int8_t)cost >= (int8_t)*target)
+                return;
+        }
+        if (cell[0x100] == 1)
+            continue;
+        planner.pending[0].x = x;
+        planner.pending[0].y = y;
+        planner.pending[0].cost = cost;
+        planner.pending[0].dir = planner.cost == 0 ? 1 : planner.dir;
+        return;
+    }
+}
+
+/* orig $00AD36: the same to the left (the cell it stands on is not put in the list again) */
+static void plan_left(const struct MonsterType *type, int16_t x, int16_t y)
+{
+    const uint8_t *cell = map_cell(x, y);
+    uint8_t *target = plan_target(x, y) + 0x14;
+    int16_t cost = planner.cost;
+    int16_t sx;
+    int16_t dir;
+    int first_step = 1;
+
+    (void)type;
+    if (cell[0x100] != 1)
+        return;
+    if ((int8_t)cost > (int8_t)*target)
+        return;
+    sx = (int16_t)(x - scroll_x);
+    dir = planner.dir;
+    if (cost == 0)
+        dir = 0;
+    for (;;) {
+        if (!first_step) {
+            plan_tail->x = x;
+            plan_tail->y = y;
+            plan_tail->cost = cost;
+            plan_tail->dir = dir;
+            plan_tail++;
+            *target = (uint8_t)cost;
+            planner.visited++;
+        }
+        first_step = 0;
+        cost++;
+        target--;
+        x = (int16_t)(x - 32);
+        sx = (int16_t)(sx - 32);
+        if (sx <= -64)
+            return;
+        cell--;
+        if (cell[0] == 1 || cell[0x80] == 1)
+            return;
+        if (*target != 0) {
+            if ((int8_t)*target < 0) {
+                int16_t first = planner.dir;
+
+                planner.visited = 0;
+                if (planner.cost == 0)
+                    first = 0;
+                if (planner.result < 0 || cost < (int16_t)planner.best) {
+                    planner.result = first;
+                    planner.best = (uint16_t)cost;
+                }
+                return;
+            }
+            if ((int8_t)cost >= (int8_t)*target)
+                return;
+        }
+        if (cell[0x100] == 1)
+            continue;
+        planner.pending[1].x = x;
+        planner.pending[1].y = y;
+        planner.pending[1].cost = cost;
+        planner.pending[1].dir = planner.cost == 0 ? 0 : planner.dir;
+        return;
+    }
+}
+
+/* orig $00ABFC: the two walks that ended in the air (pending) go on down to the floor below (16 pixels a cell, a cost each): the place it comes to is put in the queue, or is the way to the
+ * player when it is one the planner looks for */
+static void plan_falls(const struct MonsterType *type)
+{
+    for (int i = 0; i < 2; i++) {
+        const struct PlanItem *p = &planner.pending[i];
+        int16_t x = p->x;
+        int16_t y = p->y;
+        int16_t cost = p->cost;
+        int16_t sy;
+        const uint8_t *cell;
+        uint8_t *target;
+
+        if (p->x == 0 && p->y == 0)
+            continue;
+        cell = map_cell(x, y);
+        target = plan_target(x, y) + 0x14;
+        sy = (int16_t)(y - scroll_y);
+        for (;;) {
+            sy = (int16_t)(sy + 0x10);
+            if (sy >= 0xc0)
+                break;
+            y = (int16_t)(y + 0x10);
+            cost++;
+            cell += 0x80;
+            target += 0x14;
+            if (cell[0x100] == 1)
+                break;
+        }
+        if (sy >= 0xc0)
+            continue;
+        if ((int8_t)cost > (int8_t)type->zone_chance)
+            continue;
+        if (*target != 0) {
+            if ((int8_t)*target < 0) {
+                if ((uint16_t)cost > planner.best)
+                    continue;
+                planner.result = p->dir;
+                planner.best = (uint16_t)cost;
+                continue;
+            }
+            if ((int8_t)cost >= (int8_t)*target)
+                continue;
+        }
+        *target = (uint8_t)cost;
+        plan_push(x, y, p->dir, cost);
+    }
+}
+
+/* orig $00AA74: a place a jump passes (the jump's cost so far `jump`, half of it counted) is the way to the player when it is one the planner looks for and costs less than the best way */
+static void plan_probe(const struct PlanItem *entry, const struct MonsterType *type, int16_t x, int16_t y, int16_t jump)
+{
+    int16_t cost = (int16_t)((jump >> 1) + entry->cost);
+    int16_t sx = (int16_t)(x - scroll_x);
+    int16_t sy = (int16_t)(y - scroll_y);
+
+    if ((int8_t)cost > (int8_t)type->zone_chance)
+        return;
+    if (sx <= -64 || sx >= 0x160 || sy <= -64 || sy >= 0xe0)
+        return;
+    if ((int8_t)*(plan_target(x, y) + 0x14) >= 0)
+        return;
+    if ((uint16_t)cost > planner.best)
+        return;
+    planner.result = entry->cost == 0 ? planner.label : entry->dir;
+    planner.best = (uint16_t)cost;
+}
+
+/* orig $00A898 (to the right) and $00A98A (to the left): a jump from (x, y) with the speed index `speed` (7 or 13, the original's twice it): 4 pixels a step sideways (not into a wall) and up and
+ * down by the steps of walk_steps; at the top of the arc the place is looked at (plan_probe), and when it comes to a floor the place is looked at again and the jump's cost (every step a
+ * cost, 8 more for each cell it falls on) is kept in planner.jump.  A jump that hits its head goes on falling.  (x, y) is where it comes down */
+static void plan_jump(const struct PlanItem *entry, const struct MonsterType *type, int right, int16_t *px, int16_t *py, int16_t speed)
+{
+    int16_t x = *px;
+    int16_t y = *py;
+    const uint8_t *cell = map_cell(x, y);
+    int16_t sx = (int16_t)(x & 0x1f);
+    int16_t sy = (int16_t)(y & 0xf);
+    int16_t v = (int16_t)(speed << 1);
+    int16_t cost = 0;
+
+    for (;;) {
+        cost++;
+        if (v >= -10) {
+            int blocked;
+
+            if (right)
+                blocked = sx == 0 && (cell[1] == 1 || cell[0x81] == 1);
+            else
+                blocked = sx == 0 && (cell[-1] == 1 || cell[0x7f] == 1);
+            if (!blocked) {
+                if (right) {
+                    x = (int16_t)(x + 4);
+                    sx = (int16_t)((sx + 4) & 0x1f);
+                    if (sx == 0)
+                        cell++;
+                } else {
+                    x = (int16_t)(x - 4);
+                    sx = (int16_t)(sx - 4);
+                    if (sx < 0) {
+                        cell--;
+                        sx = 0x1c;
+                    }
+                }
+            }
+        }
+        if (v <= 0) {
+            if (v == 0)
+                plan_probe(entry, type, x, y, cost);
+            if (cell[0x100] == 1 || (sx >= 8 && cell[0x101] == 1)) {   /* it is on a floor */
+                y = (int16_t)(y & 0xfff0);
+                if (right) {
+                    if (sx != 0) {
+                        x = (int16_t)((x & 0xffe0) + 0x20);
+                        cell++;
+                    }
+                } else if (sx != 0) {
+                    x = (int16_t)(x & 0xffe0);
+                }
+                plan_probe(entry, type, x, y, cost);
+                while (cell[0x100] != 1) {
+                    cell += 0x80;
+                    y = (int16_t)(y + 0x10);
+                    cost = (int16_t)(cost + 8);
+                }
+                planner.jump = cost;
+                *px = x;
+                *py = y;
+                return;
+            }
+        }
+        {   /* in the air */
+            int16_t step = walk_step((int16_t)(v >> 1));
+
+            y = (int16_t)(y + step);
+            sy = (int16_t)(sy + step);
+            if (sy < 0) {
+                sy = (int16_t)(sy + 0x10);
+                cell -= 0x80;
+            } else if (sy > 0xf) {
+                sy = (int16_t)(sy - 0x10);
+                cell += 0x80;
+            }
+            if (cell[0] == 1 || (sx >= 8 && cell[1] == 1)) {   /* the head hits something */
+                y = (int16_t)(y & 0xfff0);
+                sy = 0;
+                y = (int16_t)(y + 0x10);
+                cell += 0x80;
+                cost = (int16_t)(cost + ((v + 0xc) >> 1));
+                v = -10;
+            }
+            v = (int16_t)(v - 2);
+            if (v < -12)
+                v = -10;
+        }
+    }
+}
+
+/* orig $00AB78: where a jump came down (x, y) is a place of the planner when it costs little enough (the jump's cost a quarter): put in the queue with the first step of the way that led to
+ * the jump, or the way to the player when it is one the planner looks for.  The place the walker is at is not */
+static void plan_land(const struct PlanItem *entry, const struct MonsterType *type, const struct WalkMember *m, int16_t x, int16_t y)
+{
+    int16_t cost = (int16_t)((planner.jump >> 2) + entry->cost);
+    int16_t sx = (int16_t)(x - scroll_x);
+    int16_t sy = (int16_t)(y - scroll_y);
+    uint8_t *target;
+
+    if ((int8_t)cost > (int8_t)type->zone_chance)
+        return;
+    if (sx <= -64 || sx >= 0x160 || sy <= -64 || sy >= 0xe0)
+        return;
+    target = plan_target(x, y) + 0x14;
+    if (*target != 0) {
+        if ((int8_t)*target < 0) {
+            if ((uint16_t)cost > planner.best)
+                return;
+            planner.result = entry->cost == 0 ? planner.label : entry->dir;
+            planner.best = (uint16_t)cost;
+            return;
+        }
+        if ((int8_t)cost >= (int8_t)*target)
+            return;
+    }
+    if (x == m->x && y == m->y)
+        return;
+    *target = (uint8_t)cost;
+    plan_push(x, y, entry->cost == 0 ? planner.label : entry->dir, cost);
+}
+
+/* orig $00AADA: from every place the walks along the floor found, the four jumps (to the right and left; the second pair, with the greater speed, when the type's byte 12 is above 4):
+ * not from a place with a wall over it */
+static void plan_jumps(const struct MonsterType *type, const struct WalkMember *m)
+{
+    int16_t count = planner.visited;
+
+    if (count == 0)
+        return;
+    for (int16_t n = 0; n < count; n++) {
+        const struct PlanItem *entry = &plan_list[n];
+        int16_t x, y;
+
+        if (entry->x == 0 && entry->y == 0)
+            continue;
+        planner.label = 3;
+        if (map_cell(entry->x, entry->y)[-0x80] == 1)
+            continue;
+        x = entry->x;
+        y = entry->y;
+        planner.jump = 0;
+        plan_jump(entry, type, 1, &x, &y, 7);
+        plan_land(entry, type, m, x, y);
+        if ((int8_t)type->limit_c > 4) {
+            planner.label = 7;
+            x = entry->x;
+            y = entry->y;
+            planner.jump = 0;
+            plan_jump(entry, type, 1, &x, &y, 0xd);
+            plan_land(entry, type, m, x, y);
+        }
+        x = entry->x;
+        y = entry->y;
+        planner.label = 2;
+        planner.jump = 0;
+        plan_jump(entry, type, 0, &x, &y, 7);
+        plan_land(entry, type, m, x, y);
+        if ((int8_t)type->limit_c > 4) {
+            planner.label = 6;
+            x = entry->x;
+            y = entry->y;
+            planner.jump = 0;
+            plan_jump(entry, type, 0, &x, &y, 0xd);
+            plan_land(entry, type, m, x, y);
+        }
+    }
+}
+
+/* orig $00A54A: all the ways from (x, y): along the floor to the right and left, down from where they end, and the jumps from the places along the floor */
+static void plan_look(const struct MonsterType *type, const struct WalkMember *m, int16_t x, int16_t y)
+{
+    planner.visited = 0;
+    planner.pending[0].x = planner.pending[0].y = planner.pending[0].cost = planner.pending[0].dir = 0;
+    planner.pending[1].x = planner.pending[1].y = 0;
+    plan_right(type, x, y);
+    plan_left(type, x, y);
+    plan_falls(type);
+    plan_jumps(type, m);
+}
+
+/* orig $00A844: the cells of the planner's map at the screen point (x, y) and the two under it are marked as places to come to */
+static void plan_mark_column(int16_t sx, int16_t sy)
+{
+    int16_t across = (int16_t)((sx >> 5) + 5);
+    int16_t row = (int16_t)(sy >> 4);
+    uint8_t *cell;
+
+    across = (int16_t)(across + (int16_t)(row << 2));
+    across = (int16_t)(across + (int16_t)(row << 4));
+    cell = ptr_03ac + (int16_t)(across + 0x50);
+    cell[0] = 0xff;
+    cell[0x14] = 0xff;
+    cell[0x28] = 0xff;
+}
+
+/* orig $00A6A2: the things of the list at $121C are marked in the planner's map (the first twenty); true when one was */
+static int plan_mark_things(void)
+{
+    int16_t count = (int16_t)list_count_1294;
+    const int16_t *list = (const int16_t *)GUEST(0x121c);
+
+    if (count == 0)
+        return 0;
+    if (count > 0x14)
+        count = 0x14;
+    flags_3b0 &= (uint8_t)~8;
+    for (int16_t i = 0; i < count; i++)
+        mark_target_cells(list[i * 3], list[i * 3 + 1]);
+    planner.flag = 2;
+    return (flags_3b0 & 8) != 0;
+}
+
+/* orig $00A726 (the lists at $A780: the places of the levels 1, 2, 3 and 4 (the same list), x and y of a cell of 32 by 16 pixels, ended by -1): the first place that is on the screen is the aim */
+static void plan_mark_place(void)
+{
+    static const int16_t places_1[] = { 8, 25, 6, 31, 36, 51, 43, 58, 72, 38, 83, 19, 91, 25, 99, 11, 99, 5, -1, -1 };
+    static const int16_t places_2[] = { 121, 6, 125, 17, 125, 55, 86, 58, 100, 56, 36, 43, 35, 52, 45, 59, 50, 59, 52, 59, 55, 59, 55, 25, 73, 36, 72, 49, 75, 49, 73, 59, 68, 59, 85, 12, 40, 4, -1, -1 };
+    static const int16_t places_3[] = { 4, 23, 12, 23, 15, 23, 6, 42, 10, 60, 17, 60, 22, 60, 24, 49, 32, 49, 30, 16, 38, 16, 36, 10, 39, 27, -1, -1 };
+    static const int16_t *const lists[4] = { places_1, places_2, places_3, places_3 };
+    const int16_t *place = lists[(param_index - 1) & 3];
+
+    for (;; place += 2) {
+        if (place[1] < 0)
+            return;
+        int16_t sx = (int16_t)((place[0] << 5) - scroll_x);
+        int16_t sy = (int16_t)(((place[1] + 1) << 4) - scroll_y);
+
+        if (sx <= -64 || sx >= 0x160 || sy <= -64 || sy >= 0xe0)
+            continue;
+        planner.flag = 1;
+        plan_mark_column(sx, sy);
+        return;
+    }
+}
+
+/* orig $00A5C4: the planner's map of the places that are the aim is made: what the type's byte 8 says (its two nibbles, the high one in place of the low with the chance of its byte 9 of 128):
+ * 0 the player (the cell he is in and the two under it, flag 0), 1 the cells at 64 pixels round him (a row of eight above and below, a column of eight at either side), 2 the things of
+ * the list at $121C (flag 2), 3 a place of the level's list (flag 1).  With the flag $25E (things to be taken) set the things come first; when none can be marked the other way goes on */
+static void plan_setup(const struct MonsterType *type)
+{
+    uint8_t ways[2];
+    uint8_t first, second;
+
+    for (int i = 0; i < 400; i++)
+        ptr_03ac[i] = 0;
+    if (flag_25e != 0 && plan_mark_things())
+        return;
+    first = (uint8_t)(type->mode & 0xf);
+    second = (uint8_t)(type->mode >> 4);
+    if ((int8_t)type->mode_chance < (int8_t)(random_word() & 0x7f)) {
+        uint8_t t = first;
+
+        first = second;
+        second = t;
+    }
+    ways[0] = first;
+    ways[1] = second;
+    for (int i = 0; i < 4; i++) {
+        switch (ways[i & 1]) {
+        case 0:
+            planner.flag = 0;
+            plan_mark_column((int16_t)(player_x - scroll_x), (int16_t)(player_y - scroll_y));
+            return;
+        case 1: {
+            int16_t px = (int16_t)(player_x - scroll_x);
+            int16_t py = (int16_t)(player_y - scroll_y);
+
+            for (int16_t d1 = -64; d1 <= 64; d1 = (int16_t)(d1 + 128))
+                for (int16_t d0 = -64; d0 < 64; d0 = (int16_t)(d0 + 16))
+                    mark_target_cells((int16_t)(d0 + px), (int16_t)(d1 + py));
+            for (int16_t d0 = -64; d0 <= 64; d0 = (int16_t)(d0 + 128))
+                for (int16_t d1 = -64; d1 < 64; d1 = (int16_t)(d1 + 16))
+                    mark_target_cells((int16_t)(d0 + px), (int16_t)(d1 + py));
+            return;
+        }
+        case 2:
+            if (plan_mark_things())
+                return;
+            break;   /* none: the other way (the original swaps the nibbles) */
+        default:
+            plan_mark_place();
+            return;
+        }
+    }
+}
+
+/* orig $00A492: the first step of the best way for the walker m to the aims of the planner's map, in planner.result (negative: none) and what it costs in planner.best: along the floors, down
+ * from their ends and by jumps, the places that cost least first, until a way of 16 or less is found */
+static void plan_run(const struct MonsterType *type, const struct WalkMember *m)
+{
+    int16_t sx = (int16_t)(m->x - scroll_x);
+    int16_t sy = (int16_t)(m->y - scroll_y);
+    struct PlanItem *item = plan_queue;
+    int taken = 0;
+
+    planner.result = -1;
+    planner.best = 0xffff;
+    if (sx <= -64 || sx >= 0x160 || sy <= -64 || sy >= 0xe0)
+        return;
+    for (int i = 0; i < 32; i++)
+        plan_queue[i].x = plan_queue[i].y = plan_queue[i].cost = plan_queue[i].dir = 0;
+    planner.queued = 0;
+    plan_setup(type);
+    planner.cost = 0;
+    plan_look(type, m, m->x, m->y);
+    if (planner.best <= 0x10)
+        return;
+    for (;;) {
+        if (planner.queued == 0)
+            return;
+        if (item->x == 0 && item->y == 0) {
+            item++;
+            taken++;
+            if (taken >= 0x20) {
+                item = plan_queue;
+                taken = 0;
+            }
+            continue;
+        }
+        {
+            struct PlanItem here = *item;
+
+            item->x = item->y = item->cost = item->dir = 0;
+            item++;
+            planner.queued--;
+            taken++;
+            planner.cost = here.cost;
+            planner.dir = here.dir;
+            plan_look(type, m, here.x, here.y);
+        }
+        if (planner.best <= 0x10)
+            return;
+        if (taken >= 0x20) {
+            item = plan_queue;
+            taken = 0;
+        }
+    }
+}
+
+/* orig $009F2A: the picture of a walker: the template's picture (the first word of the 16 bytes of the type's byte 7, in ptr_0b82), the way of walking's base (walk_picture_base) and its step */
+static int16_t walker_picture(const struct MonsterType *type, const struct WalkMember *m)
+{
+    int16_t first = *(const int16_t *)(ptr_0b82 + 16 * (uint16_t)type->picture);
+
+    return (int16_t)(walk_picture_base[m->mode & 7] + m->frame + first);
+}
+
+/* orig $00A122: the way the planner found (planner.result: 0 and 1 walk left and right, 2 and above jump: 2 and 3 to the left and right, 4 and 5 and then 6 and 7 the high ones; the speed of the
+ * jump 7, 9 or 13) sets the mode and the vertical speed of the walker */
+static void walker_go(struct WalkMember *m)
+{
+    int16_t way = planner.result;
+    int16_t speed;
+
+    if (way <= 1) {
+        m->mode = way;
+        return;
+    }
+    way = (int16_t)(way - 2);
+    m->mode = (int16_t)((way & 1) + 4);
+    way = (int16_t)(way & 0xfffe);
+    speed = 7;
+    if (way != 0) {
+        speed = 9;
+        way = (int16_t)(way - 2);
+        if (way != 0)
+            speed = 0xd;
+    }
+    m->vy = speed;
+    m->frame = 0;
+}
+
+/* orig $009F70 (to the left) and $009F7A: a walker that is on a cell's edge (its x with the bits 2 to 4 clear; $9F7A is the entry that does not look at it) and on a floor asks the planner for the
+ * way: none that it can take (negative): it paces by the walls (it turns round at one); the way 0 goes on; another is a jump (walker_go).  With no floor under it it falls (mode 2).  Between the
+ * edges it keeps walking: a step of 4 pixels every `timer` frames (10 less its speed) and a picture */
+static int16_t walker_left(const struct MonsterType *type, struct WalkMember *m, int entry2)
+{
+    const uint8_t *cell;
+
+    if (!entry2 && (m->x & 0x1c) != 0)
+        goto keep_going;
+    cell = map_cell(m->x, m->y);
+    if (cell[0x100] != 1) {
+        m->mode = 2;
+        m->vy = 1;
+        m->y = (int16_t)(m->y + 1);
+        m->frame = 0;
+        return walker_picture(type, m);
+    }
+    plan_run(type, m);
+    if ((int16_t)planner.result < 0)
+        goto no_way;
+    if (planner.result == 0)
+        goto keep_going;
+    walker_go(m);
+    return walker_picture(type, m);
+no_way:
+    cell = map_cell(m->x, m->y);
+    if (cell[-1] != 1 && cell[0x7f] != 1 && cell[0xff] == 1)
+        goto keep_going;
+    if (cell[1] == 1 || cell[0x81] == 1 || cell[0x101] != 1)
+        goto turn;
+    m->mode = 1;
+    return walker_picture(type, m);
+turn:
+    m->mode = 0;
+    m->vy = 0;
+    if (--m->timer >= 0)
+        return walker_picture(type, m);
+    m->x = (int16_t)(m->x + 4);
+    goto step;
+keep_going:
+    m->mode = 0;
+    m->vy = 0;
+    if (--m->timer >= 0)
+        return walker_picture(type, m);
+step:
+    m->timer = (int16_t)(int8_t)(10 - type->limit_b);
+    m->frame = (int16_t)((m->frame + 1) & 7);
+    m->x = (int16_t)(m->x - 4);
+    return walker_picture(type, m);
+}
+
+/* orig $00A046 (to the right) and $00A050: the same to the right */
+static int16_t walker_right(const struct MonsterType *type, struct WalkMember *m, int entry2)
+{
+    const uint8_t *cell;
+
+    if (!entry2 && (m->x & 0x1c) != 0)
+        goto keep_going;
+    cell = map_cell(m->x, m->y);
+    if (cell[0x100] != 1) {
+        m->mode = 3;
+        m->vy = 1;
+        m->y = (int16_t)(m->y + 1);
+        m->frame = 0;
+        return walker_picture(type, m);
+    }
+    plan_run(type, m);
+    if ((int16_t)planner.result < 0)
+        goto no_way;
+    if (planner.result == 1)
+        goto keep_going;
+    walker_go(m);
+    return walker_picture(type, m);
+no_way:
+    cell = map_cell(m->x, m->y);
+    if (cell[1] != 1 && cell[0x81] != 1 && cell[0x101] == 1)
+        goto keep_going;
+    if (cell[-1] != 1 && cell[0x7f] != 1 && cell[0xff] == 1) {
+        m->mode = 0;
+        return walker_picture(type, m);
+    }
+    m->mode = 1;
+    m->vy = 0;
+    if (--m->timer >= 0)
+        return walker_picture(type, m);
+    m->x = (int16_t)(m->x - 4);
+    goto step;
+keep_going:
+    m->mode = 1;
+    m->vy = 0;
+    if (--m->timer >= 0)
+        return walker_picture(type, m);
+step:
+    m->timer = (int16_t)(int8_t)(10 - type->limit_b);
+    m->frame = (int16_t)((m->frame + 1) & 7);
+    m->x = (int16_t)(m->x + 4);
+    return walker_picture(type, m);
+}
+
+/* orig $00A194 (to the left, mode 4) and $00A28A (to the right, mode 5): a jump: every few frames (2 less the speed's quarter) the walker goes 4 pixels sideways (not into a wall, on the edge of
+ * a cell), and up or down by the step of its vertical speed (m->vy: it counts down); it comes to rest on a floor (mode 0 and 1) and falls when the speed is -6 (mode 2 and 3); against a ceiling it
+ * goes down */
+static int16_t walker_jump(const struct MonsterType *type, struct WalkMember *m, int right)
+{
+    const uint8_t *cell;
+    int16_t pace;
+
+    if (--m->timer >= 0)
+        return walker_picture(type, m);
+    pace = (int16_t)((uint8_t)type->limit_b >> 2);
+    m->timer = (int16_t)(2 - pace);
+    cell = walk_member_cell(m);
+    if (right) {
+        if ((m->x & 0x1f) != 0 || (cell[1] != 1 && cell[0x81] != 1))
+            m->x = (int16_t)(m->x + 4);
+    } else {
+        if ((m->x & 0x1f) != 0 || (cell[-1] != 1 && cell[0x7f] != 1))
+            m->x = (int16_t)(m->x - 4);
+    }
+    if (m->vy <= 0 && walk_cell_wall_below(m, cell) != 0) {
+        m->mode = right ? 1 : 0;
+        m->y = (int16_t)(m->y & 0xfff0);
+        return walker_picture(type, m);
+    }
+    m->y = (int16_t)(m->y + walk_step(m->vy));
+    cell = walk_member_cell(m);
+    if (walk_cell_wall(m, cell) != 0) {
+        m->y = (int16_t)((m->y & 0xfff0) + 0x10);
+        m->mode = right ? 3 : 2;
+        m->vy = 2;
+        return walker_picture(type, m);
+    }
+    m->vy--;
+    if (m->vy < -5) {
+        m->mode = right ? 3 : 2;
+        m->vy = 8;
+    }
+    return walker_picture(type, m);
+}
+
+/* orig $00A378 (falling to the left, mode 2) and $00A3E2 (to the right, mode 3): the picture's step is 0, the fall goes faster by one a frame to 16 pixels; on a floor (or on the edge of a cell over
+ * one) the walker stands (mode 0 and 1), turned round at once when a wall is in front of it */
+static int16_t walker_fall(const struct MonsterType *type, struct WalkMember *m, int right)
+{
+    int16_t picture;
+    int16_t speed;
+    const uint8_t *cell;
+
+    m->frame = 0;
+    picture = walker_picture(type, m);
+    speed = m->vy;
+    if (speed != 0x10)
+        m->vy++;
+    m->y = (int16_t)(m->y + speed);
+    cell = walk_member_cell(m);
+    if (cell[0x100] != 1 && !((m->x & 0x1f) >= 8 && cell[0x101] == 1))
+        return picture;
+    m->y = (int16_t)(m->y & 0xfff0);
+    m->mode = right ? 1 : 0;
+    if ((m->x & 0x1f) != 0)
+        return picture;
+    cell = walk_member_cell(m);
+    if (right) {
+        if (cell[1] == 1 || cell[0x81] == 1)
+            m->mode = 0;
+    } else if (cell[-1] == 1 || cell[0x7f] == 1) {
+        m->mode = 1;
+    }
+    return picture;
+}
+
+/* orig $0099DC (the table): the movement of a walker by its mode (0 and 6 walk left, 1 and 7 walk right, 2 and 3 fall, 4 and 5 jump) */
+static int16_t walker_move(const struct MonsterType *type, struct WalkMember *m)
+{
+    switch (m->mode & 7) {
+    case 0:
+        return walker_left(type, m, 0);
+    case 1:
+        return walker_right(type, m, 0);
+    case 2:
+        return walker_fall(type, m, 0);
+    case 3:
+        return walker_fall(type, m, 1);
+    case 4:
+        return walker_jump(type, m, 0);
+    case 5:
+        return walker_jump(type, m, 1);
+    case 6:
+        return walker_left(type, m, 1);
+    default:
+        return walker_right(type, m, 1);
+    }
+}
+
+/* orig $009CB8: where the object that a walker carries is drawn: from the walker's place by the offsets of its picture (walk_item_offsets: forty bytes for each of the levels 2 to 4) */
+static void walker_item_place(const struct MonsterType *type, int16_t picture, int16_t *x, int16_t *y)
+{
+    int16_t first = *(const int16_t *)(ptr_0b82 + 16 * (uint16_t)type->picture);
+    int16_t index = (int16_t)(((int16_t)(picture - first) << 1) + (int16_t)((param_index - 2) * 40));
+    const int8_t *offsets;
+
+    if (index < 0 || index > 118)
+        index = 0;   /* (the first level has no such table) */
+    offsets = &walk_item_offsets[index];
+
+    *x = (int16_t)(*x + offsets[0]);
+    *y = (int16_t)(*y + offsets[1]);
+}
+
+/* orig $009CF0: a walker that carries nothing takes up one of the things of the list at $121C (when the planner's flag says things are the aim, 2) that the type takes (bits 0 and 1 of its
+ * flags for the common ones, 2 and 3 for the ones from kind $C0 on) when it is near (to 48 pixels up and left, 16 right and down): the record of that thing in records_19b14 is the walker's */
+static void walker_pickup(const struct MonsterType *type, struct WalkMember *m)
+{
+    const int16_t *list = (const int16_t *)GUEST(0x121c);
+    int16_t count = (int16_t)list_count_1294;
+    int16_t x, y;
+
+    if (planner.flag != 2 || count == 0 || m->item >= 0)
+        return;
+    if (count > 0x14)
+        count = 0x14;
+    x = (int16_t)(m->x - 8);
+    y = (int16_t)(m->y - 8);
+    for (int16_t n = 0; n < count; n++, list += 3) {
+        uint16_t takes = type->flags;
+        int16_t ox, oy;
+
+        if (list[2] >= 0xC0)
+            takes >>= 2;
+        if ((takes & 3) == 0 || list[2] == 0x45)
+            continue;
+        ox = (int16_t)(list[0] + 8 + scroll_x);
+        oy = (int16_t)(list[1] + 8 + scroll_y);
+        if (x > ox || y > oy)
+            continue;
+        ox = (int16_t)(ox - 0x30);
+        oy = (int16_t)(oy - 0x30);
+        if (x < ox || y < oy)
+            continue;
+        ox = (int16_t)(list[0] + scroll_x);
+        oy = (int16_t)(list[1] + scroll_y);
+        for (int i = 199; i >= 0; i--) {   /* the records of the things are looked at from the last one */
+            struct Slot8 *record = &records_19b14[i];
+
+            if (record->w[3] == 0 || record->w[2] < 0)
+                continue;
+            if (record->w[2] != list[2] || record->w[0] != ox || record->w[1] != oy)
+                continue;
+            m->item_x = ox;
+            m->item_y = oy;
+            m->item = list[2];
+            record->w[2] = -1;
+            record->w[3] = 0;
+            return;
+        }
+        return;
+    }
+}
+
+/* orig $009B90: a walker that is there (hp above 0): it shoots (monster_fire) and moves (walker_move; the picture only while the screen is frozen: timer_306), takes up a thing, is hit
+ * (monster_hit: score when it dies) and drawn; and what it carries is drawn at its place (the glyph kind + 170, or kind - 192 + 302 from kind $C0) and put down, as a record, with the chance
+ * 1 in 128 a frame (the type's flags bits 0 and 1 (2 and 3 for the high ones) say: 0 at once, 2 never) */
+static void walker_step(const struct MonsterType *type, struct WalkMember *m)
+{
+    int16_t picture;
+    int16_t sx, sy;
+
+    if (timer_306 == 0) {
+        monster_fire(type, (struct MonsterPart *)m);
+        picture = walker_move(type, m);
+    } else {
+        picture = walker_picture(type, m);
+    }
+    walker_pickup(type, m);
+    sx = (int16_t)(m->x - scroll_x);
+    sy = (int16_t)(m->y - scroll_y);
+    monster_hit((struct MonsterPart *)m, sx, sy);
+    if (m->hp < 0)
+        add_kill_score(type->life);
+    sprite_draw(sx, sy, (uint16_t)picture);
+    if (m->item < 0)
+        return;
+
+    int16_t ix = m->x;
+    int16_t iy = m->y;
+
+    walker_item_place(type, picture, &ix, &iy);
+    m->item_x = ix;
+    m->item_y = iy;
+    ix = (int16_t)(ix - scroll_x);
+    iy = (int16_t)(iy - scroll_y);
+    if (m->item < 0xc0) {
+        glyph_draw(ix, iy, (uint16_t)(m->item + 0xaa));
+        if ((type->flags & 3) == 2)
+            return;
+        if ((type->flags & 3) != 0 && (random_word() & 0x7f) != 0)
+            return;
+        drop_record((int16_t)(m->x + 8), m->y, (int16_t)(m->item + 0xb));
+    } else {
+        glyph_draw(ix, iy, (uint16_t)(m->item - 0xc0 + 0x12e));
+        if ((type->flags & 0xc) == 8)
+            return;
+        if ((type->flags & 0xc) != 0 && (random_word() & 0x7f) != 0)
+            return;
+        drop_record((int16_t)(m->x + 8), m->y, (int16_t)(m->item - 0xc0));
+    }
+    m->item = -1;
+}
+
+/* orig $009E30: a walker that is hit to death goes through seven pictures (the sprites 108 to 114); the first time its place is kept in word_7f74 and word_7f76 (where the group's drop goes) and
+ * what it carried is dropped; at the end its hp is 0 */
+static void walker_dies(struct WalkMember *m)
+{
+    word_6ebe++;
+    if (m->frame < 0) {
+        word_7f74 = m->x;
+        word_7f76 = m->y;
+        if (m->item >= 0) {
+            int16_t kind = m->item;
+
+            kind = kind >= 0xc0 ? (int16_t)(kind - 0xc0) : (int16_t)(kind + 0x0b);
+            drop_thing((int16_t)(m->x + 8), m->y, kind);
+        }
+    }
+    m->frame++;
+    if (m->frame >= 7) {
+        m->hp = 0;
+        m->timer = 0;
+        return;
+    }
+    sprite_draw((int16_t)(m->x - scroll_x), (int16_t)(m->y - scroll_y), (uint16_t)(m->frame + 0x6c));
+}
+
+/* orig $009A20: a group that is to start: the type's bytes are set (the original tests the code at $F6C0, which is never 0: speeds 10, mode 0), the walkers are put at the start cell with their
+ * delays (they go up by the type's spacing), the first one shows up with a puff, they stand on the floor (mode 0 or 1 by the type's bit 9) or fall (2 or 3) and the group runs (state 1) */
+static void walker_group_start(struct WalkGroup *group, struct WalkMember *m)
+{
+    struct MonsterType *type = group->type;
+    int16_t count = (int16_t)type->count;
+    int16_t delay = 0;
+
+    type->limit_b = 10;
+    type->limit_c = 10;
+    type->mode = 0;
+    if (count - 1 < 0)
+        return;
+    for (int16_t k = 0; k < count; k++, m++) {
+        int16_t cell_x = (int16_t)((type->start >> 8) & 0xff);
+        int16_t cell_y = (int16_t)(type->start & 0xff);
+        int16_t rate = (int16_t)(type->fire & 0xf);
+        int16_t mode = 0;
+
+        m->x = (int16_t)((cell_x << 5) & 0xffe0);
+        m->y = (int16_t)((cell_y << 4) & 0xfff0);
+        m->frame = 0;
+        m->hp = -2;
+        m->timer = delay;
+        if (delay == 0)
+            monster_puff((struct MonsterPart *)m);
+        if (rate != 0)
+            m->fire_timer = (int16_t)((int16_t)(int8_t)(0x10 - rate) << 2);
+        if (walk_member_cell(m)[0x100] != 1)
+            mode = 2;
+        m->mode = (int16_t)(((type->flags >> 9) & 1) + mode);
+        m->vy = 2;
+        m->unused_12 = -1;
+        m->item = -1;
+        delay = (int16_t)(delay + type->spacing);
+    }
+    group->state--;
+    group->dropped = 0;
+}
+
+/* orig $009B24: a group that runs: each walker is looked at (not there yet, waiting for its puff: hp -2 and -3, dying: other negative, there: walker_step); when all are gone or dying the thing the group
+ * drops falls where the last one died; when they are all gone the group is free */
+static void walker_group_run(struct WalkGroup *group, struct WalkMember *m)
+{
+    struct MonsterType *type = group->type;
+    int16_t count = (int16_t)(uint8_t)type->count;
+
+    count_242 = 0;
+    word_6ebe = 0;
+    for (int16_t k = 0; k < count; k++, m++) {
+        if (m->hp < 0) {
+            if (m->hp == -2) {
+                if (--m->timer == 0)
+                    monster_puff((struct MonsterPart *)m);
+            } else if (m->hp == -3) {
+                if (--m->timer == 0) {
+                    m->hp = type->life;
+                    m->timer = (int16_t)(int8_t)(10 - type->limit_b);
+                }
+            } else {
+                walker_dies(m);
+            }
+        } else if (m->hp == 0) {
+            count_242++;
+        } else {
+            walker_step(type, m);
+        }
+    }
+    if ((int8_t)(count_242 + word_6ebe) == (int8_t)type->count) {
+        if (group->dropped == 0) {
+            if ((int16_t)type->item >= 0)
+                drop_thing((int16_t)(word_7f74 + 8), word_7f76, type->item);
+            group->dropped = 1;
+        }
+    }
+    if ((int8_t)count_242 >= (int8_t)type->count)
+        group->state = 0;
+}
+
+/* orig $009AE6: the ten groups of walkers (records of 18 bytes at $12A0, each with its walkers at asset_directory + 240 a record): the ones that run are walker_group_run, the others that are
+ * not free are started (walker_group_start) */
+void update_records_12a0(void)
+{
+    struct WalkGroup *group = (struct WalkGroup *)records_12a0;
+    uint8_t *block = asset_directory;
+
+    flag_244 = -1;
+    for (int i = 0; i < 10; i++, group++, block += 240) {
+        temp_bb6 = block;
+        if (group->state == 0)
+            continue;
+        if (group->state == 1)
+            walker_group_run(group, (struct WalkMember *)block);
+        else
+            walker_group_start(group, (struct WalkMember *)block);
     }
 }
 
@@ -6747,7 +7813,7 @@ void remember_visited_spot(void)
  * the table at ptr_0cbe (4 bytes: a state, a number).  A negative or 0 state does nothing; otherwise the creature types that
  * have byte 13 set to 1 are switched off (status 0) and the routine the state names in table_18714 is called with the entry:
  * 1 is take_record_to_18740, 2 is take_record_to_199ac, 3 is finish_record_1895a, 6 is remember_visited_spot (the entries
- * 4, $8898, is not written; 7 to 10, $17E0A to $17E16, start a thing on its path: start_record_path in game_h.c) */
+ * 4, $8898, is take_record_to_12a0; 7 to 10, $17E0A to $17E16, start a thing on its path: start_record_path in game_h.c) */
 void cell_entry_runs(const uint8_t *cell)
 {
     run_cell_entry((int16_t)((uint8_t)*cell - 3));
@@ -6777,6 +7843,8 @@ void run_cell_entry(int16_t index)
         finish_record_1895a(entry);
     else if (routine == 0x88DC)
         take_record_to_1354(entry);
+    else if (routine == 0x8898)
+        take_record_to_12a0(entry);
     else if (routine == 0x187B8)
         remember_visited_spot();
     else if (routine >= 0x17E0A && routine <= 0x17E16)
@@ -10281,12 +11349,12 @@ static void loading_level_screen(void)
     show_text_screen((const char *)level_text);
 }
 
-/* the level file's monster types (struct MonsterType, 22 bytes, fifty of them from ptr_0ce6): the words (flags, drop and start cell) are made the machine's own */
+/* the level file's monster types (struct MonsterType, 22 bytes, fifty of them from ptr_0ce6 for the flying groups and fifty on for the walkers): the words (flags, drop and start cell) are made the machine's own */
 static void monster_types_from_disk(void)
 {
     struct MonsterType *type = (struct MonsterType *)ptr_0ce6;
 
-    for (int i = 0; i < 50; i++, type++) {
+    for (int i = 0; i < 100; i++, type++) {   /* (the second fifty are the groups of walkers') */
         file_words(&type->flags, 1);
         file_words(&type->item, 2);
     }
@@ -10335,6 +11403,12 @@ void level_tables_quickload(void)
             file_words(part, 12);
             file_words(&part->target_x, 4);
         }
+    }
+    for (int i = 0; i < 10; i++) {   /* the walkers of the groups that run (struct WalkMember, ten to a group, at asset_directory + 240 a group): twelve words each */
+        if (records_12a0[i].state == 0)
+            continue;
+        for (int k = 0; k < 10; k++)
+            file_words(&((struct WalkMember *)(asset_directory + 240 * i))[k], 12);
     }
     for (int i = 0; i < 253; i++)
         file_words(&ptr_0cbe[i], 2);

@@ -170,22 +170,54 @@ struct __attribute__((packed)) Unit {
 };
 _Static_assert(sizeof(struct Unit) == 24, "unit");
 
-/* a member of a walking group (the records of 18 bytes at $12A0 each have members of 24 bytes; only the words the helper routines use are named) */
+/* a member of a walking group (the records of 18 bytes at $12A0, struct WalkGroup, each have ten members of 24 bytes at asset_directory + 240 a record: the first 24 bytes of a struct MonsterPart) */
 struct WalkMember {
     int16_t x;               /* +0 */
     int16_t y;               /* +2 */
-    int16_t frame;           /* +4 */
-    uint16_t unused_6;
-    uint16_t unused_8;
-    uint16_t mode;           /* +10 */
-    uint16_t unused_12;
-    uint16_t unused_14;
-    uint16_t unused_16;
-    int16_t vy;              /* +18 */
-    uint16_t unused_20;
-    uint16_t unused_22;
+    int16_t frame;           /* +4 the step of its picture (negative: just hit, then counts up while it dies) */
+    int16_t timer;           /* +6 */
+    int16_t hp;              /* +8 0 free, -2 and -3 about to show up, other negative dying */
+    int16_t mode;            /* +10 which movement it is in (the table at $99DC) */
+    int16_t unused_12;       /* +12 */
+    int16_t fire_timer;      /* +14 */
+    int16_t item;            /* +16 the kind of object it carries (negative none) */
+    int16_t vy;              /* +18 the step of its jump or fall (the table at $A358) */
+    int16_t item_x;          /* +20 where the object it carries is drawn */
+    int16_t item_y;          /* +22 */
 };
 _Static_assert(sizeof(struct WalkMember) == 24, "walk member");
+
+/* a group of walkers (18 bytes, ten of them at $12A0): 0 free, 1 running, 2 to start; the type of its monsters (a struct MonsterType of the level's file, 50 on from the ones of the other groups) */
+struct WalkGroup {
+    uint16_t state;          /* +0 */
+    struct MonsterType *type;   /* +2 */
+    uint8_t unused_6[10];    /* +6 */
+    uint8_t dropped;         /* +16 the group has dropped what it carries */
+    uint8_t unused_17;
+};
+_Static_assert(sizeof(struct WalkGroup) == 18, "walk group");
+
+/* the path planner of the walkers ($A492): a place that a walker could come to, where it is ($4BE, $4C0 are what it cost and the first step of the way) */
+struct PlanItem {
+    int16_t x;
+    int16_t y;
+    int16_t cost;
+    int16_t dir;
+};
+
+struct Planner {
+    int16_t cost;            /* +0 $4BE what the place being looked at cost to come to */
+    int16_t dir;             /* +2 $4C0 the first step of the way to it */
+    int16_t result;          /* +4 $4C2 the first step of the best way to the player (negative none) */
+    uint16_t best;           /* +6 $4C4 what that way costs (65535 none) */
+    int16_t flag;            /* +8 $4C6 0 the player is the target, 1 a place of the level's list, 2 the things in the list at $121C */
+    int16_t queued;          /* +10 $4C8 how many places wait in plan_queue */
+    int16_t label;           /* +12 $4CA the first step a jump has */
+    int16_t jump;            /* +14 $4CC what a jump cost */
+    int16_t visited;         /* +16 $4CE how many places plan_list has */
+    struct PlanItem pending[2];   /* +18 $4D0 the place a walk to the right ends at, +26 $4D8 to the left */
+};
+_Static_assert(sizeof(struct Planner) == 34, "planner");
 
 struct UnitMember {
     int16_t x;            /* +0 */
