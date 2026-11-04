@@ -605,7 +605,8 @@ unit2_words       0x0000ed30  uint16_t %s[3]
 unit3_words       0x0000f016  uint16_t %s[3]
 unit4_words       0x0000f2fc  uint16_t %s[3]
 word_4a0          0x000004a0  uint16_t %s     how many of the cells that crumble ($1A30C) are going
-word_1218         0x00001218  uint16_t %s     how many of the ten falling things ($11B4) are going
+word_1218         0x00001218  uint16_t %s     how many of the ten falling things ($11B4) are going (world 2: archers)
+word_1034         0x00001034  uint16_t %s     world 2: how many of the sixteen things the archers threw (table_ed0) are going
 code_17cc0        0x00017cc0  uint16_t %s     the first word of the routine at $17CC0 (rts: off, nop: the cells crumble)
 table death_steps  0x00000096 uint16_t 14  the seven pieces of the player's death: the steps (x, y) each starts with
 death_particles   0x000000b2  int16_t %s[28]  ... and where each is (x, y) and its steps (dx, dy), on the screen

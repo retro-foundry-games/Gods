@@ -4,6 +4,10 @@
 #include "sound.h"
 
 static void update_falling_slots(void);
+static void update_archers(void);
+static void update_thrown(void);
+static void archer_thing(struct Slot8 *record, int16_t x, int16_t y, int16_t glyph);
+static void aimed_shot(int16_t x, int16_t y, int16_t speed, int16_t kind);
 static void update_crumbles(void);
 
 /* orig $00363A: this frame's input: the joystick byte and the button bits are kept for the game; when the input is being recorded
@@ -472,8 +476,8 @@ static void game_frame_tail(void)
     if (flag_23a == 0) {
         do_nothing_b();
         step_190f2();
-        do_nothing_b();
-        do_nothing_b();
+        update_thrown();
+        update_archers();
         update_records_12a0();
         game_nothing();
         mark_player_cells();
@@ -4321,7 +4325,9 @@ static void record_update(struct Slot8 *record, uint8_t *flag, int16_t counter)
                 draw_thing_300(x, y);
             else if (glyph == 287 || glyph == 220)
                 draw_thing_flyer(x, y, glyph);
-            /* any other glyph: the original goes on at $4B14, which did not run */
+            else if (glyph == 285)
+                archer_thing(record, x, y, glyph);
+            /* any other glyph: the original goes on at $4B14 ($D664 for 266, $DAA4), which did not run */
         } else if (kind > 4) {
             draw_kind5(x, y, glyph);
         } else {
@@ -4605,8 +4611,10 @@ static void step_717e(const struct CreatureType *type, struct Creature *creature
     if (creature->timer != 0)
         return;
     creature->timer = (int16_t)((int16_t)(int8_t)(16 - type->speed) << 2);
-    if (type->flag_18 != 0)
-        return;   /* goes on at $7154 */
+    if (type->flag_18 != 0) {   /* $7154: a shot aimed at the player, from 16 to the right, of the speed half of the type's plus 2 (the kind 1) */
+        aimed_shot((int16_t)(creature->x + 0x10), creature->y, (int16_t)(((int16_t)(int8_t)type->speed >> 1) + 2), 1);
+        return;
+    }
 
     int16_t speed = (int16_t)(((int16_t)(int8_t)type->speed >> 2) + 4);
 
@@ -4951,6 +4959,282 @@ static void update_falling_slots(void)
     }
     if (word_1218 == 0)
         code_e3a2 = 0x4E75;
+}
+
+/* ======== the archers of world 2 ($DDD8, $DDF6, $DE56, $DFC8, $DFE0, $E006, $E0CE) and what they throw ($E144) ======== */
+
+/* orig $005AAC (one add): the packed decimal `packed` (two digits) is added to the score, and the score is to be drawn again */
+static void score_add_packed(uint8_t packed)
+{
+    int x = 0;
+    uint8_t b1 = abcd((uint8_t)score_words[1], packed, &x);
+    uint8_t b2 = abcd((uint8_t)score_words[2], 0, &x);
+    uint8_t b3 = abcd((uint8_t)score_words[3], 0, &x);
+
+    score_words[1] = (uint16_t)((score_words[1] & 0xFF00) | b1);
+    score_words[2] = (uint16_t)((score_words[2] & 0xFF00) | b2);
+    score_words[3] = (uint16_t)((score_words[3] & 0xFF00) | b3);
+    flag_2d0 = 1;
+}
+
+/* orig $00E2CC: the cell of the second half of the map at (x, y) (the cells are 32 wide and 16 high) */
+static const uint8_t *map_cell_at(int16_t x, int16_t y)
+{
+    return ptr_0b86 + 0x2000 + (int16_t)((int16_t)(x & 0xFFE0) >> 5) + (int16_t)((int16_t)(y & 0xFFF0) << 3);
+}
+
+/* orig $004B36 (a thing of kind 4 with the glyph 285, the archer in the map; $DDD8 and $DDF6): in world 2 the thing is taken from the map and, when one of the ten
+ * records of slots_11b4 is free, an archer is made there (three to the right of the thing, 24 above it: waiting, state -4, 60 hit points, a timer of 40 and up to 15 more), and
+ * the routine at $DE54 is switched on; in world 1 the thing is drawn as a sprite; in the others it is taken from the map */
+static void archer_thing(struct Slot8 *record, int16_t x, int16_t y, int16_t glyph)
+{
+    if ((int16_t)param_index < 2) {
+        sprite_draw(x, (int16_t)(y - scroll_y), (uint16_t)glyph);
+        return;
+    }
+    if ((int16_t)param_index == 2) {
+        for (int i = 0; i < 10; i++) {
+            int16_t *a = &slots_11b4[i * 5];
+
+            if (a[0] < 0) {
+                a[0] = (int16_t)(x + scroll_x + 3);
+                a[1] = (int16_t)(y - 0x18);
+                a[2] = -4;
+                a[3] = 0x3C;
+                a[4] = 0x28;
+                a[4] = (int16_t)(a[4] + (random_word() & 0xF));
+                code_de54 = 0x4E71;
+                break;
+            }
+        }
+    }
+    record->w[2] = -1;
+    record->w[3] = 0;
+}
+
+/* orig $00DFE0: the body of the archer (the sprite 285) under its head */
+static void archer_body(const int16_t *a)
+{
+    sprite_draw((int16_t)(a[0] - scroll_x - 3), (int16_t)(a[1] - scroll_y + 0x18), 0x11D);
+}
+
+/* orig $00E0CE: the archer's death throws three or four things (records of table_ed0, 16 words each... eight words: x, y, state, hit points, speed in x, speed in y, falling); returns 0 when there is no
+ * free record for one of them (the original returns from the whole of $DE56 then) */
+static int archer_throws(const int16_t *a)
+{
+    int count = 2 + (random_word() & 1);
+
+    for (int n = 0; n <= count; n++) {
+        int16_t *t = table_ed0;
+        int i;
+
+        for (i = 0; i < 16; i++, t += 8)
+            if (t[2] < 0)
+                break;
+        if (i == 16)
+            return 0;
+        t[0] = a[0];
+        t[1] = (int16_t)(a[1] + 0x18);
+        t[5] = (int16_t)(-(random_word() & 3) - 2);
+        uint16_t random = random_word();
+        int16_t speed = (int16_t)(random & 3);
+
+        t[4] = (int16_t)random < 0 ? (int16_t)-speed : speed;
+        t[3] = 0x2B;
+        t[2] = 0;
+        t[6] = 1;
+        code_e142 = 0x4E71;
+    }
+    return 1;
+}
+
+/* orig $00DE56: the ten archers (slots_11b4: x, y, state, hit points, timer).  The state counts -4 (waiting for the screen), -3 to -1 (rising), 0 to 4 (standing: 0 and 1 shooting to the
+ * left, 2 under it, 3 and 4 shooting to the right); a negative hit points count is dying (the picture 108 + the state, the things are thrown at 4, gone at 7).  Each is hit as a box
+ * of 24 by 24 (8 by 8 while it rises); when killed it drops the thing 45 and 25 points are added */
+static void update_archers(void)
+{
+    if (code_de54 != 0x4E71)
+        return;
+    word_1218 = 0;
+    for (int i = 0; i < 10; i++) {
+        int16_t *a = &slots_11b4[i * 5];
+
+        if (a[0] < 0)
+            continue;
+        word_1218++;
+        if (a[3] < 0) {   /* $DF78: dying */
+            int16_t sx = (int16_t)(a[0] - 4 - scroll_x);
+            int16_t sy = (int16_t)(a[1] - 8 - scroll_y);
+
+            sprite_draw(sx, sy, (uint16_t)(a[2] + 0x6C));
+            sprite_draw(sx, (int16_t)(sy + 0x18), (uint16_t)(a[2] + 0x6C));
+            a[2]++;
+            if (a[2] == 4) {
+                if (!archer_throws(a))
+                    return;
+            } else if (a[2] >= 7) {
+                a[0] = -1;
+            }
+            continue;
+        }
+
+        int standing = 1;   /* the AI of $DE7A runs */
+
+        if (a[2] < 0) {   /* $E006 */
+            standing = 0;
+            if (a[2] != -4) {
+                if (frame_toggle != 0) {
+                    a[2]++;
+                    if (a[2] == 0)
+                        standing = 1;
+                }
+            } else {
+                int16_t sx = (int16_t)(a[0] - scroll_x);
+                int16_t sy = (int16_t)(a[1] - scroll_y);
+
+                if (sx > 0x140 || sx < -0x18 || sy < 8 || sy > 0xB0) {
+                    a[4] = 0x27;
+                } else {
+                    a[4]--;
+                    if (a[4] < 0) {
+                        a[4] = 0x27;
+                        a[2]++;
+                    }
+                }
+            }
+            if (!standing) {   /* $E05E */
+                word_39c = 8;
+                word_39e = 8;
+                a[3] = check_hit_and_walls((int16_t)(a[0] + 8), (int16_t)(a[1] + 0xF), a[3]);
+                int16_t sx = (int16_t)(a[0] - scroll_x);
+                int16_t sy = (int16_t)(a[1] - scroll_y);
+
+                if (a[2] >= -1)
+                    sprite_draw(sx, sy, (uint16_t)(a[2] + 0x202));
+                else
+                    glyph_draw(sx, sy, (uint16_t)(a[2] + 0x202));
+                archer_body(a);
+            }
+        }
+        if (standing) {   /* $DE7A */
+            if (timer_306 == 0) {
+                if (a[4] > 0x28) {
+                    a[4]--;
+                } else {
+                    int16_t px = (int16_t)(player_x + 0x20);
+
+                    if (px < a[0]) {
+                        a[2] = 0;
+                        a[4]--;
+                        if (a[4] < 0) {
+                            a[4] = 0x2A;
+                            word_2e4 = -5;
+                            enemy_shot((int16_t)(a[0] - 6), (int16_t)(a[1] + 6), 0);
+                            a[2] = 1;
+                        }
+                    } else if ((int16_t)(px - 0x38) < a[0]) {
+                        a[2] = 2;
+                    } else {
+                        a[2] = 3;
+                        a[4]--;
+                        if (a[4] < 0) {
+                            a[4] = 0x2A;
+                            word_2e4 = 5;
+                            enemy_shot((int16_t)(a[0] + 0x18), (int16_t)(a[1] + 6), 1);
+                            a[2] = 4;
+                        }
+                    }
+                }
+            }
+            word_39c = 0x18;
+            word_39e = 0x18;
+            a[3] = check_hit_and_walls(a[0], a[1], a[3]);
+            sprite_draw((int16_t)(a[0] - scroll_x), (int16_t)(a[1] - scroll_y), (uint16_t)(a[2] + 0x202));
+            archer_body(a);
+        }
+        if (a[3] < 0) {   /* $DF52: killed: it drops a thing and its points */
+            a[2] = 0;
+            drop_thing((int16_t)(a[0] + 4), (int16_t)(a[1] + 0x18), 0x2D);
+            score_add_packed(0x25);
+        }
+    }
+    if (word_1218 == 0)
+        code_de54 = 0x4E75;
+}
+
+/* orig $00E144: the things the archers throw (table_ed0, sixteen records of eight words: x, y, state, hit points, speed in x, speed in y, falling): one that falls goes on by its speeds (the speed
+ * in y goes up to 8) until the cell under it is ground, then it walks and turns round at an edge or a wall; it is hit as a box of 24 by 16, and drawn as the glyph 533 to 535 by the state
+ * (3 more when it goes right); killed it counts 10 points and then shows the picture 108 + the state (up to 6) */
+static void update_thrown(void)
+{
+    if (code_e142 != 0x4E71)
+        return;
+    word_1034 = 0;
+    for (int i = 0; i < 16; i++) {
+        int16_t *t = &table_ed0[i * 8];
+
+        if (t[2] < 0)
+            continue;
+        word_1034++;
+        if (t[3] < 0) {   /* $E25E */
+            sprite_draw((int16_t)(t[0] - scroll_x - 4), (int16_t)(t[1] - scroll_y - 0x11), (uint16_t)(t[2] + 0x6C));
+            t[2]++;
+            if (t[2] >= 7)
+                t[2] = -1;
+            continue;
+        }
+        if (t[6] != 0) {   /* $E2E6: falls */
+            int16_t x = (int16_t)(t[0] + t[4]);
+            int16_t y = (int16_t)(t[1] + t[5]);
+
+            t[5]++;
+            if (t[5] > 8)
+                t[5]--;
+            t[0] = x;
+            t[1] = y;
+            const uint8_t *cell = map_cell_at((int16_t)(x + 0xC), (int16_t)(y + 0xF));
+
+            if (cell[-0x80] != 1 && cell[0] == 1) {
+                t[1] = (int16_t)((t[1] & 0xFFF0) + 1);
+                t[6] = 0;
+                t[5] = 0;
+                t[4] = t[4] < 0 ? -2 : 2;
+            }
+        } else if (timer_306 == 0) {   /* $E29E: walks */
+            int16_t speed = t[4];
+
+            t[0] = (int16_t)(t[0] + speed);
+
+            const uint8_t *cell = map_cell_at((int16_t)(speed >= 0 ? t[0] + 0x18 : t[0]), (int16_t)(t[1] + 4));
+
+            if (cell[0] == 1 || cell[0x80] != 1)
+                t[4] = (int16_t)-t[4];
+        }
+        word_39c = 0x18;
+        word_39e = 0x10;
+        t[3] = check_hit_and_walls(t[0], t[1], t[3]);
+
+        static const uint16_t glyphs_e22c[4] = { 0x215, 0x216, 0x217, 0x216 };
+        int16_t glyph = (int16_t)glyphs_e22c[t[2] & 3];
+
+        if (t[4] >= 0)
+            glyph += 3;
+        int16_t sx = (int16_t)(t[0] - scroll_x);
+        int16_t sy = (int16_t)(t[1] - scroll_y);
+
+        if (t[1] >= 0x400 || sx < -250 || sx > 0x23A || sy < -120 || sy > 0x138) {
+            t[2] = -1;
+            continue;
+        }
+        sprite_draw(sx, sy, (uint16_t)glyph);
+        if (t[3] < 0) {
+            score_add_packed(0x10);
+            t[2] = 0;
+        }
+        t[2] = (int16_t)((t[2] + 1) & 3);
+    }
+    if (word_1034 == 0)
+        code_e142 = 0x4E75;
 }
 
 /* orig $0183BC: a bolt from (x, y) at the player (the place 8 right and 6 below player_x, player_y), `speed` steps a frame and the kind `kind` (aimed_bolt_start) */
@@ -11070,7 +11354,7 @@ void draw_start_frame(void)
     fn_16aee_c();
     do_nothing_b();
     step_190f2();
-    do_nothing_b();
+    update_archers();   /* $FD0C (this routine, the frame of a change of the screen, does not call the routine at $E142) */
     update_records_12a0();
     game_nothing();
     mark_player_cells();

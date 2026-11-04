@@ -545,7 +545,8 @@ extern uint16_t unit2_words[3];   /* $0ED30 */
 extern uint16_t unit3_words[3];   /* $0F016 */
 extern uint16_t unit4_words[3];   /* $0F2FC */
 extern uint16_t word_4a0;   /* $004A0  how many of the cells that crumble ($1A30C) are going */
-extern uint16_t word_1218;   /* $01218  how many of the ten falling things ($11B4) are going */
+extern uint16_t word_1218;   /* $01218  how many of the ten falling things ($11B4) are going (world 2: archers) */
+extern uint16_t word_1034;   /* $01034  world 2: how many of the sixteen things the archers threw (table_ed0) are going */
 extern uint16_t code_17cc0;   /* $17CC0  the first word of the routine at $17CC0 (rts: off, nop: the cells crumble) */
 extern int16_t death_particles[28];   /* $000B2  ... and where each is (x, y) and its steps (dx, dy), on the screen */
 extern uint16_t words_a9e[4];   /* $00A9E  the first four words of the list of message lines ($16AC8 sets them to 0, 16, 32, 48) */

@@ -612,6 +612,7 @@ _unit3_words = 0xf016;
 _unit4_words = 0xf2fc;
 _word_4a0 = 0x4a0;
 _word_1218 = 0x1218;
+_word_1034 = 0x1034;
 _code_17cc0 = 0x17cc0;
 _death_particles = 0xb2;
 _words_a9e = 0xa9e;
