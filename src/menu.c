@@ -164,7 +164,7 @@ void load_background(void)
         return;
     background = memory_base + 256;
     load_unpacked((const char *)background_name, background);
-    host_cpu_frames(12);   /* the original's read of the file from the disk and its unpacking take about 12 frames before the colours fade */
+    host_disk_wait();   /* (the original's read of the file from the disk and its unpacking take what its drive takes before the colours fade) */
     fade_out(1, 0xffff);
     display_reset();
     background_loaded = 1;
@@ -357,15 +357,15 @@ void text_draw_centered_other(const char *text)
     screen_buffer = saved;
 }
 
-/* orig $01CF64: wait up to frames - 1 frames, or until the first button is down */
-void wait_frames_or_button(uint16_t frames)
+/* orig $01CF64: wait up to frames - 1 frames, or until the first button is down (1 then, 0 when the time ran out) */
+int wait_frames_or_button(uint16_t frames)
 {
     for (;;) {
         if (--frames == 0)
-            return;
+            return 0;
         wait_vblank();
         if (button_bits[0] & 1)
-            return;
+            return 1;
     }
 }
 
@@ -446,6 +446,7 @@ void password_screen(void)
         password_grid_draw();
         draw_line_text();
         cursor_draw();
+        host_cpu_frames(3);   /* (the original's copy of the background and its drawing of the grid, the line and the cursor take about 3 frames, then it reads the keys and the stick, and flips: a pass is 4 with the flip) */
 
         uint16_t key = next_request();
         int16_t pick = -1;   /* the character the program numbers, to add to the line, or -1 */
@@ -521,7 +522,6 @@ void password_screen(void)
             line[length++] = (uint8_t)pick;
             line[length] = 0;
         }
-        host_cpu_frames(3);   /* (the original's copy of the background and its drawing of the grid, the line and the cursor take about 3 frames: a pass is 4 with the flip) */
         screens_flip();
     }
 

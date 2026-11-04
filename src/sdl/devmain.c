@@ -161,6 +161,11 @@ static int lockstep_commands(const uint32_t *pixels, int phase)
 
             host_flips_offset = a;
             host_flip_sync = 1;
+        } else if (sscanf(line, "diskdone %d", &a) == 1) {   /* `diskdone N`: the original has finished N reads of the background (host_disk_wait) */
+            extern volatile int host_disk_sync, host_disk_done;
+
+            host_disk_done = a;
+            host_disk_sync = 1;
         } else if (sscanf(line, "flips %d", &a) == 1) {   /* `flips N`: the original has flipped N times since the sync began */
             extern volatile unsigned host_flips_orig;
 

@@ -59,6 +59,15 @@ static inline void host_fade_lag(int on)
     (void)on;
 }
 
+static inline void host_disk_extra(unsigned frames)
+{
+    (void)frames;
+}
+
+static inline void host_disk_wait(void)
+{
+}
+
 static inline void host_flip_late(int on)
 {
     (void)on;

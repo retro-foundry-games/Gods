@@ -159,6 +159,32 @@ void host_flip_wait(void)
     flips_done++;
 }
 
+volatile int host_disk_sync, host_disk_done;
+static unsigned disk_extra;   /* frames that the next wait for the disk goes on for */
+
+void host_disk_extra(unsigned frames)
+{
+    disk_extra = frames;
+}   /* the lockstep tells how many of the original's reads of the background are done */
+
+/* the original's read of a file takes as long as its drive does: in the lockstep the port waits until the original has finished the read that began with its own, otherwise
+ * for about as many frames as it took in the one that was looked at */
+void host_disk_wait(void)
+{
+    extern void wait_vblank(void);
+
+    if (!host_disk_sync) {
+        host_cpu_frames(14);
+        return;
+    }
+    int done = host_disk_done;
+
+    while (host_disk_done == done)
+        wait_vblank();
+    host_cpu_frames(disk_extra);
+    disk_extra = 0;
+}
+
 void host_cpu_frames(unsigned frames)
 {
     extern void wait_vblank(void);

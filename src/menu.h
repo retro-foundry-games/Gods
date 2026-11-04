@@ -59,6 +59,6 @@ void wait_request(int16_t frames);                                       /* orig
 void title_draw(void);                                                   /* orig $006754 */
 
 void text_draw_centered_other(const char *text);                      /* orig $012D5C */
-void wait_frames_or_button(uint16_t frames);                             /* orig $01CF64 */
+int wait_frames_or_button(uint16_t frames);                             /* orig $01CF64 */
 
 #endif

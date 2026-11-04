@@ -326,7 +326,8 @@ static void game_over(void)
     stop_game_sounds();
     for (int i = 0; i < 151; i++)
         wait_vblank();
-    wait_frames_or_button(350);
+    if (wait_frames_or_button(350))
+        host_disk_extra(1);   /* (the fade after a button shows a frame later than the one after the time ran out: what the frame's phase in the original makes of it) */
     if (demo_mode != 0)
         host_missing_routine(0x36AA);
     has_continue = 0;
