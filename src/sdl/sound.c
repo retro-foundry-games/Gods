@@ -285,32 +285,57 @@ void play_sound(uint16_t id, uint16_t priority)
     pthread_mutex_lock(&lock);
     flags = record->flags;
     count = (flags & 0x7f) + 1;
-    if (flags & 0x80)   /* a sound that is not started again while it plays */
+    if (flags & 0x80) {   /* a sound that is not started again while it plays; its priority is 126 whatever the call says ($1FB1A) */
         for (int i = 0; i < VOICES; i++)
             if (sound_voice[i].active && sound_voice[i].id == id)
                 goto done;
+        priority = 0x7e;
+    }
     take_variation_randoms(record);
-    for (unsigned k = 0; k < count && k < 4; k++) {
-        unsigned number = record->track[k];
-        int chosen = -1;
+    {
+        /* orig $01FBAC..: the tracks are given to the voices, the first pass to the free ones (their busy byte 0) in the order of the voices, one track each until all have one, the
+         * second to the busy ones whose priority is not higher than the sound's (a priority 0 takes any), also in order; when the tracks do not all find a voice nothing is started.  The voices that
+         * were given a track in the first pass are still free for the second (their busy byte is set when all is done) */
+        unsigned assigned[VOICES] = { 0 };
+        unsigned busy[VOICES];
+        unsigned last = count - 1 < 3 ? count - 1 : 3;
+        unsigned at = 0;
+        int placed = 0;
 
-        if (number == 0)
-            continue;
-        if (number == 0x16) {   /* the silent track: the voice stops */
-            for (int i = 0; i < VOICES; i++) {
+        for (int i = 0; i < VOICES; i++)
+            busy[i] = sound_voice[i].active ? sound_voice[i].priority : 0;
+        for (int i = 0; i < VOICES && !placed; i++) {
+            if (busy[i] != 0)
+                continue;
+            assigned[i] = record->track[at];
+            if (at == last)
+                placed = 1;
+            else
+                at++;
+        }
+        for (int i = 0; i < VOICES && !placed; i++) {
+            if (busy[i] == 0 || (priority != 0 && priority < busy[i]))
+                continue;
+            assigned[i] = record->track[at];
+            if (at == last)
+                placed = 1;
+            else
+                at++;
+        }
+        if (!placed)
+            goto done;
+        for (int i = 0; i < VOICES; i++) {
+            unsigned number = assigned[i];
+
+            if (number == 0)
+                continue;
+            if (number == 0x16) {   /* the silent track: the voice stops */
                 sound_voice[i].active = 0;
                 sound_voice[i].play_volume = 0;
+                continue;
             }
-            continue;
+            start_voice(&sound_voice[i], number, id, priority);
         }
-        for (int i = 0; i < VOICES && chosen < 0; i++)
-            if (!sound_voice[i].active)
-                chosen = i;
-        for (int i = 0; i < VOICES && chosen < 0; i++)
-            if (sound_voice[i].priority <= priority)
-                chosen = i;
-        if (chosen >= 0)
-            start_voice(&sound_voice[chosen], number, id, priority);
     }
 done:
     sync_busy();
