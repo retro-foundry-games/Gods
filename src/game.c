@@ -5925,6 +5925,22 @@ static void monster_run(struct Monster *rec, struct MonsterPart *block)
         rec->state = 0;
 }
 
+/* orig $0088DC (the entry 5 of the table at $18714): the entry `a0` (its word +2 numbers a monster type of the level's file, 22 bytes each from ptr_0ce6) is taken out of use (its first word
+ * -1) and the first free one of the ten monster records is to start (state 2) with that type; when none is free that is all */
+void take_record_to_1354(struct EntryRef *a0)
+{
+    struct MonsterType *type = (struct MonsterType *)(ptr_0ce6 + (int16_t)a0->number * 22);
+
+    a0->state = 0xFFFF;
+    for (int i = 0; i < 10; i++) {
+        if (records_1354[i].state == 0) {
+            records_1354[i].state = 2;
+            records_1354[i].type = type;
+            return;
+        }
+    }
+}
+
 /* orig $008A54: the ten records of 428 bytes at $1354 (struct Monster), with blocks of 400 bytes (ten struct MonsterPart) at ptr_0cee: a record that is free (state 0) is passed by, one
  * that runs (1) is monster_run, one to start (any other) monster_start; value_1296 is set to $121C first (the list monster_pickup looks at) */
 void update_records_1354(void)
@@ -6635,7 +6651,7 @@ void remember_visited_spot(void)
  * the table at ptr_0cbe (4 bytes: a state, a number).  A negative or 0 state does nothing; otherwise the creature types that
  * have byte 13 set to 1 are switched off (status 0) and the routine the state names in table_18714 is called with the entry:
  * 1 is take_record_to_18740, 2 is take_record_to_199ac, 3 is finish_record_1895a, 6 is remember_visited_spot (the entries
- * 4 and 5, $8898 and $88DC, are not written; 7 to 10, $17E0A to $17E16, start a thing on its path: start_record_path in game_h.c) */
+ * 4, $8898, is not written; 7 to 10, $17E0A to $17E16, start a thing on its path: start_record_path in game_h.c) */
 void cell_entry_runs(const uint8_t *cell)
 {
     run_cell_entry((int16_t)((uint8_t)*cell - 3));
@@ -6663,6 +6679,8 @@ void run_cell_entry(int16_t index)
         take_record_to_199ac(entry);
     else if (routine == 0x1895A)
         finish_record_1895a(entry);
+    else if (routine == 0x88DC)
+        take_record_to_1354(entry);
     else if (routine == 0x187B8)
         remember_visited_spot();
     else if (routine >= 0x17E0A && routine <= 0x17E16)

@@ -111,6 +111,7 @@ void draw_record_image(int16_t x, int16_t y, const struct PathDescription *a2); 
 struct SavedByte *mark_record_cells(int16_t x, int16_t y, const struct PathDescription *a2, struct SavedByte *list);   /* orig $018014 */
 void take_record_to_18740(struct EntryRef *a0);       /* orig $018900 */
 void take_record_to_199ac(struct EntryRef *a0);    /* orig $018890 */
+void take_record_to_1354(struct EntryRef *a0);      /* orig $0088DC */
 void stop_sound(uint16_t id);               /* orig $01FA8C */
 void mark_shot_cells(int16_t x, int16_t y, const int16_t *flag);                /* orig $016A08 */
 void spawn_debris_at_cell(int16_t x, int16_t y, const uint8_t *record, int16_t *flag);   /* orig $01695E */
