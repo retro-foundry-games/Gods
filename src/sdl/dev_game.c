@@ -102,8 +102,20 @@ static char region_path[512] = "";
 static unsigned test_save, test_load;   /* GODS_QUICKTEST=SAVE_ITERATION:LOAD_ITERATION: the F5 and the F9 at those iterations (a test without a window) */
 
 /* the top of an iteration `iteration` (1 is the first) */
+/* the weapons the lockstep gives (`weapon ITEM` on its protocol: the original has picked the same up): each is picked up at the top of the next iteration as the player picks up a weapon
+ * lying on the ground */
+volatile unsigned host_weapon_count;
+volatile int16_t host_weapon_items[32];
+static unsigned weapons_done;
+
 static void dev_iteration(unsigned iteration)
 {
+    while (weapons_done != host_weapon_count) {
+        int16_t item = host_weapon_items[weapons_done++ & 31];
+
+        word_2b2 = (uint16_t)item;
+        pick_up_object(item);
+    }
     if (test_save && iteration == test_save)
         host_quick_request = 1;
     if (test_load && iteration == test_load)

@@ -154,6 +154,12 @@ static int lockstep_commands(const uint32_t *pixels, int phase)
             printf("mem %d\n", b);
             fwrite(guest_ptr((uint32_t)a), 1, (size_t)b, stdout);
             fflush(stdout);
+        } else if (sscanf(line, "weapon %d", &a) == 1) {   /* `weapon ITEM`: the weapon ITEM is picked up at the top of the next iteration (dev_game.c) */
+            extern volatile unsigned host_weapon_count;
+            extern volatile int16_t host_weapon_items[32];
+
+            host_weapon_items[host_weapon_count & 31] = (int16_t)a;
+            host_weapon_count++;
         } else if (sscanf(line, "poke16 %x %x", (unsigned *)&a, (unsigned *)&b) == 2) {   /* `poke16 ADDR VALUE`: a word of the program's memory (the lockstep gives the per-frame counters the phase the original's loading gave them) */
             *(volatile uint16_t *)guest_ptr((uint32_t)a) = (uint16_t)b;
         } else if (sscanf(line, "tick %d", &a) == 1) {   /* `tick DELTA`: tick_count goes up by DELTA (the original's count includes the frames of its disk loading, which the port does not wait for; the lockstep driver gives the port the original's count) */
