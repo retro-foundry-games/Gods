@@ -57,7 +57,7 @@ do
     ami.write(0x1e420, "\x4e\xb9\x00\x01\xe6\x08")
     ami.write(0x1e2f8, "\x4e\x71\x4e\x71")
 end
--- the disk image has a trainer: at $39EE (the death is over) it has `tst.w $224` where the game has `subq.w #1,$224` (the lives: a death takes one, and the player comes back while it is not negative), so no life is ever lost.
+-- the game's instruction at $39EE (the death is over) is `subq.w #1,$224` (the lives: a death takes one, and the player comes back while it is not negative). Our disk dump (md5 ecacb3d4...) has `tst.w $224` there and so never loses a life; every other Gods disk 1 dump we compared ([a], [cr], [cr CSL], [t +n]) has the subq. That the subq is the original is an assumption (decided by the user), so the lockstep puts it back.
 -- The original's instruction is put back (the same length, the same flags for the branch after it); the port does what the game does
 ami.write(0x39ee, "\x53\x78")
 
