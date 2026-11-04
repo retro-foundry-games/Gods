@@ -27,6 +27,7 @@
 --   watch         (with continue=all) the first frame at which each of a few game variables differs between the two sides is logged (read from the port with `mem`)
 --   pause=F       pause both at emulator frame F (for lockstep_dump.py; the first difference does not stop the run when continue= is given)
 --   memcmp[=FROM] [memstop]  the record tables of the game (monster/walker groups, archers, things, bolts...) in the original and the port at every frame: logs the first frame each differs, with the words; memstop pauses there
+--   weapons=ITEM:N,ITEM:N  both sides pick up the weapon ITEM (0 knife .. 5 throwing star, 4 lightning bolt, ..., 10 mace) N times at the top of the first iteration (not a regular play)
 --   wordlog=F1-F2:ADDR,ADDR  (hex) the words at those addresses, original/port, at each emulator frame F1 to F2
 --   peeklog=F:ADDR,ADDR  (hex) the longs at those addresses, in the original and in the port, at emulator frame F
 --   peekrange=F1-F2:ADDR (hex) the byte at ADDR in the original and the port at each emulator frame F1 to F2
@@ -365,6 +366,25 @@ if args:find("%f[%w]itlog%f[%W]") then   -- itlog: the emulator frame of the top
         line[#line + 1] = ("%d(+%d)"):format(f, f - last)
         last = f
         if #line >= 20 then ami.log("iterations: " .. table.concat(line, " ")) line = {} end
+    end)
+end
+-- weapons=ITEM:N,ITEM:N (the number of the weapon in the weapons file: 0 knife, 1 time bomb, 2 fireball, 3 flame, 4 lightning bolt, 5 throwing star, 6 spear, 7 axe, 8 hunter, 9 magic axe, 10 mace; N pickups of
+-- each): at the top of the first iteration the original picks each up by its own routine ($015282, as the player does) and the port is told to do the same at the top of its next
+if args:match("weapons=") then
+    local list = {}
+    for item, n in args:match("weapons=([%d:,]+)"):gmatch("(%d+):(%d+)") do list[#list + 1] = { tonumber(item), tonumber(n) } end
+    local given = false
+    ami.hook(0x2c20, function()
+        if given or ami.frame() < 6 then return end
+        given = true
+        for _, w in ipairs(list) do
+            for _ = 1, w[2] do
+                ami.poke16(0x2b2, w[1])
+                ami.call(0x15282, { d2 = w[1] })
+                delayed:send(("weapon %d\n"):format(w[1]))
+            end
+        end
+        ami.log(("weapons given at frame %d"):format(ami.frame()))
     end)
 end
 lockstep.run {
