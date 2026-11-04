@@ -4588,6 +4588,20 @@ static int16_t move_72e8(struct Creature *creature)
     return picture;
 }
 
+/* orig $007A36 (the movement routine of a creature that stands where it is: the sprites 523 to 525, the table at $7A6E, 3 more when the type's direction is 0): the step of its animation goes on while it is not 0, and
+ * from 0 when the type's speed is not 0 and its timer is 1 (the step of $7AB0 is about to shoot) */
+static int16_t move_7a36(const struct CreatureType *type, struct Creature *creature)
+{
+    static const uint16_t pictures_7a6e[4] = { 0x20B, 0x20C, 0x20D, 0x20C };
+    int16_t picture = (int16_t)pictures_7a6e[creature->state & 3];
+
+    if (type->direction == 0)
+        picture += 3;
+    if (creature->state != 0 || (type->speed != 0 && creature->timer == 1))
+        creature->state = (int16_t)((creature->state + 1) & 3);
+    return picture;
+}
+
 /* orig $007B44 to $007BA8 as the movement routine of a creature's record (the one at +22): the new x (d0) and the picture (d2).  Only the
  * walkers ran.  The step of walk_pace_frame moves it 4 pixels in its direction (as the direction is before a turn) when its step
  * is at most 7 and frame_toggle is set; the x is worked out here for that reason */
@@ -4605,7 +4619,9 @@ static int call_move(const struct CreatureType *type, struct Creature *creature,
     }
     if (type->move_routine == 0x72E8)
         return move_72e8(creature);
-    /* goes on at the routine the record names ($7BB2, $7A0E, $7A36, ...): none of those ran */
+    if (type->move_routine == 0x7A36)
+        return move_7a36(type, creature);
+    /* goes on at the routine the record names ($7BB2, $7A0E, ...): none of those ran */
     return 0;
 }
 
@@ -4662,6 +4678,47 @@ static void step_717e(const struct CreatureType *type, struct Creature *creature
     }
 }
 
+/* orig $007AB0: the step routine of the creatures that stand and shoot (the movement routine $7A36): nothing is done while the type's speed is 0; the timer counts down, at 0 (in the world 4 the
+ * step of the animation goes on) it is set again from the speed and a shot goes out: one aimed at the player (the type's byte 18: from 22 to the right of the creature, or 6 to the left of it when its
+ * direction is not 1, 13 down, the kind 1, the speed half of the type's plus 2), or a plain one to the left (from 10 to the right, 15 down) or to the right (from 14, 15 down) with a speed that goes up
+ * with the type's speed (the world 4: 7 higher and the right one 4 more to the right) */
+static void step_7ab0(const struct CreatureType *type, struct Creature *creature)
+{
+    if (type->speed == 0)
+        return;
+    creature->timer--;
+    if (creature->timer != 0)
+        return;
+    if (param_index == 4)
+        creature->state++;
+    creature->timer = (int16_t)((int16_t)(int8_t)(16 - type->speed) << 2);
+    if (type->flag_18 != 0) {
+        int16_t x = (int16_t)(creature->x + 0x16);
+
+        if (creature->direction != 1)
+            x = (int16_t)(x - 0x1C);
+        aimed_shot(x, (int16_t)(creature->y + 0xD), (int16_t)(((int16_t)(int8_t)type->speed >> 1) + 2), 1);
+        return;
+    }
+
+    int16_t speed = (int16_t)(((int16_t)(int8_t)type->speed >> 2) + 4);
+    int16_t x, y = (int16_t)(creature->y + 0xF);
+
+    if (param_index == 4)
+        y -= 7;
+    if (creature->direction == 0) {
+        word_2e4 = (int16_t)-speed;
+        x = (int16_t)(creature->x + 0xA);
+        enemy_shot(x, y, 0);
+    } else {
+        word_2e4 = speed;
+        x = (int16_t)(creature->x + 0xE);
+        if (param_index == 4)
+            x += 4;
+        enemy_shot(x, y, 1);
+    }
+}
+
 /* the step routine of a creature's record (+30), called with the screen not frozen (timer_306 0): only $717E ran */
 static void step_74a6(const struct CreatureType *type, struct Creature *creature);
 
@@ -4671,6 +4728,8 @@ static void call_step(const struct CreatureType *type, struct Creature *creature
         step_717e(type, creature);
     else if (type->step_routine == 0x74A6)
         step_74a6(type, creature);
+    else if (type->step_routine == 0x7AB0)
+        step_7ab0(type, creature);
     /* goes on at $74A6, $7520, $7AB0, $7EE2, $80E8, $8158: none of those ran */
 }
 
