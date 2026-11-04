@@ -6288,7 +6288,7 @@ static void monster_dying(struct Monster *rec, const struct MonsterType *type, s
     sprite_draw((int16_t)(m->x - scroll_x), (int16_t)(m->y - scroll_y), (uint16_t)(m->frame + 0x5B));
 }
 
-/* orig $00891C: a record to start (state 2): the type's bytes are set (the original tests the code at $F6C0, which is never 0: speed limits 10, mode 0, wall push 15), the monsters are
+/* orig $00891C: a record to start (state 2): the type's bytes are set when the long at $F6C0 (the copylock's) is not 0, which is the failed lock (-DPIRATED: speed limits 10, mode 0, wall push 15; the type keeps its own when the lock has passed), the monsters are
  * put at the start cell one after the other (their timers add the type's delay), the first one shows up with a puff, and the record goes on (state 1); a record whose type has bit 8 picks
  * a monster by chance */
 static void monster_start(struct Monster *rec, struct MonsterPart *block)
@@ -6296,10 +6296,12 @@ static void monster_start(struct Monster *rec, struct MonsterPart *block)
     struct MonsterType *type = rec->type;
     struct MonsterPart *m = block;
 
+#ifdef PIRATED
     type->limit_b = 10;
     type->limit_c = 10;
     type->mode = 0;
     type->wall = 0x0F;
+#endif
 
     int16_t remaining = (int16_t)(type->count - 1);
 
@@ -7411,7 +7413,7 @@ static void walker_dies(struct WalkMember *m)
     sprite_draw((int16_t)(m->x - scroll_x), (int16_t)(m->y - scroll_y), (uint16_t)(m->frame + 0x6c));
 }
 
-/* orig $009A20: a group that is to start: the type's bytes are set (the original tests the code at $F6C0, which is never 0: speeds 10, mode 0), the walkers are put at the start cell with their
+/* orig $009A20: a group that is to start: the type's bytes are set when the long at $F6C0 (the copylock's) is not 0, which is the failed lock (-DPIRATED: speeds 10, mode 0; the type keeps its own when the lock has passed), the walkers are put at the start cell with their
  * delays (they go up by the type's spacing), the first one shows up with a puff, they stand on the floor (mode 0 or 1 by the type's bit 9) or fall (2 or 3) and the group runs (state 1) */
 static void walker_group_start(struct WalkGroup *group, struct WalkMember *m)
 {
@@ -7419,9 +7421,11 @@ static void walker_group_start(struct WalkGroup *group, struct WalkMember *m)
     int16_t count = (int16_t)type->count;
     int16_t delay = 0;
 
+#ifdef PIRATED
     type->limit_b = 10;
     type->limit_c = 10;
     type->mode = 0;
+#endif
     if (count - 1 < 0)
         return;
     for (int16_t k = 0; k < count; k++, m++) {
