@@ -18,6 +18,9 @@
 --   level=N       the original starts from gods-levelN-1m.state and the port begins level N (the game's levels have worlds: WORLD ONE COMPLETED is in the middle of level 1) (iter=N: the iteration of the game loop the saved state is at; world 2: 124)
 --   break=ADDR    pause at the end of the frame in which the original reaches the address (hex, several with commas; with --control PATH the sockets can then look at both sides)
 --   ram=PATH      (with state=ABSOLUTE.state) the port begins from that chip RAM of the original (gods_ramdump.lua; gods-sdl-dev --quickload) instead of Begin Quest; the original starts from the state
+--                 with a PATH of f5-K.port (the port's own memory, saved by F5) the port begins exactly as it was, not from the original's RAM: state=f5-K.state ram=f5-K.port
+--   F5            (in the window) saves both sides: captures/quicksave/f5-K.state and .ram (the original) and f5-K.port (the port's memory), at the frame after the original's next flip
+--   control socket (--control SOCK, tools/ami9000_host/ctl.py): port_read, port_poke, orig_poke, mem_diff and port_save (below, before `replay`) read, compare and change the memory of both sides, paused or not
 --   blitlog=F=PATH the original's custom register writes (with the pc) of the emulator frame F are written to PATH
 --   mask=X,Y,W,H[;..] image regions (in the 320x256 picture) left out of the comparison
 --   autosave=SECONDS the original's state is saved every SECONDS seconds (default 30; noautosave: off; not with replay=) to captures/quicksave/auto/auto-K.state/.ram, 5 slots going round (latest.txt)
@@ -209,7 +212,33 @@ local AUTO_SECONDS = args:find("noautosave") and 0 or tonumber(args:match("autos
 local AUTO_DIR = ami.script_dir .. "/../captures/quicksave/auto"
 local auto_next = AUTO_SECONDS * 50
 local auto_slot = 0
+-- F5 in the window saves both sides: the original's state and chip RAM (captures/quicksave/f5-K.state and .ram, as the autosave does) and the port's memory
+-- (f5-K.port: its quicksave, the file --quickload reads), at the frame after the original flipped.  (ami.input is wrapped to see the key before the lockstep module takes the events.)
+local F5_KEY = 286   -- libretro RETROK_F5
+local f5_requested, f5_slot = false, 0
+local libretro_input = ami.input
+ami.input = function()
+    local events = libretro_input()
+    for _, e in ipairs(events) do
+        if e[1] == "k" and e[2] == F5_KEY and e[3] ~= 0 then f5_requested = true end
+    end
+    return events
+end
+local function f5_step()
+    if not (f5_requested and flip_in_frame) then return end
+    f5_requested = false
+    local base = ("%s/../captures/quicksave/f5-%d"):format(ami.script_dir, f5_slot)
+    f5_slot = f5_slot + 1
+    if ami.snapshot_save(base .. ".state") then
+        ami.save_file(base .. ".ram", ami.read(0, 0x100000))
+        pending[#pending + 1] = ("quicksave %s.port\n"):format(base)
+        ami.log(("F5: the original's state and RAM at emulator frame %d: %s.state and .ram; the port's memory: %s.port"):format(ami.frame(), base, base))
+    else
+        ami.log("F5: the original's state could not be saved")
+    end
+end
 local function autosave_step()
+    f5_step()
     if AUTO_SECONDS <= 0 then flip_in_frame = false return end
     local f = ami.frame()
     if f >= auto_next and flip_in_frame then   -- (this frame is over; the original flipped in it and waits in the flip for the next blank: its next iteration has not begun)
@@ -244,6 +273,53 @@ local delayed = setmetatable({
         end
     end,
 }, { __index = function(_, k) local v = real[k] return type(v) == "function" and function(_, ...) return v(real, ...) end or v end })
+-- Helpers for the control socket (tools/ami9000_host/ctl.py SOCK 'port_read(0x16bb4, 24)'), while the run is paused or going: the port's memory next to the original's.
+--   port_read(addr, len)           the port's bytes (as it holds them: the words and longs native, little endian), read in pieces of 4096
+--   port_poke(addr, value, size)   size 1, 2 (default) or 4 bytes of the port's memory are set (value as the program reads it, the number you mean)
+--   orig_poke(addr, value, size)   the same on the original (big endian)
+--   mem_diff(addr, len, size)      where the two differ over len bytes: size 2 (default) compares words (the port's swapped), 4 longs, 1 bytes; returns lines
+--                                  "ADDR original port" with the neighbours joined into runs (at most 60 lines)
+--   port_save(path)                the port's memory to PATH (its quicksave: f5-K.port, which ram= takes to resume it)
+function port_read(addr, len)
+    local out = {}
+    while len > 0 do
+        local n = math.min(len, 4096)
+        real:send(("mem %x %x\n"):format(addr, n))   -- (the port reads both as hex)
+        local got = tonumber(real:readline():match("mem (%d+)"))
+        out[#out + 1] = real:read(got)
+        addr, len = addr + n, len - n
+    end
+    return table.concat(out)
+end
+function port_poke(addr, value, size)
+    size = size or 2
+    real:send(("poke %x %x %d\n"):format(addr, value & ((1 << (8 * size)) - 1), size))
+end
+function orig_poke(addr, value, size)
+    size = size or 2
+    ami.write(addr, string.pack(">I" .. size, value & ((1 << (8 * size)) - 1)))
+end
+function port_save(path)
+    real:send(("quicksave %s\n"):format(path))
+end
+function mem_diff(addr, len, size)
+    size = size or 2
+    local port, orig = port_read(addr, len), ami.read(addr, len)
+    local lines, last = {}, nil
+    for i = 0, len - size, size do
+        local o = string.unpack(">I" .. size, orig, i + 1)
+        local p = string.unpack("<I" .. size, port, i + 1)
+        if o ~= p then
+            if last and i - last <= size * 2 and #lines > 0 then
+                lines[#lines] = lines[#lines] .. (" %x/%x"):format(o, p)
+            elseif #lines < 60 then
+                lines[#lines + 1] = ("%x: %x/%x"):format(addr + i, o, p)
+            end
+            last = i
+        end
+    end
+    return table.concat(lines, "\n")
+end
 local replay = args:match("replay=(%S+)")
 local schedule = nil
 if replay then
