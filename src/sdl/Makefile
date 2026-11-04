@@ -37,7 +37,7 @@ OPT_GAME := -O1 -g
 OPT_HOST := -O2 -g
 endif
 GAME_CFLAGS := -m32 -fpack-struct=2 -std=gnu11 $(OPT_GAME) -fno-strict-aliasing -ffunction-sections -fdata-sections \
-               -DGODS_SDL -I$(SRC) -I$(HERE) -Wall -Wno-unused-function
+               -DGODS_SDL $(if $(PIRATED),-DPIRATED) -I$(SRC) -I$(HERE) -Wall -Wno-unused-function
 HOST_CFLAGS := -m32 -std=gnu11 $(OPT_HOST) -Wall $(shell pkg-config --cflags sdl3)
 HOST_LIBS   := -m32 $(shell pkg-config --libs sdl3) -lpthread -lm
 

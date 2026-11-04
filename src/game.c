@@ -2823,8 +2823,13 @@ static int16_t hit_marked_cell(const uint8_t *after, int16_t x, int16_t y, int16
             end_flag_8890();
     }
     if (word_284 != 0) {
-        /* the original loads the long $4B79C278 and does moveq #1 when it is not 0, which it never is */
+        /* the original loads the long $4B79C278 ($D156) and does moveq #1 when it is not 0: that is what the copylock leaves when it
+         * fails (the pirated game: -DPIRATED); when it passes the long is 0 and d3 stays the cell's damage */
+#ifdef PIRATED
         uint16_t one = 1;
+#else
+        uint16_t one = (uint16_t)damage;
+#endif
         int16_t shift = (int16_t)(3 - word_284);
         uint16_t reduced;
 
@@ -3990,8 +3995,12 @@ static int16_t pickup_handler(int16_t index, int16_t counter)
     case 9:                      /* orig $010820 */
         word_8892 = (int16_t)(word_8892 + 2);
         return 1;
-    case 10:                     /* orig $0107DC (the long that is compared is never 0: item_count stays) */
+    case 10:                     /* orig $0107DC: the extra life.  It adds a life when the long $4B79C278 at $107F2 is 0, which is what a
+                                  * passing copylock leaves; the failed one (-DPIRATED) leaves it not 0 and item_count stays */
         play_sound(0x1F, 0x37);
+#ifndef PIRATED
+        item_count++;
+#endif
         return 1;
     case 14:                     /* orig $016C14 */
         copy_block_16bb4();
@@ -11298,7 +11307,11 @@ void level_state_init(void)
         do_nothing();
     }
     if (word_0248 != 0) {
-        seed_282 = 0x4B79C278;
+#ifdef PIRATED
+        seed_282 = 0x4B79C278;   /* the long that the copylock leaves when it fails (the immediate at $F6C0) */
+#else
+        seed_282 = 0;            /* what it leaves when it passes */
+#endif
         if (param_index == 4)
             word_284 = 1;
         word_2cc = 3;

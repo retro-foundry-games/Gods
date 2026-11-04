@@ -9,7 +9,8 @@
 #   make clean
 #
 # The toolchain is in the flake of this directory: outside its shell every target is run again inside it.  Variables:
-# GODS_CFLAGS, GODS_OPT (the intro's optimisation, default -O2), MENU_BASE (default C0000, hex), PYTHON.
+# GODS_CFLAGS, GODS_OPT (the intro's optimisation, default -O2), MENU_BASE (default C0000, hex), PYTHON, PIRATED (any value: the game as
+# it runs when the copylock fails, -DPIRATED: no extra life, less armour; without it the lock has passed).
 
 CC     := m68k-amigaos-gcc
 AS     := vasmm68k_mot
@@ -32,7 +33,7 @@ else
 
 COMMON := -m68000 -ffreestanding -fno-tree-loop-distribute-patterns -fno-tree-forwprop -fno-ivopts -nostdlib -fdata-sections
 INTRO_CFLAGS := $(GODS_CFLAGS) $(COMMON) $(GODS_OPT)
-MENU_CFLAGS := $(COMMON) -O2 -ffunction-sections
+MENU_CFLAGS := $(COMMON) -O2 -ffunction-sections $(if $(PIRATED),-DPIRATED)
 WARN := -Wall -Wextra
 
 # the menu program: one object for each module (the sources are split by what the code does, see src/menu.h)
