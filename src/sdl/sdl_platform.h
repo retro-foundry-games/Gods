@@ -27,6 +27,7 @@ int host_quickload(void);   /* shims.c: --quickload FILE: the level is the origi
 void host_iteration_mark(void);   /* the start of a frame of the game (platform.h) */
 void host_iteration_cpu_next(unsigned frames);   /* the next host_iteration_cpu waits for that many frames instead */
 void host_iteration_cpu(unsigned frames);   /* wait until that many video frames have passed since the mark */
+void host_flip_bind(void);   /* the next flip (not an iteration's) is made in the frame of the original's, in the lockstep */
 void host_disk_extra(unsigned frames);   /* shims.c: the next host_disk_wait goes on for that many frames more */
 void host_disk_wait(void);   /* shims.c: the original's read of a file takes its time (the lockstep: until the original is done)*/
 void host_flip_late(int on);   /* display.c: the flips are shown a frame after the blank that ends their wait */

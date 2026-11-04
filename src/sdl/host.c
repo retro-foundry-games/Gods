@@ -254,6 +254,11 @@ int host_run(const struct HostOptions *options)
                 }
                 if (hooks && hooks->after_blank)
                     hooks->after_blank();   /* (the lockstep: the program's thread flips the screens right after the blank it waited for: a moment for that before the frame is drawn) */
+                {
+                    extern void display_latch_late(void);
+
+                    display_latch_late();
+                }
                 sound_mix(samples);
             }
             if (vsync && audio && SDL_GetAudioStreamQueued(audio) < 44100 / 5 * 4)

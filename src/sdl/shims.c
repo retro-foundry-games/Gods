@@ -152,7 +152,8 @@ void host_flip_wait(void)
     if (!host_flip_sync)
         return;
     if (flip_bound) {
-        while ((int)(flips_done + 1) - host_flips_offset > (int)host_flips_orig)
+        /* (the count of the original's flips is the one of the frame before: the flip of the frame the port is in is seen in the next; a flip bound as `early` is not waited for that frame) */
+        while ((int)(flips_done + 1) - host_flips_offset > (int)host_flips_orig + (flip_bound == 2))
             wait_vblank();
         flip_bound = 0;
     }
@@ -210,6 +211,13 @@ void host_iteration_mark(void)
 /* the drawing and moving of a frame of the game takes the original's CPU about two video frames, so a frame that is not held back by the wait for the last flip (the first
  * after a fade) still ends two frames after it began */
 static unsigned iteration_cpu_next;
+
+/* the next flip is the one of a drawing that is not an iteration's (the respawn): in the lockstep it is made in the frame of the original's flip */
+void host_flip_bind(void)
+{
+    if (host_flip_sync)
+        flip_bound = 2;
+}
 
 void host_iteration_cpu_next(unsigned frames)
 {

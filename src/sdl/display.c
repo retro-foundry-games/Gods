@@ -644,9 +644,25 @@ void display_latch_fresh(void)
 {
     if (!display_fresh)
         return;
-    if (!display_fresh_lag)
+    if (display_fresh_lag != 1)   /* (1: the colours are shown a frame late) */
         for (int i = 0; i < 16; i++)
             latched_colors[i] = REG16(0x180 + 2 * i);
+    uint32_t cop1lc = REG32(0x080);
+    const uint16_t *list = cop1lc < 0x10000 ? (const uint16_t *)guest_ptr(cop1lc) : (const uint16_t *)(uintptr_t)cop1lc;
+
+    if (list) {
+        latched_list_valid = 1;
+        latched_list_head = cop1lc;
+        memcpy(latched_list, list, sizeof latched_list);
+    }
+}
+
+/* in a fade shown with display_fresh_lag 2 (the fade-in of the player's respawn): the colours are as the blank's interrupt left them, but the copper list is taken after the program's
+ * thread has had its moment (the original's fade writes the list at the top of the frame, before the raster reaches the bands: the frame shows it) */
+void display_latch_late(void)
+{
+    if (!display_fresh || display_fresh_lag != 2)
+        return;
     uint32_t cop1lc = REG32(0x080);
     const uint16_t *list = cop1lc < 0x10000 ? (const uint16_t *)guest_ptr(cop1lc) : (const uint16_t *)(uintptr_t)cop1lc;
 

@@ -348,8 +348,18 @@ void voice_start(uint16_t sound, uint16_t index)
     if (sound != 22 || index >= VOICES)
         return;
     pthread_mutex_lock(&lock);
-    sound_voice[index].active = 0;
-    sound_voice[index].play_volume = 0;
+    struct SoundVoice *v = &sound_voice[index];
+
+    /* the original runs the silent track (22: a note of volume 0 that lasts 32 ticks, then the end) on the voice, and stop_sound has cleared the voice's id: the voice's busy byte
+     * ($207A0, the priority of the sound) stays until the track ends, 32 frames later */
+    if (v->active) {
+        unsigned priority = v->priority;
+
+        start_voice(v, 22, ~0u, priority);   /* (no sound id: the original has cleared the voice's id) */
+        v->number = 0;
+    } else {
+        v->play_volume = 0;
+    }
     sync_busy();
     pthread_mutex_unlock(&lock);
 }

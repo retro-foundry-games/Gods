@@ -281,13 +281,17 @@ static void player_respawn(void)
     word_370 = 0;
     word_1f2 = 3;
     activate_records_now();
-    host_cpu_frames(1);   /* (the original's drawing of that frame takes 3 frames in all, as in the teleport; they pass before the frame's sounds are started, which stop_game_sounds waits for) */
+    host_iteration_mark();
+    host_cpu_frames(2);   /* (the original's drawing of that frame: its sounds are started two frames in; the flip comes then or a frame later, by what is on the screen: in the lockstep it waits for the original's) */
     draw_start_frame();
+    host_flip_bind();
     screens_flip();
+    host_cpu_frames(1);   /* (the original's flip routine waits for a blank before it returns, and then stops the sounds, which stop_game_sounds waits for) */
     stop_game_sounds();
     play_sound(60, 2);
     play_sound(9, 0x7F);
     palette_words[0] = 0;
+    host_fade_lag(2);   /* (the colours as they are, the copper list's a frame late) */
     fade_in(palette_words, 0);
     host_fade_lag(0);
     drives_idle();
