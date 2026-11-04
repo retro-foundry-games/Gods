@@ -26,6 +26,7 @@
 --   flipoff=N / nolag  tuning of that sync (the port's flip k goes with the original's k+N; nolag: the count of the same step, not the step before)
 --   watch         (with continue=all) the first frame at which each of a few game variables differs between the two sides is logged (read from the port with `mem`)
 --   pause=F       pause both at emulator frame F (for lockstep_dump.py; the first difference does not stop the run when continue= is given)
+--   peeklog=F:ADDR,ADDR  (hex) the longs at those addresses, in the original and in the port, at emulator frame F
 --   dump=PATH     the port's image and the original's at the first frame that differs are written to PATH.native.ppm and PATH.emulated.ppm
 local args = ami.args or ""
 local tick_synced = false
@@ -221,6 +222,8 @@ local function watch_variables()
     end
 end
 local dumped = false
+local peeklog_frame, peeklog = args:match('peeklog=(%d+):(%x[%x,]*)')
+peeklog_frame = tonumber(peeklog_frame)
 -- drawlog=FIRST-LAST: the original's calls of its draw routines (glyph $17686, sprite $173C4) at the top of the screen (y below 6) in those emulator frames, with who called
 local draw_first, draw_last = args:match("drawlog=(%d+)-(%d+)")
 if draw_first then
@@ -369,6 +372,15 @@ lockstep.run {
         if meanlog then
             local function mean(img) local t = 0 for i = 1, #img, 61 do t = t + img:byte(i) end return t // (#img // 61) end
             if ami.frame() >= meanlog[1] and ami.frame() <= meanlog[2] then ami.log(("mean frame %d: original %d port %d"):format(ami.frame(), mean(emulated), mean(native))) end
+        end
+        if peeklog and ami.frame() == peeklog_frame then   -- peeklog=F:ADDR,ADDR: the longs at those addresses in the original and the port at emulator frame F
+            for address in peeklog:gmatch("%x+") do
+                address = tonumber(address, 16)
+                delayed:send(("mem %x 4\n"):format(address))
+                local header = delayed:readline()
+                local bytes = delayed:read(tonumber(header:match("mem (%d+)")))
+                ami.log(("peek %x at frame %d: original %08x, port %08x"):format(address, ami.frame(), string.unpack(">I4", ami.read(address, 4)), string.unpack("<I4", bytes)))
+            end
         end
         if watching then watch_variables() end
         if track_at then track_long() end
