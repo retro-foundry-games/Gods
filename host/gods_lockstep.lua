@@ -85,17 +85,41 @@ local SYM = { [0x4c] = 273, [0x4d] = 274, [0x4e] = 275, [0x4f] = 276, [0x40] = 3
 local last_keys = {}
 -- what the game reads at $363A is the joystick byte ($1E5AC: bit 0 up, 1 down, 2 left, 3 right, 7 fire), which the keyboard patch makes from the key table at the vertical blank poll
 local STICK_BITS = { [0x4c] = 0, [0x4d] = 1, [0x4f] = 2, [0x4e] = 3, [0x40] = 7 }
-ami.hook(0x363a, function()
+local held = {}   -- outside the game loop the port gets a key OUTSIDE_DELAY frames after the original's poll saw it (the port's own wait loops read it that much sooner)
+local OUTSIDE_DELAY = 2
+local sampling_outside = false
+local function sample_stick()
     local stick = ami.read(0x1e5ac, 1):byte()
     for raw, bit in pairs(STICK_BITS) do
         local down = (stick >> bit) & 1 == 1
         if down ~= (last_keys[raw] or false) then
             last_keys[raw] = down
-            pending[#pending + 1] = ("key %d %d\n"):format(raw, down and 1 or 0)
+            if sampling_outside then
+                held[#held + 1] = { ami.frame() + OUTSIDE_DELAY, ("key %d %d\n"):format(raw, down and 1 or 0) }
+            else
+                pending[#pending + 1] = ("key %d %d\n"):format(raw, down and 1 or 0)
+            end
             if input_log then ami.append_file(input_log, ("%d k %d %d\n"):format(steps - 1, SYM[raw], down and 1 or 0)) end
         end
     end
+end
+local game_read_frame = -100   -- the emulator frame of the game's last read of the keys
+ami.hook(0x363a, function()
+    game_read_frame = ami.frame()
+    sample_stick()
 end)
+-- (outside the game loop - the menu screens, the game over - nothing reads at $363A: the keys are sent at every frame, from the same joystick byte the program's own polling reads)
+local function sample_stick_outside_game()
+    if ami.frame() - game_read_frame > 3 then
+        sampling_outside = true
+        sample_stick()
+        sampling_outside = false
+    end
+    while held[1] and held[1][1] <= ami.frame() do
+        pending[#pending + 1] = held[1][2]
+        table.remove(held, 1)
+    end
+end
 -- flipsync: the port's flips wait for the original's (the original's CPU time is not modelled): `flips N`, the times the original has reached its flip ($1D302) since the sync began,
 -- goes to the port before every step; `flipoff=N` shifts which flip of the port goes with which of the original's (nosync: the port models the CPU time itself)
 local flip_sync = not args:find("%f[%w]nosync%f[%W]")
@@ -325,6 +349,7 @@ lockstep.run {
     start = function() if not args:find("ram=") then ami.wait(4) end return true end,   -- (a quickload begins with the first step: the port's first iteration goes with the original's next)   -- the saved state is the start (a frame later it has been drawn)
     keymap = function(key) return KEYS[key] end,
     on_frame = function(count, native, emulated)
+        sample_stick_outside_game()
         autosave_step()
         if false then ami.log(("endframe %d: %d"):format(ami.frame(), ami.cycles())) end
         -- audlog=PATH: every write of the original to a sound register (AUDxLC/LEN/PER/VOL, DMACON) with the emulator frame, written to PATH every 100 frames (the port's sound.c logs its notes the same way)
