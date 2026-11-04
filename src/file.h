@@ -9,6 +9,8 @@
 
 /* amiga.asm, orig $01D536: read the file `name` to `dest`; -1 when it could not be read, otherwise 0 */
 int32_t file_read(const char *name, void *dest);
+/* amiga.asm, orig $01CEEA: record_text (216 bytes) is written to the file \hiscores.bin */
+void scores_save(void);
 /* amiga.asm, orig $01D966: switch the drives that are present off again */
 void drives_idle(void);
 

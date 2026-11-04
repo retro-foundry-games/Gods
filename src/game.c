@@ -296,8 +296,43 @@ static void player_respawn(void)
 }
 
 /* orig $0039EE: the death is over: a life is taken (subq.w #1,item_count: our disk dump has a tst.w there but every other disk 1 dump has the subq, taken as the original: the lockstep puts the subq back); with
- * things left (item_count not negative) the player comes back; otherwise the game is over ($39F6: not replicated yet) */
+ * things left (item_count not negative) the player comes back; otherwise the game is over (game_over) */
 static int player_came_back;   /* the death frame ends in $39EE: the player has come back and the original goes on at $2C20, the start of a frame, not at the end of this one ($2D54) */
+
+/* orig $012D6E: `text` in the middle of the screen at row 70 (the sounds are stopped, the other screen is copied, the text is drawn, the screens
+ * flip and the other screen is copied again; the original's copy of a screen takes about a frame) */
+static void game_over_message(const char *text)
+{
+    text_y = 70;
+    stop_game_sounds();
+    copy_other_screen();
+    host_cpu_frames(1);
+    text_draw_centered(text);
+    screens_flip();
+    copy_other_screen();
+    host_cpu_frames(1);
+}
+
+/* orig $0039F6: the lives are gone: "GAME  OVER" is shown with sound 42 (the original plays it twice), the work area is cleared, the sounds are
+ * stopped, it waits 151 frames and then up to 349 frames or a button; the score is entered in the top ten, which is shown, and the menu
+ * starts again.  A demo that ends (demo_mode not 0) goes back to $0036AA instead, which is not here yet */
+static void game_over(void)
+{
+    game_over_message((const char *)text_game_over);
+    play_sound(42, 100);
+    play_sound(42, 100);
+    clear_work_area();
+    stop_game_sounds();
+    for (int i = 0; i < 151; i++)
+        wait_vblank();
+    wait_frames_or_button(350);
+    if (demo_mode != 0)
+        host_missing_routine(0x36AA);
+    has_continue = 0;
+    high_score_entry();
+    top_ten_screen();
+    menu_start();
+}
 
 static void player_death_over(void)
 {
@@ -307,7 +342,7 @@ static void player_death_over(void)
         player_came_back = 1;
         return;
     }
-    host_missing_routine(0x39F6);
+    game_over();
 }
 
 /* orig $003B04 (to $003BD0; it returns into the end of the frame): the frames of the player's death.  When it begins (word_2a6 is negative) the sounds 0 and 4 are played and the

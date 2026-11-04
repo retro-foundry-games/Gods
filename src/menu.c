@@ -208,7 +208,7 @@ void password_screen_setup(void)
     uint8_t *buffer = screen_buffer + 18048;
 
     disk_digit = '2';
-    file_read((const char *)(text_top_ten + 13), buffer);
+    file_read((const char *)(screen_texts + 51), buffer);
     for (int i = 0; i < 216; i++)
         record_text[i] = buffer[i];
 
@@ -401,7 +401,7 @@ void top_ten_screen(void)
 {
     leave_load_screen();
     background_draw();
-    text_draw_at((const char *)text_top_ten, 64, 8);
+    text_draw_at((const char *)(screen_texts + 38), 64, 8);
     record_list_draw();
     password_slots_draw();
     copper_setup_done = 1;
@@ -528,6 +528,55 @@ done:
     copper_setup_done = 0;
 }
 
+/* orig $0067FA: the three saved codes are scrambled again (each long that is not 0 is exclusive-or'ed with the constant; the first slot is
+ * written twice, as the setup reads it) to the end of record_text, and record_text is written to the file */
+static void scores_store(void)
+{
+    static const uint32_t key[4] = { 0x4d616769, 0x63506f63, 0x6b657473, 0x436f6b65 };
+    uint32_t *coded = (uint32_t *)(record_text + 200);
+    uint32_t slot[4] = { password_slots[0], password_slots[0], password_slots[1], password_slots[2] };
+
+    for (int i = 0; i < 4; i++)
+        coded[i] = slot[i] ? slot[i] ^ key[i] : 0;
+    scores_save();
+}
+
+/* orig $006780: when there is no game to continue the score (as one number) is looked for in the ten records (each of 20 bytes, its
+ * score the last four): under the first record it is under, the later ones move down one, the name is asked for in the password
+ * screen (its title "ENTER YOUR NAME HERO") and put in the record, and the records are written to the disk (also when the
+ * score is in none of them) */
+void high_score_entry(void)
+{
+    uint32_t score = ((uint32_t)score_words[3] << 24) | ((uint32_t)score_words[2] << 16) | ((uint32_t)score_words[1] << 8) | score_words[0];
+
+    if (has_continue)
+        return;
+    for (int i = 0; i < 10; i++) {
+        uint32_t *value = (uint32_t *)(record_text + 20 * i + 16);
+
+        if ((int32_t)score > (int32_t)*value) {
+            uint8_t *record = record_text + 20 * i;
+
+            for (uint8_t *to = record_text + 180; to != record; to -= 20)
+                for (int b = 0; b < 20; b++)
+                    to[b] = to[b - 20];
+            *value = score;
+            load_background();
+            title_text = (const char *)(screen_texts + 17);
+            title_x = 0;
+            title_y = 8;
+            password_screen();
+            for (int b = 0; b < 16; b++)
+                record[b] = ((const uint8_t *)line_text)[b];
+            scores_changed = 1;
+            scores_store();
+            return;
+        }
+    }
+    scores_changed = 1;
+    scores_store();
+}
+
 /* orig $006388: the start of the menu program's main part: the screen the background image is read to, the sound on, and then
  * the main menu */
 void menu_start(void)
@@ -580,7 +629,7 @@ void menu_main(void)
                     original_continue();
                     return;
                 }
-                title_text = (const char *)text_enter_a;
+                title_text = (const char *)screen_texts;
                 title_x = 32;
                 title_y = 8;
                 password_screen();

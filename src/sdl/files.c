@@ -128,6 +128,11 @@ int32_t file_read(const char *name, void *dest)
     return files_read(name, wanted, dest);
 }
 
+/* orig $01CEEA: the high scores are written to the disk; the port keeps them in record_text (nothing is written to the guest's disk) */
+void scores_save(void)
+{
+}
+
 /* orig $01D966: the drives are put to rest */
 void drives_idle(void)
 {
