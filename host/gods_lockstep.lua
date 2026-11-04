@@ -321,6 +321,7 @@ function mem_diff(addr, len, size)
     end
     return table.concat(lines, "\n")
 end
+local stop_saved = false
 local replay = args:match("replay=(%S+)")
 local schedule = nil
 if replay then
@@ -522,6 +523,24 @@ lockstep.run {
     keymap = function(key) return KEYS[key] end,
     on_frame = function(count, native, emulated)
         frame_end_cycles = ami.cycles()
+        -- A stop (the first difference, from=N, pause=F, break=ADDR) saves both sides to captures/stops/stop-fFRAME[-N].*: the original's state and RAM, the port's memory
+        -- from 0 to $40000 (.portmem: as it holds it, words native) and the two pictures; scripts/stop_diff.py compares them offline, however the play got there.
+        local stops_here = (pause_at and ami.frame() >= pause_at) or break_hit
+            or (count > 0 and not args:find("continue=all") and ami.frame() >= START_SKIP)
+        if stops_here and not stop_saved then
+            stop_saved = true
+            local n, base = 0, nil
+            repeat
+                base = ("%s/../captures/stops/stop-f%d%s"):format(ami.script_dir, ami.frame(), n > 0 and ("-" .. n) or "")
+                n = n + 1
+            until not ami.file_size(("captures/stops/stop-f%d%s.state"):format(ami.frame(), n > 1 and ("-" .. (n - 1)) or ""))
+            ami.snapshot_save(base .. ".state")
+            ami.save_file(base .. ".ram", ami.read(0, 0x100000))
+            ami.save_file(base .. ".portmem", port_read(0, 0x40000))
+            ami.save_file(base .. ".native.ppm", "P6\n320 256\n255\n" .. native)
+            ami.save_file(base .. ".emulated.ppm", "P6\n320 256\n255\n" .. emulated)
+            ami.log(("stop saved: %s.state .ram .portmem (the port's memory 0-$3FFFF) .native.ppm .emulated.ppm"):format(base))
+        end
         autosave_step()
         if false then ami.log(("endframe %d: %d"):format(ami.frame(), ami.cycles())) end
         -- audlog=PATH: every write of the original to a sound register (AUDxLC/LEN/PER/VOL, DMACON) with the emulator frame, written to PATH every 100 frames (the port's sound.c logs its notes the same way)
