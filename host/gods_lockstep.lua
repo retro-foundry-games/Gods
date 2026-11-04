@@ -38,8 +38,8 @@ local memcmp_stop = args:find("memstop") ~= nil   -- (memstop: the lockstep paus
 local memcmp_hit = false
 -- the tables compared (address, record count and size in bytes, unit 2 words or 1 bytes, skip: the bytes of a record that hold pointers)
 MEMCMP_REGIONS = {
-    { name = "records_1354 (monster groups)", addr = 0x1354, count = 10, size = 428, unit = 2, skip = { 2, 6 } },
-    { name = "records_12a0 (walker groups)", addr = 0x12a0, count = 10, size = 18, unit = 2, skip = { 2, 6 } },
+    { name = "records_1354 (monster groups)", addr = 0x1354, count = 10, size = 428, unit = 2, skip = { 2, 6 }, bytes = { 16, 20 } },
+    { name = "records_12a0 (walker groups)", addr = 0x12a0, count = 10, size = 18, unit = 2, skip = { 2, 6 }, bytes = { 16, 18 } },
     { name = "records_113c", addr = 0x113c, count = 10, size = 12, unit = 2 },
     { name = "slots_fd0", addr = 0xfd0, count = 10, size = 10, unit = 2 },
     { name = "slots_11b4 (archers)", addr = 0x11b4, count = 10, size = 10, unit = 2 },
@@ -55,6 +55,10 @@ MEMCMP_REGIONS = {
     { name = "records_1a154 (bolts)", addr = 0x1a154, count = 20, size = 22, unit = 2, skip = { 0, 4 } },
     { name = "player x,y", addr = 0x1e0, count = 1, size = 4, unit = 2 },
     { name = "energy", addr = 0xc96, count = 1, size = 2, unit = 2 },
+    { name = "counter_204", addr = 0x204, count = 1, size = 2, unit = 2 },
+    { name = "counter_20c", addr = 0x20c, count = 1, size = 2, unit = 2 },
+    { name = "counter_262", addr = 0x262, count = 1, size = 2, unit = 2 },
+    { name = "counter_2b4", addr = 0x2b4, count = 1, size = 2, unit = 2 },
 }
 local hashlog = args:match("hashlog=(%d+)-(%d+)") and { tonumber(args:match("hashlog=(%d+)")), tonumber(args:match("hashlog=%d+-(%d+)")) } or nil
 local meanlog = args:match("meanlog=(%d+)-(%d+)") and { tonumber(args:match("meanlog=(%d+)")), tonumber(args:match("meanlog=%d+-(%d+)")) } or nil
@@ -402,6 +406,8 @@ lockstep.run {
             local port = string.unpack("<I4", p:read(n))
             local orig = ami.peek32(0xce2)
             p:send(("tick %d\n"):format(orig - port))
+            -- the counters that count each frame (the bat's flap, the heads of the flyers...) are in the phase the original's loading gave them, as tick_count is
+            for _, addr in ipairs({ 0x204, 0x20c, 0x262, 0x2b4 }) do p:send(("poke16 %x %x\n"):format(addr, ami.peek16(addr))) end
             if flip_sync then
                 sync_on, flips_at_sync = true, orig_flips
                 p:send(("flipsync %d\n"):format(flip_offset))
@@ -448,7 +454,8 @@ lockstep.run {
                     local off = i % r.size
                     if not (r.skip and off >= r.skip[1] and off < r.skip[2]) then
                         local same
-                        if r.unit == 2 then same = orig:byte(i + 1) == port:byte(i + 2) and orig:byte(i + 2) == port:byte(i + 1)
+                        if r.bytes and off >= r.bytes[1] and off < r.bytes[2] then same = orig:byte(i + 1) == port:byte(i + 1) and orig:byte(i + 2) == port:byte(i + 2)
+                        elseif r.unit == 2 then same = orig:byte(i + 1) == port:byte(i + 2) and orig:byte(i + 2) == port:byte(i + 1)
                         else same = orig:byte(i + 1) == port:byte(i + 1) end
                         if not same then
                             nd = nd + 1
