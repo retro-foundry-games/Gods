@@ -26,11 +26,36 @@
 --   flipoff=N / nolag  tuning of that sync (the port's flip k goes with the original's k+N; nolag: the count of the same step, not the step before)
 --   watch         (with continue=all) the first frame at which each of a few game variables differs between the two sides is logged (read from the port with `mem`)
 --   pause=F       pause both at emulator frame F (for lockstep_dump.py; the first difference does not stop the run when continue= is given)
+--   memcmp[=FROM] [memstop]  the record tables of the game (monster/walker groups, archers, things, bolts...) in the original and the port at every frame: logs the first frame each differs, with the words; memstop pauses there
 --   peeklog=F:ADDR,ADDR  (hex) the longs at those addresses, in the original and in the port, at emulator frame F
 --   peekrange=F1-F2:ADDR (hex) the byte at ADDR in the original and the port at each emulator frame F1 to F2
 --   dump=PATH     the port's image and the original's at the first frame that differs are written to PATH.native.ppm and PATH.emulated.ppm
 local args = ami.args or ""
 local tick_synced = false
+local memcmp_on = args:find("memcmp") ~= nil
+local memcmp_from = tonumber(args:match("memcmp=(%d+)")) or 0
+local memcmp_stop = args:find("memstop") ~= nil   -- (memstop: the lockstep pauses on the first frame a table differs)
+local memcmp_hit = false
+-- the tables compared (address, record count and size in bytes, unit 2 words or 1 bytes, skip: the bytes of a record that hold pointers)
+MEMCMP_REGIONS = {
+    { name = "records_1354 (monster groups)", addr = 0x1354, count = 10, size = 428, unit = 2, skip = { 2, 6 } },
+    { name = "records_12a0 (walker groups)", addr = 0x12a0, count = 10, size = 18, unit = 2, skip = { 2, 6 } },
+    { name = "records_113c", addr = 0x113c, count = 10, size = 12, unit = 2 },
+    { name = "slots_fd0", addr = 0xfd0, count = 10, size = 10, unit = 2 },
+    { name = "slots_11b4 (archers)", addr = 0x11b4, count = 10, size = 10, unit = 2 },
+    { name = "records_1036", addr = 0x1036, count = 120, size = 1, unit = 1 },
+    { name = "records_19334 (pick-ups)", addr = 0x19334, count = 20, size = 8, unit = 2 },
+    { name = "records_19b14 (things)", addr = 0x19b14, count = 200, size = 8, unit = 2 },
+    { name = "records_721e (shards)", addr = 0x721e, count = 10, size = 6, unit = 2 },
+    { name = "records_3a0a6", addr = 0x3a0a6, count = 20, size = 12, unit = 2 },
+    { name = "records_316", addr = 0x316, count = 4, size = 6, unit = 2 },
+    { name = "records_86c (particles)", addr = 0x86c, count = 80, size = 6, unit = 2 },
+    { name = "slots_30c", addr = 0x30c, count = 1, size = 8, unit = 2 },
+    { name = "records_7544", addr = 0x7544, count = 42, size = 10, unit = 2 },
+    { name = "records_1a154 (bolts)", addr = 0x1a154, count = 20, size = 22, unit = 2, skip = { 0, 4 } },
+    { name = "player x,y", addr = 0x1e0, count = 1, size = 4, unit = 2 },
+    { name = "energy", addr = 0xc96, count = 1, size = 2, unit = 2 },
+}
 local hashlog = args:match("hashlog=(%d+)-(%d+)") and { tonumber(args:match("hashlog=(%d+)")), tonumber(args:match("hashlog=%d+-(%d+)")) } or nil
 local meanlog = args:match("meanlog=(%d+)-(%d+)") and { tonumber(args:match("meanlog=(%d+)")), tonumber(args:match("meanlog=%d+-(%d+)")) } or nil
 local LEVEL = tonumber(args:match("%f[%w]level=(%d)")) or 1   -- level=N: the original starts from gods-levelN-1m.state and the port begins level N (param_index; a level has worlds: the end texts are WORLD ONE, WORLD TWO, ... and LEVEL ONE COMPLETED) (iter=N: the iteration of the game loop the saved state is at; world 2: 124)
@@ -411,6 +436,47 @@ lockstep.run {
                 ami.log(("peek %x at frame %d: original %02x, port %02x"):format(address, ami.frame(), ami.read(address, 1):byte(), bytes:byte()))
             end
         end
+        if memcmp_on and ami.frame() >= memcmp_from then   -- memcmp[=FROM]: the game's record tables of the original and the port, compared word by word at every frame (the first frame each table differs, with the record and the words)
+            for _, r in ipairs(MEMCMP_REGIONS) do
+                local total = r.count * r.size
+                delayed:send(("mem %x %x\n"):format(r.addr, total))
+                local header = delayed:readline()
+                local port = delayed:read(tonumber(header:match("mem (%d+)")))
+                local orig = ami.read(r.addr, total)
+                local first, nd = nil, 0
+                for i = 0, total - 1, r.unit do
+                    local off = i % r.size
+                    if not (r.skip and off >= r.skip[1] and off < r.skip[2]) then
+                        local same
+                        if r.unit == 2 then same = orig:byte(i + 1) == port:byte(i + 2) and orig:byte(i + 2) == port:byte(i + 1)
+                        else same = orig:byte(i + 1) == port:byte(i + 1) end
+                        if not same then
+                            nd = nd + 1
+                            if not first then first = i end
+                        end
+                    end
+                end
+                if nd > 0 and not r.differs then
+                    r.differs = true
+                    local rec, off = first // r.size, first % r.size
+                    local o, q = {}, {}
+                    for i = rec * r.size, rec * r.size + r.size - 1, r.unit do
+                        if r.unit == 2 then
+                            o[#o + 1] = ("%02x%02x"):format(orig:byte(i + 1), orig:byte(i + 2)); q[#q + 1] = ("%02x%02x"):format(port:byte(i + 2), port:byte(i + 1))
+                        else o[#o + 1] = ("%02x"):format(orig:byte(i + 1)); q[#q + 1] = ("%02x"):format(port:byte(i + 1)) end
+                        if #o >= 24 then break end
+                    end
+                    ami.log(("memcmp frame %d: %s differs (%d words), first in record %d at +%d (%x)"):format(ami.frame(), r.name, nd, rec, off, r.addr + first))
+                    ami.log(("  original: %s"):format(table.concat(o, " ")))
+                    ami.log(("  port:     %s"):format(table.concat(q, " ")))
+                    if memcmp_stop then memcmp_hit = true end
+                elseif nd == 0 and r.differs then
+                    r.differs = false
+                    ami.log(("memcmp frame %d: %s equal again"):format(ami.frame(), r.name))
+                end
+            end
+        end
+        if memcmp_hit then return true end
         if watching then watch_variables() end
         if track_at then track_long() end
         if color_n then track_color() end
