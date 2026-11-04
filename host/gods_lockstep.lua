@@ -524,14 +524,14 @@ lockstep.run {
         if track_at then track_long() end
         if color_n then track_color() end
         if trace then ami.log(("different pixels: %d"):format(count)) end
-        if pause_at and ami.frame() >= pause_at then return true end
-        if break_hit then return true end
-        if START_SKIP > 0 and not args:find("continue=all") and count > 0 and ami.frame() >= START_SKIP then return true end   -- (the first differences are not looked at, then the first stops)
         if dump and count > 0 and not dumped and ami.frame() >= (tonumber(args:match("dumpfrom=(%d+)")) or 0) then
             dumped = true
             ami.save_file(dump .. ".native.ppm", "P6\n320 256\n255\n" .. native)
             ami.save_file(dump .. ".emulated.ppm", "P6\n320 256\n255\n" .. emulated)
         end
+        if pause_at and ami.frame() >= pause_at then return true end
+        if break_hit then return true end
+        if START_SKIP > 0 and not args:find("continue=all") and count > 0 and ami.frame() >= START_SKIP then return true end   -- (the first differences are not looked at, then the first stops)
     end or nil,
     -- the message band: a message shows in the port one frame before the original's CPU gets to draw it (the raster has passed the band by then), a one frame difference each time
     ignore = (function()   -- the strip at the foot, and mask=X,Y,W,H[;X,Y,W,H...]: image regions left out of the comparison
