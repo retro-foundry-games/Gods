@@ -3698,6 +3698,34 @@ static void spawn_shots_1590e(struct Shot *slot, int16_t id, struct Object *obje
     slot[2].direction = 2;
 }
 
+/* orig $01592C (to the right) and $015982 (to the left): the object's list gets its first shots at (x, y): as many as the object's last_value less its first_value, plus one, at most three
+ * (`id`, `id` + 1 and `id` + 2 in the first word), the directions 1, 0 and 2 and anim_mode 1 to the right, 4, 3 and 5 and anim_mode -1 to the left */
+static void spawn_shot_fan(struct Shot *slot, int16_t id, struct Object *object, int16_t x, int16_t y, int right)
+{
+    static const int16_t directions[2][3] = { { 4, 3, 5 }, { 1, 0, 2 } };
+    int16_t count = (int16_t)(object->last_value - object->first_value + 1);
+
+    object->anim_mode = right ? 1 : -1;
+    for (int i = 0; i < 3; i++) {
+        slot[i].active = (int16_t)(id + i);
+        slot[i].x = x;
+        slot[i].y = y;
+        slot[i].direction = directions[right][i];
+        if (--count == 0)
+            return;
+    }
+}
+
+/* orig $0158D6 (fire kind 7, the spear to the right: sound 35, from 4 above y) and $0158F0 (fire kind 6, to the left: sound 35, 24 to the left of x and 4 above y) */
+static void spawn_shots_spear(struct Shot *slot, int16_t id, struct Object *object, int16_t x, int16_t y, int right)
+{
+    play_sound(0x23, 4);
+    y -= 4;
+    if (!right)
+        x -= 0x18;
+    spawn_shot_fan(slot, id, object, x, y, right);
+}
+
 /* orig $015510: an object's list `list` gets a shot at (x, y): sound 2 (priority 4) and the routine the object's fire_kind names in the
  * table at $15220: 1 is $1590E (spawn_shots_1590e), 4 and 5 are bare returns; 0, 2, 3, 6 to 15 ($15968, $155EC, $1557C, $158F0 ...) did
  * not run */
@@ -3709,6 +3737,9 @@ static void spawn_shots(struct Shot *slot, int16_t id, struct ShotList *list, in
     switch (object->fire_kind) {
     case 1:
         spawn_shots_1590e(slot, id, object, x, y);
+        break;
+    case 7:
+        spawn_shots_spear(slot, id, object, x, y, 1);
         break;
     default:
         break;   /* 4 and 5 return; the others ($15968, $155EC ...) did not run */
@@ -8481,6 +8512,9 @@ static void spawn_player_shots_left(void)
         switch (kind) {
         case 0:
             spawn_shots_left_15968(slots[i], ids[i], object, x, y);
+            break;
+        case 6:
+            spawn_shots_spear(slots[i], ids[i], object, x, y, 0);
             break;
         default:
             break;   /* 4 and 5 return; the others ($155EC, $1557C ...) did not run */
