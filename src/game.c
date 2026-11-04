@@ -308,6 +308,7 @@ static void game_over_message(const char *text)
     copy_other_screen();
     host_cpu_frames(1);
     text_draw_centered(text);
+    host_cpu_frames(3);
     screens_flip();
     copy_other_screen();
     host_cpu_frames(1);

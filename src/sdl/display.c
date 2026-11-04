@@ -64,6 +64,22 @@ void copy_other_screen(void)
     copy_screen_buffer((const uint32_t *)screen_other, (uint32_t *)screen_buffer);
 }
 
+static int flip_late;   /* the flips are shown a frame after the vertical blank that ends their wait (a flip that comes late in a frame of the original's work) */
+static uint8_t *flip_pending;
+
+void host_flip_late(int on)
+{
+    flip_late = on;
+}
+
+/* the blank that has latched what it shows takes the flip that was waiting for it (display.c: screens_flip) */
+void host_flip_apply(void)
+{
+    if (flip_pending)
+        custom->cop1lc = (uint32_t)(uintptr_t)flip_pending;
+    flip_pending = 0;
+}
+
 /* orig $01D302: show the screen that was drawn and draw on the other: the per-screen state, the two screens and so which
  * copper list; its scroll is set for x_offset and the copper is told to use it, then the next vertical blank is waited for */
 void screens_flip(void)
@@ -82,7 +98,10 @@ void screens_flip(void)
     screen_other = swap;
     list = screen_other == screen_1 ? copper_list_a : copper_list_b;
     set_scroll(list, (uint8_t)x_offset);
-    display_show(list);
+    if (flip_late)
+        flip_pending = list;
+    else
+        display_show(list);
     vbl_saturating = 0;
     wait_vblank();
 }
@@ -550,6 +569,7 @@ extern uint8_t list_scroll[2];   /* display.c: the scroll set for each copper li
 static uint16_t latched_colors[16];
 static uint16_t latched_list[1024];   /* the copper list that COP1LC names, as it was: the program's thread changes its colour moves whenever it likes (the fades) */
 static int latched_list_valid;
+static uint32_t latched_list_head;   /* COP1LC of the list that latched_list is a copy of */
 
 void display_latch_colors(void);
 
@@ -581,19 +601,25 @@ void display_latch(void)
 
         static uint16_t previous[1024], before_previous[1024];
         static int previous_valid, before_previous_valid;
+        static uint32_t previous_head, before_previous_head;
 
         latched_list_valid = before_previous_valid;
+        latched_list_head = before_previous_head;
         memcpy(latched_list, before_previous, sizeof previous);
         memcpy(before_previous, previous, sizeof previous);
+        before_previous_head = previous_head;
         before_previous_valid = previous_valid;
         previous_valid = list != 0;
+        previous_head = cop1lc;
         if (list)
             memcpy(previous, list, sizeof previous);
         if ((display_fresh || display_fresh_tail) && list) {
             latched_list_valid = 1;
+            latched_list_head = cop1lc;
             memcpy(latched_list, list, sizeof previous);
         }
     }
+    host_flip_apply();
 }
 
 /* the colour registers: the vertical blank interrupt (irq_vbl) writes them from the shadow table, so what the frame shows is what they hold after it; the program's thread (woken at the end of
@@ -626,6 +652,7 @@ void display_latch_fresh(void)
 
     if (list) {
         latched_list_valid = 1;
+        latched_list_head = cop1lc;
         memcpy(latched_list, list, sizeof latched_list);
     }
 }
@@ -674,13 +701,29 @@ static void line_palettes(uint16_t colors[][16], int lines)
         if (swapped && list_looks_native(list, count))
             swapped = 0;   /* (the end of the list is the image's, big-endian, bytes, the moves before it were made by the program) */
     }
-    for (int i = 0; i + 1 < count; i += 2) {
+    /* the list goes on where a MOVE to COPJMP2 sends it: the address that the moves to COP2LCH and COP2LCL made (the two lists of the program end
+     * so: the gradient of the level's colours is jumped over when the moves name the list at $5246, as the menu's do).  The addresses are the
+     * program's: the first list is at $4D8A (copper_list_a) or $4DDE.  The list the jump comes to may be the image's own (big-endian words) */
+    uint32_t base = (const uint8_t *)(uintptr_t)latched_list_head == copper_list_a ? 0x4d8a : 0x4dde, jump_to = 0;
+    int steps = 0;
+
+    for (int i = 0; count && i + 1 < 1024 && steps++ < 4096; i += 2) {
         uint16_t first = list[i], second = list[i + 1];
 
+        if (!swapped && i >= (int)(0x5246 - base) / 2 && !list_looks_native(list + i, 1024 - i))
+            first = (uint16_t)(first >> 8 | first << 8), second = (uint16_t)(second >> 8 | second << 8);
         if (swapped) {
             first = (uint16_t)(first >> 8 | first << 8);
             second = (uint16_t)(second >> 8 | second << 8);
         }
+        /* the three moves that end each of the program's two lists are the longs copper_move_a and copper_move_b (a long is stored the machine's way: its
+         * halves are the other way round) and the strobe the image has (its words are not made native) */
+        if (base + 2 * (uint32_t)i == 0x4e2e || base + 2 * (uint32_t)i == 0x4e32)
+            first = (uint16_t)(list[i + 1]), second = list[i];
+        else if (base + 2 * (uint32_t)i == 0x4e36)
+            first = 0x008a, second = 0;
+        if (first == 0xffff && second == 0xfffe)
+            break;   /* the end of the list */
         if (first & 1) {   /* WAIT */
             int wait = first >> 8;
 
@@ -692,6 +735,12 @@ static void line_palettes(uint16_t colors[][16], int lines)
                 memcpy(colors[line++], current, sizeof current);
         } else if ((first & 0x1fe) >= 0x180 && (first & 0x1fe) < 0x1a0) {
             current[((first & 0x1fe) - 0x180) / 2] = second;
+        } else if ((first & 0x1fe) == 0x84) {
+            jump_to = (jump_to & 0xffff) | (uint32_t)second << 16;
+        } else if ((first & 0x1fe) == 0x86) {
+            jump_to = (jump_to & 0xffff0000u) | second;
+        } else if ((first & 0x1fe) == 0x8a && jump_to >= base && jump_to < base + 2 * 1024) {
+            i = (int)(jump_to - base) / 2 - 2;
         }
     }
     while (line < lines)

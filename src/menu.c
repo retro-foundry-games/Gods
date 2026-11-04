@@ -164,6 +164,7 @@ void load_background(void)
         return;
     background = memory_base + 256;
     load_unpacked((const char *)background_name, background);
+    host_cpu_frames(12);   /* the original's read of the file from the disk and its unpacking take about 12 frames before the colours fade */
     fade_out(1, 0xffff);
     display_reset();
     background_loaded = 1;
@@ -436,6 +437,8 @@ void password_screen(void)
     screens_flip();
     cursor_pos = 0;
     key_held = 0;
+    host_flip_late(1);
+    host_cpu_frames(5);   /* (the original's copy of the screen and the drawing of the grid and the line take about 5 frames before the colours fade in) */
     fade_in((const uint16_t *)(background + 2), 1);
     length = 0;
 
@@ -518,10 +521,12 @@ void password_screen(void)
             line[length++] = (uint8_t)pick;
             line[length] = 0;
         }
+        host_cpu_frames(3);   /* (the original's copy of the background and its drawing of the grid, the line and the cursor take about 3 frames: a pass is 4 with the flip) */
         screens_flip();
     }
 
 done:
+    host_flip_late(0);
     play_sound(33, 2);
     fade_out(1, 0);
     do_nothing();
