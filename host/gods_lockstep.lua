@@ -27,6 +27,7 @@
 --   watch         (with continue=all) the first frame at which each of a few game variables differs between the two sides is logged (read from the port with `mem`)
 --   pause=F       pause both at emulator frame F (for lockstep_dump.py; the first difference does not stop the run when continue= is given)
 --   memcmp[=FROM] [memstop]  the record tables of the game (monster/walker groups, archers, things, bolts...) in the original and the port at every frame: logs the first frame each differs, with the words; memstop pauses there
+--   wordlog=F1-F2:ADDR,ADDR  (hex) the words at those addresses, original/port, at each emulator frame F1 to F2
 --   peeklog=F:ADDR,ADDR  (hex) the longs at those addresses, in the original and in the port, at emulator frame F
 --   peekrange=F1-F2:ADDR (hex) the byte at ADDR in the original and the port at each emulator frame F1 to F2
 --   dump=PATH     the port's image and the original's at the first frame that differs are written to PATH.native.ppm and PATH.emulated.ppm
@@ -40,6 +41,7 @@ local memcmp_hit = false
 MEMCMP_REGIONS = {
     { name = "records_1354 (monster groups)", addr = 0x1354, count = 10, size = 428, unit = 2, skip = { 2, 6 }, bytes = { 16, 20 } },
     { name = "records_12a0 (walker groups)", addr = 0x12a0, count = 10, size = 18, unit = 2, skip = { 2, 6 }, bytes = { 16, 18 } },
+    { name = "table_ed0 (world 2: things the archers threw)", addr = 0xed0, count = 16, size = 16, unit = 2 },
     { name = "records_113c", addr = 0x113c, count = 10, size = 12, unit = 2 },
     { name = "slots_fd0", addr = 0xfd0, count = 10, size = 10, unit = 2 },
     { name = "slots_11b4 (archers)", addr = 0x11b4, count = 10, size = 10, unit = 2 },
@@ -484,6 +486,20 @@ lockstep.run {
             end
         end
         if memcmp_hit then return true end
+        do   -- wordlog=F1-F2:ADDR,ADDR (hex): the words at those addresses in the original and the port at each emulator frame F1 to F2
+            local f1, f2, list = args:match("wordlog=(%d+)-(%d+):(%x[%x,]*)")
+            if f1 and ami.frame() >= tonumber(f1) and ami.frame() <= tonumber(f2) then
+                local out = {}
+                for a in list:gmatch("%x+") do
+                    local address = tonumber(a, 16)
+                    delayed:send(("mem %x 2\n"):format(address))
+                    local header = delayed:readline()
+                    local bytes = delayed:read(tonumber(header:match("mem (%d+)")))
+                    out[#out + 1] = ("%x: %04x/%04x"):format(address, string.unpack(">I2", ami.read(address, 2)), string.unpack("<I2", bytes))
+                end
+                ami.log(("words frame %d (original/port): %s"):format(ami.frame(), table.concat(out, "  ")))
+            end
+        end
         if watching then watch_variables() end
         if track_at then track_long() end
         if color_n then track_color() end
