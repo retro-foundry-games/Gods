@@ -133,6 +133,18 @@ end
 -- The original's instruction is put back (the same length, the same flags for the branch after it); the port does what the game does
 ami.write(0x39ee, "\x53\x78")
 
+-- The copy protection (Rob Northen's copylock, see analysis/media_variants.md) fails on our ADF (the lock's track is not in it) and leaves
+-- values that make the game harder: the long $4B79C278 at $D158, $F6C0 and $107F4 (armour 1, the extra life does nothing) and $4B79C854 at $B04C
+-- (the guardian's energy).  The WHDLoad slave (GodsHD.s) writes what a passing lock leaves, and so does the lockstep; the port has both
+-- (-DPIRATED for the failed one), by default the passing one.  pirated in the script args keeps the failed values in the original.
+if not (args or ""):find("pirated") then
+    ami.write(0xd158, "\0\0\0\0")
+    ami.write(0xf6c0, "\0\0\0\0")
+    ami.write(0x107f4, "\0\0\0\0")
+    ami.write(0xb04c, "\0\0\5\xdc")
+    ami.write(0x282, "\0\0\0\0")
+end
+
 -- break=ADDR[,ADDR...] (hex): the run pauses (both sides frozen, the control socket usable) at the end of the frame in which the original reaches one of those addresses
 local break_hit = nil
 for hex in (args:match("break=([%x,]+)") or ""):gmatch("%x+") do
