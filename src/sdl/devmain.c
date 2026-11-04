@@ -154,12 +154,29 @@ static int lockstep_commands(const uint32_t *pixels, int phase)
             printf("mem %d\n", b);
             fwrite(guest_ptr((uint32_t)a), 1, (size_t)b, stdout);
             fflush(stdout);
+        } else if (!strncmp(line, "quicksave ", 10)) {   /* `quicksave PATH`: the program's memory is written to PATH at the top of its next iteration (F5 of the window, dev_game.c; the lockstep driver's F5) */
+            static char path[512];
+            size_t length = strcspn(line + 10, "\r\n");
+
+            if (length > 0 && length < sizeof path) {
+                memcpy(path, line + 10, length);
+                path[length] = 0;
+                host_quicksave_file = path;
+                host_quick_request = 1;
+            }
         } else if (sscanf(line, "weapon %d", &a) == 1) {   /* `weapon ITEM`: the weapon ITEM is picked up at the top of the next iteration (dev_game.c) */
             extern volatile unsigned host_weapon_count;
             extern volatile int16_t host_weapon_items[32];
 
             host_weapon_items[host_weapon_count & 31] = (int16_t)a;
             host_weapon_count++;
+        } else if (sscanf(line, "poke %x %x %d", (unsigned *)&a, (unsigned *)&b, &code) == 3) {   /* `poke ADDR VALUE SIZE`: SIZE (1, 2 or 4) bytes of the program's memory are set, VALUE in the host's own order, as the words and longs of the program are there (the lockstep driver's port_poke) */
+            if (code == 1)
+                *(volatile uint8_t *)guest_ptr((uint32_t)a) = (uint8_t)b;
+            else if (code == 2)
+                *(volatile uint16_t *)guest_ptr((uint32_t)a) = (uint16_t)b;
+            else if (code == 4)
+                *(volatile uint32_t *)guest_ptr((uint32_t)a) = (uint32_t)b;
         } else if (sscanf(line, "poke16 %x %x", (unsigned *)&a, (unsigned *)&b) == 2) {   /* `poke16 ADDR VALUE`: a word of the program's memory (the lockstep gives the per-frame counters the phase the original's loading gave them) */
             *(volatile uint16_t *)guest_ptr((uint32_t)a) = (uint16_t)b;
         } else if (sscanf(line, "tick %d", &a) == 1) {   /* `tick DELTA`: tick_count goes up by DELTA (the original's count includes the frames of its disk loading, which the port does not wait for; the lockstep driver gives the port the original's count) */

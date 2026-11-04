@@ -239,7 +239,19 @@ int guest_load_level_image(const char *path)
 }
 
 /* the quickload: the chip RAM of the original at some moment of a level (gods_ramdump.lua writes it from a saved state), the weapons and everything else the game keeps in it */
+int host_quick_state_load(const char *path) __attribute__((weak));   /* dev_game.c: a quicksave of the port's own memory */
+
 int guest_load_quick(const char *path)
 {
+    FILE *f = fopen(path, "rb");
+    uint32_t magic = 0;
+
+    if (f) {   /* "GQS1": the port's own quicksave (F5, the lockstep's F5): its memory as it was, not the original's RAM */
+        int own = fread(&magic, 4, 1, f) == 1 && magic == 0x31535147u;
+
+        fclose(f);
+        if (own && host_quick_state_load)
+            return host_quick_state_load(path);
+    }
     return load_ram_image(path, 1);
 }

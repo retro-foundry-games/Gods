@@ -49,6 +49,37 @@ const char *host_quicksave_file = "gods-quicksave.bin";
 #define QUICK_LOW 0x10000u   /* (GUEST_LOW_LIMIT) */
 #define QUICK_MAIN_SIZE (QUICK_END - 0x10000)
 
+/* the memory of a quicksave (F5, or the lockstep's F5: f5-K.port) read back from the file PATH: 0 when it was read (the interrupt held off while the memory is replaced) */
+int host_quick_state_load(const char *path)
+{
+    FILE *f = fopen(path, "rb");
+    uint32_t found = 0;
+    extern volatile int host_irq_hold;
+    int ok;
+
+    if (!f)
+        return -1;
+    ok = fread(&found, 4, 1, f) == 1 && found == QUICK_MAGIC;
+    if (ok) {   /* (the file is read to the end before the memory is touched) */
+        uint8_t *main_memory = malloc(QUICK_MAIN_SIZE), *low = malloc(QUICK_LOW), *chips = malloc(0x1000);
+
+        ok = main_memory && low && chips && fread(main_memory, 1, QUICK_MAIN_SIZE, f) == QUICK_MAIN_SIZE && fread(low, 1, QUICK_LOW, f) == QUICK_LOW
+             && fread(chips, 1, 0x1000, f) == 0x1000;
+        if (ok) {
+            host_irq_hold = 1;   /* (the interrupt must not run on half of the memory) */
+            memcpy((void *)(uintptr_t)0x10000, main_memory, QUICK_MAIN_SIZE);
+            memcpy(guest_ptr(0), low, QUICK_LOW);
+            memcpy((void *)(uintptr_t)0xdff000, chips, 0x1000);
+            host_irq_hold = 0;
+        }
+        free(main_memory);
+        free(low);
+        free(chips);
+    }
+    fclose(f);
+    return ok ? 0 : -1;
+}
+
 static void quick_do(int request)
 {
     FILE *f = fopen(host_quicksave_file, request == 1 ? "wb" : "rb");
