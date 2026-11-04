@@ -105,9 +105,8 @@ static void key_apply(int raw, int down)
 {
     uint8_t code = (uint8_t)(raw & 0x7f);
 
-    /* the cursor keys and the space bar are the port's joystick (see input_poll: not in the original): they are the stick and the fire button, not typed characters (a request would
-     * be a key of the password screen's grid, the space cell, where the button picks the cell the cursor is at) */
-    if ((code >= 0x4c && code <= 0x4f) || code == 0x40) {
+    /* the cursor keys are the port's joystick (see input_poll: not in the original): the stick, not typed characters; the space bar is a typed character again */
+    if (code >= 0x4c && code <= 0x4f) {
         key_down[code] = down ? 0xff : 0;
         return;
     }
