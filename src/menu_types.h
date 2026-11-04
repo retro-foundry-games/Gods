@@ -213,6 +213,15 @@ struct Creature {
     int16_t timer;     /* +12 */
 };
 
+/* the shards the stone faces spit ($0737E, ten records of 8 bytes): where it is, the step of its picture (0 to 3) and the frames it has left (x negative: free) */
+struct Shard {
+    int16_t x;
+    int16_t y;
+    int16_t frame;
+    int16_t life;
+};
+_Static_assert(sizeof(struct Shard) == 8, "shard record");
+
 struct CreatureType {
     struct Creature *creatures;   /* +0 */
     int16_t count;                /* +4 */

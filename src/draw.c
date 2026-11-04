@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdlib.h>
 /* Gods, the menu program: drawing images and text on the screen.  The screen is 44 bytes a row (352 pixels), 192 rows. */
 #include "draw.h"
 
@@ -229,6 +231,7 @@ void sprite_draw(int16_t x, int16_t y, uint16_t index)
     uint16_t plane;
     int rows;
 
+    if (getenv("GDBG") && x < 96 && x > -40 && y < 90) fprintf(stderr, "GDBG tick %u sprite x=%d y=%d index=%d\n", (unsigned)tick_count, x, y, index);
     x += x_offset;
     if (x <= -32 || x >= 352)
         return;

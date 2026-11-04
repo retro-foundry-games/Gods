@@ -1280,12 +1280,50 @@ void game_step_5496(void)
     word_2be = -1;
 }
 
-/* orig $0073D2: nothing is done while word_73ce is 0; the original goes on at $73D8 otherwise, which did not run */
+static void aimed_bolt_hits_player(uint32_t *record, int16_t x, int16_t y);
+
+/* orig $0073D2: the shards the stone faces spit (records_737e, ten of struct Shard; word_73ce says there are some): each falls 2 pixels (not into a wall: a cell of the second map that is 1 under it
+ * sends it back up), its picture goes on (every other frame) through the glyphs 529, 530, 531, 530, it hits the player ($0184EE: the energy goes down, the shard is over) and is drawn at its place,
+ * and its life runs down; at under 0 it is free */
 void game_step_73d2(void)
 {
+    static const uint16_t pictures[4] = { 529, 530, 531, 530 };
+    struct Shard *shards = (struct Shard *)records_737e;
+    int16_t alive = 0;
+
     if (word_73ce == 0)
         return;
-    /* goes on at $73D8 */
+    for (int i = 0; i < 10; i++) {
+        struct Shard *shard = &shards[i];
+        int16_t x = shard->x;
+        int16_t y;
+        int16_t frame = shard->frame;
+
+        if (x < 0)
+            continue;
+        y = (int16_t)(shard->y + 2);
+        shard->y = y;
+        if (ptr_0b86[0x2000 + (((int16_t)(x & 0xFFE0)) >> 5) + (((int16_t)((y + 8) & 0xFFF0)) << 3)] == 1) {
+            y = (int16_t)(y - 2);
+            shard->y = y;
+        }
+        uint16_t picture = pictures[frame & 3];
+
+        if (frame_toggle != 0) {
+            frame = (int16_t)((frame + 1) & 3);
+            shard->frame = frame;
+        }
+        int16_t sx = (int16_t)(x - scroll_x);
+        int16_t sy = (int16_t)(y - scroll_y);
+
+        aimed_bolt_hits_player((uint32_t *)shard, (int16_t)(sx - 6), (int16_t)(sy + 2));
+        glyph_draw(sx, sy, picture);
+        alive = 1;
+        shard->life--;
+        if (shard->life < 0)
+            shard->x = -1;
+    }
+    word_73ce = (uint16_t)alive;
 }
 
 /* orig $0057E0: a blank slot picture (image 119, 384 bytes: 24 rows, four planes of 96 bytes... as four longs a row) is copied to `to` */
@@ -2120,7 +2158,7 @@ static void aimed_bolt_start(int16_t x, int16_t y, int16_t target_x, int16_t tar
 
 /* orig $0184EE: a bolt at the screen place (x, y) that is in the box of the player (from 6 pixels right of the bolt's place; the player's box is 32 by 48, from 24 lower when the
  * player is in the states 18 and 19) and the player not invulnerable (flag_aa8): the energy goes down by 2 and the bolt is over, with a spark */
-static void aimed_bolt_hits_player(struct Bolt *bolt, int16_t x, int16_t y)
+static void aimed_bolt_hits_player(uint32_t *record, int16_t x, int16_t y)
 {
     int16_t hit_x = (int16_t)(x + 4 + scroll_x + 2);
     int16_t hit_y = (int16_t)(y + 4 + scroll_y);
@@ -2135,7 +2173,7 @@ static void aimed_bolt_hits_player(struct Bolt *bolt, int16_t x, int16_t y)
     if (flag_aa8 != 0)
         return;
     player_energy -= 2;
-    bolt->routine = 0xFFFFFFFF;
+    *record = 0xFFFFFFFF;
     start_debris_at((int16_t)(x - 2), (int16_t)(y - 2));
 }
 
@@ -2169,7 +2207,7 @@ void step_1843e(void)
             bolt->routine = 0xFFFFFFFF;
             continue;
         }
-        aimed_bolt_hits_player(bolt, x, y);
+        aimed_bolt_hits_player(&bolt->routine, x, y);
         glyph_draw(x, y, (uint16_t)((frame_toggle & 1) + 0x4B));
     }
 }
@@ -4469,6 +4507,58 @@ static int16_t walker_first_picture(uint32_t routine)
     }
 }
 
+/* orig $0074A6 (the step routine of the stone faces): a face whose type has a speed counts its timer down; at 0 it opens its mouth (its step 1) and the timer is set again (16 less the speed, times 4) */
+static void step_74a6(const struct CreatureType *type, struct Creature *creature)
+{
+    if (type->speed == 0)
+        return;
+    if (--creature->timer != 0)
+        return;
+    creature->state = 1;
+    creature->timer = (int16_t)((int16_t)(int8_t)(16 - type->speed) << 2);
+}
+
+/* orig $007310: a shard is put at the first free record of records_737e, 10 to the right and 18 under the face, with the sound 20 when the face is on the screen (the point's place less the scroll is within
+ * 24 pixels outside it: $0074CA); without a free record nothing is done */
+static void face_spits(const struct Creature *creature)
+{
+    struct Shard *shards = (struct Shard *)records_737e;
+
+    for (int i = 0; i < 10; i++) {
+        struct Shard *shard = &shards[i];
+
+        if (shard->x >= 0)
+            continue;
+        int16_t sx = (int16_t)(creature->x - scroll_x);
+        int16_t sy = (int16_t)(creature->y - scroll_y);
+
+        if (sx > -24 && sx < 320 && sy > -24 && sy < 192)
+            play_sound(20, 3);
+        shard->x = (int16_t)(creature->x + 10);
+        shard->y = (int16_t)(creature->y + 0x12);
+        shard->frame = 1;
+        shard->life = 0x37;
+        word_73ce = 1;
+        return;
+    }
+}
+
+/* orig $0072E8 (the movement routine of the stone faces): the picture is 519 plus its step; while it has a step (not 0) it goes on every other frame (frame_toggle), at 3 a shard goes out
+ * (face_spits) and after that it is 0 again.  It does not move */
+static int16_t move_72e8(struct Creature *creature)
+{
+    int16_t picture = (int16_t)(creature->state + 0x207);
+
+    if (frame_toggle != 0 && creature->state != 0) {
+        creature->state++;
+        if (creature->state == 3)
+            face_spits(creature);
+        else if (creature->state > 3)
+            creature->state = 0;
+    }
+    return picture;
+}
+
 /* orig $007B44 to $007BA8 as the movement routine of a creature's record (the one at +22): the new x (d0) and the picture (d2).  Only the
  * walkers ran.  The step of walk_pace_frame moves it 4 pixels in its direction (as the direction is before a turn) when its step
  * is at most 7 and frame_toggle is set; the x is worked out here for that reason */
@@ -4484,7 +4574,9 @@ static int call_move(const struct CreatureType *type, struct Creature *creature,
             *x += creature->direction == 0 ? -4 : 4;
         return walk_pace_frame((const uint8_t *)type, (int16_t *)creature, old_x, y);
     }
-    /* goes on at the routine the record names ($7BB2, $72E8, $7A0E, $7A36, ...): none of those ran */
+    if (type->move_routine == 0x72E8)
+        return move_72e8(creature);
+    /* goes on at the routine the record names ($7BB2, $7A0E, $7A36, ...): none of those ran */
     return 0;
 }
 
@@ -4540,10 +4632,14 @@ static void step_717e(const struct CreatureType *type, struct Creature *creature
 }
 
 /* the step routine of a creature's record (+30), called with the screen not frozen (timer_306 0): only $717E ran */
+static void step_74a6(const struct CreatureType *type, struct Creature *creature);
+
 static void call_step(const struct CreatureType *type, struct Creature *creature)
 {
     if (type->step_routine == 0x717E)
         step_717e(type, creature);
+    else if (type->step_routine == 0x74A6)
+        step_74a6(type, creature);
     /* goes on at $74A6, $7520, $7AB0, $7EE2, $80E8, $8158: none of those ran */
 }
 
