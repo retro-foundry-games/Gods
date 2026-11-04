@@ -109,7 +109,7 @@ local meanlog = args:match("meanlog=(%d+)-(%d+)") and { tonumber(args:match("mea
 local LEVEL = tonumber(args:match("%f[%w]level=(%d)")) or 1   -- level=N: the original starts from gods-levelN-1m.state and the port begins level N (param_index; a level has worlds: the end texts are WORLD ONE, WORLD TWO, ... and LEVEL ONE COMPLETED) (iter=N: the iteration of the game loop the saved state is at; world 2: 124)
 local START_SKIP = tonumber(args:match("from=(%d+)")) or (LEVEL > 1 and 12 or 0)   -- from=N: differences before the emulator frame N are only logged (a state saved in the middle of an iteration: the first frames differ a little)
 local STATE = args:match("%f[%w]state=(%S+)") or ("gods-level" .. LEVEL .. "-1m.state")
-local EXTRA = tonumber(args:match("extra=(%d+)")) or (args:find("ram=") and 0 or 2)   -- (a quickload from a state saved at a flip: the port begins its first iteration with the first step)   -- (found by trying: with 3, the comparison starting at frame 5, the idle level is pixel for pixel the same)
+local EXTRA = tonumber(args:match("extra=(%d+)")) or (args:find("ram=%S*%.port") and 0 or args:find("ram=") and 1 or 2)   -- (ram=X.port: the port's own memory, its phase is the one it was saved in; ram=X.ram: the original's RAM, the port is a step behind with 0: found by trying, f5-3 resumed equal for 1250 frames with 1)   -- (a quickload from a state saved at a flip: the port begins its first iteration with the first step)   -- (found by trying: with 3, the comparison starting at frame 5, the idle level is pixel for pixel the same)
 
 ami.machine{
     name = "Gods lockstep", model = "A500", system = "../local/system", save = "../local/save", files = "..",
