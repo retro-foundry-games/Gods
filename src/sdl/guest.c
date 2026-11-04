@@ -215,6 +215,12 @@ static int load_ram_image_held(const char *path, int slots)
     for (uint32_t i = IMAGE_BASE; i < (uint32_t)size; i++)
         if (!in_table(i) || (slots && i >= 0x14988 && i < 0x14988 + 880))   /* (object_slot_image is the table of what the slots start as; the slots themselves, the weapons, are there) */
             *guest_ptr(i) = image[i];
+    if (slots && size >= 0x16bb4 + 24) {   /* block_16bb4: the words of how the shots move, which the power-ups change (a table of the host's own, so the loop above skipped it): the original's, as words of the host */
+        uint16_t *block = (uint16_t *)guest_ptr(0x16bb4);
+
+        for (int i = 0; i < 12; i++)
+            block[i] = (uint16_t)((image[0x16bb4 + 2 * i] << 8) | image[0x16bb4 + 2 * i + 1]);
+    }
     free(image);
     apply_fixups(size);
     if (size >= 0x80000)
