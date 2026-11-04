@@ -231,7 +231,6 @@ void sprite_draw(int16_t x, int16_t y, uint16_t index)
     uint16_t plane;
     int rows;
 
-    if (getenv("GDBG") && x < 96 && x > -40 && y < 90) fprintf(stderr, "GDBG tick %u sprite x=%d y=%d index=%d\n", (unsigned)tick_count, x, y, index);
     x += x_offset;
     if (x <= -32 || x >= 352)
         return;
