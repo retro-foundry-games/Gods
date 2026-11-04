@@ -27,7 +27,7 @@ ENTRIES = {
     0x1E2B8: "_keyboard_irq", 0x1E50C: "key_translate",
     0x1CFF8: "_vbl_irq", 0x1E39C: "_input_poll", 0x16C30: "_frame_tick",
     # the file layer: the entries the C code and the stubs use (the rest get labels from their addresses)
-    0x1D536: "load_body", 0x1D966: "drives_idle_body", 0x1E254: "drive_bits",
+    0x1D536: "load_body", 0x1D80C: "scores_save_body", 0x1D966: "drives_idle_body", 0x1E254: "drive_bits",
     0xF518: "stub_clear_work_area", 0x1D05C: "stub_wait_vblank", 0x12D5C: "stub_text_draw_centered_other",
     0x1CF64: "stub_wait_frames_or_button", 0x16D76: "stub_message_request", 0x16E42: "stub_message_tick",
     0x202DE: "select_period_table", 0x20316: "reset_volume_slides", 0x2032E: "reset_period_slides", 0x633E: "_random_word",
@@ -171,11 +171,13 @@ def file_layer() -> list[str]:
            "; the MFM decoding, the directory and the loading of a file.  It keeps its registers' meaning (a5 the track buffer,",
            "; a6 the drive's frame); only these entries are for C:",
            "        xref " + ", ".join(f"_{n}" for _, n, _ in STUBS),
-           "        xdef _file_read, _drives_idle", ""]
+           "        xdef _file_read, _drives_idle, _scores_save", ""]
     out += ["; uint32_t file_read(const char *name, void *dest): load the file; the result is -1 when it failed (orig $01D536 with",
             "; the name in d0 and the destination in a0; the original reports by the negative flag)",
             "_file_read:", "        movem.l d2-d7/a2-a6,-(sp)", "        move.l 48(sp),d0", "        movea.l 52(sp),a0",
             "        jsr load_body", "        smi d0", "        ext.w d0", "        ext.l d0", "        movem.l (sp)+,d2-d7/a2-a6", "        rts", "",
+            "; void scores_save(void), orig $01CEEA (a jump to $01D80C): the 216 bytes at $3C2 are written to the file \\hiscores.bin",
+            "_scores_save:", "        movem.l d2-d7/a2-a6,-(sp)", "        jsr scores_save_body", "        movem.l (sp)+,d2-d7/a2-a6", "        rts", "",
             "; void drives_idle(void), orig $01D966: the drives that are present are deselected",
             "_drives_idle:", "        movem.l d2-d7/a2-a6,-(sp)", "        jsr drives_idle_body", "        movem.l (sp)+,d2-d7/a2-a6", "        rts", ""]
     for addr, name, regs in STUBS:
