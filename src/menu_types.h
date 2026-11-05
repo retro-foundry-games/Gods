@@ -299,6 +299,13 @@ struct PathDescription {
 };
 _Static_assert(sizeof(struct PathDescription) == 28, "path description");
 
+/* the ways a walker walks (8 of 8 bytes at $99DC): the address of its routine and the base its picture starts at */
+struct WalkMode {
+    uint32_t routine;
+    uint32_t picture_base;
+};
+_Static_assert(sizeof(struct WalkMode) == 8, "walk mode");
+
 /* the switches of the level (64 of 6 bytes, loaded with the level's tables): where one is (x, y of its record) and its state, bit 0 of which call_by_kind tests */
 struct LeverFlag {
     uint16_t x;

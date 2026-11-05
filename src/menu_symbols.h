@@ -442,6 +442,7 @@ extern uint8_t byte_2b6;   /* $002B6  game_d: the byte of flags_39fde of the rec
 extern uint16_t word_2b2;   /* $002B2  game_d: the id of the thing the player touched */
 extern uint32_t score_total_1fc;   /* $001FC  game_d: the points won, as one number (the score itself is in score_words) */
 extern int16_t word_2ba;   /* $002BA  game_d: -1, or the step (0 to 4) of the thing of kinds 232, 288, 290 and 292 */
+extern const struct WalkMode walk_modes_99dc[8];   /* $099DC  game_d: (a name at its address, not a table: the hunk format pads zone_groups, which ends at $99DC, to $99DE) for each way of walking: its routine and the base its picture starts at ($9F2A adds the template's picture and the step) */
 extern void fn_10976(void);   /* $10976  game_d: the pick-up handler 18 of the table at $1067A (game_e writes it in C) */
 extern uint16_t word_26a;   /* $0026A  game_d: the glyph the pick-ups of records_19334 are drawn with (sprite, two words wide) */
 extern uint16_t bcd_346[4];   /* $00346  the number call_by_kind makes of five thousand times its argument, a BCD byte a word, the low digits first */
@@ -594,6 +595,11 @@ extern const uint16_t frames_44b4[4];   /* $044B4  game_d: the four glyphs of th
 extern const uint16_t frames_44bc[4];   /* $044BC  game_d: ... of the sprite 279 */
 extern const uint16_t frames_44c4[5];   /* $044C4  game_d: ... of the glyph 253, by counter_24a (counts 0 to 4) */
 extern const uint16_t words_3fde[26];   /* $03FDE  game_d: the sprites (less 170) of the ten pieces a chest bursts into, for each chest (every 16 bytes) */
+extern const uint16_t pictures_747e[4];   /* $0747E  game_d: the four pictures of the shard that goes up and comes down ($73D2), by its frame */
+extern const uint16_t glyphs_e22c[4];   /* $0E22C  game_d: the four glyphs of the thing $E144 draws ($E22C), by bits 0 and 1 of its word 2 */
+extern const uint16_t unit_pictures_82d8[4];   /* $082D8  game_d: the pictures of the unit move $8274 (first type), by its animation */
+extern const uint16_t unit_pictures_82e0[4];   /* $082E0  game_d: ... (second type) */
+extern const uint8_t walk_item_offsets[120];   /* $09EB2  game_d: signed bytes: x and y where the object a walker carries is drawn, for each of the twenty pictures; forty bytes for each of the levels 2 to 4 */
 extern const uint16_t frames_493a[4];   /* $0493A  game_d: the second glyph of glyph 225, by the column */
 extern const uint16_t frames_4942[4];   /* $04942  game_d: ... of glyph 251 */
 extern const uint16_t frames_494a[4];   /* $0494A  game_d: ... of glyph 252 */

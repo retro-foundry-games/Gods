@@ -473,6 +473,12 @@ table frames_44b4 0x000044b4 uint16_t 4   game_d: the four glyphs of the sprite 
 table frames_44bc 0x000044bc uint16_t 4   game_d: ... of the sprite 279
 table frames_44c4 0x000044c4 uint16_t 5   game_d: ... of the glyph 253, by counter_24a (counts 0 to 4)
 table words_3fde 0x00003fde uint16_t 26   game_d: the sprites (less 170) of the ten pieces a chest bursts into, for each chest (every 16 bytes)
+table pictures_747e 0x0000747e uint16_t 4   game_d: the four pictures of the shard that goes up and comes down ($73D2), by its frame
+table glyphs_e22c 0x0000e22c uint16_t 4   game_d: the four glyphs of the thing $E144 draws ($E22C), by bits 0 and 1 of its word 2
+table unit_pictures_82d8 0x000082d8 uint16_t 4   game_d: the pictures of the unit move $8274 (first type), by its animation
+table unit_pictures_82e0 0x000082e0 uint16_t 4   game_d: ... (second type)
+walk_modes_99dc 0x000099dc const struct WalkMode %s[8]   game_d: (a name at its address, not a table: the hunk format pads zone_groups, which ends at $99DC, to $99DE) for each way of walking: its routine and the base its picture starts at ($9F2A adds the template's picture and the step)
+table walk_item_offsets 0x00009eb2 uint8_t 120   game_d: signed bytes: x and y where the object a walker carries is drawn, for each of the twenty pictures; forty bytes for each of the levels 2 to 4
 table frames_493a 0x0000493a uint16_t 4   game_d: the second glyph of glyph 225, by the column
 table frames_4942 0x00004942 uint16_t 4   game_d: ... of glyph 251
 table frames_494a 0x0000494a uint16_t 4   game_d: ... of glyph 252

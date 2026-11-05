@@ -1283,7 +1283,6 @@ static void aimed_bolt_hits_player(uint32_t *record, int16_t x, int16_t y);
  * and its life runs down; at under 0 it is free */
 void game_step_73d2(void)
 {
-    static const uint16_t pictures[4] = { 529, 530, 531, 530 };
     struct Shard *shards = (struct Shard *)records_737e;
     int16_t alive = 0;
 
@@ -1303,7 +1302,7 @@ void game_step_73d2(void)
             y = (int16_t)(y - 2);
             shard->y = y;
         }
-        uint16_t picture = pictures[frame & 3];
+        uint16_t picture = pictures_747e[frame & 3];
 
         if (frame_toggle != 0) {
             frame = (int16_t)((frame + 1) & 3);
@@ -5400,7 +5399,6 @@ static void update_thrown(void)
         word_39e = 0x10;
         t[3] = check_hit_and_walls(t[0], t[1], t[3]);
 
-        static const uint16_t glyphs_e22c[4] = { 0x215, 0x216, 0x217, 0x216 };
         int16_t glyph = (int16_t)glyphs_e22c[t[2] & 3];
 
         if (t[4] >= 0)
@@ -6545,24 +6543,6 @@ static int16_t walk_step(int16_t index)
 }
 
 /* orig $009EB2: where the object a walker carries is drawn from its picture (two bytes, x and y, for each of the twenty pictures; forty bytes for each of the levels 2, 3 and 4) */
-static const int8_t walk_item_offsets[120] = {
-    20, 25, 17, 25, 12, 24, 8, 21, 5, 21,
-    8, 21, 12, 24, 17, 25, 20, 23, -3, 25,
-    0, 25, 5, 24, 9, 21, 12, 21, 9, 21,
-    5, 24, 0, 25, -3, 23, 0, 0, 0, 0,
-    20, 27, 17, 27, 12, 26, 8, 23, 5, 23,
-    8, 23, 12, 26, 17, 27, 20, 25, -3, 27,
-    0, 27, 5, 26, 9, 23, 12, 23, 9, 23,
-    5, 26, 0, 27, -3, 25, 0, 0, 0, 0,
-    21, 9, 21, 10, 21, 11, 21, 10, 21, 9,
-    21, 10, 21, 11, 21, 10, 21, 14, -4, 9,
-    -4, 10, -4, 11, -4, 10, -4, 9, -4, 10,
-    -4, 11, -4, 10, -4, 14, 0, 0, 0, 0,
-};
-
-/* orig $0099DC: the picture each way of walking starts at (added to the template's picture and the step) */
-static const uint8_t walk_picture_base[8] = { 0, 9, 8, 0x11, 8, 0x11, 8, 0x11 };
-
 static struct PlanItem *plan_tail;   /* a6 of the original: where the next place of plan_list goes */
 
 /* orig $00A872: the cell of the planner's map of the places (ptr_03ac, 20 bytes a row) that the level's point (x, y) is in */
@@ -7130,12 +7110,12 @@ static void plan_run(const struct MonsterType *type, const struct WalkMember *m)
     }
 }
 
-/* orig $009F2A: the picture of a walker: the template's picture (the first word of the 16 bytes of the type's byte 7, in ptr_0b82), the way of walking's base (walk_picture_base) and its step */
+/* orig $009F2A: the picture of a walker: the template's picture (the first word of the 16 bytes of the type's byte 7, in ptr_0b82), the way of walking's base (walk_modes_99dc) and its step */
 static int16_t walker_picture(const struct MonsterType *type, const struct WalkMember *m)
 {
     int16_t first = *(const int16_t *)(ptr_0b82 + 16 * (uint16_t)type->picture);
 
-    return (int16_t)(walk_picture_base[m->mode & 7] + m->frame + first);
+    return (int16_t)((int16_t)walk_modes_99dc[m->mode & 7].picture_base + m->frame + first);
 }
 
 /* orig $00A122: the way the planner found (planner.result: 0 and 1 walk left and right, 2 and above jump: 2 and 3 to the left and right, 4 and 5 and then 6 and 7 the high ones; the speed of the
@@ -7362,14 +7342,14 @@ static void walker_item_place(const struct MonsterType *type, int16_t picture, i
 {
     int16_t first = *(const int16_t *)(ptr_0b82 + 16 * (uint16_t)type->picture);
     int16_t index = (int16_t)(((int16_t)(picture - first) << 1) + (int16_t)((param_index - 2) * 40));
-    const int8_t *offsets;
+    const uint8_t *offsets;
 
     if (index < 0 || index > 118)
         index = 0;   /* (the first level has no such table) */
     offsets = &walk_item_offsets[index];
 
-    *x = (int16_t)(*x + offsets[0]);
-    *y = (int16_t)(*y + offsets[1]);
+    *x = (int16_t)(*x + (int8_t)offsets[0]);
+    *y = (int16_t)(*y + (int8_t)offsets[1]);
 }
 
 /* orig $009CF0: a walker that carries nothing takes up one of the things of the list at $121C (when the planner's flag says things are the aim, 2) that the type takes (bits 0 and 1 of its
@@ -7645,9 +7625,6 @@ static int16_t unit_move_8274(struct UnitMember *m, const uint16_t *pictures)
         d2 = (int16_t)(d2 + 3);
     return d2;
 }
-
-static const uint16_t unit_pictures_82d8[4] = { 0x1C0, 0x1C1, 0x1C2, 0x1C1 };
-static const uint16_t unit_pictures_82e0[4] = { 0x1C6, 0x1C7, 0x1C8, 0x1C7 };
 
 /* orig $008234: eight pictures from `base` on (four more when it faces left) */
 static int16_t unit_move_8234(struct UnitMember *m, int16_t base)
