@@ -138,6 +138,23 @@ static void lockstep_reply(const uint32_t *pixels, int phase)
     fflush(stdout);
 }
 
+/* the draws of the program (glyphs and sprites) of the last iterations, for the lockstep to compare with the original's (`draws` answers them as text, newest last) */
+extern void (*host_draw_hook)(int kind, int16_t x, int16_t y, uint16_t index);   /* shims.c */
+#define DRAW_RING 4096
+static struct { unsigned iteration; int16_t kind, x, y; uint16_t index; } draw_ring[DRAW_RING];
+static unsigned draw_count;
+
+static void draw_log(int kind, int16_t x, int16_t y, uint16_t index)
+{
+    unsigned at = draw_count++ % DRAW_RING;
+
+    draw_ring[at].iteration = gods_iteration;
+    draw_ring[at].kind = (int16_t)kind;
+    draw_ring[at].x = x;
+    draw_ring[at].y = y;
+    draw_ring[at].index = index;
+}
+
 /* the commands up to the next `step` (returns 1), answering `image` on the way; 0 when the other side is gone or says quit */
 static int lockstep_commands(const uint32_t *pixels, int phase)
 {
@@ -153,6 +170,18 @@ static int lockstep_commands(const uint32_t *pixels, int phase)
         else if (sscanf(line, "mem %x %x", (unsigned *)&a, (unsigned *)&b) == 2) {   /* `mem ADDR LEN`: `mem LEN` and LEN bytes of the program's memory (a debugging aid: tools/ami9000_host/ctl.py) */
             printf("mem %d\n", b);
             fwrite(guest_ptr((uint32_t)a), 1, (size_t)b, stdout);
+            fflush(stdout);
+        } else if (!strncmp(line, "draws", 5)) {   /* `draws N`: the draws of the last N iterations, a line each: `iteration kind x y index`, then a line `end` */
+            unsigned last = gods_iteration, first = (unsigned)atoi(line + 5);
+            unsigned from = draw_count > DRAW_RING ? draw_count - DRAW_RING : 0;
+
+            first = first == 0 ? 1 : first;
+            for (unsigned i = from; i < draw_count; i++) {
+                if (draw_ring[i % DRAW_RING].iteration + first > last)
+                    printf("%u %d %d %d %u\n", draw_ring[i % DRAW_RING].iteration, draw_ring[i % DRAW_RING].kind, draw_ring[i % DRAW_RING].x,
+                           draw_ring[i % DRAW_RING].y, draw_ring[i % DRAW_RING].index);
+            }
+            printf("end\n");
             fflush(stdout);
         } else if (!strncmp(line, "quicksave ", 10)) {   /* `quicksave PATH`: the program's memory is written to PATH at the top of its next iteration (F5 of the window, dev_game.c; the lockstep driver's F5) */
             static char path[512];
@@ -349,8 +378,10 @@ int main(int argc, char **argv)
             options.disks = argv[++i];
         else if (!strcmp(argv[i], "--scale") && i + 1 < argc)
             options.scale = atoi(argv[++i]);
-        else if (!strcmp(argv[i], "--lockstep"))
+        else if (!strcmp(argv[i], "--lockstep")) {
             lockstep = options.headless = 1;
+            host_draw_hook = draw_log;
+        }
         else if (!strcmp(argv[i], "--quicksave") && i + 1 < argc)
             host_quicksave_file = argv[++i];
         else if (!strcmp(argv[i], "--quickload") && i + 1 < argc)

@@ -3,6 +3,10 @@
 /* Gods, the menu program: drawing images and text on the screen.  The screen is 44 bytes a row (352 pixels), 192 rows. */
 #include "draw.h"
 
+#ifdef GODS_SDL
+extern void (*host_draw_hook)(int kind, int16_t x, int16_t y, uint16_t index);   /* sdl/devmain.c: none in the regular program */
+#endif
+
 #define SCREEN_ROW 44
 #define SCREEN_LAST_ROW 191
 
@@ -197,6 +201,10 @@ static void blit_image_left(uint8_t *dst, const uint8_t *src, uint16_t plane, ui
  * plain one; from 337 to 351 and from -15 to -1 the original has two variants that draw the part that is on the screen */
 void glyph_draw(int16_t x, int16_t y, uint16_t index)
 {
+#ifdef GODS_SDL
+    if (host_draw_hook)
+        host_draw_hook(0, x, y, index);   /* (the dev build's log of the draws: the lockstep compares them with the original's) */
+#endif
     const struct Image *img = &image_table[index];
     const uint8_t *data = (const uint8_t *)img->data;
     uint8_t *dst;
@@ -225,6 +233,10 @@ void glyph_draw(int16_t x, int16_t y, uint16_t index)
  * from -31 to -1 draw the part that is on the screen */
 void sprite_draw(int16_t x, int16_t y, uint16_t index)
 {
+#ifdef GODS_SDL
+    if (host_draw_hook)
+        host_draw_hook(1, x, y, index);   /* (the dev build's log of the draws: the lockstep compares them with the original's) */
+#endif
     const struct Image *img = &image_table[index];
     const uint8_t *data = (const uint8_t *)img->data;
     uint8_t *dst;

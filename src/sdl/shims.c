@@ -64,6 +64,7 @@ void message_draw(void)
  * loop of game_frame, for ever, with the interrupts on */
 extern void sr_set(uint16_t value);
 
+void (*host_draw_hook)(int kind, int16_t x, int16_t y, uint16_t index);   /* the dev build's log of the draws (devmain.c); none in the regular program */
 volatile int gods_waiting;   /* the program waits for the original (GODS_FOLLOW, devmain): the machine's time does not go on */
 unsigned gods_iteration;   /* the iteration of the loop now running (for the debugger) */
 void (*host_iteration_hook)(unsigned iteration);   /* devmain's: called at the top of every iteration (dev_game.c); none in the regular program */
