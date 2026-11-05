@@ -132,10 +132,15 @@ int files_read(const char *name, int prefer, uint8_t *dest)
     return 0;
 }
 
-/* orig $01D536: load the file `name` to `dest`; -1 when it is not on the disks */
+extern void host_file_read_message(void);
+
+/* orig $01D536 (and $01D58A, the part that shows "LOADING"): load the file `name` to `dest`; -1 when it is not on the disks.  When tick_hold_38a is set (the shop and the loading of a world set it) the first
+ * read clears it and asks for the message "LOADING" (the message is held for the load: tick_hold_26c) */
 int32_t file_read(const char *name, void *dest)
 {
     int wanted = disk_digit == '2' ? 1 : 0;
+
+    host_file_read_message();   /* (shims.c: the game's side of the $01D58A part) */
 
     return files_read(name, wanted, dest);
 }

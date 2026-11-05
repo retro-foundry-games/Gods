@@ -231,8 +231,10 @@ void frame_tick(void)
         countdown_220--;
     if (!message_shown)
         return;
-    if (tick_hold_38a)
-        return;   /* goes on at $16C9E, which did not run */
+    if (tick_hold_38a) {
+        shop_message_frame();   /* $16C9E */
+        return;
+    }
     if (tick_hold_296 || (int16_t)message_state < 0 || tick_hold_26c)
         return;
     if (message_hold <= 1) {   /* the message scrolls in the work area */
@@ -273,7 +275,8 @@ void fade_out(uint16_t delay, uint16_t arg)
             wait_vblank();
         }
     }
-    clear_both_screens();
+    if (!fade_keep_screens)
+        clear_both_screens();
     wait_vblank();
     copper_move_a = 0x00840000;
     copper_move_b = 0x00865246;

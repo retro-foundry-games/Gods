@@ -443,6 +443,17 @@ extern uint16_t word_2b2;   /* $002B2  game_d: the id of the thing the player to
 extern uint32_t score_total_1fc;   /* $001FC  game_d: the points won, as one number (the score itself is in score_words) */
 extern int16_t word_2ba;   /* $002BA  game_d: -1, or the step (0 to 4) of the thing of kinds 232, 288, 290 and 292 */
 extern const struct WalkMode walk_modes_99dc[8];   /* $099DC  game_d: (a name at its address, not a table: the hunk format pads zone_groups, which ends at $99DC, to $99DE) for each way of walking: its routine and the base its picture starts at ($9F2A adds the template's picture and the step) */
+extern uint16_t shop_repeat;   /* $00386  shop: frames the stick has been held the same way */
+extern uint8_t shop_held[2];   /* $00388  shop: the second byte is the stick as first held (0 when it is let go) */
+extern int16_t shop_selected;   /* $0038C  shop: the item that was chosen once (negative: it was asked to replace a weapon), -1 none */
+extern uint16_t shop_cursor_old;   /* $00390  shop: the cell the cursor was at at the start of the frame */
+extern uint16_t shop_count;   /* $00392  shop: how many items it offers */
+extern uint16_t shop_scroll;   /* $00308  shop: how many items the grid has scrolled past (more than 17) */
+extern uint32_t shop_score_shown;   /* $00B6A  shop: the score as shown, counted to the score */
+extern uint32_t shop_bought;   /* $00B6E  shop: a bit for each kind of pick-up that has been bought */
+extern uint8_t *shop_text;   /* $00B72  shop: the strip of text (9 rows of 8 words of 4 planes) that scrolls */
+extern uint16_t shop_list[31];   /* $00AAA  shop: the items on offer (item numbers, -1 ends the list) */
+extern uint16_t shop_offers[30];   /* $00AE8  shop: the list while it is filtered */
 extern void fn_10976(void);   /* $10976  game_d: the pick-up handler 18 of the table at $1067A (game_e writes it in C) */
 extern uint16_t word_26a;   /* $0026A  game_d: the glyph the pick-ups of records_19334 are drawn with (sprite, two words wide) */
 extern uint16_t bcd_346[4];   /* $00346  the number call_by_kind makes of five thousand times its argument, a BCD byte a word, the low digits first */
@@ -569,14 +580,14 @@ extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of 
 extern const uint8_t font_8x8[1272];   /* $1E7F4  the text font (8 bytes a character) */
 extern const uint8_t menu_texts[41];   /* $0635A  the main menu's lines, each ended by a 0: "BEGIN QUEST", "ENTER PASSWORD", "CONTINUE GAME" */
 extern const uint8_t screen_texts[65];   /* $0689C  the texts of the password screen and the top ten, each ended by a 0: "ENTER A PASSWORD", "ENTER YOUR NAME HERO" (17 bytes in), "TOP TEN GODS" (38 in) and the name of the high score file ("\hiscores.bin", 51 in) */
-extern const uint8_t text_game_over[11];   /* $100A9  "GAME  OVER" */
+extern const char text_game_over[11];   /* $100A9  "GAME  OVER" */
 extern const uint8_t key_table[40];   /* $06CE0  the keys of the grid in the order of its cells (a to z, full stop, space, 0 to 9, backspace), ended by $FF */
-extern const uint8_t tocache_name[12];   /* $196FE  "tocache.bin": the file with the directory of the disks (loaded at start) */
+extern const char tocache_name[12];   /* $196FE  "tocache.bin": the file with the directory of the disks (loaded at start) */
 extern const uint8_t asset_extensions[11];   /* $00D2E  the endings of a picture file name (.pi1) and of its table (.dat, 6 bytes on) */
 extern const uint8_t asset_names[138];   /* $1ECEC  the names assets_load knows (each ended by 0, ended by $FF), and from byte 86 on a long for each: the address of its list of file names */
 extern const uint8_t keymap[128];   /* $1E5AE  the character a raw key code gives (0 when none) */
-extern const uint8_t background_name[12];   /* $026D2  "backscr.pi1": the file of the menu's background picture */
-extern const uint8_t small_font_name[9];   /* $03232  "smallfnt": the asset set of the small font */
+extern const char background_name[12];   /* $026D2  "backscr.pi1": the file of the menu's background picture */
+extern const char small_font_name[9];   /* $03232  "smallfnt": the asset set of the small font */
 extern const uint16_t fill_words[14];   /* $05FAE  fourteen words that fill_buffer makes longs of (sign extended) and repeats */
 extern const uint32_t fill_longs[14];   /* $05FCA  fourteen longs it repeats instead when flag_290 is not negative */
 extern const uint16_t zone_limits[28];   /* $09992  seven records of four words: the limits of the zones the player is tested against */
@@ -587,7 +598,7 @@ extern const uint16_t shot_deltas[64];   /* $16BB4  pairs of words: how a shot o
 extern const uint16_t jump_deltas[23];   /* $11318  how many rows up the player is in each step (2 bytes a step) of a jump */
 extern const uint16_t frame_map_125ac[6];   /* $125AC  the frame after a frame of the state 5 (five words), then how near the left or right of the screen the player may go before the scroll follows */
 extern const uint32_t state_table[58];   /* $10280  29 states of the player, two longs each: the first sprite and the routine (the C does not use the second) */
-extern const uint8_t text_power[12];   /* $12CEE  "Power", 0, "Value", 0 (text_power + 6 is "Value") */
+extern const char text_power[12];   /* $12CEE  "Power", 0, "Value", 0 (text_power + 6 is "Value") */
 extern const uint32_t table_18714[10];   /* $18714  the routines (take_record_to_199ac, finish_record_1895a, ...) the cell kinds' states name */
 extern const uint8_t text_10a34[8];   /* $10A34  the first eight bytes of the message fn_10976 makes */
 extern const uint8_t fall_steps_f2[52];   /* $000F2  game_d: signed bytes: how far a thing falls (added to y) at each step 0 to 23 of its flag byte (steps 24 to 37 read on into the next bytes, the sounds: up to $12F, where clip_rectangles is from $128) */
@@ -600,6 +611,12 @@ extern const uint16_t glyphs_e22c[4];   /* $0E22C  game_d: the four glyphs of th
 extern const uint16_t unit_pictures_82d8[4];   /* $082D8  game_d: the pictures of the unit move $8274 (first type), by its animation */
 extern const uint16_t unit_pictures_82e0[4];   /* $082E0  game_d: ... (second type) */
 extern const uint8_t walk_item_offsets[120];   /* $09EB2  game_d: signed bytes: x and y where the object a walker carries is drawn, for each of the twenty pictures; forty bytes for each of the levels 2 to 4 */
+extern const uint16_t shop_doors_351a[24];   /* $0351A  game_d: for each world (two for a level) x, y and the way the shop's door walks (-1 left, 1 right, 0) */
+extern const char shop_pi1_name[10];   /* $13C56  "shop.pi1" */
+extern const uint8_t shop_kinds_13b32[24];   /* $13B32  game_d: for each kind of pick-up whether the shop calls its handler (otherwise the item goes into a free slot) */
+extern const uint16_t shop_data_14206[210];   /* $14206  game_d: the shop's stock: the lists' addresses by level and world (8 longs), the lists (item numbers, -1 ends each), the lists' addresses by level (4 longs, for menu_active), and the colours (25 words from $14378) the copper list of the shop is made from */
+extern const char text_inventory_full[41];   /* $0FF34  the message when no slot is free */
+extern const char text_replace[38];   /* $10029  the message that a weapon replaces another: the name follows */
 extern const uint16_t frames_493a[4];   /* $0493A  game_d: the second glyph of glyph 225, by the column */
 extern const uint16_t frames_4942[4];   /* $04942  game_d: ... of glyph 251 */
 extern const uint16_t frames_494a[4];   /* $0494A  game_d: ... of glyph 252 */
@@ -620,12 +637,12 @@ extern const uint32_t table_1077a[4];   /* $1077A  for each level the list that 
 extern const uint32_t table_5b9e[4];   /* $05B9E  for each level the first high score */
 extern const uint32_t table_5bb2[4];   /* $05BB2  ... and the second */
 extern const uint32_t table_1c678[8];   /* $1C678  for each level two pointers (ptr_0b7e, ptr_0b82) */
-extern const uint8_t sound1_name[11];   /* $1D3D2  "sound1.bin" */
+extern const char sound1_name[11];   /* $1D3D2  "sound1.bin" */
 extern const struct SoundRecord sound_records[67];   /* $20BCE  the sounds: for each, its voices' tracks (the second byte names its voice entry) */
 extern const uint16_t sound_periods[480];   /* $2080E  the period tables: an instrument names where its table starts (word 0, 48 or 96); a note indexes it by 4 words, so they run into each other up to the sounds table */
 extern const uint32_t sound_tracks[137];   /* $21C3A  the address of the track (the commands of the sequencer) of each track number, 0 for none */
 extern const struct SoundInstrument sound_instruments[53];   /* $3A38A  the instruments: the sample, its loop, and the period table */
-extern const uint8_t objects_name[8];   /* $196DE  "objects": the asset set of the objects */
+extern const char objects_name[8];   /* $196DE  "objects": the asset set of the objects */
 extern const uint8_t table_1c9e4[1024];   /* $1C9E4  two tables of 256 words (the first and the second word of each of 32 pairs, 32 bytes apart) make_pairs_fb9a reads */
 extern const uint16_t death_steps[14];   /* $00096  the seven pieces of the player's death: the steps (x, y) each starts with */
 extern const uint16_t respawn_search[45];   /* $03864  fifteen records of three words: where, from the cell the player was last at, the cell that is looked for (an offset into the collision map, then the step of x and y) */

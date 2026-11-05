@@ -185,6 +185,11 @@ uint8_t *next_message_slot(void)
 }
 
 static void level_end_screen(void);   /* orig $012E08 (below) */
+static int shop_door(void);   /* orig $003438 (below) */
+static void shop_run(void);   /* orig $013690 (below) */
+static void world_end_countdown(void);   /* orig $0032B4 (below) */
+static void player_state_run(int16_t state, int16_t d7);   /* orig $010368's table (below) */
+uint16_t fade_keep_screens;
 
 /* orig $001D2FC: wait until more than `frames` frames have passed since the last flip (vbl_saturating counts them), then flip */
 static void wait_frames_then_flip(uint16_t frames)
@@ -483,7 +488,11 @@ static void game_frame_tail(void)
         update_thrown();
         update_archers();
         update_records_12a0();
-        game_nothing();
+        if (shop_door()) {   /* $3514: the shop; the rest of the frame is not run */
+            host_cpu_frames(1);   /* (the work of the frame that the original has done to here) */
+            shop_run();
+            return;
+        }
         mark_player_cells();
         update_records_1354();
         draw_sprites_721e();
@@ -554,7 +563,7 @@ static void game_frame_tail(void)
     else
         wait_frames_then_flip(frame_wait);
     if ((int16_t)flag_290 >= 0)
-        return;   /* goes on at $32B4 */
+        world_end_countdown();   /* $32B4 (it goes on at $2EF4: the tests below) */
     if (flag_258)
         return;   /* goes on at $30DA */
     if (flag_1f0) {   /* $35D2 */
@@ -631,7 +640,7 @@ void game_frame(void)
     scroll_x_a = scroll_x;
     scroll_y_a = scroll_y;
     if (flag_290 >= 0)
-        fn_33d4();
+        auto_walk_33d4();
     else
         player_control();
     count_zones();
@@ -8158,7 +8167,7 @@ void item_message(int16_t item)
         *out++ = 32;
     }
     if (record->w[3] != 0) {
-        out = copy_text(out, (text_power + 6), &count);
+        out = copy_text(out, (const uint8_t *)(text_power + 6), &count);
         *out++ = 32;
         out = put_digits5(out, (int16_t)record->w[3]);
         *out++ = 32;
@@ -8192,7 +8201,7 @@ void object_message(const struct Object *object)
         *out++ = 17;
         *out++ = 32;
     }
-    out = copy_text(out, text_power, &count);
+    out = copy_text(out, (const uint8_t *)text_power, &count);
     *out++ = 32;
 
     int16_t rest = object->first_value;
@@ -8213,7 +8222,7 @@ void object_message(const struct Object *object)
     *out++ = 32;
     *out++ = 17;
     *out++ = 32;
-    out = copy_text(out, (text_power + 6), &count);
+    out = copy_text(out, (const uint8_t *)(text_power + 6), &count);
     *out++ = 32;
     out = put_digits5(out, object->w74);
     *out++ = 32;
@@ -10027,21 +10036,9 @@ static void state_1039e(int16_t d7)
     ladder_mount(14, 26);
 }
 
-/* orig $010368: the player for one frame: the routine of the state named by player_state runs (see the table at $10280): 0 and 1 walk, 2 to
- * 4 turn, 5 and 6 shoot, 8 and 9 jump, 10 to 12 fall, 13 and 14 climb, 16 and 17 land, 18 and 19 handle things, 20 to 23 jump and fall
- * firing, 24 and 25 shoot on a ladder, 26 mounts a ladder, 27 and 28 leave it.  The state 7 and those over 28 point into data and are not
- * states */
-void player_control(void)
+/* the routine of the state (the table at $10280) with the animation frame d7 */
+static void player_state_run(int16_t state, int16_t d7)
 {
-    int16_t d7 = word_19a;
-    int16_t state = player_state;
-
-    if (state != 18 && state != 19)
-        game_step_5496();
-    if (code_3436 == 20081 || flag_290 >= 0) {
-        player_end(d7);
-        return;
-    }
     switch (state) {
     case 0:  state_11fca(d7); break;
     case 1:  state_12290(d7); break;
@@ -10080,6 +10077,24 @@ void player_control(void)
     default:
         break;
     }
+}
+
+/* orig $010368: the player for one frame: the routine of the state named by player_state runs (see the table at $10280): 0 and 1 walk, 2 to
+ * 4 turn, 5 and 6 shoot, 8 and 9 jump, 10 to 12 fall, 13 and 14 climb, 16 and 17 land, 18 and 19 handle things, 20 to 23 jump and fall
+ * firing, 24 and 25 shoot on a ladder, 26 mounts a ladder, 27 and 28 leave it.  The state 7 and those over 28 point into data and are not
+ * states */
+void player_control(void)
+{
+    int16_t d7 = word_19a;
+    int16_t state = player_state;
+
+    if (state != 18 && state != 19)
+        game_step_5496();
+    if (code_3436 == 20081 || flag_290 >= 0) {
+        player_end(d7);
+        return;
+    }
+    player_state_run(state, d7);
 }
 
 
@@ -11539,7 +11554,7 @@ void draw_start_frame(void)
     step_190f2();
     update_archers();   /* $FD0C (this routine, the frame of a change of the screen, does not call the routine at $E142) */
     update_records_12a0();
-    game_nothing();
+    shop_door();
     mark_player_cells();
     update_records_1354();
     draw_sprites_721e();
@@ -12142,30 +12157,36 @@ static void world_records_clear(void)
     clear_records_737e();
 }
 
-/* the shop's door of each level's worlds ($00351A: three words each, two for a level: x, y and a word the original keeps in $28C) */
-static const int16_t shop_doors_351a[8][3] = {
-    { 1664, 944, -1 }, { 3680, 384, 1 }, { 704, 960, 1 }, { 480, 960, -1 }, { 1440, 784, -1 }, { 768, 160, 1 }, { 704, 176, -1 }, { 384, 800, 0 },
-};
-
-/* orig $0032D8 to $00333E (what the loading of a world runs of the start of a level): the sounds are stopped, the sprites of the world are read, the palette's first colour is black and the shop's door of the
- * world is put in word_288 and the next words; word_294, the count of worlds, goes up (the loading takes it down again) */
-static void world_set_up(void)
+/* orig $0032D8 to $003314 (the part of the loading of a world that reads its sprites): the sounds are stopped, the sprites of the shop (the set "shop": the grid, the font and the door, the images from 448 on) are read after the world's and the
+ * palette's first colour is black */
+static void world_assets(void)
 {
     stop_game_sounds();
     word_292 = 0x1C0;
     asset_flag = -1;
     flags_0ddd |= 0x10;
-    assets_load((const char *)ptr_26de, palette_words, asset_end_0ca2, (struct AssetEntry *)asset_table_0ca6);
+    assets_load("shop", (uint16_t *)ptr_0e44, asset_end_0ca2, (struct AssetEntry *)asset_table_0ca6);   /* (the shop set's colours go to the place ptr_0e44 names: the level's stay) */
     palette_words[0] = 0;
     menu_state_25a = 1;
+}
 
-    const int16_t *door = shop_doors_351a[(int16_t)((param_index - 1) * 2 + word_294)];
+/* orig $003316 to $00333E: the shop's door of the world is put in word_288 and the next words (x, y and the way it walks); word_294, the count of worlds, goes up (the loading takes it down again) */
+static void world_door(void)
+{
+    const uint16_t *door = &shop_doors_351a[(int16_t)((param_index - 1) * 2 + word_294) * 3];
 
     word_288 = door[0];
     word_28a = door[1];
-    word_28c = (uint16_t)door[2];
+    word_28c = door[2];
     word_294++;
     word_28e = 0;
+}
+
+/* orig $0032D8 to $00333E (what the loading of a world runs of the start of a level) */
+static void world_set_up(void)
+{
+    world_assets();
+    world_door();
 }
 
 /* orig $013532 to $0135C4: the next world of the level is loaded from the disk while the play goes on (the end of the world's record sets it): the tick count is kept, the files are read the way a level's
@@ -12195,4 +12216,816 @@ static void level_load_world(void)
     drives_idle();
     host_world_load_wait();   /* (the original's drive takes about 600 frames for the files of the world and its sprites) */
     tick_count = saved_ticks;
+}
+
+/* ======== the shop (orig $013690 to $0141C0, and the door that leads to it, $003438) ======== */
+
+/* orig $003438 to $003514: the shop's door.  It walks along (6 pixels in a frame in the way word_28c says, turning at a wall or where there is no floor), is drawn from the image word_292 + 4 + 4 * way + step
+ * (the step, word_28e, goes on every other frame) and, when it touches the player (a box of 32 by 48 hurts him; his energy is given back), the routine is switched off and the shop is entered.  It runs
+ * while the first word of the routine at $3436 is not an rts (the end of a world: $3342).  Returns 1 when the player has gone in */
+static int shop_door(void)
+{
+    if (code_3436 == 0x4E75)
+        return 0;
+
+    int16_t x = (int16_t)word_288;
+    int16_t y = (int16_t)word_28a;
+    int16_t way = (int16_t)word_28c;
+
+    if (frame_toggle != 0) {
+        x = (int16_t)(x + 6 * way);
+        int16_t edge = x & 0x1F;
+
+        if (edge <= 4 || edge >= 0x1C) {
+            const uint8_t *cell = ptr_0b86 + 0x2000 + ((int16_t)(y & 0xFFF0) << 3) + ((int16_t)(x & 0xFFE0) >> 5) + way;
+
+            if (cell[0] == 1 || cell[0x80] == 1 || cell[0x100] == 1 || cell[0x180] != 1)
+                word_28c = (uint16_t)-(int16_t)word_28c;
+        }
+    }
+    word_288 = (uint16_t)x;
+    word_28a = (uint16_t)y;
+    sprite_draw((int16_t)(x - scroll_x), (int16_t)(y - scroll_y), (uint16_t)((int16_t)word_28c * 4 + 4 + word_28e + word_292));
+    if (frame_toggle == 0)
+        word_28e = (word_28e + 1) & 7;
+    word_39c = 0x20;
+    word_39e = 0x30;
+    if (damage_player_at((int16_t)word_288, (int16_t)word_28a, 5) < 0) {
+        if (flag_aa8 == 0)
+            player_energy += 5;
+        code_3436 = 0x4E75;
+        return 1;
+    }
+    return 0;
+}
+
+/* orig $0033D4: while the world's end counts down (flag_290) and when the door has come: the player is made to stand (state 0 when the door walks to the left, 1 when to the right) or to go on in the state he is in
+ * with the stick the way the door is (bit 2, left, when the door's word is not negative; bit 3, right, when it is) */
+void auto_walk_33d4(void)
+{
+    const uint16_t *door = &shop_doors_351a[(int16_t)((param_index - 1) * 2 + word_294) * 3];
+
+    if ((int16_t)door[2] >= 0) {
+        if (player_state != 0)
+            game_stick = 4;
+        else {
+            player_end(word_19a);
+            return;
+        }
+    } else {
+        if (player_state != 1)
+            game_stick = 8;
+        else {
+            player_end(word_19a);
+            return;
+        }
+    }
+    player_state_run(player_state, word_19a);
+}
+
+/* orig $00328A: the screen is copied and "LOADING" and "PLEASE  WAIT" are written on it */
+static void loading_screen_328a(void)
+{
+    copy_other_screen();
+    text_draw_at("LOADING", 0x68, 0x28);
+    text_draw_at("PLEASE  WAIT", 0x40, 0x64);
+    screens_flip();
+}
+
+/* orig $0032B4 to $003342: the countdown of the world's end (flag_290, 65 steps, one for each frame of the loop): at 25 the creatures' state is cleared; when it goes below 0 the shop's sprites are read if
+ * they are not there (with the loading screen), the shop's door is set up and the routine at $3436 is made to run (it is a NOP) */
+static void world_end_countdown(void)
+{
+    if (flag_290 == 0x19)
+        clear_creature_state();
+    flag_290--;
+    if ((int16_t)flag_290 >= 0)
+        return;
+    if (menu_state_25a != 1) {
+        loading_screen_328a();
+        world_assets();
+    }
+    world_door();
+    code_3436 = 0x4E71;
+}
+
+/* the first byte of what shop.pi1 and the rest of the shop's screen are drawn on is the screen buffer: the rows are 44 bytes, the planes 8448 bytes apart */
+#define SHOP_ROW 44
+
+/* the strip of text: where shop_text points; before the shop has made it (a message while a world is loaded) the original's pointer is 0 and it works on the memory from address 0 */
+static uint8_t *shop_strip(void)
+{
+    return shop_text != 0 ? shop_text : (uint8_t *)GUEST(0);
+}
+
+/* orig $013D3C: the strip of text (9 rows of 64 bytes) is cleared */
+static void shop_clear_text(void)
+{
+    uint32_t *p = (uint32_t *)shop_strip();
+
+    for (int i = 0; i < 9 * 16; i++)
+        *p++ = 0;
+}
+
+/* orig $013D50: the strip is copied to the screen that is not shown (from row 175, byte 14, the planes 8448 bytes apart) and the two end pieces (images 41 and 42 of the shop's set) are drawn at its ends */
+static void shop_text_show(void)
+{
+    const uint16_t *from = (const uint16_t *)shop_strip();
+    uint8_t *to = screen_other + 0x1E22;
+
+    for (int row = 0; row < 9; row++) {
+        for (int column = 0; column < 8; column++) {
+            *(uint16_t *)to = *from++;
+            *(uint16_t *)(to + 0x2100) = *from++;
+            *(uint16_t *)(to + 0x4200) = *from++;
+            *(uint16_t *)(to + 0x6300) = *from++;
+            to += 2;
+        }
+        to += 0x1C;
+    }
+
+    uint8_t *saved = screen_buffer;
+
+    screen_buffer = screen_other;
+    glyph_draw(0x70, 0xAE, (uint16_t)(word_292 + 0x29));
+    glyph_draw(0xE0, 0xAE, (uint16_t)(word_292 + 0x2A));
+    screen_buffer = saved;
+}
+
+/* orig $013DB4: the strip is moved one pixel to the left (each plane of each row is a chain of 8 words) */
+static void shop_text_shift(void)
+{
+    uint16_t *row = (uint16_t *)shop_strip();
+
+    for (int r = 0; r < 9; r++) {
+        for (int plane = 0; plane < 4; plane++) {
+            uint16_t carry = 0;
+
+            for (int w = 7; w >= 0; w--) {
+                uint16_t *word = &row[w * 4 + plane];
+                uint16_t out = (uint16_t)(*word >> 15);
+
+                *word = (uint16_t)((*word << 1) | carry);
+                carry = out;
+            }
+        }
+        row += 32;
+    }
+}
+
+/* orig $013E50: one pixel column of the message's text is put at the right end of the strip (the characters are 10 pixels wide: the column of the character that message_wide counts to; the end of the text
+ * sets message_wide to -1, and the strip then goes on running by message_x until 140 pixels have gone: the message is over) */
+static void shop_text_column(void)
+{
+    int16_t column = (int16_t)message_wide;
+
+    if (column < 0) {
+        message_x++;
+        if ((int16_t)message_x >= 0x8C) {
+            message_x = 0;
+            message_wide = 0;
+            message_arg = 0;
+            message_shown = 0;
+            shop_clear_text();
+        }
+        return;
+    }
+
+    const uint8_t *character = message_text + column / 10;
+    int16_t rest = (int16_t)(column % 10);
+
+    if (*character == 0) {
+        message_wide = 0xFFFF;
+        message_arg = 0;
+        message_x = 0;
+        return;
+    }
+
+    uint16_t mask = (uint16_t)(0x8000 >> rest);
+    int16_t shift = (int16_t)(15 - rest);
+    const struct Image *image = &image_table[(int8_t)*character + (int16_t)word_292 + 0x2B];
+    int16_t rows = (int16_t)image->height;
+    const uint16_t *planes = image->data;
+    int16_t stride = (int16_t)((rows + 1));   /* the words of one plane */
+    uint16_t *to = (uint16_t *)shop_strip() + 0x1C;
+
+    for (int row = 0; row <= rows; row++) {
+        to[0] |= (uint16_t)((planes[row] & mask) >> shift);
+        to[1] |= (uint16_t)((planes[row + stride] & mask) >> shift);
+        to[2] |= (uint16_t)((planes[row + 2 * stride] & mask) >> shift);
+        to[3] |= (uint16_t)((planes[row + 3 * stride] & mask) >> shift);
+        to += 32;
+    }
+    message_wide++;
+}
+
+/* orig $013E3A (the frame tick calls it for a message while the shop is on): two columns of text go in, the strip is shown */
+void shop_message_frame(void)
+{
+    if (shop_text == 0)
+        return;   /* (the strip is not made yet: the vertical blank came while a world's loading began, before its first file read cleared tick_hold_38a; the original's did not come then) */
+    shop_text_shift();
+    shop_text_column();
+    shop_text_shift();
+    shop_text_column();
+    shop_text_show();
+}
+
+/* orig $013DF2 (message_request while the shop is on): a message of a lower priority than the one on show is not taken; the same text again is not either; any other starts over in the strip.
+ * Returns 0 when nothing was done */
+uint16_t shop_message_request(int16_t priority)
+{
+    if (priority < (int16_t)message_arg)
+        return 0;
+    if (message_shown) {
+        const uint8_t *next = message_next;
+        const uint8_t *shown = message_text;
+
+        for (;;) {
+            uint8_t ch = *next++;
+
+            if (ch == 0)
+                return 0;
+            if (ch != *shown++)
+                break;
+        }
+        shop_clear_text();
+    }
+    message_arg = (uint16_t)priority;
+    message_text = message_next;
+    message_wide = 0;
+    message_shown = 1;
+    shop_clear_text();
+    return 1;
+}
+
+/* orig $013C60: the grid of cells (6 by 3, from (96, 53), 32 pixels apart; image word_292 + 16, the cursor's cell +1) with the items (glyph 170 + item, or 302 + item - 192 for an object) in them; the
+ * last cell is the way out (image 18 and 19, drawn at (256, 117)); when there are more than 17 items the grid shows the last 17 */
+static void shop_draw_grid(void)
+{
+    const int16_t *list = (const int16_t *)shop_list;
+    int16_t index = 0;
+    int16_t y = 0x35;
+
+    shop_scroll = 0;
+    if ((int16_t)shop_count > 17) {
+        shop_scroll = (uint16_t)(shop_count - 17);
+        list += shop_scroll;
+    }
+
+    int row = 0;
+    int ended = 0;
+
+    for (; row < 3 && !ended; row++, y += 0x20) {
+        int16_t x = 0x60;
+
+        for (int column = 0; column < 6; column++, x += 0x20, index++) {
+            uint16_t image = (uint16_t)(0x10 + word_292);
+
+            if (index == (int16_t)cursor_pos)
+                image++;
+            sprite_draw(x, y, image);
+            if (*list < 0) {   /* the list ends: the rest of the cells are empty ones */
+                column++;
+                x += 0x20;
+                index++;
+                for (; column < 6; column++, x += 0x20, index++) {
+                    image = (uint16_t)(0x10 + word_292);
+                    if (index == (int16_t)cursor_pos)
+                        image++;
+                    sprite_draw(x, y, image);
+                }
+                row++;
+                y += 0x20;
+                for (; row < 3; row++, y += 0x20) {
+                    x = 0x60;
+                    for (column = 0; column < 6; column++, x += 0x20, index++) {
+                        image = (uint16_t)(0x10 + word_292);
+                        if (index == (int16_t)cursor_pos)
+                            image++;
+                        sprite_draw(x, y, image);
+                    }
+                }
+                ended = 1;
+                break;
+            }
+            int16_t item = *list++;
+
+            glyph_draw((int16_t)(x + 8), (int16_t)(y + 7), (uint16_t)(item >= 0xC0 ? item - 0xC0 + 0x12E : item + 0xAA));
+        }
+        if (ended)
+            break;
+    }
+    if (!ended)
+        return;
+    {
+        uint16_t image = (uint16_t)(0x12 + word_292);
+
+        if ((int16_t)cursor_pos == 0x11)
+            image++;
+        sprite_draw(0x100, (int16_t)(y - 0x20), image);
+    }
+}
+
+/* orig $013FD6: the digit (8 rows of the four planes' bytes of digit_font) is put in the screen at `to`, the rows 44 bytes and the planes 8448 bytes apart */
+static void shop_draw_digit(uint8_t *to, int16_t digit)
+{
+    const uint8_t *from = (const uint8_t *)GUEST(0x58F0) + (int16_t)(digit << 5);   /* (adda.w: the offset is a signed word) */
+
+    for (int row = 0; row < 8; row++) {
+        set_plane_byte(to, *from++);
+        set_plane_byte(to + 0x2100, *from++);
+        set_plane_byte(to + 0x4200, *from++);
+        set_plane_byte(to + 0x6300, *from++);
+        to += SHOP_ROW;
+    }
+}
+
+/* orig $013F18: the score as shown goes to the score by 750 a frame (the sound 33 plays while it does and no sound is busy); its seven digits are drawn at the left of the foot of the screen (as the divisions
+ * of the 68000 do them: a quotient that does not fit a word is not made, and the digit is then a part of the number), and the energy bar is run and drawn 16 rows higher than in the game */
+static void shop_score(void)
+{
+    int32_t shown = (int32_t)shop_score_shown;
+    int32_t score = (int32_t)score_total_1fc;
+
+    if (shown != score) {
+        if (sound_busy_207a0 == 0)
+            play_sound(0x21, 1);
+        if (shown > score) {
+            shown -= 750;
+            if (shown < score)
+                shown = score;
+        } else {
+            shown += 750;
+            if (shown > score)
+                shown = score;
+        }
+        shop_score_shown = (uint32_t)shown;
+    }
+
+    uint32_t number = shop_score_shown;
+    uint8_t *to = screen_buffer + 0x1E48;
+
+    for (int i = 0; i < 7; i++) {
+        uint32_t digit_word = number;   /* d2 after the division */
+        int16_t digit;
+
+        if ((number >> 16) < 10) {   /* divu.w #10 */
+            uint32_t quotient = 0;
+            uint32_t remainder = 0;
+
+            for (int bit = 31; bit >= 0; bit--) {   /* (shifts and subtractions: the 68000 has no 32-bit division in the library) */
+                remainder = (remainder << 1) | ((number >> bit) & 1);
+                if (remainder >= 10) {
+                    remainder -= 10;
+                    quotient |= 1u << bit;
+                }
+            }
+
+            number = (uint32_t)(int32_t)(int16_t)quotient;   /* ext.l */
+            digit = (int16_t)remainder;
+        } else {
+            number = (uint32_t)(int32_t)(int16_t)number;
+            digit = (int16_t)(digit_word >> 16);
+        }
+        shop_draw_digit(to, digit);
+        to -= 1;
+    }
+    frame_phase = 0;
+    screen_buffer -= 0x2C0;
+    update_energy_display();
+    draw_energy_bar();
+    screen_buffer += 0x2C0;
+}
+
+/* orig $0141C2: what an item costs (the value of the thing in table_14cf8, or of the object in its record) */
+static uint32_t shop_item_value(uint16_t id)
+{
+    if ((int16_t)id < 0xC0)
+        return table_14cf8[id].w[3];
+    return (uint16_t)((struct Object *)object_slots)[id - 0xC0].w74;
+}
+
+/* orig $0140A4 and what it calls ($01413C, $01415C, $0141F8): the list is filtered: an item is left out when its kind of pick-up has been bought, when (no weapon in any slot) it is item 2 or 3, when
+ * (flag_8890 is -1) it is item 40 or 41, or when it costs more than the score; the ones left are put in ascending order of price ($014132) and counted; when there is none the cursor is on the way out */
+static void shop_stock_filter(void)
+{
+    uint16_t *list = shop_list;
+    uint16_t *out = shop_offers;
+
+    for (int i = 0; i < 30; i++)
+        shop_offers[i] = 0xFFFF;
+    for (;;) {
+        uint16_t id = *list++;
+
+        if ((int16_t)id < 0) {
+            *out++ = id;
+            break;
+        }
+        if ((int16_t)id < 0xC0) {
+            int16_t kind = 0;
+
+            for (int i = 0; i < (int16_t)id; i++)
+                if (offsets_4cba[i] == 0)
+                    kind++;
+            if (shop_bought & (1u << kind))
+                continue;
+            if ((slot_ref_6b6 & slot_ref_748 & slot_ref_7da) == -1 && (id == 2 || id == 3))
+                continue;
+            if (flag_8890 == -1 && (id == 0x28 || id == 0x29))
+                continue;
+        }
+        if ((int32_t)shop_item_value(id) > (int32_t)score_total_1fc)
+            continue;
+        *out++ = id;
+    }
+
+    list = shop_list;
+    out = shop_offers;
+    shop_count = 0;
+    for (int i = 0; i < 30; i++) {
+        *list = *out++;
+        if ((int16_t)*list++ >= 0)
+            shop_count++;
+    }
+    *list = 0xFFFF;
+    if (shop_count == 0) {
+        cursor_pos = 0x11;
+        return;
+    }
+    if (shop_count > 1) {   /* ascending by price (a bubble sort of the words, as the original does it through the stack) */
+        int16_t count = (int16_t)shop_count;
+        uint16_t stack[30];
+
+        for (int i = 0; i < count; i++)
+            stack[count - 1 - i] = shop_list[i];
+        for (int pass = 0; pass < count; pass++)
+            for (int j = 0; j < count - 1; j++)
+                if ((int16_t)shop_item_value(stack[j]) > (int16_t)shop_item_value(stack[j + 1])) {
+                    uint16_t t = stack[j];
+
+                    stack[j] = stack[j + 1];
+                    stack[j + 1] = t;
+                }
+        for (int i = 0; i < count; i++)
+            shop_list[i] = stack[i];
+    }
+}
+
+/* a long of shop_data_14206 (the words of the table are as the 68000's memory has them: the high one first) */
+static uint32_t shop_data_long(uint32_t address)
+{
+    uint32_t index = (address - 0x14206) / 2;
+
+    return ((uint32_t)shop_data_14206[index] << 16) | shop_data_14206[index + 1];
+}
+
+/* orig $01405E: the list of the shop's stock for the level and world (menu_active: for the level), up to 30 words, filtered */
+static void shop_stock_build(void)
+{
+    uint32_t address;
+
+    if (menu_active != 0)
+        address = shop_data_long(0x14348 + 4 * (uint32_t)(int16_t)(param_index - 1));
+    else
+        address = shop_data_long(0x14206 + 4 * (uint32_t)(int16_t)((param_index - 1) * 2 + word_294 - 1));
+
+    const uint16_t *stock = &shop_data_14206[(address - 0x14206) / 2];
+
+    for (int i = 0; i < 30; i++)
+        shop_list[i] = stock[i];
+    shop_stock_filter();
+}
+
+/* orig $013C16: the question that a weapon replaces another: "Warning.. this weapon replaces the" and the name of the one in the slot (a0 the slot's word) */
+static void shop_replace_message(const int16_t *slot)
+{
+    static uint8_t text[96];
+    const struct Object *object = &((const struct Object *)object_slots)[*slot];
+    uint8_t *to = text;
+
+    for (int i = 0; i < 37; i++)
+        *to++ = (uint8_t)text_replace[i];
+    for (const uint8_t *name = object->name1; *name != 0; name++)
+        *to++ = *name;
+    *to++ = 0x20;
+    *to++ = 0x11;
+    *to = 0;
+    message_next = text;
+    message_arg = 0;
+    message_request(0x19);
+}
+
+/* the weapon's slot (the word of slot_ref_6b6, 748 or 7da) that the object `item` would go in ($015328) */
+static int16_t *shop_object_slot(int16_t item)
+{
+    int slot = pick_slot(item, &((const struct Object *)object_slots)[item]);
+
+    return slot == 0 ? &slot_ref_6b6 : slot == 1 ? &slot_ref_748 : &slot_ref_7da;
+}
+
+/* orig $013A22 to $013C12: the fire button is pressed on a cell.  The first press chooses the item (its message is shown); the second buys it: a pick-up of a kind with a handler (shop_kinds_13b32) has the
+ * handler run, another goes into a free slot (or the price is given back and "Inventory Full" shown); an object that would replace another asks first (the next press then buys it), and the value of what it
+ * replaces (the price less half) is given back.  Returns 1 when the shop is to be left (the way out) */
+static int shop_press(void)
+{
+    while (button_bits[0] & 1)
+        wait_vblank();   /* (the original waits at once; it sees the button let go in the vertical blank that polls it: the host's thread must not read the bits in the middle of the poll) */
+    int16_t cell = (int16_t)cursor_pos;
+
+    if (cell == 0x11)
+        return 1;
+
+    int16_t id = (int16_t)shop_list[cell + (int16_t)shop_scroll];
+
+    if (id < 0)
+        return 0;
+
+    int16_t chosen = (int16_t)shop_selected;
+
+    if (chosen < 0)
+        chosen = (int16_t)-chosen;
+    if (id != chosen) {   /* choosing */
+        shop_selected = (uint16_t)id;
+        message_arg = 0;
+        if (id < 0xC0) {
+            bits_1970a[id >> 3] &= (uint8_t)~(1 << (id & 7));
+            item_message(id);
+        } else
+            object_message(&((const struct Object *)object_slots)[id - 0xC0]);
+        return 0;
+    }
+
+    if (id < 0xC0) {   /* a pick-up */
+        play_sound(0x21, 3);
+        uint32_t price = table_14cf8[id].w[3];
+
+        score_total_1fc -= price;
+        int16_t kind = 0;
+
+        for (int i = 0; i < id; i++)
+            if (offsets_4cba[i] == 0)
+                kind++;
+        shop_bought |= 1u << kind;
+        if (shop_kinds_13b32[kind] != 0) {
+            if (pickup_handler(kind, 0) < 0)
+                host_missing_routine(0x1067A);
+        } else {
+            int placed = 0;
+
+            for (int slot = 0; slot < 4; slot++)
+                if (item_slots[slot] < 0 && slot != (int16_t)word_2cc) {
+                    item_slots[slot] = id;
+                    placed = 1;
+                    break;
+                }
+            if (!placed) {   /* the price is given back */
+                score_total_1fc += price;
+                message_next = (const uint8_t *)text_inventory_full;
+                message_arg = 0;
+                message_request(0x19);
+            }
+        }
+        shop_stock_build();
+        host_cpu_frames(1);   /* (the filter and the sort of the list take the original about a frame) */
+        return 0;
+    }
+
+    int16_t item = (int16_t)(id - 0xC0);
+    int16_t *slot = shop_object_slot(item);
+
+    if ((int16_t)shop_selected >= 0) {
+        if (*slot >= 0 && item != *slot) {   /* a weapon is replaced: asked first */
+            shop_replace_message(slot);
+            shop_selected = (uint16_t)-(int16_t)shop_selected;
+            return 0;
+        }
+    }
+    play_sound(0x21, 3);
+    slot = shop_object_slot(item);
+    if (*slot >= 0 && item != *slot) {   /* what the weapon is worth is given back, half of it */
+        const struct Object *old = &((const struct Object *)object_slots)[*slot];
+        uint32_t value = (uint32_t)(uint16_t)(old->last_value - old->first_value) * (uint16_t)old->w74;
+
+        value += (uint32_t)(int32_t)(int16_t)old->w74;
+        score_total_1fc = (uint32_t)((int32_t)score_total_1fc + ((int32_t)value >> 1));
+    }
+    score_total_1fc -= (uint16_t)((const struct Object *)object_slots)[item].w74;
+
+    uint16_t saved = message_arg;
+
+    message_arg = 0x32;
+    pick_up_object(item);
+    message_arg = saved;
+    shop_stock_build();
+    host_cpu_frames(1);
+    return 0;
+}
+
+/* the original waits in the loop until more than two frames have passed since the last flip, then flips ($01D2FC) */
+static void shop_wait_flip(void)
+{
+    while ((int16_t)(2 - vbl_saturating) >= 0)
+        ;
+    screens_flip();
+}
+
+/* orig $013690 to $0139DE: the shop.  The screen fades out, shop.pi1 is read to the hidden screen (the rows of 40 bytes of its planes go to the rows of 44), the screen is faded in again with the level's colours; the
+ * stick moves the cursor over the grid (the first move at once, then after 8 frames every 2), fire presses; the score counts to the score, the text of the messages runs along the strip at the foot.  The way out
+ * (cell 17) fades the screen out, draws a frame of the game, and the game goes on from the start of a frame ($2BD6) */
+static void shop_run(void)
+{
+    uint32_t saved_ticks = tick_count;
+
+    shop_score_shown = score_total_1fc;
+    cursor_pos = 0;
+    shop_repeat = 0;
+    shop_held[0] = shop_held[1] = 0;
+    shop_selected = 0xFFFF;
+    message_shown = 0;
+    word_dde = 0;
+    *(volatile uint8_t *)&flags_0ddd = 0;   /* clr.b $ddd.w */
+    fade_out(1, 2);
+
+    uint16_t saved_25c = word_025c;
+    int16_t saved_x_offset = x_offset;
+
+    flags_3b0 &= (uint8_t)~4;
+    flags_3b1 &= (uint8_t)~4;
+    load_unpacked(shop_pi1_name, picture_buffer - 0x22);
+    host_disk_wait();   /* (the original's read of the picture takes what its drive takes before it fades out again) */
+
+    const uint16_t *picture = (const uint16_t *)picture_buffer;
+    uint8_t *to = screen_buffer;
+
+    for (int row = 0; row < 192; row++) {
+        for (int word = 0; word < 20; word++) {
+            *(uint16_t *)to = *picture++;
+            to += 2;
+            *(uint16_t *)(to + 0x20FE) = *picture++;
+            *(uint16_t *)(to + 0x41FE) = *picture++;
+            *(uint16_t *)(to + 0x62FE) = *picture++;
+        }
+        for (int plane = 0; plane < 4; plane++) {   /* (clr.l (a1)+ and clr.l $20FE(a1) ... with a1 four bytes on: the other planes' longs start two bytes after the end of their rows) */
+            uint16_t *tail = (uint16_t *)(to + (plane == 0 ? 0 : 4 + plane * 0x2100 - 2));
+
+            tail[0] = 0;
+            tail[1] = 0;
+        }
+        to += 4;
+    }
+
+    fade_keep_screens = 1;   /* (the original's fade-out does not clear the screens here: the word at $1CFC0 is an rts for the time) */
+    fade_out(1, 0);
+    fade_keep_screens = 0;
+    display_reset();
+
+    uint8_t *shown = screen_buffer;
+    uint8_t *other = screen_other;
+
+    screen_buffer = other;   /* (the sound file is read with the screens as they are swapped) */
+    screen_other = shown;
+    file_read(sound1_name, picture_buffer);
+    host_disk_wait();
+    screen_buffer = shown;
+    screen_other = other;
+    drives_idle();
+    shop_text = (uint8_t *)line_text;
+    shop_clear_text();
+    tick_hold_38a = 1;
+    shop_bought = 0;
+    shop_stock_build();
+    shop_draw_grid();
+    shop_score();
+
+    uint16_t saved_1ec = word_1ec;
+    uint16_t saved_1ee = word_1ee;
+    uint8_t *saved_cda = ptr_0cda;
+
+    word_1ec = 0x19;
+    word_1ee = 4;
+    uint16_t saved_scroll_y = scroll_y;
+
+    scroll_y = 0;
+    screens_flip();
+    ptr_0cda = (uint8_t *)GUEST(0x14378);
+    copper_list_make();
+    clear_work_area();
+
+    uint16_t saved_words[8];
+
+    for (int i = 0; i < 8; i++)
+        saved_words[i] = message_words[i];
+    copper_colors_restore();
+    message_words[0] = message_words[2] = palette_words[6];
+    message_words[1] = message_words[3] = palette_words[6];
+    message_words[4] = message_words[6] = palette_words[4];
+    message_words[5] = message_words[7] = palette_words[4];
+    word_025c = 1;
+    copper_setup_done = 0;
+    host_fade_bind();   /* (the lockstep: the fade-in begins when the original calls its own) */
+    fade_in(palette_words, 1);
+    host_cpu_frames(1);   /* (the original goes on 31 frames after the call of the fade) */
+    copy_other_screen();
+    host_cpu_frames(2);   /* (the copy of a screen takes the original about two frames) */
+
+    for (;;) {
+        host_iteration_mark();
+        frame_toggle = (uint16_t)~frame_toggle;
+        message_tick();
+        shop_cursor_old = cursor_pos;
+
+        int moved = 1;
+
+        if (joystick != 0) {
+            if (shop_held[1] == 0) {
+                shop_repeat = 1;
+                shop_held[1] = joystick;
+            } else if (shop_held[1] == joystick) {
+                shop_repeat++;
+                if ((int16_t)shop_repeat < 8)
+                    moved = 0;
+                else
+                    shop_repeat = 6;
+            } else {
+                shop_repeat = 0;
+                moved = 0;
+            }
+        } else {
+            shop_held[0] = shop_held[1] = 0;
+            shop_repeat = 0;
+        }
+        if (moved) {
+            int16_t cell = (int16_t)cursor_pos;
+
+            if (joystick & 8) {
+                cell++;
+                if (cell > 17)
+                    cell--;
+            }
+            if (joystick & 4) {
+                cell--;
+                if (cell < 0)
+                    cell++;
+            }
+            if (joystick & 1) {
+                cell -= 6;
+                if (cell < 0)
+                    cell += 6;
+            }
+            if (joystick & 2) {
+                cell += 6;
+                if (cell > 17)
+                    cell -= 6;
+            }
+            cursor_pos = (uint16_t)cell;
+        }
+        if (cursor_pos != shop_cursor_old)
+            play_sound(0x16, 2);
+        if (button_bits[0] & 1) {
+            if (shop_press())
+                break;
+            continue;
+        }
+        shop_draw_grid();
+        host_iteration_cpu(2);   /* (the grid takes the original about two frames to draw: the score goes on after) */
+        shop_score();
+        shop_wait_flip();
+    }
+
+    for (int i = 0; i < 8; i++)
+        message_words[i] = saved_words[i];
+    scroll_y = saved_scroll_y;
+    ptr_0cda = saved_cda;
+    word_1ee = saved_1ee;
+    word_1ec = saved_1ec;
+    message_shown = 0;
+    wait_vblank();
+    reload_sprites();
+    wait_vblank();
+    file_read(sound1_name, picture_buffer);
+    fade_out(1, 0);
+    tick_hold_38a = 0;
+    draw_start_frame();
+    screens_flip();
+    copper_list_make();
+    clear_work_area();
+    x_offset = saved_x_offset;
+    word_025c = saved_25c;
+    copper_colors_restore();
+    fade_in(palette_words, 1);
+    tick_count = saved_ticks;
+    word_0248 = 0;
+    tick_hold_26c = 0;
+    message_shown = 0;
+    message_arg = 0;
+    clear_work_area();
+    wait_vblank();
+    drives_idle();
+    if (flag_aa8 != 0)
+        play_sound(60, 2);
+    else
+        stop_sound(60);
+    if (param_index == 3)
+        play_sound(66, 1);
 }

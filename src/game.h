@@ -57,6 +57,9 @@ void update_score_display(void);                           /* orig $005842 */
 
 
 
+void auto_walk_33d4(void);                                  /* orig $0033D4 */
+void shop_message_frame(void);                              /* orig $013E3A (the frame tick, while the shop is on) */
+uint16_t shop_message_request(int16_t priority);            /* orig $013DF2 (message_request, while the shop is on) */
 void game_nothing(void);                                   /* orig $003436, $0077E6 and $007906 */
 void game_step_4070(void);                                 /* orig $004070 */
 void draw_shutter(void);                               /* orig $0054C4 */

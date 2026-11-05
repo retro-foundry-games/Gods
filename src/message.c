@@ -124,11 +124,11 @@ void message_tick(void)
 
 /* orig $016D76: ask for the line message_next to be shown with the priority `priority` (a message of a higher priority that
  * is on show is not replaced).  The same text again does nothing; another one lets the one on show fade out first.  Returns
- * 0 when nothing was done.  The case of tick_hold_38a set (another handler) did not run in the menu */
+ * 0 when nothing was done.  While tick_hold_38a is set (the shop, and the loading of a world) the shop's request is the one that runs */
 uint16_t message_request(int16_t priority)
 {
     if (tick_hold_38a)
-        return 0;
+        return shop_message_request(priority);
     if (priority < (int16_t)message_arg)
         return 0;
     if (message_shown) {

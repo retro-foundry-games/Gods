@@ -104,9 +104,9 @@ has_continue      0x0000027a  uint16_t %s     non-zero: there is a game to conti
 menu_item_count   0x00006384  uint16_t %s     the number of the last line of the menu (1 or 2; a word in the code that is changed)
 table menu_texts      0x0000635a uint8_t 41   the main menu's lines, each ended by a 0: "BEGIN QUEST", "ENTER PASSWORD", "CONTINUE GAME"
 table screen_texts   0x0000689c uint8_t 65   the texts of the password screen and the top ten, each ended by a 0: "ENTER A PASSWORD", "ENTER YOUR NAME HERO" (17 bytes in), "TOP TEN GODS" (38 in) and the name of the high score file ("\hiscores.bin", 51 in)
-table text_game_over 0x000100a9 uint8_t 11   "GAME  OVER"
+table text_game_over 0x000100a9 char 11   "GAME  OVER"
 table key_table      0x00006ce0 uint8_t 40   the keys of the grid in the order of its cells (a to z, full stop, space, 0 to 9, backspace), ended by $FF
-table tocache_name 0x000196fe uint8_t 12   "tocache.bin": the file with the directory of the disks (loaded at start)
+table tocache_name 0x000196fe char 12   "tocache.bin": the file with the directory of the disks (loaded at start)
 asset_name        0x00000d1e  char %s[16]       the file name that assets_load puts together
 picture_header    0x00000d42  uint16_t %s       the first word of the picture file (its resolution)
 asset_directory   0x00000cea  uint8_t *%s       where the table of sprite records of an asset file is read (at +20)
@@ -182,8 +182,8 @@ original_begin    0x0000651e  void %s(void)    the original's Begin Quest (repla
 original_continue 0x00006650  void %s(void)    ... and Continue Game
 original_after_password 0x000064c2 void %s(void)   the original's code after the password screen
 menu_start_code   0x00006388  uint8_t %s[6]   the first instruction of the original's menu start: replaced by a jump to menu_start
-table background_name 0x000026d2 uint8_t 12   "backscr.pi1": the file of the menu's background picture
-table small_font_name 0x00003232 uint8_t 9    "smallfnt": the asset set of the small font
+table background_name 0x000026d2 char 12   "backscr.pi1": the file of the menu's background picture
+table small_font_name 0x00003232 char 9    "smallfnt": the asset set of the small font
 drives_present   0x0001d48c  uint8_t %s      bit n set: drive n is there (the start finds them)
 # the game's own routines, not decompiled yet: provisional names by address (a name is changed when the routine is written in C)
 fn_30c6           0x000030c6  void %s(void)
@@ -446,7 +446,7 @@ word_234          0x00000234  uint16_t %s
 word_2fc          0x000002fc  uint16_t %s
 word_2fe          0x000002fe  uint16_t %s
 bits_1970a        0x0001970a  uint8_t %s[]  a bit for each item (index of table_14cf8): set when its message was shown
-table text_power  0x00012cee  uint8_t 12    "Power", 0, "Value", 0 (text_power + 6 is "Value")
+table text_power  0x00012cee  char 12    "Power", 0, "Value", 0 (text_power + 6 is "Value")
 word_fb2c         0x0000fb2c  uint16_t %s   in the code area: a word pick_up_object sets to 18 for the item 2
 table table_18714 0x00018714  uint32_t 10  the routines (take_record_to_199ac, finish_record_1895a, ...) the cell kinds' states name
 ptr_0364          0x00000364  uint8_t *%s   the entry of the list at ptr_0cf2 + 80 that fn_10976 found
@@ -479,6 +479,23 @@ table unit_pictures_82d8 0x000082d8 uint16_t 4   game_d: the pictures of the uni
 table unit_pictures_82e0 0x000082e0 uint16_t 4   game_d: ... (second type)
 walk_modes_99dc 0x000099dc const struct WalkMode %s[8]   game_d: (a name at its address, not a table: the hunk format pads zone_groups, which ends at $99DC, to $99DE) for each way of walking: its routine and the base its picture starts at ($9F2A adds the template's picture and the step)
 table walk_item_offsets 0x00009eb2 uint8_t 120   game_d: signed bytes: x and y where the object a walker carries is drawn, for each of the twenty pictures; forty bytes for each of the levels 2 to 4
+shop_repeat       0x00000386  uint16_t %s     shop: frames the stick has been held the same way
+shop_held         0x00000388  uint8_t %s[2]   shop: the second byte is the stick as first held (0 when it is let go)
+shop_selected     0x0000038c  int16_t %s      shop: the item that was chosen once (negative: it was asked to replace a weapon), -1 none
+shop_cursor_old   0x00000390  uint16_t %s     shop: the cell the cursor was at at the start of the frame
+shop_count        0x00000392  uint16_t %s     shop: how many items it offers
+shop_scroll       0x00000308  uint16_t %s     shop: how many items the grid has scrolled past (more than 17)
+shop_score_shown  0x00000b6a  uint32_t %s     shop: the score as shown, counted to the score
+shop_bought       0x00000b6e  uint32_t %s     shop: a bit for each kind of pick-up that has been bought
+shop_text         0x00000b72  uint8_t *%s     shop: the strip of text (9 rows of 8 words of 4 planes) that scrolls
+shop_list         0x00000aaa  uint16_t %s[31]   shop: the items on offer (item numbers, -1 ends the list)
+shop_offers       0x00000ae8  uint16_t %s[30]   shop: the list while it is filtered
+table shop_doors_351a 0x0000351a uint16_t 24   game_d: for each world (two for a level) x, y and the way the shop's door walks (-1 left, 1 right, 0)
+table shop_pi1_name 0x00013c56 char 10   "shop.pi1"
+table shop_kinds_13b32 0x00013b32 uint8_t 24   game_d: for each kind of pick-up whether the shop calls its handler (otherwise the item goes into a free slot)
+table shop_data_14206 0x00014206 uint16_t 210   game_d: the shop's stock: the lists' addresses by level and world (8 longs), the lists (item numbers, -1 ends each), the lists' addresses by level (4 longs, for menu_active), and the colours (25 words from $14378) the copper list of the shop is made from
+table text_inventory_full 0x0000ff34 char 41   the message when no slot is free
+table text_replace 0x00010029 char 38   the message that a weapon replaces another: the name follows
 table frames_493a 0x0000493a uint16_t 4   game_d: the second glyph of glyph 225, by the column
 table frames_4942 0x00004942 uint16_t 4   game_d: ... of glyph 251
 table frames_494a 0x0000494a uint16_t 4   game_d: ... of glyph 252
@@ -515,12 +532,12 @@ table table_1077a  0x0001077a uint32_t 4   for each level the list that ptr_0b76
 table table_5b9e   0x00005b9e uint32_t 4   for each level the first high score
 table table_5bb2   0x00005bb2 uint32_t 4   ... and the second
 table table_1c678  0x0001c678 uint32_t 8   for each level two pointers (ptr_0b7e, ptr_0b82)
-table sound1_name  0x0001d3d2 uint8_t 11   "sound1.bin"
+table sound1_name  0x0001d3d2 char 11   "sound1.bin"
 table sound_records 0x00020bce struct SoundRecord 67   the sounds: for each, its voices' tracks (the second byte names its voice entry)
 table sound_periods 0x0002080e uint16_t 480   the period tables: an instrument names where its table starts (word 0, 48 or 96); a note indexes it by 4 words, so they run into each other up to the sounds table
 table sound_tracks 0x00021c3a uint32_t 137   the address of the track (the commands of the sequencer) of each track number, 0 for none
 table sound_instruments 0x0003a38a struct SoundInstrument 53   the instruments: the sample, its loop, and the period table
-table objects_name 0x000196de uint8_t 8   "objects": the asset set of the objects
+table objects_name 0x000196de char 8   "objects": the asset set of the objects
 block_16bb4       0x00016bb4  uint8_t %s[24]   twenty-four bytes of data the game changes (put back from block_16bcc)
 digit_font        0x000058f0  uint8_t %s[512]   sixteen digits of 8 rows of 4 bytes (a plane each); hud_digits_load makes the first ten from the picture of the digits
 start_x           0x0000021a  int16_t %s      where the player starts the level

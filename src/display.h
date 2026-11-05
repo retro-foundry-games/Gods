@@ -20,7 +20,10 @@ void copper_colors_restore(void);                              /* orig $01D216 *
 void fade_in(const uint16_t *target, uint16_t delay);         /* orig $01D0C0 */
 
 void frame_tick(void);                                         /* orig $016C30 */
+void shop_message_frame(void);                                 /* orig $013E3A (game.c: the message of the shop while the frame tick runs) */
+uint16_t shop_message_request(int16_t priority);               /* orig $013DF2 (game.c) */
 
+extern uint16_t fade_keep_screens;                             /* not in the original: 1 while its fade-out does not clear the screens (the shop makes $1CFC0 an rts for it) */
 void fade_out(uint16_t delay, uint16_t arg);                  /* orig $01D23E */
 
 void clear_screen_buffer(uint32_t *buffer);                              /* orig $01CFAC */

@@ -301,3 +301,17 @@ void host_missing_routine(uint32_t address)
         said[count++] = address;
     fprintf(stderr, "gods-sdl: the original's routine at $%X is not replicated and was reached\n", address);
 }
+
+/* orig $01D58A to $01D5B2 (the start of the file read the original's loader does: file_read of files.c calls it): while tick_hold_38a is set (the shop and the loading of a world set it) the first read clears
+ * it and asks for the message "LOADING" (message_request 5), held for the load by tick_hold_26c */
+void host_file_read_message(void)
+{
+    if (!tick_hold_38a)
+        return;
+    tick_hold_38a = 0;
+    message_arg = 0;
+    message_shown = 0;
+    tick_hold_26c = 1;
+    message_next = (const uint8_t *)loading_text;
+    message_request(5);
+}

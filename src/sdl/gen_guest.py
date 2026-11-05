@@ -25,7 +25,7 @@ src, out = Path(sys.argv[1]), Path(sys.argv[2])
 tables: list[tuple[str, int, int]] = []   # name, address, size in bytes
 variables: list[tuple[str, int]] = []
 stubs: list[tuple[str, str]] = []         # name, return type
-SIZES = {"uint8_t": 1, "uint16_t": 2, "uint32_t": 4}
+SIZES = {"char": 1, "uint8_t": 1, "uint16_t": 2, "uint32_t": 4}
 
 for line in (src / "menu.symbols").read_text().splitlines():
     if not line.strip() or line.startswith("#"):
