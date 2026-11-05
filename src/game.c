@@ -1434,23 +1434,6 @@ uint8_t *map_cell(int16_t x, int16_t y)
     return ptr_0b86 + 8192 + across + down;
 }
 
-/* orig $005AF6 (and inlined: $006882): the score as one long (the low byte of each of its four words, the low digits in the
- * lowest byte) is compared with the two high scores.  Under the first and not under the second (and flag_230 is 0) the original goes
- * on at $5B46; at or over the first at $5B04; neither ran */
-void check_high_scores(void)
-{
-    uint32_t score = ((uint32_t)score_words[3] << 24) | ((uint32_t)score_words[2] << 16) | ((uint32_t)score_words[1] << 8) |
-                     score_words[0];
-
-    if ((int32_t)score >= high_score_baa)
-        return;   /* goes on at $5B04 */
-    if (flag_230 != 0)
-        return;
-    if ((int32_t)score < high_score_bae)
-        return;
-    /* goes on at $5B46 */
-}
-
 /* the BCD add (abcd) of two bytes of two decimal digits, with the carry */
 static uint8_t bcd_add(uint8_t a, uint8_t b, int *carry)
 {
@@ -1467,6 +1450,95 @@ static uint8_t bcd_add(uint8_t a, uint8_t b, int *carry)
         *carry = 1;
     }
     return (uint8_t)((high << 4) | low);
+}
+
+/* the texts of the two messages (in the original's data, where the digits of the high score are put in: $5C52 and $5C79) */
+static uint8_t text_extra_life[] = "\x11\x11 Extra life for    50,000  points \x11\x11";
+static uint8_t text_bonus_gem[] = "\x11\x11 Bonus Gem for     0,000 points \x11\x11";
+
+/* orig $005C1A: the four digits of the high word of `value` (the thousands) are written to `to`, the leading zeros as blanks */
+static void high_score_digits(uint8_t *to, uint32_t value)
+{
+    uint16_t word = (uint16_t)(value >> 16);
+    int seen = 0;
+
+    for (int shift = 12; shift >= 0; shift -= 4) {
+        uint8_t digit = (uint8_t)((word >> shift) & 15);
+
+        if (digit == 0 && !seen) {
+            *to++ = ' ';
+        } else {
+            *to++ = (uint8_t)('0' + digit);
+            seen = 1;
+        }
+    }
+}
+
+/* orig $005B76 (from $005B98 and $005B72): the high score that follows when the table of them has ended: the two bytes of the high word of `current` get 20 added as decimal digits */
+static int32_t high_score_after(int32_t current)
+{
+    uint16_t word = (uint16_t)((uint32_t)current >> 16);
+    int carry = 0;
+    uint8_t low = bcd_add((uint8_t)(word & 0xFF), 0x20, &carry);
+    uint8_t high = bcd_add((uint8_t)(word >> 8), 0, &carry);
+
+    return (int32_t)((uint32_t)((uint16_t)((high << 8) | low)) << 16);
+}
+
+/* the entry `index` (a count of bytes, 4 a score) of a table of four high scores that the original ends with $FFFFFFFF */
+static int32_t level_score_at(const uint32_t *table, uint16_t index)
+{
+    return (index >> 2) < 4 ? (int32_t)table[index >> 2] : -1;
+}
+
+/* orig $005AF6 (and inlined: $006882): the score as one long (the low byte of each of its four words, the low digits in the lowest byte) is compared with the two
+ * high scores of the level.  At or over the first ($5B04) the next high score of the table (or 20 more than this one when the table is at its end) becomes the first, a life is
+ * added ($5AC2: the sound 31, and the message "Extra life for N points" with the score that was passed) ; then, while the level is not ending, at or over the second ($5B46)
+ * the same with its table: the message "Bonus Gem for N points", a bonus gem (kind 18) dropped at the player and the sound 49 */
+void check_high_scores(void)
+{
+    uint32_t score = ((uint32_t)score_words[3] << 24) | ((uint32_t)score_words[2] << 16) | ((uint32_t)score_words[1] << 8) |
+                     score_words[0];
+
+    if ((int32_t)score >= high_score_baa) {
+        int32_t next;
+        int32_t passed;
+
+        word_27c = (uint16_t)(word_27c + 4);
+        next = level_score_at(table_5b9e, word_27c);
+        if (next < 0) {
+            word_27c = (uint16_t)(word_27c - 4);
+            next = high_score_after(high_score_baa);
+        }
+        passed = high_score_baa;
+        high_score_baa = next;
+        high_score_digits(text_extra_life + 0x12, (uint32_t)passed);
+        item_count++;   /* $5AC2: a life */
+        play_sound(0x1F, 0x37);
+        message_next = text_extra_life;
+        message_request(0x32);
+    }
+    if (flag_230 != 0)
+        return;
+    if ((int32_t)score < high_score_bae)
+        return;
+
+    int32_t next;
+    int32_t passed;
+
+    word_27e = (uint16_t)(word_27e + 4);
+    next = level_score_at(table_5bb2, word_27e);
+    if (next < 0) {
+        word_27e = (uint16_t)(word_27e - 4);
+        next = high_score_after(high_score_bae);
+    }
+    passed = high_score_bae;
+    high_score_bae = next;
+    high_score_digits(text_bonus_gem + 0x11, (uint32_t)passed);   /* $5BC6 */
+    message_next = text_bonus_gem;
+    message_request(0x31);
+    drop_thing((int16_t)(player_x + 8), (int16_t)(player_y - 4), 0x12);
+    play_sound(0x31, 0x1E);
 }
 
 /* orig $004718 (and inlined: $0047C8, $0047CC, $0047D0, $0047D4): `points` is added to the score, a decimal digit at a time (the
