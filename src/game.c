@@ -4673,8 +4673,7 @@ static int16_t move_72e8(struct Creature *creature)
  * from 0 when the type's speed is not 0 and its timer is 1 (the step of $7AB0 is about to shoot) */
 static int16_t move_7a36(const struct CreatureType *type, struct Creature *creature)
 {
-    static const uint16_t pictures_7a6e[4] = { 0x20B, 0x20C, 0x20D, 0x20C };
-    int16_t picture = (int16_t)pictures_7a6e[creature->state & 3];
+    int16_t picture = (int16_t)table_7a6e[creature->state & 3];   /* ($7A6E: the pictures the level start put there: 530, 531, 532, 531 in level 1, 523, 524, 525, 524 in the others) */
 
     if (type->direction == 0)
         picture += 3;
