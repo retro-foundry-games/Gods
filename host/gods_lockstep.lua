@@ -409,7 +409,7 @@ peeklog_frame = tonumber(peeklog_frame)
 local draw_first, draw_last = args:match("drawlog=(%d+)-(%d+)")
 if draw_first then
     for _, at in ipairs({ 0x17686, 0x173c4 }) do
-        ami.hook(at, function()
+        table.insert(draw_listeners[at], function()
             local f = ami.frame()
             if f >= tonumber(draw_first) and f <= tonumber(draw_last) then
                 local y = ami.reg("d1") & 0xffff
@@ -433,6 +433,34 @@ if draw_first then   -- and the draw routine the creatures call at $E660 (the on
     end)
 end
 -- drawbox=FIRST-LAST,X0,Y0,X1,Y1: the original's calls of glyph_draw and sprite_draw whose screen place is in the box, in those emulator frames, with who called
+-- the original's draw routines (glyph $17686, sprite $173C4) are hooked once: the listeners (drawbox, the log below) are called from that hook.  The log keeps the last draws with the
+-- flip interval they were made in; every stop saves them with the port's (`draws`, the same for its draw hook) in captures/stops/stop-fN.draws (scripts/draws_diff.py compares them)
+local draw_listeners = { [0x17686] = {}, [0x173c4] = {} }
+for at, list in pairs(draw_listeners) do
+    ami.hook(at, function() for _, f in ipairs(list) do f(at) end end)
+end
+local draw_ring = {}
+local function signed16(v) v = v & 0xffff if v >= 0x8000 then v = v - 0x10000 end return v end
+for at, list in pairs(draw_listeners) do
+    list[#list + 1] = function()
+        draw_ring[#draw_ring + 1] = { orig_flips, at == 0x17686 and 0 or 1, signed16(ami.reg("d0")), signed16(ami.reg("d1")), ami.reg("d2") & 0xffff, ami.peek32(ami.reg("a7")) }
+        if #draw_ring > 12000 then table.move(draw_ring, 6001, #draw_ring, 1) for k = #draw_ring, #draw_ring - 5999, -1 do draw_ring[k] = nil end end
+    end
+end
+local function save_draws(path)
+    local lines = {}
+    for _, e in ipairs(draw_ring) do
+        if e[1] >= orig_flips - 1 then lines[#lines + 1] = ("O %d %d %d %d %d %06x"):format(e[1] - (orig_flips - 1), e[2], e[3], e[4], e[5], e[6]) end
+    end
+    real:send("draws 2\n")
+    while true do
+        local line = real:readline()
+        if not line or line:match("^end") then break end
+        local it, kind, x, y, index = line:match("^(%d+) (%-?%d+) (%-?%d+) (%-?%d+) (%d+)")
+        if it then lines[#lines + 1] = ("P %s %s %s %s %s"):format(it, kind, x, y, index) end
+    end
+    ami.save_file(path, table.concat(lines, "\n") .. "\n")
+end
 local box_first, box_last, bx0, by0, bx1, by1 = args:match("drawbox=(%d+)-(%d+),(%-?%d+),(%-?%d+),(%-?%d+),(%-?%d+)")
 if box_first then
     for _, at in ipairs({ 0x17686, 0x173c4 }) do
@@ -542,6 +570,7 @@ lockstep.run {
             ami.save_file(base .. ".portmem", port_read(0, 0x80000))
             ami.save_file(base .. ".native.ppm", "P6\n320 256\n255\n" .. native)
             ami.save_file(base .. ".emulated.ppm", "P6\n320 256\n255\n" .. emulated)
+            save_draws(base .. ".draws")
             ami.log(("stop saved: %s.state .ram .portmem (the port's memory 0-$7FFFF) .native.ppm .emulated.ppm"):format(base))
         end
         autosave_step()
