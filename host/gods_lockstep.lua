@@ -606,7 +606,7 @@ lockstep.run {
             if bf and ami.frame() == tonumber(bf) then ami.trace_writes(true) end
             if bf and ami.frame() == tonumber(bf) + 1 then ami.save_file(bp, ami.take_writes()); ami.trace_writes(false) end
         end
-        if not tick_synced and ami.frame() >= (args:find("ram=") and 2 or 8) then
+        if not tick_synced and ami.frame() >= (args:find("ram=") and 3 or 8) then
             -- the original's tick_count ($CE2: the frames since the level began) includes the frames of its disk loading, which the port does not wait for: the port is given the
             -- original's count (it matters where the script looks at the seconds, as the bonus that is given only in the first minute)
             tick_synced = true
