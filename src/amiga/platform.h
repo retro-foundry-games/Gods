@@ -93,6 +93,10 @@ static inline void host_iteration_cpu_next(unsigned frames)
     (void)frames;
 }
 
+static inline void host_fade_bind(void)
+{
+}
+
 static inline void host_flip_bind(void)
 {
 }

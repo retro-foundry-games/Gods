@@ -183,6 +183,7 @@ extern volatile int display_fresh_tail;   /* render.c: one more frame of that af
  * screen), a step per `delay + 1` frames; the 15 steps change the shadow table, the copper list's colours follow */
 void fade_in(const uint16_t *target, uint16_t delay)
 {
+    host_fade_wait();   /* (the lockstep: a fade-in that was bound waits for the original's) */
     display_fresh = 1;
     copper_colors_save(0);
     if (copper_setup_done == 0) {

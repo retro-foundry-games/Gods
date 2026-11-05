@@ -184,13 +184,20 @@ static int lockstep_commands(const uint32_t *pixels, int phase)
         } else if (sscanf(line, "flipsync %d", &a) == 1) {   /* `flipsync OFFSET`: the port's flips wait for the original's (host_flip_wait) */
             extern volatile int host_flip_sync, host_flips_offset;
 
+            extern void host_fade_sync_start(void);
+
             host_flips_offset = a;
             host_flip_sync = 1;
+            host_fade_sync_start();
         } else if (sscanf(line, "diskdone %d", &a) == 1) {   /* `diskdone N`: the original has finished N reads of the background (host_disk_wait) */
             extern volatile int host_disk_sync, host_disk_done;
 
             host_disk_done = a;
             host_disk_sync = 1;
+        } else if (sscanf(line, "fades %d", &a) == 1) {   /* `fades N`: the original has called its fade-in N times since the sync began (host_fade_wait) */
+            extern volatile unsigned host_fades_orig;
+
+            host_fades_orig = (unsigned)a;
         } else if (sscanf(line, "flips %d", &a) == 1) {   /* `flips N`: the original has flipped N times since the sync began */
             extern volatile unsigned host_flips_orig;
 

@@ -160,6 +160,35 @@ void host_flip_wait(void)
     flips_done++;
 }
 
+/* the fade-in of the teleport (host_fade_bind before it): in the lockstep it begins when the original's call of its fade-in has been made (its time depends on what the original draws
+ * before the flip), whatever the port's own time was; every fade-in is counted, so the count goes with the original's */
+volatile unsigned host_fades_orig;   /* the original's calls of its fade-in since the sync began */
+static unsigned fades_done;
+static int fade_bound;
+
+void host_fade_sync_start(void)
+{
+    fades_done = 0;
+}
+
+void host_fade_bind(void)
+{
+    if (host_flip_sync)
+        fade_bound = 1;
+}
+
+void host_fade_wait(void)
+{
+    extern void wait_vblank(void);
+
+    fades_done++;
+    if (fade_bound) {
+        while ((int)fades_done > (int)host_fades_orig)
+            wait_vblank();
+        fade_bound = 0;
+    }
+}
+
 volatile int host_disk_sync, host_disk_done;
 static unsigned disk_extra;   /* frames that the next wait for the disk goes on for */
 
