@@ -198,6 +198,7 @@ local flip_sync = not args:find("%f[%w]nosync%f[%W]")
 local flip_offset = tonumber(args:match("flipoff=(-?%d+)")) or 0
 local orig_flips, flips_at_sync, sync_on, last_flips = 0, 0, false, 0
 local orig_fades, fades_at_sync = 0, 0   -- the original's calls of its fade-in ($1D0C0): the port's teleport waits for them (host_fade_wait)
+local orig_world_loads, world_loads_at_sync = 0, 0   -- the original's arrivals at the end of the loading of a world ($0135C0, where it puts back the tick count): the port's load waits for them (host_world_load_wait)
 local flip_lag = not args:find("%f[%w]nolag%f[%W]")   -- (the count the port gets is the one of the step before: the original's flip shows a frame after the one the count reaches)
 -- the disk: the original's read of the background ($6A8A on, until its fade out at $1D23E) takes as long as the drive takes; the port waits for the original to have done (`diskdone N`, the reads finished)
 local disk_pending, disk_done = false, 0
@@ -207,6 +208,7 @@ ami.hook(0x1d23e, function() if disk_pending then disk_pending = false disk_done
 local flip_in_frame = false   -- (the autosave looks for a frame in which the original flipped)
 ami.hook(0x1d302, function() orig_flips = orig_flips + 1; flip_in_frame = true end)
 ami.hook(0x1d0c0, function() orig_fades = orig_fades + 1 end)
+ami.hook(0x135c0, function() orig_world_loads = orig_world_loads + 1 end)
 -- autosave=SECONDS (default 30; 0 or `noautosave` off; not while replaying): every SECONDS seconds of play (50 frames each) the original's state is saved, the frame after one in which it flipped (so its iteration has
 -- just ended: a quickload of the port begins one at its top), with its chip RAM: captures/quicksave/auto/auto-K.state and .ram, K going round 0 to 4 (latest.txt names the newest).  A play that stops at a
 -- difference is then started again from the last one: ... state=PATH/auto-K.state ram=PATH/auto-K.ram
@@ -267,6 +269,7 @@ local delayed = setmetatable({
                     if sync_on then
                         real:send(("flips %d\n"):format((flip_lag and last_flips or orig_flips) - flips_at_sync))
                         real:send(("fades %d\n"):format(orig_fades - fades_at_sync))
+                        real:send(("worldloads %d\n"):format(orig_world_loads - world_loads_at_sync))
                         last_flips = orig_flips
                     end
                     for _, p in ipairs(pending) do real:send(p) end
@@ -609,7 +612,7 @@ lockstep.run {
             -- the counters that count each frame (the bat's flap, the heads of the flyers...) are in the phase the original's loading gave them, as tick_count is
             for _, addr in ipairs({ 0x204, 0x20c, 0x262, 0x2b4 }) do p:send(("poke16 %x %x\n"):format(addr, ami.peek16(addr))) end
             if flip_sync then
-                sync_on, flips_at_sync, fades_at_sync = true, orig_flips, orig_fades
+                sync_on, flips_at_sync, fades_at_sync, world_loads_at_sync = true, orig_flips, orig_fades, orig_world_loads
                 p:send(("flipsync %d\n"):format(flip_offset))
             end
             ami.log(("tick_count: the original's %d, the port's %d: %d added to the port's"):format(orig, port, orig - port))
