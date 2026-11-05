@@ -135,6 +135,9 @@ end
 -- the game's instruction at $39EE (the death is over) is `subq.w #1,$224` (the lives: a death takes one, and the player comes back while it is not negative). Our disk dump (md5 ecacb3d4...) has `tst.w $224` there and so never loses a life; every other Gods disk 1 dump we compared ([a], [cr], [cr CSL], [t +n]) has the subq. That the subq is the original is an assumption (decided by the user), so the lockstep puts it back.
 -- The original's instruction is put back (the same length, the same flags for the branch after it); the port does what the game does
 ami.write(0x39ee, "\x53\x78")
+-- the same for the shop: the two instructions that take the price of what is bought (`sub.l d4,$1FC.w` at $13AB6 and `sub.l d0,$1FC.w` at $13BF4) are `bra.b *+2; nop` on our disk dump and the real ones on the others (WHDLoad's Disk.1 too)
+ami.write(0x13ab6, "\x99\xb8\x01\xfc")
+ami.write(0x13bf4, "\x91\xb8\x01\xfc")
 
 -- The copy protection (Rob Northen's copylock, see analysis/media_variants.md) fails on our ADF (the lock's track is not in it) and leaves
 -- values that make the game harder: the long $4B79C278 at $D158, $F6C0 and $107F4 (armour 1, the extra life does nothing) and $4B79C854 at $B04C
@@ -203,6 +206,10 @@ local flip_lag = not args:find("%f[%w]nolag%f[%W]")   -- (the count the port get
 -- the disk: the original's read of the background ($6A8A on, until its fade out at $1D23E) takes as long as the drive takes; the port waits for the original to have done (`diskdone N`, the reads finished)
 local disk_pending, disk_done = false, 0
 ami.hook(0x6a8a, function() disk_pending = true end)
+-- the shop's reads: shop.pi1 ($136EC, until the fade out at $13734, which is $1D23E) and the sound file ($13768, until $1377A)
+ami.hook(0x136ec, function() disk_pending = true end)
+ami.hook(0x13768, function() disk_pending = true end)
+ami.hook(0x1377a, function() if disk_pending then disk_pending = false disk_done = disk_done + 1 end end)
 local frame_end_cycles = 0
 ami.hook(0x1d23e, function() if disk_pending then disk_pending = false disk_done = disk_done + 1 ami.log(("DBGPHASE frame %d phase %d"):format(ami.frame(), ami.cycles() - frame_end_cycles)) end end)
 local flip_in_frame = false   -- (the autosave looks for a frame in which the original flipped)

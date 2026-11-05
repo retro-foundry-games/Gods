@@ -3,7 +3,7 @@ addresses the original program keeps it at).
 
 menu.symbols has two kinds of lines:
   NAME ADDRESS DECLARATION   a variable: the declaration has %s for the name; the linker script gives the name its address
-  table NAME ADDRESS TYPE COUNT   read-only data: COUNT values of TYPE (uint8_t, uint16_t, uint32_t, big endian) copied from
+  table NAME ADDRESS TYPE COUNT   read-only data: COUNT values of TYPE (char, uint8_t, uint16_t, uint32_t, big endian; a char table is a text) copied from
                              the original program's memory (native/build/menu-ram.bin) into data.c as C initializers; the linker
                              script places the array at the address, so the C reads the same bytes at the same place
 After the two fields of a variable's comment or a table's, two or more spaces start a comment.
@@ -16,7 +16,7 @@ from pathlib import Path
 PROJECT = Path(__file__).resolve().parents[1]
 SRC = PROJECT / "native" / "src"
 RAM = PROJECT / "native" / "build" / "menu-ram.bin"
-WIDTH = {"uint8_t": 1, "uint16_t": 2, "uint32_t": 4}
+WIDTH = {"char": 1, "uint8_t": 1, "uint16_t": 2, "uint32_t": 4}
 # the structs of menu_types.h that a table can have: the fields in order, (width in bytes, signed) (big endian in the original's memory)
 STRUCT_FIELDS = {
     "CreatureEntry": [(2, 1), (2, 1), (1, 1), (1, 0), (2, 1), (1, 0), (1, 0), (2, 0), (1, 0), (1, 0), (1, 0), (1, 0)],
@@ -36,7 +36,7 @@ def parse() -> tuple[list, list]:
     for line in (SRC / "menu.symbols").read_text().split("\n"):
         if not line.strip() or line.startswith("#"):
             continue
-        t = re.match(r"table\s+(\w+)\s+(0x[0-9a-fA-F]+)\s+(uint\d+_t|struct \w+)\s+(\d+)(?:\s{2,}(.*))?$", line)
+        t = re.match(r"table\s+(\w+)\s+(0x[0-9a-fA-F]+)\s+(uint\d+_t|char|struct \w+)\s+(\d+)(?:\s{2,}(.*))?$", line)
         if t:
             tables.append((t.group(1), int(t.group(2), 16), t.group(3), int(t.group(4)), (t.group(5) or "").strip()))
             continue
@@ -90,6 +90,13 @@ def main(code_base: int = 0xC0000) -> None:
                 c += ["};", ""]
                 continue
             w = WIDTH[ctype]
+            if ctype == "char":   # a text: a string literal (the bytes are as the original has them; the zeros at the end are the array's own)
+                raw = ram[addr:addr + count].rstrip(b"\0")
+                lit = "".join(chr(b) if 32 <= b < 127 and chr(b) not in '"\\' else f"\\{b:03o}" for b in raw)
+                c.append(f"/* ${addr:05X}" + (f"  {comment}" if comment else "") + " */")
+                c.append(f'const char {name}[{count}] __attribute__((aligned(1))) = "{lit}";')
+                c.append("")
+                continue
             vals = [int.from_bytes(ram[addr + i * w:addr + (i + 1) * w], "big") for i in range(count)]
             per = 16 // w if w > 1 else 16
             c.append(f"/* ${addr:05X}" + (f"  {comment}" if comment else "") + " */")
