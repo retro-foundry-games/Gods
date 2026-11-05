@@ -3827,6 +3827,30 @@ static void spawn_shots_spear(struct Shot *slot, int16_t id, struct Object *obje
     spawn_shot_fan(slot, id, object, x, y, right);
 }
 
+/* orig $01557C: the handler 3 of the table at $15220 (the fireball): as the first handler, but at (x, y - 6) and a start counter of -6 in shot_offsets_6a4 for each shot's column (the shot's number less
+ * word_fb2c, less one, and the next ones), the shots with the directions 1, 0 and 2 */
+static void spawn_shots_1557c(struct Shot *slot, int16_t id, struct Object *object, int16_t x, int16_t y)
+{
+    static const int16_t directions[3] = { 1, 0, 2 };
+
+    play_sound(2, 4);
+    y -= 6;
+
+    int16_t column = (int16_t)(id - word_fb2c - 1);
+    int16_t count = (int16_t)(object->last_value - object->first_value + 1);
+
+    object->anim_mode = 1;
+    for (int i = 0; i < 3; i++) {
+        slot[i].active = (int16_t)(id + i);
+        slot[i].x = x;
+        slot[i].y = y;
+        slot[i].direction = directions[i];
+        shot_offsets_6a4[column + i] = -6;
+        if (--count == 0)
+            return;
+    }
+}
+
 /* orig $015510: an object's list `list` gets a shot at (x, y): sound 2 (priority 4) and the routine the object's fire_kind names in the
  * table at $15220: 1 is $1590E (spawn_shots_1590e), 4 and 5 are bare returns; 0, 2, 3, 6 to 15 ($15968, $155EC, $1557C, $158F0 ...) did
  * not run */
@@ -3838,6 +3862,9 @@ static void spawn_shots(struct Shot *slot, int16_t id, struct ShotList *list, in
     switch (object->fire_kind) {
     case 1:
         spawn_shots_1590e(slot, id, object, x, y);
+        break;
+    case 3:
+        spawn_shots_1557c(slot, id, object, x, y);
         break;
     case 7:
         spawn_shots_spear(slot, id, object, x, y, 1);
