@@ -167,9 +167,26 @@ volatile unsigned host_fades_orig;   /* the original's calls of its fade-in sinc
 static unsigned fades_done;
 static int fade_bound;
 
+/* the loading of a world in the middle of a play ($013532): the original's drive takes about 300 frames, in which its screen does not change; in the lockstep the port, whose files are read at once, waits until the
+ * original has come to the end of its loading ($0135C0) */
+volatile unsigned host_world_loads_orig;
+static unsigned world_loads_done;
+
+void host_world_load_wait(void)
+{
+    extern void wait_vblank(void);
+
+    world_loads_done++;
+    if (!host_flip_sync)
+        return;
+    while ((int)world_loads_done > (int)host_world_loads_orig)
+        wait_vblank();
+}
+
 void host_fade_sync_start(void)
 {
     fades_done = 0;
+    world_loads_done = 0;
 }
 
 void host_fade_bind(void)

@@ -1719,6 +1719,9 @@ static void level_end_add_score(uint8_t step)
     flag_2d0 = 1;
 }
 
+static void world_records_clear(void);   /* orig $0135C6 (below begin_quest) */
+static void level_load_world(void);   /* orig $013532 (below begin_quest) */
+
 /* orig $0131E2: the routines the level end's bits name run, the bit 10 first (the table at $13234 backwards).  The ones that did not run in the recording are not written */
 static void level_end_effects(const struct LevelEnd *record)
 {
@@ -1739,6 +1742,15 @@ static void level_end_effects(const struct LevelEnd *record)
             break;
         case 0x1366E:   /* the list of the teleport gems goes on where the level end says */
             ptr_0b76 = (const uint8_t *)(uintptr_t)table_1077a[(int16_t)(param_index - 1)] + record->list_offset;
+            break;
+        case 0x135C6:   /* the records of the world that is left are cleared */
+            world_records_clear();
+            break;
+        case 0x1368A:
+            tick_count = 0;
+            break;
+        case 0x13532:   /* the next world is loaded from the disk */
+            level_load_world();
             break;
         default:
             host_missing_routine(handlers[10 - bit]);
@@ -11306,6 +11318,8 @@ void hud_digits_load(void)
     }
 }
 
+void records_from_table(void);   /* orig $00F8DE (below) */
+
 /* orig $00F526: the state of the game is set for the start of a level: the work area is cleared, the player is put at the start
  * of the level, the variables and tables are reset (many of the small routines of this module), the routines that are off in the
  * level are switched off or on (their first words are rts or nop), and the item slots and the records are made */
@@ -11474,6 +11488,13 @@ void level_state_init(void)
         table_7a6e[2] = 525;
         table_7a6e[3] = 524;
     }
+    records_from_table();
+}
+
+/* orig $00F8DE: the duplicates of the record table are turned off ($F91E), its 200 records of 6 bytes are copied to records_19b14 (8 bytes; the third word negative: the record is off), the
+ * records of kind 3 take their flags ($3D86) and the records that are near the screen are marked ($3EB4) */
+void records_from_table(void)
+{
     find_duplicate_records();
     for (int i = 0; i < 200; i++) {
         struct Slot8 *to = &records_19b14[i];
@@ -11956,27 +11977,15 @@ static void set_level_pointers(void)
  * the template, the objects, weapons, text and map files are loaded, the sprites of the level, the pictures; the state is
  * made (level_state_init), two frames are drawn (draw_start_frame) behind the loading screen, which is then faded in: the game loop goes
  * on from here.  (The original puts the stack back to its saved value at $2464; that is not needed here) */
-void begin_quest(void)
+/* orig $00247C to $002AA8 (the end of its part that the loading of a world also runs): the level's names are made from the template (the `b` files of a world that follows another, word_0266 not 0), the objects,
+ * weapons, text and map files are read, the sprites of the level and the pictures.  With word_0384 not 0 (the loading of a world in the middle of a play, $013532) it ends where the original goes on at $013568 */
+static void load_level_files(void)
 {
     uint8_t *names = level_names;
     const uint8_t *template = level_name_template;
     uint8_t letter = 'a';
     uint8_t c;
 
-    if (host_quickload()) {   /* (not in the original) */
-        game_loop();
-        return;
-    }
-    param_index = host_start_level();
-    word_0248 = 1;
-    menu_active = 0;
-    word_0266 = 0;
-    reset_marker_table();
-    clear_entry_table();
-    clear_cell_records();
-    do_nothing();
-    background_draw();
-    loading_level_screen();
     background = memory_base;
     select_params();
     if (word_0266 != 0)
@@ -12055,6 +12064,27 @@ void begin_quest(void)
     ptr_0de0 = (const int16_t *)GUEST(296);
     if (word_0384 != 0)
         return;   /* goes on at $013568 */
+}
+
+void begin_quest(void)
+{
+    if (host_quickload()) {   /* (not in the original) */
+        game_loop();
+        return;
+    }
+    param_index = host_start_level();
+    word_0248 = 1;
+    menu_active = 0;
+    word_0266 = 0;
+    reset_marker_table();
+    clear_entry_table();
+    clear_cell_records();
+    do_nothing();
+    background_draw();
+    loading_level_screen();
+    load_level_files();
+    if (word_0384 != 0)
+        return;   /* goes on at $013568 */
 
     /* $002AAA */
     copper_colors_restore();
@@ -12114,4 +12144,78 @@ void begin_quest(void)
     if (param_index == 3)
         play_sound(66, 1);
     game_loop();
+}
+
+/* orig $0135C6: what the records of the world that is left held is cleared (the same routines as the start of a level calls, in the order of this handler) */
+static void world_records_clear(void)
+{
+    clear_creature_state();
+    clear_records_721e();
+    clear_records_1a154();
+    clear_effects();
+    clear_cell_records();
+    clear_markers();
+    fill_table_1a30c();
+    records_113c_reset();
+    clear_records_1036();
+    reset_slots_fd0();
+    reset_slots_de26();
+    clear_records_12a0();
+    clear_records_1354();
+    clear_records_737e();
+}
+
+/* the shop's door of each level's worlds ($00351A: three words each, two for a level: x, y and a word the original keeps in $28C) */
+static const int16_t shop_doors_351a[8][3] = {
+    { 1664, 944, -1 }, { 3680, 384, 1 }, { 704, 960, 1 }, { 480, 960, -1 }, { 1440, 784, -1 }, { 768, 160, 1 }, { 704, 176, -1 }, { 384, 800, 0 },
+};
+
+/* orig $0032D8 to $00333E (what the loading of a world runs of the start of a level): the sounds are stopped, the sprites of the world are read, the palette's first colour is black and the shop's door of the
+ * world is put in word_288 and the next words; word_294, the count of worlds, goes up (the loading takes it down again) */
+static void world_set_up(void)
+{
+    stop_game_sounds();
+    word_292 = 0x1C0;
+    asset_flag = -1;
+    flags_0ddd |= 0x10;
+    assets_load((const char *)ptr_26de, palette_words, asset_end_0ca2, (struct AssetEntry *)asset_table_0ca6);
+    palette_words[0] = 0;
+    menu_state_25a = 1;
+
+    const int16_t *door = shop_doors_351a[(int16_t)((param_index - 1) * 2 + word_294)];
+
+    word_288 = door[0];
+    word_28a = door[1];
+    word_28c = (uint16_t)door[2];
+    word_294++;
+    word_28e = 0;
+}
+
+/* orig $013532 to $0135C4: the next world of the level is loaded from the disk while the play goes on (the end of the world's record sets it): the tick count is kept, the files are read the way a level's
+ * are (the `b` ones: word_0266 is 1), the records of the world are made, the shop's door is set (word_294 is as it was after) and the sound file is read again.  The loading takes the frames of the disk */
+static void level_load_world(void)
+{
+    uint32_t saved_ticks = tick_count;
+
+    word_0384 = 1;
+    word_0266 = 1;
+    play_sound(0, 0);
+    wait_vblank();
+    tick_hold_38a = 1;
+    load_level_files();
+    tick_hold_38a = 0;   /* $013568 */
+    tick_hold_26c = 0;
+    build_table_14cf8();
+    records_from_table();
+    fix_records_3d86();
+    sort_records_19b14();
+    activate_records_now();
+    world_set_up();
+    word_294--;
+    flag_2d0 = 0xFFFF;
+    word_0384 = 0;
+    file_read((const char *)sound1_name, picture_buffer);
+    drives_idle();
+    host_world_load_wait();   /* (the original's drive takes about 600 frames for the files of the world and its sprites) */
+    tick_count = saved_ticks;
 }

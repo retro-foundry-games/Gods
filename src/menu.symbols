@@ -471,7 +471,7 @@ word_2ba          0x000002ba  int16_t %s     game_d: -1, or the step (0 to 4) of
 table fall_steps_f2   0x000000f2 uint8_t 52    game_d: signed bytes: how far a thing falls (added to y) at each step 0 to 23 of its flag byte (steps 24 to 37 read on into the next bytes, the sounds: up to $12F, where clip_rectangles is from $128)
 table frames_44b4 0x000044b4 uint16_t 4   game_d: the four glyphs of the sprite 280, by counter_2b4
 table frames_44bc 0x000044bc uint16_t 4   game_d: ... of the sprite 279
-table frames_44c4 0x000044c4 uint16_t 4   game_d: ... of the glyph 253, by counter_24a
+table frames_44c4 0x000044c4 uint16_t 5   game_d: ... of the glyph 253, by counter_24a (counts 0 to 4)
 table words_3fde 0x00003fde uint16_t 26   game_d: the sprites (less 170) of the ten pieces a chest bursts into, for each chest (every 16 bytes)
 table frames_493a 0x0000493a uint16_t 4   game_d: the second glyph of glyph 225, by the column
 table frames_4942 0x00004942 uint16_t 4   game_d: ... of glyph 251
@@ -536,6 +536,11 @@ word_27c          0x0000027c  uint16_t %s
 word_27e          0x0000027e  uint16_t %s
 word_280          0x00000280  uint16_t %s
 word_294          0x00000294  uint16_t %s
+word_288          0x00000288  int16_t %s       the x of the shop's door in the level (the table at $351A by level and world), set when a world is loaded
+word_28a          0x0000028a  int16_t %s       its y
+word_28c          0x0000028c  uint16_t %s      its third word of the table
+word_28e          0x0000028e  uint16_t %s
+word_292          0x00000292  uint16_t %s
 word_2a6          0x000002a6  int16_t %s
 word_2e6          0x000002e6  uint16_t %s
 word_2fa          0x000002fa  uint16_t %s     how many blocks the first picture of background tiles was cut into, less one

@@ -477,6 +477,11 @@ extern uint16_t word_27c;   /* $0027C */
 extern uint16_t word_27e;   /* $0027E */
 extern uint16_t word_280;   /* $00280 */
 extern uint16_t word_294;   /* $00294 */
+extern int16_t word_288;   /* $00288  the x of the shop's door in the level (the table at $351A by level and world), set when a world is loaded */
+extern int16_t word_28a;   /* $0028A  its y */
+extern uint16_t word_28c;   /* $0028C  its third word of the table */
+extern uint16_t word_28e;   /* $0028E */
+extern uint16_t word_292;   /* $00292 */
 extern int16_t word_2a6;   /* $002A6 */
 extern uint16_t word_2e6;   /* $002E6 */
 extern uint16_t word_2fa;   /* $002FA  how many blocks the first picture of background tiles was cut into, less one */
@@ -587,7 +592,7 @@ extern const uint8_t text_10a34[8];   /* $10A34  the first eight bytes of the me
 extern const uint8_t fall_steps_f2[52];   /* $000F2  game_d: signed bytes: how far a thing falls (added to y) at each step 0 to 23 of its flag byte (steps 24 to 37 read on into the next bytes, the sounds: up to $12F, where clip_rectangles is from $128) */
 extern const uint16_t frames_44b4[4];   /* $044B4  game_d: the four glyphs of the sprite 280, by counter_2b4 */
 extern const uint16_t frames_44bc[4];   /* $044BC  game_d: ... of the sprite 279 */
-extern const uint16_t frames_44c4[4];   /* $044C4  game_d: ... of the glyph 253, by counter_24a */
+extern const uint16_t frames_44c4[5];   /* $044C4  game_d: ... of the glyph 253, by counter_24a (counts 0 to 4) */
 extern const uint16_t words_3fde[26];   /* $03FDE  game_d: the sprites (less 170) of the ten pieces a chest bursts into, for each chest (every 16 bytes) */
 extern const uint16_t frames_493a[4];   /* $0493A  game_d: the second glyph of glyph 225, by the column */
 extern const uint16_t frames_4942[4];   /* $04942  game_d: ... of glyph 251 */

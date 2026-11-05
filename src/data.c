@@ -419,9 +419,9 @@ const uint16_t frames_44bc[4] = {
     0x0117, 0x018d, 0x018e, 0x018f,
 };
 
-/* $044C4  game_d: ... of the glyph 253, by counter_24a */
-const uint16_t frames_44c4[4] = {
-    0x00fd, 0x01b1, 0x01b2, 0x01b3,
+/* $044C4  game_d: ... of the glyph 253, by counter_24a (counts 0 to 4) */
+const uint16_t frames_44c4[5] = {
+    0x00fd, 0x01b1, 0x01b2, 0x01b3, 0x01b4,
 };
 
 /* $03FDE  game_d: the sprites (less 170) of the ten pieces a chest bursts into, for each chest (every 16 bytes) */

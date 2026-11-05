@@ -35,6 +35,7 @@ void host_fade_lag(int on);   /* display.c: the next fade is shown a frame after
 void host_fade_bind(void);   /* shims.c: the next fade-in begins when the original's call of its own has been made (the teleport) */
 void host_fade_wait(void);   /* shims.c: at the top of fade_in */
 void host_fade_sync_start(void);   /* shims.c: the lockstep's sync begins: the fade-ins are counted from here */
+void host_world_load_wait(void);   /* shims.c: the load of a world is done: the lockstep waits for the original's end of its own */
 void host_cpu_frames(unsigned frames);   /* the original's CPU work that takes that many video frames (platform.h) */
 
 /* a word and a long of the data of a loaded file (the files are big-endian) */

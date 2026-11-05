@@ -223,6 +223,10 @@ static int lockstep_commands(const uint32_t *pixels, int phase)
 
             host_disk_done = a;
             host_disk_sync = 1;
+        } else if (sscanf(line, "worldloads %d", &a) == 1) {   /* `worldloads N`: the original has come to the end of the loading of a world N times since the sync began (host_world_load_wait) */
+            extern volatile unsigned host_world_loads_orig;
+
+            host_world_loads_orig = (unsigned)a;
         } else if (sscanf(line, "fades %d", &a) == 1) {   /* `fades N`: the original has called its fade-in N times since the sync began (host_fade_wait) */
             extern volatile unsigned host_fades_orig;
 
