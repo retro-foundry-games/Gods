@@ -12727,10 +12727,11 @@ static int16_t *shop_object_slot(int16_t item)
 /* orig $013A22 to $013C12: the fire button is pressed on a cell.  The first press chooses the item (its message is shown); the second buys it: a pick-up of a kind with a handler (shop_kinds_13b32) has the
  * handler run, another goes into a free slot (or the price is given back and "Inventory Full" shown); an object that would replace another asks first (the next press then buys it), and the value of what it
  * replaces (the price less half) is given back.  Returns 1 when the shop is to be left (the way out) */
-static int shop_press(void)
+static int shop_press_work(void)
 {
     while (button_bits[0] & 1)
         wait_vblank();   /* (the original waits at once; it sees the button let go in the vertical blank that polls it: the host's thread must not read the bits in the middle of the poll) */
+    wait_vblank();   /* (what the original does after the button is let go takes it a frame before the message is asked for) */
     int16_t cell = (int16_t)cursor_pos;
 
     if (cell == 0x11)
@@ -12822,11 +12823,36 @@ static int shop_press(void)
     return 0;
 }
 
+/* (and about two frames more, the draw of the grid, before its flip) */
+static int shop_press(void)
+{
+    int leave = shop_press_work();
+
+    if (!leave)
+        wait_vblank();
+    return leave;
+}
+
 /* the original waits in the loop until more than two frames have passed since the last flip, then flips ($01D2FC) */
+static uint8_t shop_button_old, shop_button_older, shop_stick_old, shop_stick_older;   /* the button as the blank before the flip's saw it: the original's loop reads it before the blank's poll of the frame it begins in */
+
 static void shop_wait_flip(void)
 {
-    while ((int16_t)(2 - vbl_saturating) >= 0)
-        ;
+    uint16_t seen = vbl_count;
+
+    shop_button_older = shop_button_old;
+    shop_button_old = button_bits[0] & 1;
+    shop_stick_older = shop_stick_old;
+    shop_stick_old = joystick;
+    while ((int16_t)(2 - vbl_saturating) >= 0) {
+        if (vbl_count != seen) {   /* (a blank has passed: the bits are not in the middle of its poll) */
+            seen = vbl_count;
+            shop_button_older = shop_button_old;
+            shop_button_old = button_bits[0] & 1;
+            shop_stick_older = shop_stick_old;
+            shop_stick_old = joystick;
+        }
+    }
     screens_flip();
 }
 
@@ -12849,6 +12875,7 @@ static void shop_run(void)
     shop_repeat = 0;
     shop_held[0] = shop_held[1] = 0;
     shop_selected = 0xFFFF;
+    shop_button_old = shop_button_older = shop_stick_old = shop_stick_older = 0;
     message_shown = 0;
     word_dde = 0;
     *(volatile uint8_t *)&flags_0ddd = 0;   /* clr.b $ddd.w */
@@ -12944,11 +12971,11 @@ static void shop_run(void)
 
         int moved = 1;
 
-        if (joystick != 0) {
+        if (shop_stick_older != 0) {
             if (shop_held[1] == 0) {
                 shop_repeat = 1;
-                shop_held[1] = joystick;
-            } else if (shop_held[1] == joystick) {
+                shop_held[1] = shop_stick_older;
+            } else if (shop_held[1] == shop_stick_older) {
                 shop_repeat++;
                 if ((int16_t)shop_repeat < 8)
                     moved = 0;
@@ -12965,22 +12992,22 @@ static void shop_run(void)
         if (moved) {
             int16_t cell = (int16_t)cursor_pos;
 
-            if (joystick & 8) {
+            if (shop_stick_older & 8) {
                 cell++;
                 if (cell > 17)
                     cell--;
             }
-            if (joystick & 4) {
+            if (shop_stick_older & 4) {
                 cell--;
                 if (cell < 0)
                     cell++;
             }
-            if (joystick & 1) {
+            if (shop_stick_older & 1) {
                 cell -= 6;
                 if (cell < 0)
                     cell += 6;
             }
-            if (joystick & 2) {
+            if (shop_stick_older & 2) {
                 cell += 6;
                 if (cell > 17)
                     cell -= 6;
@@ -12989,10 +13016,10 @@ static void shop_run(void)
         }
         if (cursor_pos != shop_cursor_old)
             play_sound(0x16, 2);
-        if (button_bits[0] & 1) {
+        if (shop_button_older) {
+            shop_button_old = shop_button_older = 0;   /* (the old samples are of the press that is handled now) */
             if (shop_press())
                 break;
-            continue;
         }
         shop_draw_grid();
         host_iteration_cpu(2);   /* (the grid takes the original about two frames to draw: the score goes on after) */
