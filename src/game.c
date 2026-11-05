@@ -8656,6 +8656,30 @@ static void spawn_shots_left_15968(struct Shot *slot, int16_t id, struct Object 
     slot[2].direction = 5;
 }
 
+/* orig $0155EC: the fireball's left-facing kind (2): the fireball's shots as the right ($01557C) but at (x + 16, y - 6) with the directions 4, 3 and 5 and anim_mode -1 */
+static void spawn_shots_left_155ec(struct Shot *slot, int16_t id, struct Object *object, int16_t x, int16_t y)
+{
+    static const int16_t directions[3] = { 4, 3, 5 };
+
+    play_sound(2, 4);
+    x += 16;
+    y -= 6;
+
+    int16_t column = (int16_t)(id - word_fb2c - 1);
+    int16_t count = (int16_t)(object->last_value - object->first_value + 1);
+
+    object->anim_mode = -1;
+    for (int i = 0; i < 3; i++) {
+        slot[i].active = (int16_t)(id + i);
+        slot[i].x = x;
+        slot[i].y = y;
+        slot[i].direction = directions[i];
+        shot_offsets_6a4[column + i] = -6;
+        if (--count == 0)
+            return;
+    }
+}
+
 /* orig $01545C (with $015546): the same as spawn_player_shots to the left: each list with a free place for a shot gets one, at the player (a
  * little below him) or, when word_888e is the list's number, at word_8882 and word_8884 (16 below); the routine is the one the object's long
  * at +16 names in the table at $15220: 0 is $15968, 4 and 5 are bare returns; 1 to 3 and 6 to 15 did not run */
@@ -8684,6 +8708,9 @@ static void spawn_player_shots_left(void)
         switch (kind) {
         case 0:
             spawn_shots_left_15968(slots[i], ids[i], object, x, y);
+            break;
+        case 2:
+            spawn_shots_left_155ec(slots[i], ids[i], object, x, y);
             break;
         case 6:
             spawn_shots_spear(slots[i], ids[i], object, x, y, 0);
