@@ -82,6 +82,8 @@ void host_flip_apply(void)
 
 /* orig $01D302: show the screen that was drawn and draw on the other: the per-screen state, the two screens and so which
  * copper list; its scroll is set for x_offset and the copper is told to use it, then the next vertical blank is waited for */
+extern void shop_flip_strip(void);
+
 void screens_flip(void)
 {
     struct Rec6 state = buffer_state[0];
@@ -96,6 +98,7 @@ void screens_flip(void)
     swap = screen_buffer;
     screen_buffer = screen_other;
     screen_other = swap;
+    shop_flip_strip();
     list = screen_other == screen_1 ? copper_list_a : copper_list_b;
     set_scroll(list, (uint8_t)x_offset);
     if (flip_late)

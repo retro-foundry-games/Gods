@@ -12830,6 +12830,13 @@ static void shop_wait_flip(void)
     screens_flip();
 }
 
+/* the screen that a flip brings to the front had its strip drawn when it was last shown: the original's interrupt draws it before the frame is shown, so the strip is drawn on it as the flip is done */
+void shop_flip_strip(void)
+{
+    if (tick_hold_38a && shop_text != 0)
+        shop_text_show();
+}
+
 /* orig $013690 to $0139DE: the shop.  The screen fades out, shop.pi1 is read to the hidden screen (the rows of 40 bytes of its planes go to the rows of 44), the screen is faded in again with the level's colours; the
  * stick moves the cursor over the grid (the first move at once, then after 8 frames every 2), fire presses; the score counts to the score, the text of the messages runs along the strip at the foot.  The way out
  * (cell 17) fades the screen out, draws a frame of the game, and the game goes on from the start of a frame ($2BD6) */
