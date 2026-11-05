@@ -7151,7 +7151,11 @@ static int16_t walker_picture(const struct MonsterType *type, const struct WalkM
 {
     int16_t first = *(const int16_t *)(ptr_0b82 + 16 * (uint16_t)type->picture);
 
-    return (int16_t)((int16_t)walk_modes_99dc[m->mode & 7].picture_base + m->frame + first);
+    /* (the table is at its address in the program's memory as the original has it, the longs in the order of the 68000: they are read by their bytes) */
+    const uint8_t *base = (const uint8_t *)&walk_modes_99dc[m->mode & 7].picture_base;
+    int16_t picture_base = (int16_t)((base[2] << 8) | base[3]);
+
+    return (int16_t)(picture_base + m->frame + first);
 }
 
 /* orig $00A122: the way the planner found (planner.result: 0 and 1 walk left and right, 2 and above jump: 2 and 3 to the left and right, 4 and 5 and then 6 and 7 the high ones; the speed of the
