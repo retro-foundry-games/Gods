@@ -13761,6 +13761,7 @@ static void shop_run(void)
     reload_sprites();
     wait_vblank();
     file_read(sound1_name, picture_buffer);
+    host_disk_wait();   /* (the original's reads of the sprites and the sound take what its drive takes before it fades out) */
     host_fade_lag(1);
     fade_out(1, 0);
     host_fade_lag(0);
@@ -13772,7 +13773,8 @@ static void shop_run(void)
     x_offset = saved_x_offset;
     word_025c = saved_25c;
     copper_colors_restore();
-    host_fade_lag(1);
+    host_fade_bind();   /* (the lockstep: the fade-in begins when the original calls its own) */
+    host_fade_lag(2);
     fade_in(palette_words, 1);
     host_fade_lag(0);
     tick_count = saved_ticks;
