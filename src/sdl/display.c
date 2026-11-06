@@ -848,9 +848,13 @@ void display_render(uint32_t *pixels)
         if (display_fresh_lag == 0 && late_list_valid) {
             /* the shop's fade-in: the original's edit of the list is slow.  A frame after it began (at the raster line host_fade_line) it has done the lines from 2.6 times that line for 63 lines
              * and the raster passes them after the edit: they show the new list, the others the one before */
-            int first = host_fade_line * 26 / 10 - 1;
+            int first = 72 + (host_fade_line * 8 + 5) / 10;   /* (104 for the line 40 of the shop's fade-in, 77 for the line 6 of the level end's fade-out) */
 
-            if (fade_in_edits++ > 0) {
+            int dark = 1;
+
+            for (int i = 0; i < 16; i++)
+                dark &= latched_colors[i] == 0;
+            if (fade_in_edits++ > 0 || !dark) {   /* (the first edit of a fade-in from black is not shown in part; the first of a fade-out is) */
                 memcpy(latched_list, late_list, sizeof now_list);
                 line_palettes(colors_before, 320);
                 memcpy(latched_list, now_list, sizeof now_list);
