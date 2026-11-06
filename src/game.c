@@ -3792,6 +3792,114 @@ static void update_shots(struct ShotList *list, struct Object *object)
     object->frame = frame;
 }
 
+/* the nine shots of the magic axe have each three words at $66E (the table of the handler 5): the sideways step, the vertical step and the frames left (the spawn gives 4, a step of the table of the
+ * power-ups and 50); the words are the host's own, a quickload makes them so */
+static int16_t *axe_table(void)
+{
+    return (int16_t *)GUEST(0x66E);
+}
+
+/* orig $016592, $0165C6 and $0165FA: the cell of the second map (32 by 16, a 1 is a wall) that the point (x, y) is in, as the three tests of the axe look at it */
+static const uint8_t *axe_cell(int16_t x, int16_t y)
+{
+    return ptr_0b86 + 0x2000 + ((int16_t)(x & 0xFFE0) >> 5) + (int16_t)(uint16_t)((y & 0xFFF0) << 3);
+}
+
+/* orig $016592 (the wall to the right: the cell next to it, and the one under that when the point is not on a row's line) and $0165C6 (to the left) */
+static int axe_wall_ahead(int16_t x, int16_t y, int right)
+{
+    const uint8_t *cell = axe_cell(x, y);
+
+    if ((y & 0xF) != 0) {
+        if (right ? cell[0x81] == 1 : cell[0x7F] == 1)
+            return 1;
+    }
+    return right ? cell[1] == 1 : cell[-1] == 1;
+}
+
+/* orig $01661E (handler 5 of the table at $15260: the magic axe): each of the nine shots that is in use goes on by its table's steps: it turns at a wall (the step -4 or 4, when it is in the far part of
+ * the cell: more than 12 of 32 to the right, less than 4 to the left), it falls with a step that goes up by 2 to 8 and bounces off a floor with it negated (a cell of the first map under it, not in a wall: the
+ * y goes to the row's line; a step of 0 becomes -4); one that is off the screen is cleared, one whose frames have run out ends with a spark of the table's steps, the others are drawn (the glyph 426 + 1 + the
+ * object's frame and the shot's place from 6, or the first one on the bounce) after the tile test.  The object's frame goes up to 5 */
+static void update_shots_axe(struct ShotList *list, struct Object *object)
+{
+    struct Shot *shot = list->shot;
+    int16_t *table = axe_table();
+
+    for (int n = 0; n < 9; n++, shot++, table += 3) {
+        int16_t d7 = (int16_t)(8 - n);
+
+        if (shot->active == 0)
+            continue;
+
+        int16_t x = shot->x;
+        int16_t y = shot->y;
+        int16_t step_x = table[0];
+        int16_t step_y = table[1];
+
+        if (step_x >= 0) {
+            if ((x & 31) > 12 && axe_wall_ahead(x, y, 1)) {
+                step_x = -4;
+                table[0] = step_x;
+            }
+        } else if ((x & 31) < 4 && axe_wall_ahead(x, y, 0)) {
+            step_x = 4;
+            table[0] = step_x;
+        }
+
+        int landed = 0;
+
+        x = (int16_t)(x + step_x);
+        y = (int16_t)(y + step_y);
+        shot->x = x;
+        if (step_y >= 0 && axe_cell(x, y)[0x80] == 1 && axe_cell(x, y)[0] != 1) {
+            y = (int16_t)(y & 0xFFF0);
+            landed = 1;
+            step_y = (int16_t)-step_y;
+            table[1] = step_y;
+            if (step_y == 0)
+                table[1] = -4;
+        } else {
+            step_y = (int16_t)(step_y + 2);
+            if (step_y > 8)
+                step_y = (int16_t)(step_y - 2);
+            table[1] = step_y;
+        }
+        shot->y = y;
+
+        int16_t sx = (int16_t)(x - scroll_x);
+        int16_t sy = (int16_t)(y - scroll_y);
+
+        if (sx <= -32 || sy <= -32 || sx >= 320 || sy >= 192) {
+            shot->active = 0;
+            continue;
+        }
+        if (--table[2] < 0) {
+            start_debris_moving(sx, sy, table[0], table[1]);
+            shot->active = 0;
+            continue;
+        }
+
+        int16_t glyph = 0x1AA;
+
+        if (!landed) {
+            int16_t frame = (int16_t)(object->frame + d7);
+
+            if (frame >= 6) {
+                frame = (int16_t)(frame - 6);
+                if (frame >= 6)
+                    frame = (int16_t)(frame - 6);
+            }
+            glyph = (int16_t)(glyph + frame + 1);
+        }
+        shot_hit_tile(object, shot, sx, sy);
+        glyph_draw(sx, sy, (uint16_t)glyph);
+    }
+    object->frame++;
+    if (object->frame >= 6)
+        object->frame = 0;
+}
+
 /* orig $015B36: the list of shots of an object (its first word is the number of the object, negative: none) is run by the routine the
  * object's handler number names in the table at $15260: 0 is $1673E (update_shots), 2 is a bare return; 1, 3, 4 and 5 ($168AE, $15DB2,
  * $1645C and $1661E) did not run */
@@ -3811,8 +3919,11 @@ void run_object_list(struct ShotList *list)
         break;
     case 2:
         break;
+    case 5:
+        update_shots_axe(list, object);
+        break;
     default:
-        break;   /* goes on at $15DB2, $1645C or $1661E */
+        break;   /* goes on at $15DB2 or $1645C */
     }
 }
 
@@ -3909,6 +4020,47 @@ static void spawn_shots_1557c(struct Shot *slot, int16_t id, struct Object *obje
     }
 }
 
+/* orig $015660: the handler 15 of the table at $15220 (the magic axe): sound 2 (priority 4); the shots start at (x + 16, y - 16), then 3 left and 5 higher, then 6 right and 10 lower than that, with the directions 1, 0
+ * and 2 (as many as the object has: its last_value less its first_value, plus one, at most three), and each has its three words in the table at $66E: the column (the number less 9, twice at most, less 1) of
+ * them, the step 4, a step of the power-ups' table (the words 3, 1 and 4) and 50 frames */
+static void spawn_shots_axe(struct Shot *slot, int16_t id, struct Object *object, int16_t x, int16_t y)
+{
+    static const int16_t directions[3] = { 1, 0, 2 };
+    static const int16_t deltas[3] = { 3, 1, 4 };
+    static const int16_t step_x[3] = { 0, -3, 6 };
+    static const int16_t step_y[3] = { 0, -5, 10 };
+
+    play_sound(2, 4);
+    x = (int16_t)(x + 0x10);
+    y = (int16_t)(y - 0x10);
+
+    int16_t column = id;
+
+    if (column >= 10) {
+        column = (int16_t)(column - 9);
+        if (column >= 10)
+            column = (int16_t)(column - 9);
+    }
+    column--;
+
+    int16_t *table = axe_table() + 3 * column;
+    int16_t count = (int16_t)(object->last_value - object->first_value + 1);
+
+    for (int i = 0; i < 3; i++, table += 3) {
+        x = (int16_t)(x + step_x[i]);
+        y = (int16_t)(y + step_y[i]);
+        slot[i].active = (int16_t)(id + i);
+        slot[i].x = x;
+        slot[i].y = y;
+        slot[i].direction = directions[i];
+        table[0] = 4;
+        table[1] = shot_delta(deltas[i]);
+        table[2] = 50;
+        if (--count == 0)
+            return;
+    }
+}
+
 /* orig $015510: an object's list `list` gets a shot at (x, y): sound 2 (priority 4) and the routine the object's fire_kind names in the
  * table at $15220: 1 is $1590E (spawn_shots_1590e), 4 and 5 are bare returns; 0, 2, 3, 6 to 15 ($15968, $155EC, $1557C, $158F0 ...) did
  * not run */
@@ -3926,6 +4078,9 @@ static void spawn_shots(struct Shot *slot, int16_t id, struct ShotList *list, in
         break;
     case 7:
         spawn_shots_spear(slot, id, object, x, y, 1);
+        break;
+    case 15:
+        spawn_shots_axe(slot, id, object, x, y);
         break;
     default:
         break;   /* 4 and 5 return; the others ($15968, $155EC ...) did not run */
@@ -12307,6 +12462,7 @@ void level_tables_quickload(void)
         if (type->creatures && type->number)
             file_words(type->creatures, 7 * type->number);
     }
+    file_words((void *)GUEST(0x66E), 27);   /* the magic axe's nine shots' steps ($66E) */
     boss_quickload();
 }
 
