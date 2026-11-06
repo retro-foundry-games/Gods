@@ -667,7 +667,7 @@ lockstep.run {
             local orig = ami.peek32(0xce2)
             p:send(("tick %d\n"):format(orig - port))
             -- the counters that count each frame (the bat's flap, the heads of the flyers...) are in the phase the original's loading gave them, as tick_count is
-            for _, addr in ipairs({ 0x204, 0x20c, 0x262, 0x2b4 }) do p:send(("poke16 %x %x\n"):format(addr, ami.peek16(addr))) end
+            for _, addr in ipairs({ 0x204, 0x20c, 0x262, 0x2b4 }) do p:send(("poke16 %x %x\n"):format(addr, (ami.peek16(addr) + (addr == 0x204 and tonumber(args:match("c204off=(-?%d+)")) or 1)) & 0xffff)) end
             if flip_sync then
                 sync_on, flips_at_sync, fades_at_sync, world_loads_at_sync, reads_at_sync = true, orig_flips, orig_fades, orig_world_loads, orig_reads
                 p:send(("flipsync %d\n"):format(flip_offset))
