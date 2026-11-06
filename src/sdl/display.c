@@ -443,8 +443,19 @@ void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uin
     int16_t offset;
     uint32_t product;
 
-    if (y < low)
-        return;   /* goes on at $01F0B6 */
+    if (y < low) {   /* $01F0B6: the top of the image is above the clip: its rows above are left out (the source goes on by them) */
+        height = (int16_t)(height + y);
+        if (height < low)
+            return;
+        height = (int16_t)(height - low);
+
+        int16_t skipped = (int16_t)(low - y);
+
+        if (flags_0ddd & 0x20)
+            skipped = (int16_t)-skipped;
+        word_dd4 = (uint16_t)(word_dd4 + skipped);
+        y = low;
+    }
     if (y > high)
         return;
     if ((int16_t)(height + y) > high)
