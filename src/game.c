@@ -12744,10 +12744,9 @@ static void boss_spark_pixel(int16_t x, int16_t y)
 
     for (int line = 0; line < 2; line++, row += 44) {
         for (int plane = 0; plane < 4; plane++) {
-            uint8_t *word = row + plane * 0x2100;
+            uint16_t *word = (uint16_t *)(row + plane * 0x2100);
 
-            word[0] = (uint8_t)((word[0] & (keep >> 8)) | (plane < 3 ? set >> 8 : 0));
-            word[1] = (uint8_t)((word[1] & keep) | (plane < 3 ? set : 0));
+            *word = (uint16_t)((*word & keep) | (plane < 3 ? set : 0));
         }
     }
 }
