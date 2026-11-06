@@ -483,6 +483,12 @@ static void teleport_player(void)
     host_cpu_frames(1);   /* (the original goes on 31 frames after the call of the fade) */
 }
 
+static void boss_sparks_c58e(void);
+static void boss_shots_c406(void);
+static void boss_score_c374(void);
+static void start_debris_moving(int16_t x, int16_t y, int16_t speed_x, int16_t speed_y);
+static void chest_burst_at(int16_t x, int16_t y, const uint16_t *sprites);
+
 /* orig $002D54 on: what ends a frame of the game, after the player has been run (or, when he is dead, after the frame of his death: $3A6C): the units and the other things
  * that are run, the panels, the energy, the keys of the pause and the like, and the wait for the next frame */
 static void game_frame_tail(void)
@@ -518,16 +524,16 @@ static void game_frame_tail(void)
         step_d898();
     } else {
         callback_4e0();
+        boss_sparks_c58e();
         do_nothing_b();
-        do_nothing_b();
-        do_nothing_b();
+        boss_shots_c406();
     }
     do_nothing_b();
     move_records_3a0a6();
     draw_sprite_8472();
     update_bolts();
     step_1843e();
-    do_nothing_b();
+    boss_score_c374();
     update_score_display();
     draw_score_panel();
     update_item_panel();
@@ -1128,9 +1134,14 @@ static int16_t *chest_pieces(void)
  * and a fall speed of -3 to -10 (the glyph from words_3fde, 16 bytes on for each chest); word_2ae is 1 */
 static void chest_burst(const struct Slot8 *record)
 {
-    int16_t x = record->w[0], y = record->w[1];
     int16_t chest = (int16_t)(((record->w[2] - 12) >> 1) << 3);   /* (the original: 16 bytes for each chest of two numbers) */
-    const uint16_t *sprites = words_3fde + chest;
+
+    chest_burst_at(record->w[0], record->w[1], words_3fde + chest);
+}
+
+/* orig $004034 (inside chest_burst): the ten pieces start at (x, y) with the glyphs `sprites` */
+static void chest_burst_at(int16_t x, int16_t y, const uint16_t *sprites)
+{
     int16_t *piece = chest_pieces();
 
     for (int i = 0; i < 10; i++, piece += 5) {
@@ -3913,13 +3924,74 @@ void spawn_player_shots(void)
 /* ======== from game_d.c ======== */
 /* Gods, the game: the routines at $417C and $44D2 and what they call.  Each function says where the original has it (`orig $ADDR`). */
 
+/* a shot of a guardian (ten bytes, fifteen of them at $518): its place, the fall speed (up by one each frame), the picture 0 to 3 (-1: the record is free) and the sideways speed */
+struct BossShot {
+    int16_t x;
+    int16_t y;
+    int16_t speed_y;
+    int16_t frame;
+    int16_t speed_x;
+};
+
+/* the variables of a guardian, in the original's places ($4E8 to $518): its place, the picture it is in, its energy (a long: negative when it is dead; kept as the two words of the guest
+ * memory), where it is on its path (the address of a row of two signed bytes, a picture and a step in x, ended by a negative byte) and its shots */
+struct BossState {
+    uint16_t x;                       /* $4E8 */
+    uint16_t y;                       /* $4EA */
+    uint8_t other[0x508 - 0x4EC];
+    uint16_t picture;                 /* $508 */
+    uint16_t energy_high;             /* $50A */
+    uint16_t energy_low;              /* $50C */
+    uint16_t unused_50e;
+    uint16_t path_high;               /* $510 */
+    uint16_t path_low;                /* $512 */
+    uint16_t routine_514[2];          /* $514: callback_514 */
+    struct BossShot shots[15];        /* $518 */
+};
+
+static struct BossState *boss_state(void)
+{
+    return (struct BossState *)GUEST(0x4E8);
+}
+
+
+/* orig $005CD2: during a guardian's fight the panel is the guardian's energy: the picture of the table at $5CC2 (by the level:
+ * 484 and 1500 for the first: a number whose entry the picture's data is read four entries on from (`$24(a0)`), and the divisor) is drawn like the player's energy (draw_energy_bar) 32
+ * bytes further right in the screen buffer; the energy is the word of the long at $50A, the rows fall as it grows */
+static void draw_guardian_bar(void)
+{
+    static const uint16_t bar_table[8] = {484, 1500, 490, 4400, 464, 2250, 467, 6000};
+    int idx = (param_index - 1) & 3;
+    int16_t back = (int16_t)((4 - word_2de) * 384);
+    const uint8_t *src = (const uint8_t *)image_table[bar_table[idx * 2] + 4].data;
+    uint8_t *dst = screen_buffer + 7074 + ((x_offset & -16) >> 3);
+    int16_t shift = x_offset & 15;
+    int32_t scaled = (int32_t)(int16_t)boss_state()->energy_low * 24;
+    int32_t acc = 0;
+    int16_t w = 0;   /* scaled over the divisor, by subtraction (the Amiga build has no 32-bit division) */
+
+    while (w < 24 && scaled > 0) {
+        acc += bar_table[idx * 2 + 1];
+        if (acc > scaled)
+            break;
+        w++;
+    }
+
+    int16_t rows = (int16_t)(((24 - w) >> 1) + 6);
+
+    blit_image_wide(dst, src, 96, shift, rows);
+    blit_image_wide(dst + 44 * rows, src + 4 * rows - back, 96, shift, 23 - rows);
+}
+
 /* orig $0057FC: the score panel (image 121 of the table, 5 words wide and 16 rows, its planes 150 bytes apart) is blitted to the screen
  * buffer, 7420 bytes in and at the column x_offset says (in steps of 16 pixels, shifted by the low four bits).  When menu_state_25a is
  * 2 and flag_23a is not 0 the original goes on at $5CD2, which did not run */
 void draw_score_panel(void)
 {
-    if (menu_state_25a == 2 && flag_23a != 0)
-        return;   /* goes on at $5CD2 */
+    if (menu_state_25a == 2 && flag_23a != 0) {
+        draw_guardian_bar();
+        return;
+    }
 
     uint8_t *dst = screen_buffer + 7420;
     const uint8_t *src = (const uint8_t *)image_table[121].data;
@@ -10391,6 +10463,25 @@ void update_shots_sliding(struct ShotList *list, struct Object *object)
     object->frame = (int16_t)((object->frame + object->anim_mode) & 3);
 }
 
+/* orig $018560 (with the speeds d2 and d3): the first free record of records_3a0a6 is started at the screen place (x, y) with the speeds and a count of 58 */
+static void start_debris_moving(int16_t x, int16_t y, int16_t speed_x, int16_t speed_y)
+{
+    for (int i = 0; i < 20; i++) {
+        int16_t *record = &records_3a0a6[i * 6];
+
+        if (record[0] < 0) {
+            record[0] = 0;
+            record[1] = x + scroll_x;
+            record[2] = y + scroll_y;
+            record[3] = speed_x;
+            record[4] = speed_y;
+            record[5] = 58;
+            flag_2a8++;
+            return;
+        }
+    }
+}
+
 /* orig $018560 (with d2 = d3 = 0): the first free record of records_3a0a6 (first word negative) is started at the screen place (x, y) with no
  * speed and a count of 58 */
 static void start_debris_at(int16_t x, int16_t y)
@@ -12548,16 +12639,13 @@ static void world_end_countdown(void)
     code_3436 = 0x4E71;
 }
 
-/* the boss's variables, in the original's places: the boss's place ($4E8, $4EA), the picture it is in ($508), its energy (a long, $50A: negative when it is dead), where it is on its path ($510: the
- * address of a row of two signed bytes, a step in x and y, ended by a negative byte) and fifteen records of ten bytes at $518 (the word at +6 is -1 when one is free) */
-#define BOSS_WORD(a) (*(uint16_t *)GUEST(a))
-#define BOSS_LONG(a) (*(uint32_t *)GUEST(a))
-
 /* orig $00B09E: the fifteen records of ten bytes at $518 are free (the word at +6 is -1) */
 static void boss_free_records(void)
 {
+    struct BossState *boss = boss_state();
+
     for (int i = 0; i < 15; i++)
-        BOSS_WORD(0x518 + 10 * i + 6) = 0xFFFF;
+        boss->shots[i].frame = -1;
 }
 
 /* orig $00B082 and $00B09E: the 500 bytes at the start of ptr_0e44 are cleared, the records of the boss are free */
@@ -12570,19 +12658,282 @@ static void boss_clear(void)
     boss_free_records();
 }
 
-/* orig $00C216 (the level 1 boss, per frame: callback_4e0): not ported yet */
+/* the level 1 guardian's path (orig $C63E, 70 rows of the picture and the step in x; the byte $FF ends it): the guardian walks left in a loop of steps, jumps and breathes fire (picture 16) */
+static const int8_t boss1_path[71][2] = {
+    {0, 0}, {1, -4}, {2, -4}, {3, -4}, {4, -4}, {5, -4}, {6, -4}, {7, -4}, {8, -4}, {9, -4}, {0, -4}, {1, -4}, {2, -4}, {10, 0}, {11, 0}, {12, 0}, {13, 0}, {14, 0}, {15, 0},
+    {16, 0}, {17, 0}, {4, -4}, {5, -4}, {6, -4}, {7, -4}, {8, -4}, {9, -4}, {0, -4}, {1, -4}, {2, -4}, {10, 0}, {11, 0}, {12, 0}, {13, 0}, {14, 0}, {15, 0}, {16, 0}, {17, 0},
+    {10, 0}, {11, 0}, {12, 0}, {13, 0}, {14, 0}, {15, 0}, {16, 0}, {17, 0}, {2, 4}, {1, 4}, {0, 4}, {9, 4}, {8, 4}, {7, 4}, {6, 4}, {5, 4}, {4, 4}, {3, 4}, {2, 4}, {10, 0},
+    {11, 0}, {12, 0}, {13, 0}, {14, 0}, {15, 0}, {16, 0}, {17, 0}, {2, 4}, {1, 4}, {0, 4}, {0, 0}, {-1, 0}};
+
+#define BOSS1_PATH 0xC63Eu
+
+/* orig $00C3D8 (the shot `shot` has just bounced, d0 and d1 are its place): the first free shot becomes the one that goes on from the bounce (the place, the fall speed of the shot and a sideways speed of -6).
+ * With no free one the original goes on past the fifteenth record (a2 is left after them): the writes are done there too */
+static struct BossShot *boss_new_shot_c3d8(const struct BossShot *shot, int16_t x, int16_t y)
+{
+    struct BossShot *record = boss_state()->shots;
+    int i;
+
+    for (i = 0; i < 15; i++, record++)
+        if (record->frame < 0)
+            break;
+    if (i == 15)
+        return record;
+    record->x = x;
+    record->y = y;
+    record->speed_y = shot->speed_y;
+    record->speed_x = -6;
+    record->frame = 0;
+    return record;
+}
+
+/* orig $00C38A: a shot starts at the guardian (the sound 38, priority 75): the first free record gets its x, 22 below its y, the fall speed 8, the picture 0 and the sideways speed -6 */
+static void boss1_shoot_c38a(void)
+{
+    struct BossState *boss = boss_state();
+
+    play_sound(0x26, 0x4B);
+    for (int i = 0; i < 15; i++) {
+        struct BossShot *shot = &boss->shots[i];
+
+        if (shot->frame >= 0)
+            continue;
+        shot->x = boss->x;
+        shot->y = (int16_t)(boss->y + 0x16);
+        shot->speed_y = 8;
+        shot->frame = 0;
+        shot->speed_x = -6;
+        return;
+    }
+}
+
+/* orig $00C51E: ten sparks (of the fifty records of ptr_0e44: x, y and the speeds, a record is free when its x is 0) are started at the guardian's mouth: x 3 to 10 and y 23 to 38 from the guardian, the
+ * sideways speed 4 to -11 and the other -8 to 7 */
+static void boss1_sparks_c51e(void)
+{
+    struct BossState *boss = boss_state();
+    int16_t *record = (int16_t *)ptr_0e44;
+    int16_t started = 0;
+
+    for (int i = 0; i < 50; i++, record += 5) {
+        if (record[0] != 0)
+            continue;
+        record[0] = (int16_t)((random_word() & 7) + boss->x + 3);
+        record[1] = (int16_t)((random_word() & 15) + boss->y + 0x17);
+
+        uint16_t r = random_word();
+
+        record[2] = (int16_t)(-(int16_t)((r & 15) - 4));
+        record[3] = (int16_t)(((r >> 4) & 15) - 8);
+        started++;
+        if (started >= 10)
+            return;
+    }
+}
+
+/* orig $00C5DE: a 2 by 2 pixel spark is put in the screen buffer at the screen place (x, y): the colour 7 (planes 0 to 2 set, plane 3 cleared) at the even pixel column of x + x_offset */
+static void boss_spark_pixel(int16_t x, int16_t y)
+{
+    int16_t px = (int16_t)(x + x_offset);
+    int shift = px & 0xE;
+    uint8_t *row = screen_buffer + (uint16_t)(y * 44) + (((int16_t)(px & 0xFFF0)) >> 3);
+    uint16_t set = (uint16_t)(0xC000u >> shift);
+    uint16_t keep = (uint16_t)((0x3FFFu >> shift) | (0x3FFFu << (16 - shift)));
+
+    for (int line = 0; line < 2; line++, row += 44) {
+        for (int plane = 0; plane < 4; plane++) {
+            uint8_t *word = row + plane * 0x2100;
+
+            word[0] = (uint8_t)((word[0] & (keep >> 8)) | (plane < 3 ? set >> 8 : 0));
+            word[1] = (uint8_t)((word[1] & keep) | (plane < 3 ? set : 0));
+        }
+    }
+}
+
+/* orig $00C58E (called after the guardian's routine; a bare return unless a guardian's start set it to a nop): the sparks move by their speeds (the second one goes down one every other frame) and
+ * the ones that are on the screen are drawn; one off it is free */
+static void boss_sparks_c58e(void)
+{
+    if (code_c58e != 0x4E71)
+        return;
+
+    int16_t *record = (int16_t *)ptr_0e44;
+
+    for (int i = 0; i < 50; i++, record += 5) {
+        if (record[0] == 0)
+            continue;
+        record[0] = (int16_t)(record[0] + record[2]);
+        record[1] = (int16_t)(record[1] + record[3]);
+        if (frame_phase == 0)
+            record[3]++;
+
+        int16_t x = (int16_t)(record[0] - scroll_x);
+        int16_t y = (int16_t)(record[1] - scroll_y);
+
+        if (x < 0 || y < 0 || x >= 0x13F || y >= 0xBF) {
+            record[0] = 0;
+            continue;
+        }
+        boss_spark_pixel(x, y);
+    }
+}
+
+/* orig $00C406 (a bare return unless a guardian's start set it to a nop; then $C408): the shots go by their speeds.  A shot that is in a wall (a cell of the second map, 1) is over with a spark that
+ * goes on with its speeds; one that falls on a floor bounces (sound 35, fall speed -11) and makes a second shot with a sideways speed of its own less one or nothing.  The others turn through their four pictures
+ * (the glyphs 347 to 350), are over when they leave the screen, hit the player (aimed_bolt_hits_player) and are drawn */
+static void boss_shots_c406(void)
+{
+    if (code_c406 != 0x4E71)
+        return;
+
+    struct BossState *boss = boss_state();
+
+    for (int i = 0; i < 15; i++) {
+        struct BossShot *shot = &boss->shots[i];
+
+        if (shot->frame < 0)
+            continue;
+
+        int16_t x = (int16_t)(shot->x + shot->speed_x);
+        int16_t y = (int16_t)(shot->y + shot->speed_y);
+
+        shot->speed_y++;
+        if (shot->speed_y >= 0) {
+            const uint8_t *cell = ptr_0b86 + 0x2000 + (x >> 5) + (int16_t)(uint16_t)((y & 0xFFF0) << 3);
+
+            if (cell[0] == 1) {
+                start_debris_moving((int16_t)(x - scroll_x), (int16_t)(y - scroll_y), shot->speed_x, shot->speed_y);
+                shot->frame = -1;
+                continue;
+            }
+            if (cell[0x80] == 1) {
+                play_sound(0x23, 3);
+                shot->speed_y = -11;
+
+                struct BossShot *next = boss_new_shot_c3d8(shot, x, y);
+
+                next->speed_x = shot->speed_x;
+                next->speed_x--;
+                if (random_word() & 1)
+                    next->speed_x++;
+            }
+        }
+        shot->x = x;
+        shot->y = y;
+        if (frame_toggle == 0)
+            shot->frame = (int16_t)((shot->frame + 1) & 3);
+
+        int16_t picture = (int16_t)(shot->frame + 0x15B);
+
+        x = (int16_t)(x - scroll_x);
+        if (x <= -16 || x > 0x168) {
+            shot->frame = -1;
+            continue;
+        }
+        y = (int16_t)(y - scroll_y);
+        aimed_bolt_hits_player((uint32_t *)&shot->frame, (int16_t)(x + 4), (int16_t)(y + 4));
+        glyph_draw(x, y, (uint16_t)picture);
+    }
+}
+
+/* orig $00C374 (a bare return unless the guardian's death set it to a nop): 1000 points are added to the score each frame, ten times the level's number of frames */
+static void boss_score_c374(void)
+{
+    if (code_c374 != 0x4E71)
+        return;
+    score_add_packed(0x10);
+
+    uint16_t *count = (uint16_t *)GUEST(0x668);
+
+    (*count)--;
+    if (*count != 0)
+        return;
+    code_c374 = 0x4E75;
+}
+
+/* orig $00C300: the guardian is dead: seven bursts of sparks (spawn_particles_15c54) at random places on it, the fight is over (flag_23a off), the pieces of a chest burst from it (the sprites from
+ * the twentieth word of words_3fde on) and the score is paid out */
+static void boss_die(void)
+{
+    struct BossState *boss = boss_state();
+
+    flag_a4c = 0;
+    for (int n = 0; n < 7; n++) {
+        int16_t y = (int16_t)((random_word() & 0x3F) + 0x10);
+        int16_t x = (int16_t)((random_word() & 0x3F) + boss->x);
+
+        spawn_particles_15c54(x, (int16_t)(y + boss->y));
+    }
+    word_a54 = -4;
+    flag_23a = 0;
+    chest_burst_at((int16_t)(boss->x + 0x18), (int16_t)(boss->y + 0x28), words_3fde + 20);
+    *(uint16_t *)GUEST(0x668) = (uint16_t)(param_index * 10);
+    code_c374 = 0x4E71;
+}
+
+/* orig $00C216 (the level 1 guardian, per frame: callback_4e0): while it is alive it goes on along its path every other frame (the picture and a step in x; at the end of the path the start again);
+ * in the picture 16 it breathes fire (sparks while it moves, a shot in the other frames), sounds go with some pictures; its two halves (the pictures 448 + 2n and +1, 32 apart) are drawn, the player's
+ * shots are looked at against a box of 48 by 96 (check_hit_and_walls) and the energy is what is left; when it is below 0 the guardian dies (boss_die) */
 static void boss1_frame(void)
 {
-    host_missing_routine(0xC216);
+    struct BossState *boss = boss_state();
+
+    if ((int16_t)boss->energy_high < 0)
+        return;
+
+    int16_t picture = (int16_t)boss->picture;
+
+    if (frame_toggle == 0) {
+        uint32_t path = ((uint32_t)boss->path_high << 16) | boss->path_low;
+        const int8_t *row = boss1_path[(path - BOSS1_PATH) / 2];
+
+        picture = row[0];
+        boss->x = (uint16_t)(boss->x + row[1]);
+        row += 2;
+        if (row[0] < 0)
+            path = BOSS1_PATH;
+        else
+            path += 2;
+        boss->path_high = (uint16_t)(path >> 16);
+        boss->path_low = (uint16_t)path;
+        if (picture == 16)
+            boss1_sparks_c51e();
+    } else if (picture == 16) {
+        boss1_shoot_c38a();
+    }
+    if (picture == 3 || picture == 10 || picture == 9)
+        play_sound(0x3D, 0x1E);
+    if (picture == 14)
+        play_sound(0x3E, 0x29);
+    boss->picture = (uint16_t)picture;
+
+    int16_t x = (int16_t)(boss->x - scroll_x);
+    int16_t y = (int16_t)(boss->y - scroll_y);
+    uint16_t image = (uint16_t)(picture * 2 + 0x1C0);
+
+    sprite_draw(x, y, image);
+    sprite_draw((int16_t)(x + 0x20), y, (uint16_t)(image + 1));
+    word_39c = 0x30;
+    word_39e = 0x60;
+
+    int16_t energy = check_hit_and_walls((int16_t)(boss->x + 0x10), boss->y, (int16_t)boss->energy_low);
+
+    boss->energy_low = (uint16_t)energy;
+    boss->energy_high = energy < 0 ? 0xFFFF : 0;
+    if (energy < 0)
+        boss_die();
 }
 
 /* orig $00B060 (callback_514: the boss's state is made again when a level is started with the flag on): the place of the level 1 boss and its path */
 static void boss1_514(void)
 {
-    BOSS_WORD(0x4E8) = 0xF20;
-    BOSS_WORD(0x4EA) = 0x230;
-    BOSS_WORD(0x508) = 0;
-    BOSS_LONG(0x510) = (uint32_t)(uintptr_t)GUEST(0xC63E);   /* the path: the original's table at $C63E */
+    struct BossState *boss = boss_state();
+
+    boss->x = 0xF20;
+    boss->y = 0x230;
+    boss->picture = 0;
+    boss->path_high = 0;
+    boss->path_low = BOSS1_PATH;   /* the path: the original's table at $C63E */
     boss_clear();
 }
 
@@ -12607,8 +12958,8 @@ static void boss_start(struct EntryRef *entry)
     callback_514 = boss1_514;
     code_c58e = 0x4E71;
     code_c406 = 0x4E71;
-    BOSS_LONG(0x50A) = 0x5DC;   /* its energy: the original has the copylock's value here when the lock passes (1500) */
-    BOSS_WORD(0x50A) &= 0xFF7F;   /* bclr.b #7, $50A: the top byte's bit 7 */
+    boss_state()->energy_high = 0;   /* its energy: the original has the copylock's value here when the lock passes (1500); the bclr.b #7, $50A takes the top byte's bit 7 off */
+    boss_state()->energy_low = 0x5DC;
     callback_4e4 = boss_rts;
     boss1_514();
 }
