@@ -467,7 +467,7 @@ static void teleport_player(void)
     flag_1f0 = 0;
     player_state = 4;
     word_2aa = scroll_y;
-    host_fade_lag(2);   /* (the lockstep: the original's fade-out writes its list at the top of the frame, before the raster reaches the bands: the colours of the registers a frame after, the list's at once) */
+    host_fade_lag(1);   /* (the lockstep: the colours of the registers and the list's bands both a frame after the steps) */
     fade_out(1, 0xFFFF);
     host_fade_lag(0);
     draw_start_frame();
@@ -13107,7 +13107,9 @@ static void shop_run(void)
     message_shown = 0;
     word_dde = 0;
     *(volatile uint8_t *)&flags_0ddd = 0;   /* clr.b $ddd.w */
+    host_fade_lag(1);   /* (the lockstep: the steps are shown as the original's, a frame after the thread has made them) */
     fade_out(1, 2);
+    host_fade_lag(0);
 
     uint16_t saved_25c = word_025c;
     int16_t saved_x_offset = x_offset;
@@ -13138,7 +13140,9 @@ static void shop_run(void)
     }
 
     fade_keep_screens = 1;   /* (the original's fade-out does not clear the screens here: the word at $1CFC0 is an rts for the time) */
+    host_fade_lag(1);
     fade_out(1, 0);
+    host_fade_lag(0);
     fade_keep_screens = 0;
     display_reset();
 
@@ -13186,7 +13190,9 @@ static void shop_run(void)
     word_025c = 1;
     copper_setup_done = 0;
     host_fade_bind();   /* (the lockstep: the fade-in begins when the original calls its own) */
+    host_fade_lag(1);
     fade_in(palette_words, 1);
+    host_fade_lag(0);
     host_cpu_frames(1);   /* (the original goes on 31 frames after the call of the fade) */
     copy_other_screen();
     host_cpu_frames(2);   /* (the copy of a screen takes the original about two frames) */
@@ -13266,7 +13272,9 @@ static void shop_run(void)
     reload_sprites();
     wait_vblank();
     file_read(sound1_name, picture_buffer);
+    host_fade_lag(1);
     fade_out(1, 0);
+    host_fade_lag(0);
     tick_hold_38a = 0;
     draw_start_frame();
     screens_flip();
@@ -13275,7 +13283,9 @@ static void shop_run(void)
     x_offset = saved_x_offset;
     word_025c = saved_25c;
     copper_colors_restore();
+    host_fade_lag(1);
     fade_in(palette_words, 1);
+    host_fade_lag(0);
     tick_count = saved_ticks;
     word_0248 = 0;
     tick_hold_26c = 0;

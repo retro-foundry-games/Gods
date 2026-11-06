@@ -218,6 +218,11 @@ static int lockstep_commands(const uint32_t *pixels, int phase)
             host_flips_offset = a;
             host_flip_sync = 1;
             host_fade_sync_start();
+            {
+                extern void host_flip_late(int on);
+
+                host_flip_late(1);   /* the flips are let go by the original's count of the same step and shown at the next blank, as the original's are */
+            }
         } else if (sscanf(line, "diskdone %d", &a) == 1) {   /* `diskdone N`: the original has finished N reads of the background (host_disk_wait) */
             extern volatile int host_disk_sync, host_disk_done;
 
