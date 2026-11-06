@@ -704,8 +704,21 @@ void display_latch_fresh(void)
 
 /* in a fade shown with display_fresh_lag 2 (the fade-in of the player's respawn): the colours are as the blank's interrupt left them, but the copper list is taken after the program's
  * thread has had its moment (the original's fade writes the list at the top of the frame, before the raster reaches the bands: the frame shows it) */
+static uint16_t late_list[1024];   /* (the list after the thread's moment, kept in the shop's fade-in: see display_render) */
+static int late_list_valid;
+
 void display_latch_late(void)
 {
+    if (display_fresh && display_fresh_lag == 0) {
+        uint32_t head = REG32(0x080);
+        const uint16_t *now = head < 0x10000 ? (const uint16_t *)guest_ptr(head) : (const uint16_t *)(uintptr_t)head;
+
+        if (now) {
+            memcpy(late_list, now, sizeof late_list);
+            late_list_valid = 1;
+        }
+        return;
+    }
     if (!display_fresh || display_fresh_lag != 2)
         return;
     uint32_t cop1lc = REG32(0x080);
@@ -812,6 +825,7 @@ static void line_palettes(uint16_t colors[][16], int lines)
  * the raster is passing them: for about 58 lines after the line it began at the bands above have been drawn from the list as it was the frame before */
 volatile int host_fade_line = -1;
 static uint16_t previous_list[1024];
+static int fade_in_edits;   /* (the edits seen in the shop's fade-in so far: the first is not shown in part) */
 static int previous_list_valid;
 
 void display_render(uint32_t *pixels)
@@ -831,12 +845,28 @@ void display_render(uint32_t *pixels)
         int cut = (host_fade_line * 26 - 90) / 10;
 
         memcpy(now_list, latched_list, sizeof now_list);
-        memcpy(latched_list, previous_list, sizeof now_list);
-        line_palettes(colors_before, 320);
-        memcpy(latched_list, now_list, sizeof now_list);
-        for (int line = 0; line < cut && line < 320; line++)
-            memcpy(colors[line], colors_before[line], sizeof colors[line]);
+        if (display_fresh_lag == 0 && late_list_valid) {
+            /* the shop's fade-in: the original's edit of the list is slow.  A frame after it began (at the raster line host_fade_line) it has done the lines from 2.6 times that line for 63 lines
+             * and the raster passes them after the edit: they show the new list, the others the one before */
+            int first = host_fade_line * 26 / 10;
+
+            if (fade_in_edits++ > 0) {
+                memcpy(latched_list, late_list, sizeof now_list);
+                line_palettes(colors_before, 320);
+                memcpy(latched_list, now_list, sizeof now_list);
+                for (int line = first; line < first + 63 && line < 320; line++)
+                    memcpy(colors[line], colors_before[line], sizeof colors[line]);
+            }
+        } else {
+            memcpy(latched_list, previous_list, sizeof now_list);
+            line_palettes(colors_before, 320);
+            memcpy(latched_list, now_list, sizeof now_list);
+            for (int line = 0; line < cut && line < 320; line++)
+                memcpy(colors[line], colors_before[line], sizeof colors[line]);
+        }
     }
+    if (!display_fresh)
+        fade_in_edits = 0;
     if (latched_list_valid) {
         memcpy(previous_list, latched_list, sizeof previous_list);
         previous_list_valid = 1;
