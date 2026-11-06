@@ -302,19 +302,29 @@ void set_scroll(uint8_t *copper_list, uint8_t x)
 }
 
 /* orig $01D05C: wait for the next vertical blank (the main thread raises it) */
-volatile int host_in_wait;          /* the program's thread is inside wait_vblank */
-volatile unsigned host_wait_entries;   /* how many times it has come to wait_vblank */
+volatile int host_in_wait;          /* the program's thread is inside wait_vblank (or a loop that waits for blanks: host_spin) */
+volatile uint16_t host_processed;   /* the blank it has seen while it waits */
 static int blank_was_waiting;
-static unsigned blank_entries;
 
 void wait_vblank(void)
 {
     uint16_t seen = vbl_count;
 
-    host_wait_entries++;
+    host_processed = seen;
     host_in_wait = 1;
     while (vbl_count == seen)
         sched_yield();
+    host_in_wait = 0;
+}
+
+void host_spin(void)
+{
+    host_processed = vbl_count;
+    host_in_wait = 1;
+}
+
+void host_spin_end(void)
+{
     host_in_wait = 0;
 }
 
@@ -322,16 +332,15 @@ void wait_vblank(void)
 void host_blank_begin(void)
 {
     blank_was_waiting = host_in_wait;
-    blank_entries = host_wait_entries;
 }
 
-/* (the lockstep) after the blank's interrupt: a thread that was waiting for it is let run until it waits again (what it does at the top of the frame - a fade's step, the flip - is
- * in the frame the original does it in, whatever the machine's load is); a thread that was busy has the moment the caller gives it.  Gives up after 300 ms */
+/* (the lockstep) after the blank's interrupt: a thread that was waiting for it is let run until it waits again, and has seen the blank (what it does at the top of the frame - a fade's step, the
+ * flip - is in the frame the original does it in, whatever the machine's load is); a thread that was busy has the moment the caller gives it.  Gives up after 300 ms */
 void host_blank_wait(void)
 {
     if (!blank_was_waiting)
         return;
-    for (int n = 0; n < 6000 && host_wait_entries == blank_entries; n++) {
+    for (int n = 0; n < 6000 && !(host_in_wait && host_processed == vbl_count); n++) {
         struct timespec ts = { 0, 50000 };   /* 50 microseconds */
 
         nanosleep(&ts, 0);

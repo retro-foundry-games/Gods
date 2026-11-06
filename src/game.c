@@ -198,7 +198,8 @@ static void wait_frames_then_flip(uint16_t frames)
 {
     host_iteration_cpu(2);   /* (the work of the frame, which took the original two frames; one for the first after a level end: host_iteration_cpu_next) */
     while ((int16_t)(frames - vbl_saturating) >= 0)
-        ;
+        host_spin();
+    host_spin_end();
     screens_flip();
 }
 
@@ -13061,6 +13062,7 @@ static void shop_wait_flip(void)
     shop_stick_older = shop_stick_old;
     shop_stick_old = joystick;
     while ((int16_t)(2 - vbl_saturating) >= 0) {
+        host_spin();
         if (vbl_count != seen) {   /* (a blank has passed: the bits are not in the middle of its poll) */
             seen = vbl_count;
             shop_button_older = shop_button_old;
@@ -13069,6 +13071,7 @@ static void shop_wait_flip(void)
             shop_stick_old = joystick;
         }
     }
+    host_spin_end();
     screens_flip();
 }
 

@@ -78,6 +78,14 @@ static inline void host_cpu_frames(unsigned frames)
     (void)frames;
 }
 
+static inline void host_spin(void)
+{
+}
+
+static inline void host_spin_end(void)
+{
+}
+
 /* the start of a frame of the game, and the least time its work takes: the host has done the work at once and waits for the video frames it took on the Amiga */
 static inline void host_iteration_mark(void)
 {
