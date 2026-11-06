@@ -4020,14 +4020,14 @@ static void spawn_shots_1557c(struct Shot *slot, int16_t id, struct Object *obje
     }
 }
 
-/* orig $015660: the handler 15 of the table at $15220 (the magic axe): sound 2 (priority 4); the shots start at (x + 16, y - 16), then 3 left and 5 higher, then 6 right and 10 lower than that, with the directions 1, 0
+/* orig $015660 and, to the left, $015714 (the handlers 15 and 14 of the table at $15220: the magic axe): sound 2 (priority 4); the shots start at (x + 16, y - 16), then 3 left and 5 higher, then 6 right and 10 lower than that, with the directions 1, 0
  * and 2 (as many as the object has: its last_value less its first_value, plus one, at most three), and each has its three words in the table at $66E: the column (the number less 9, twice at most, less 1) of
- * them, the step 4, a step of the power-ups' table (the words 3, 1 and 4) and 50 frames */
-static void spawn_shots_axe(struct Shot *slot, int16_t id, struct Object *object, int16_t x, int16_t y)
+ * them, the step 4, a step of the power-ups' table (the words 3, 1 and 5) and 50 frames */
+static void spawn_shots_axe(struct Shot *slot, int16_t id, struct Object *object, int16_t x, int16_t y, int left)
 {
     static const int16_t directions[3] = { 1, 0, 2 };
-    static const int16_t deltas[3] = { 3, 1, 4 };
-    static const int16_t step_x[3] = { 0, -3, 6 };
+    static const int16_t deltas[2][3] = { { 3, 1, 5 }, { 9, 7, 11 } };   /* (the words of $16BBA, $16BB6, $16BBE and $16BC6, $16BC2, $16BCA from $16BB4) */
+    static const int16_t step_x[2][3] = { { 0, -3, 6 }, { 0, -3, -6 } };
     static const int16_t step_y[3] = { 0, -5, 10 };
 
     play_sound(2, 4);
@@ -4047,14 +4047,14 @@ static void spawn_shots_axe(struct Shot *slot, int16_t id, struct Object *object
     int16_t count = (int16_t)(object->last_value - object->first_value + 1);
 
     for (int i = 0; i < 3; i++, table += 3) {
-        x = (int16_t)(x + step_x[i]);
+        x = (int16_t)(x + step_x[left][i]);
         y = (int16_t)(y + step_y[i]);
         slot[i].active = (int16_t)(id + i);
         slot[i].x = x;
         slot[i].y = y;
         slot[i].direction = directions[i];
-        table[0] = 4;
-        table[1] = shot_delta(deltas[i]);
+        table[0] = left ? -4 : 4;
+        table[1] = shot_delta(deltas[left][i]);
         table[2] = 50;
         if (--count == 0)
             return;
@@ -4080,7 +4080,7 @@ static void spawn_shots(struct Shot *slot, int16_t id, struct ShotList *list, in
         spawn_shots_spear(slot, id, object, x, y, 1);
         break;
     case 15:
-        spawn_shots_axe(slot, id, object, x, y);
+        spawn_shots_axe(slot, id, object, x, y, 0);
         break;
     default:
         break;   /* 4 and 5 return; the others ($15968, $155EC ...) did not run */
@@ -9142,6 +9142,9 @@ static void spawn_player_shots_left(void)
             break;
         case 6:
             spawn_shots_spear(slots[i], ids[i], object, x, y, 0);
+            break;
+        case 14:
+            spawn_shots_axe(slots[i], ids[i], object, x, y, 1);
             break;
         default:
             break;   /* 4 and 5 return; the others ($155EC, $1557C ...) did not run */
