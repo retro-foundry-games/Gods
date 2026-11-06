@@ -12466,6 +12466,8 @@ void level_tables_quickload(void)
         if (type->creatures && type->number)
             file_words(type->creatures, 7 * type->number);
     }
+    for (int i = 0; i < 20; i++)   /* the ten shards (struct Shard: four words) that the stone faces spit: the table is typed as longs, which the loader made native as longs: the words of each are the other way round */
+        records_737e[i] = (records_737e[i] >> 16) | (records_737e[i] << 16);
     file_words((void *)GUEST(0x66E), 27);   /* the magic axe's nine shots' steps ($66E) */
     boss_quickload();
 }
