@@ -486,6 +486,7 @@ static void teleport_player(void)
 static void boss_sparks_c58e(void);
 static void boss_shots_c406(void);
 static void boss_score_c374(void);
+static void boss_quickload(void);
 static void start_debris_moving(int16_t x, int16_t y, int16_t speed_x, int16_t speed_y);
 static void chest_burst_at(int16_t x, int16_t y, const uint16_t *sprites);
 
@@ -12271,6 +12272,7 @@ void level_tables_quickload(void)
         if (type->creatures && type->number)
             file_words(type->creatures, 7 * type->number);
     }
+    boss_quickload();
 }
 
 /* orig $00323C: when the small font asked for it (menu_state_25a) it is loaded again: the asset set of the level's sprites */
@@ -12663,7 +12665,7 @@ static const int8_t boss1_path[71][2] = {
     {0, 0}, {1, -4}, {2, -4}, {3, -4}, {4, -4}, {5, -4}, {6, -4}, {7, -4}, {8, -4}, {9, -4}, {0, -4}, {1, -4}, {2, -4}, {10, 0}, {11, 0}, {12, 0}, {13, 0}, {14, 0}, {15, 0},
     {16, 0}, {17, 0}, {4, -4}, {5, -4}, {6, -4}, {7, -4}, {8, -4}, {9, -4}, {0, -4}, {1, -4}, {2, -4}, {10, 0}, {11, 0}, {12, 0}, {13, 0}, {14, 0}, {15, 0}, {16, 0}, {17, 0},
     {10, 0}, {11, 0}, {12, 0}, {13, 0}, {14, 0}, {15, 0}, {16, 0}, {17, 0}, {2, 4}, {1, 4}, {0, 4}, {9, 4}, {8, 4}, {7, 4}, {6, 4}, {5, 4}, {4, 4}, {3, 4}, {2, 4}, {10, 0},
-    {11, 0}, {12, 0}, {13, 0}, {14, 0}, {15, 0}, {16, 0}, {17, 0}, {2, 4}, {1, 4}, {0, 4}, {0, 0}, {-1, 0}};
+    {11, 0}, {12, 0}, {13, 0}, {14, 0}, {15, 0}, {16, 0}, {17, 0}, {2, 4}, {1, 4}, {0, 4}, {0, 0}, {0, 0}, {-1, 0}};
 
 #define BOSS1_PATH 0xC63Eu
 
@@ -12967,6 +12969,25 @@ static void boss_start(struct EntryRef *entry)
 /* orig $00AFD4: a bare return */
 static void boss_rts(void)
 {
+}
+
+/* the quickload of a fight with the level 1 guardian (flag_23a on, its sprites there): the words of its state, its shots, its sparks (the 500 bytes of ptr_0e44) and the count of its death's score are the file's
+ * (big endian); its routines are the port's (the original's callbacks are addresses of its own code) */
+static void boss_quickload(void)
+{
+    if (flag_23a == 0 || menu_state_25a != 2 || param_index != 1)
+        return;
+
+    struct BossState *boss = boss_state();
+
+    file_words(boss, 2);
+    file_words(&boss->picture, 6);
+    file_words(boss->shots, 75);
+    file_words(ptr_0e44, 250);
+    file_words((void *)GUEST(0x668), 1);
+    callback_4e0 = boss1_frame;
+    callback_4e4 = boss_rts;
+    callback_514 = boss1_514;
 }
 
 /* orig $0030DA (the frame ends there when flag_258 is on, which the guardian's start sets): the guardian's sprites (the set `guard1` of the level's names) and the sound files are read behind the
