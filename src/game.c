@@ -1840,7 +1840,8 @@ static void level_end_screen(void)
     }
     flag_268 = 0;
     level_end_quiet();
-    host_cpu_frames(1);   /* (the voices of the game's sounds are free a frame later on the Amiga than the host's note it) */
+    if (record->bonus >= 0x3E8)
+        host_cpu_frames(1);   /* (the voices of the game's sounds are free a frame later on the Amiga than the host's note it) */
     play_sound(record->bonus >= 0x3E8 ? 0x24 : 0x25, 0x79);
     level_end_counter = 0;
     text_draw_at((const char *)record->text, 0, 0x12);
