@@ -245,6 +245,11 @@ int host_run(const struct HostOptions *options)
                 extern volatile int host_irq_hold;
 
                 display_latch();
+                {
+                    extern void host_blank_begin(void);
+
+                    host_blank_begin();
+                }
                 if (!host_irq_hold)   /* (the quickload or the quick load of the program's thread is writing the memory: the interrupt would run on half of it) */
                     irq_vbl();
                 {

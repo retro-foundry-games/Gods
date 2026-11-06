@@ -302,8 +302,12 @@ static int dev_hold(int phase)
 
 static void dev_after_blank(void)
 {
-    if (lockstep)
+    if (lockstep) {
+        extern void host_blank_wait(void);
+
         SDL_DelayNS(3000000);   /* the program's thread flips the screens right after the blank it waited for: give it that moment before the frame is drawn */
+        host_blank_wait();   /* and, when it was waiting for the blank, until it waits again (a loaded machine does not make it late) */
+    }
 }
 
 static void dev_after_frame(int frame, int phase, uint32_t *pixels, const int16_t *samples)

@@ -2,6 +2,7 @@
  * frame tick.  This is amiga/display.c for the host: the same logic (the colours are still in the copper lists, which render.c reads), the chips' parts are the host's: no copper scroll to set, a vertical blank wait that lets the other threads run, no blitter to wait for. */
 #include <sched.h>
 #include <stdint.h>
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -301,12 +302,40 @@ void set_scroll(uint8_t *copper_list, uint8_t x)
 }
 
 /* orig $01D05C: wait for the next vertical blank (the main thread raises it) */
+volatile int host_in_wait;          /* the program's thread is inside wait_vblank */
+volatile unsigned host_wait_entries;   /* how many times it has come to wait_vblank */
+static int blank_was_waiting;
+static unsigned blank_entries;
+
 void wait_vblank(void)
 {
     uint16_t seen = vbl_count;
 
+    host_wait_entries++;
+    host_in_wait = 1;
     while (vbl_count == seen)
         sched_yield();
+    host_in_wait = 0;
+}
+
+/* (the lockstep) before a blank's interrupt: whether the program's thread is waiting for it, and how often it has waited */
+void host_blank_begin(void)
+{
+    blank_was_waiting = host_in_wait;
+    blank_entries = host_wait_entries;
+}
+
+/* (the lockstep) after the blank's interrupt: a thread that was waiting for it is let run until it waits again (what it does at the top of the frame - a fade's step, the flip - is
+ * in the frame the original does it in, whatever the machine's load is); a thread that was busy has the moment the caller gives it.  Gives up after 300 ms */
+void host_blank_wait(void)
+{
+    if (!blank_was_waiting)
+        return;
+    for (int n = 0; n < 6000 && host_wait_entries == blank_entries; n++) {
+        struct timespec ts = { 0, 50000 };   /* 50 microseconds */
+
+        nanosleep(&ts, 0);
+    }
 }
 
 /* orig $01DFD8: wait until the blitter is done (the host's blitter runs when it is started) */
