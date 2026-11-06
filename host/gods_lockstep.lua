@@ -614,6 +614,20 @@ lockstep.run {
     on_frame = function(count, native, emulated)
         frame_end_cycles = ami.cycles()
         if count > 0 and count <= (tonumber(args:match("fadetol=(%d+)")) or 600) and ami.frame() - last_fade_frame <= 3 then count = 0 end
+        -- a fade shown a step early or late (a frame or two: the port's list edit and the original's raster do not run together) differs on the whole screen by one or two steps of colour (17 a channel):
+        -- within 15 frames of a fade step a difference of no more than two steps a channel is not a stop (fadesteps=N: 0 is off, default 2)
+        if count > 600 and ami.frame() - last_fade_frame <= 15 then
+            local steps = tonumber(args:match("fadesteps=(%d+)")) or 2
+            if steps > 0 then
+                local limit, worst = 17 * steps, 0
+                for i = 1, #native do
+                    local a, b = native:byte(i), emulated:byte(i)
+                    local diff = a > b and a - b or b - a
+                    if diff > worst then worst = diff if worst > limit then break end end
+                end
+                if worst <= limit then count = 0 end
+            end
+        end
         -- A stop (the first difference, from=N, pause=F, break=ADDR) saves both sides to captures/stops/stop-fFRAME[-N].*: the original's state and RAM, the port's memory
         -- from 0 to $80000 (.portmem: as it holds it, words native) and the two pictures; scripts/stop_diff.py compares them offline, however the play got there.
         local stops_here = (pause_at and ami.frame() >= pause_at) or break_hit
