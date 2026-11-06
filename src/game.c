@@ -13264,9 +13264,11 @@ static void shop_clear_text(void)
 }
 
 /* orig $013D50: the strip is copied to the screen that is not shown (from row 175, byte 14, the planes 8448 bytes apart) and the two end pieces (images 41 and 42 of the shop's set) are drawn at its ends */
-static void shop_text_show(void)
+static uint16_t strip_shown[9 * 32];   /* the strip as it was when it was last shown (the original's tick copies it to the screen that is not shown: a clear of the text, when a message is asked for, does not reach the screen until the next tick) */
+static int strip_shown_valid;
+
+static void shop_strip_draw(const uint16_t *from)
 {
-    const uint16_t *from = (const uint16_t *)shop_strip();
     uint8_t *to = screen_other + 0x1E22;
 
     for (int row = 0; row < 9; row++) {
@@ -13286,6 +13288,16 @@ static void shop_text_show(void)
     glyph_draw(0x70, 0xAE, (uint16_t)(word_292 + 0x29));
     glyph_draw(0xE0, 0xAE, (uint16_t)(word_292 + 0x2A));
     screen_buffer = saved;
+}
+
+static void shop_text_show(void)
+{
+    const uint16_t *from = (const uint16_t *)shop_strip();
+
+    for (int i = 0; i < 9 * 32; i++)
+        strip_shown[i] = from[i];
+    strip_shown_valid = 1;
+    shop_strip_draw(strip_shown);
 }
 
 /* orig $013DB4: the strip is moved one pixel to the left (each plane of each row is a chain of 8 words) */
@@ -13685,6 +13697,8 @@ static int shop_press_work(void)
     if (id != chosen) {   /* choosing */
         shop_selected = (uint16_t)id;
         message_arg = 0;
+        if (message_shown != 0)
+            host_cpu_frames(1);   /* (a message that is on show when the next is asked for: the original takes a frame more before it clears and restarts, as the strip showed: the old text scrolled out one step more) */
         if (id < 0xC0) {
             bits_1970a[id >> 3] &= (uint8_t)~(1 << (id & 7));
                     item_message(id);
@@ -13796,8 +13810,8 @@ static void shop_wait_flip(void)
 /* the screen that a flip brings to the front had its strip drawn when it was last shown: the original's interrupt draws it before the frame is shown, so the strip is drawn on it as the flip is done */
 void shop_flip_strip(void)
 {
-    if (tick_hold_38a && shop_text != 0)
-        shop_text_show();
+    if (tick_hold_38a && shop_text != 0 && strip_shown_valid)
+        shop_strip_draw(strip_shown);
 }
 
 /* orig $013690 to $0139DE: the shop.  The screen fades out, shop.pi1 is read to the hidden screen (the rows of 40 bytes of its planes go to the rows of 44), the screen is faded in again with the level's colours; the
@@ -13867,6 +13881,9 @@ static void shop_run(void)
     drives_idle();
     shop_text = (uint8_t *)line_text;
     shop_clear_text();
+    for (int i = 0; i < 9 * 32; i++)
+        strip_shown[i] = 0;
+    strip_shown_valid = 1;
     tick_hold_38a = 1;
     shop_bought = 0;
     shop_stock_build();
