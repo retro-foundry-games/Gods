@@ -213,6 +213,8 @@ ami.hook(0x136ec, function() disk_pending = true end)
 ami.hook(0x13768, function() disk_pending = true end)
 ami.hook(0x1377a, function() if disk_pending then disk_pending = false disk_done = disk_done + 1 end end)
 local frame_end_cycles = 0
+local fade_line = -1   -- the raster line the original's thread was at when it began the copper fade of its step ($1D1C2 loops over the bands of the list: what lies above that line was shown before the edit)
+ami.hook(0x1d1c2, function() fade_line = math.floor((ami.cycles() - frame_end_cycles) / 454) if args:find("fadelog") then ami.log(("FADELINE frame %d line %d"):format(ami.frame(), fade_line)) end end)
 ami.hook(0x1d23e, function() if disk_pending then disk_pending = false disk_done = disk_done + 1 ami.log(("DBGPHASE frame %d phase %d"):format(ami.frame(), ami.cycles() - frame_end_cycles)) end end)
 local flip_in_frame = false   -- (the autosave looks for a frame in which the original flipped)
 ami.hook(0x1d302, function() orig_flips = orig_flips + 1; flip_in_frame = true end)
@@ -278,6 +280,8 @@ local delayed = setmetatable({
                     if sync_on then
                         real:send(("flips %d\n"):format((flip_lag and last_flips or orig_flips) - flips_at_sync))
                         real:send(("reads %d\n"):format(orig_reads - reads_at_sync))
+                        real:send(("fadeline %d\n"):format(fade_line))
+                        fade_line = -1
                         real:send(("fades %d\n"):format(orig_fades - fades_at_sync))
                         real:send(("worldloads %d\n"):format(orig_world_loads - world_loads_at_sync))
                         last_flips = orig_flips
