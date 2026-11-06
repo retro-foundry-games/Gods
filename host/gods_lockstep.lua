@@ -202,7 +202,7 @@ local flip_offset = tonumber(args:match("flipoff=(-?%d+)")) or 0
 local orig_flips, flips_at_sync, sync_on, last_flips = 0, 0, false, 0
 local orig_fades, fades_at_sync = 0, 0   -- the original's calls of its fade-in ($1D0C0): the port's teleport waits for them (host_fade_wait)
 local orig_world_loads, world_loads_at_sync = 0, 0   -- the original's arrivals at the end of the loading of a world ($0135C0, where it puts back the tick count): the port's load waits for them (host_world_load_wait)
-local flip_lag = not args:find("%f[%w]nolag%f[%W]")   -- (the count the port gets is the one of the step before: the original's flip shows a frame after the one the count reaches)
+local flip_lag = args:find("%f[%w]lag%f[%W]") ~= nil   -- (the port's flips are let go by the count of the same step and shown at the next blank: the original shows its flip a frame after the call; `lag`: the old way, the count of the step before and shown at once)   -- (the count the port gets is the one of the step before: the original's flip shows a frame after the one the count reaches)
 -- the disk: the original's read of the background ($6A8A on, until its fade out at $1D23E) takes as long as the drive takes; the port waits for the original to have done (`diskdone N`, the reads finished)
 local disk_pending, disk_done = false, 0
 ami.hook(0x6a8a, function() disk_pending = true end)
