@@ -256,7 +256,14 @@ local function f5_step()
         ami.log("F5: the original's state could not be saved")
     end
 end
+-- bosshp=F:N (a test): at emulator frame F the guardian's energy ($50C, the low word of its long) is set to N on both sides
+local BOSSHP_FRAME, BOSSHP_VALUE = args:match("bosshp=(%d+):(%d+)")
+BOSSHP_FRAME, BOSSHP_VALUE = tonumber(BOSSHP_FRAME), tonumber(BOSSHP_VALUE)
 local function autosave_step()
+    if BOSSHP_FRAME and ami.frame() == BOSSHP_FRAME then
+        orig_poke(0x50C, BOSSHP_VALUE, 2)
+        pending[#pending + 1] = ("poke %x %x 2\n"):format(0x50C, BOSSHP_VALUE)   -- (sent with the step: both sides see it at the same iteration)
+    end
     f5_step()
     if AUTO_SECONDS <= 0 then flip_in_frame = false return end
     local f = ami.frame()
