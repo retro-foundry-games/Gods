@@ -192,6 +192,12 @@ ami.hook(0x363a, function()
     orig_reads = orig_reads + 1
     sample_stick()
 end)
+-- the shop's loop reads the stick byte at its top ($13840): the same as a read of the keys (the port's shop waits for it, host_read_wait, and has the byte the original's read had)
+ami.hook(0x13840, function()
+    game_read_frame = ami.frame()
+    orig_reads = orig_reads + 1
+    sample_stick()
+end)
 -- (outside the game loop - the menu screens, the game over - nothing reads at $363A: the keys are taken from the joystick byte that the original's poll made in the frame it has just run,
 -- before the port's step of that frame, so that the port's own poll of the frame has them as the original's did)
 local function sample_stick_outside_game()
