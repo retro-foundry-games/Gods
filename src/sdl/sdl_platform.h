@@ -31,6 +31,8 @@ void host_flip_bind(void);   /* the next flip (not an iteration's) is made in th
 void host_disk_extra(unsigned frames);   /* shims.c: the next host_disk_wait goes on for that many frames more */
 void host_disk_wait(void);   /* shims.c: the original's read of a file takes its time (the lockstep: until the original is done)*/
 void host_flip_late(int on);   /* display.c: the flips are shown a frame after the blank that ends their wait */
+void host_read_skip(void);   /* shims.c: a read of the keys that the original's start frame makes is counted, not waited for */
+void host_read_wait(void);   /* shims.c: the lockstep: the read of the keys of an iteration waits for the original's */
 void host_spin(void);   /* display.c: the program's thread is in a loop that waits for blanks (the lockstep lets it run until then) */
 void host_spin_end(void);   /* display.c: and is out of it */
 void host_fade_lag(int on);   /* display.c: the next fade is shown a frame after its steps (the player's respawn) */

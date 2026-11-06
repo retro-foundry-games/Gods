@@ -591,6 +591,7 @@ void game_frame(void)
 {
     host_iteration_mark();
     message_tick();
+    host_read_wait();   /* (the lockstep: the original's read of this iteration is done: the keys are there) */
     game_read_input();
     frame_toggle = ~frame_toggle;
     frame_phase++;
@@ -11723,6 +11724,7 @@ void draw_start_frame(void)
 {
     wait_vblank();
     message_tick();
+    host_read_skip();   /* (the original's read of this frame is counted, not waited for) */
     game_read_input();
     frame_toggle = (uint16_t)~frame_toggle;
     frame_phase++;

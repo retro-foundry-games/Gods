@@ -183,9 +183,32 @@ void host_world_load_wait(void)
         wait_vblank();
 }
 
+/* the keys of an iteration: the original reads them at its own moment of the frame (before or after its flip, by the cycles of the frame), and the lockstep gives the port what the original's read had,
+ * with the message that comes after that read: the port's read waits for the original's (not for ever: ten blanks) */
+volatile int host_reads_orig;
+static unsigned reads_done;
+
+void host_read_wait(void)
+{
+    extern void wait_vblank(void);
+
+    if (!host_flip_sync)
+        return;
+    reads_done++;
+    for (int n = 0; n < 10 && (int)reads_done > host_reads_orig; n++)
+        wait_vblank();
+}
+
+void host_read_skip(void)
+{
+    if (host_flip_sync)
+        reads_done++;
+}
+
 void host_fade_sync_start(void)
 {
     fades_done = 0;
+    reads_done = 0;
     world_loads_done = 0;
 }
 

@@ -78,6 +78,14 @@ static inline void host_cpu_frames(unsigned frames)
     (void)frames;
 }
 
+static inline void host_read_wait(void)
+{
+}
+
+static inline void host_read_skip(void)
+{
+}
+
 static inline void host_spin(void)
 {
 }
