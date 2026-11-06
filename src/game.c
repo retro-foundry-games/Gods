@@ -466,12 +466,16 @@ static void teleport_player(void)
     flag_1f0 = 0;
     player_state = 4;
     word_2aa = scroll_y;
+    host_fade_lag(2);   /* (the lockstep: the original's fade-out writes its list at the top of the frame, before the raster reaches the bands: the colours of the registers a frame after, the list's at once) */
     fade_out(1, 0xFFFF);
+    host_fade_lag(0);
     draw_start_frame();
     screens_flip();
     copper_setup_done = 0;
     host_fade_bind();   /* (the lockstep: the original calls its fade-in a frame after its flip, which comes 12 or 13 frames after the fade-out by what it draws) */
+    host_fade_lag(2);   /* (the colours as they are, the copper list's a frame late: as the fade-out above, the original's list is written at the top of the frame) */
     fade_in(palette_words, 1);
+    host_fade_lag(0);
     host_cpu_frames(1);   /* (the original goes on 31 frames after the call of the fade) */
 }
 
