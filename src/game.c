@@ -12112,6 +12112,13 @@ void level_tables_quickload(void)
         file_words(&description->x, 2);
         file_words(description->waypoint, 8);
     }
+    for (int i = 0; i < 25; i++) {   /* the records that go along the paths (struct PathRecord, 24 bytes: two words, two bytes, the line's state: a long and seven words) */
+        struct PathRecord *record = &ptr_0c9e[i];
+
+        file_words(&record->x, 2);
+        file_longs(&record->state.loop, 1);
+        file_words(&record->state.x, 7);
+    }
     file_words(flags_1c056, 3 * 64);
     for (int i = 0; i < 100; i++)
         file_words(&((struct UnitScript *)ptr_0cb2)[i].spacing, 1);
