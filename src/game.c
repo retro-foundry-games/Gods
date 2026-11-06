@@ -13698,7 +13698,7 @@ static int shop_press_work(void)
         shop_selected = (uint16_t)id;
         message_arg = 0;
         if (message_shown != 0)
-            host_cpu_frames(1);   /* (a message that is on show when the next is asked for: the original takes a frame more before it clears and restarts, as the strip showed: the old text scrolled out one step more) */
+            host_cpu_frames(1);   /* (the choice of an item while a message is on show: the original takes a frame more before it clears and restarts, the old text scrolled out one step more in its frames; the question of a replacement does not) */
         if (id < 0xC0) {
             bits_1970a[id >> 3] &= (uint8_t)~(1 << (id & 7));
                     item_message(id);
@@ -13734,6 +13734,8 @@ static int shop_press_work(void)
                 score_total_1fc += price;
                 message_next = (const uint8_t *)text_inventory_full;
                 message_arg = 0;
+                if (message_shown != 0)
+                    host_cpu_frames(1);   /* (as the choice of an item: the old text scrolls out one step more) */
                 message_request(0x19);
             }
         }
