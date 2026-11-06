@@ -186,8 +186,10 @@ local function sample_stick()
     end
 end
 local game_read_frame = -100   -- the emulator frame of the game's last read of the keys
+local orig_reads, reads_at_sync = 0, 0   -- the original's reads of the keys ($363A): the port's read of an iteration waits for the original's (host_read_wait), so that it has the keys the original's read had
 ami.hook(0x363a, function()
     game_read_frame = ami.frame()
+    orig_reads = orig_reads + 1
     sample_stick()
 end)
 -- (outside the game loop - the menu screens, the game over - nothing reads at $363A: the keys are taken from the joystick byte that the original's poll made in the frame it has just run,
@@ -275,6 +277,7 @@ local delayed = setmetatable({
                     real:send(("diskdone %d\n"):format(disk_done))
                     if sync_on then
                         real:send(("flips %d\n"):format((flip_lag and last_flips or orig_flips) - flips_at_sync))
+                        real:send(("reads %d\n"):format(orig_reads - reads_at_sync))
                         real:send(("fades %d\n"):format(orig_fades - fades_at_sync))
                         real:send(("worldloads %d\n"):format(orig_world_loads - world_loads_at_sync))
                         last_flips = orig_flips
@@ -619,7 +622,7 @@ lockstep.run {
             -- the counters that count each frame (the bat's flap, the heads of the flyers...) are in the phase the original's loading gave them, as tick_count is
             for _, addr in ipairs({ 0x204, 0x20c, 0x262, 0x2b4 }) do p:send(("poke16 %x %x\n"):format(addr, ami.peek16(addr))) end
             if flip_sync then
-                sync_on, flips_at_sync, fades_at_sync, world_loads_at_sync = true, orig_flips, orig_fades, orig_world_loads
+                sync_on, flips_at_sync, fades_at_sync, world_loads_at_sync, reads_at_sync = true, orig_flips, orig_fades, orig_world_loads, orig_reads
                 p:send(("flipsync %d\n"):format(flip_offset))
             end
             ami.log(("tick_count: the original's %d, the port's %d: %d added to the port's"):format(orig, port, orig - port))
