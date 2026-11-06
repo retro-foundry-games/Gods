@@ -490,6 +490,10 @@ static void boss_quickload(void);
 static void start_debris_moving(int16_t x, int16_t y, int16_t speed_x, int16_t speed_y);
 static void chest_burst_at(int16_t x, int16_t y, const uint16_t *sprites);
 
+static void level_change_35dc(void);
+static void level_begin(void);
+static int level_next_wait;
+static int level_next_fade;   /* (the fade-in of the next level's start is bound to the original's) */
 /* orig $002D54 on: what ends a frame of the game, after the player has been run (or, when he is dead, after the frame of his death: $3A6C): the units and the other things
  * that are run, the panels, the energy, the keys of the pause and the like, and the wait for the next frame */
 static void game_frame_tail(void)
@@ -589,7 +593,7 @@ static void game_frame_tail(void)
         if (word_200 == 1)
             teleport_player();
         else
-            host_missing_routine(0x35DC);   /* the level change through the table at $143C8 did not run */
+            level_change_35dc();
         return;
     }
     if (flags_3b0 & 0x40)
@@ -1785,11 +1789,40 @@ static void level_end_effects(const struct LevelEnd *record)
         case 0x13532:   /* the next world is loaded from the disk */
             level_load_world();
             break;
+        case 0x13646:   /* the next level: param_index goes up (5 is 1), the screen fades out and the level is begun again from the files */
+            param_index = (uint16_t)(param_index + 1);
+            if ((int16_t)param_index >= 5)
+                param_index = 1;
+            word_0266 = 0;
+            menu_active = 0;
+            fade_out(1, 1);
+            flag_2d0 = 0xFFFF;
+            level_next_wait = 1;
+            level_begin();
+            return;
         default:
             host_missing_routine(handlers[10 - bit]);
             break;
         }
     }
+}
+
+/* orig $0035DC (flag_1f0 set, word_200 not 1): flag_1f0 is cleared and the record of the level end that table_143c8 has for the door (word_202 less 2, 0 to 3: the last record of a level's list) becomes
+ * ptr_0bc6, and flag_230 starts the level's end screen on the frame that follows.  Only the first level's list is in the port (the others are not converted yet) */
+static void level_change_35dc(void)
+{
+    flag_1f0 = 0;
+
+    int16_t door = (int16_t)(word_202 - 2);
+
+    if (door < 0 || door >= 4)
+        return;
+    if (door != 0) {
+        host_missing_routine(0x35DC);
+        return;
+    }
+    ptr_0bc6 = &level_end_1[3];
+    flag_230 = 1;
 }
 
 /* orig $012E08: the level end (flag_230): the next record of ptr_0bc6 is taken; with a bonus the screen shows what the level's end is called, the bonus of the things
@@ -12139,6 +12172,8 @@ static void show_text_screen(const char *text)
     copper_setup_done = 1;
     display_reset();
     screens_flip();
+    if (level_next_wait)
+        host_disk_wait();   /* (the lockstep: the next level's loading screen is faded in when the original has done it) */
     fade_in((const uint16_t *)(background + 2), 0);
 }
 
@@ -12396,9 +12431,16 @@ void begin_quest(void)
         return;
     }
     param_index = host_start_level();
-    word_0248 = 1;
+    word_0248 = 1;   /* (the start of a play: the score, the lives and the weapons are made; the next level of a play does not) */
     menu_active = 0;
     word_0266 = 0;
+    level_begin();
+}
+
+/* orig $00247C to $002C08 and what comes before it ($002452: the part of Begin Quest that sets the level up from the files, with param_index set; the original's own start of a level in the middle of a play comes
+ * to it from $013646 with the stack put back and a few tables cleared: the port's are the ones of the start) */
+static void level_begin(void)
+{
     reset_marker_table();
     clear_entry_table();
     clear_cell_records();
@@ -12410,6 +12452,8 @@ void begin_quest(void)
         return;   /* goes on at $013568 */
 
     /* $002AAA */
+    if (level_next_wait)
+        host_disk_wait();   /* (the original's reads of the next level's files take what its drive takes, the loading screen on show) */
     copper_colors_restore();
     hud_digits_load();
     clear_entry_table();
@@ -12444,6 +12488,10 @@ void begin_quest(void)
         menu_active = 0;
     }
     file_read((const char *)sound1_name, picture_buffer);
+    if (level_next_wait)
+        host_disk_wait();   /* (the original's start of the level fades out when it has done its work) */
+    level_next_fade = level_next_wait;
+    level_next_wait = 0;
     fade_out(0, 0xFFFF);
     copper_setup_done = 0;
     draw_start_frame();
@@ -12452,6 +12500,9 @@ void begin_quest(void)
     play_sound(9, 127);
     screens_flip();
     palette_words[0] = 0;
+    if (level_next_fade)
+        host_fade_bind();   /* (the lockstep: the fade-in begins when the original calls its own) */
+    level_next_fade = 0;
     fade_in(palette_words, 1);
     word_dde = 1;
     word_ddc = 0;
