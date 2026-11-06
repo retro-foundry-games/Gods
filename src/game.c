@@ -3414,7 +3414,7 @@ static uint16_t *first_free_entry(uint16_t *entry, int16_t count, int16_t *numbe
 
 /* orig $00FDBA: each of the three units (the records at slot_ref_6b6, _748 and _7da, 146 bytes apart; a negative first word means
  * it is not there) that is there gets a free entry of its (the first of three entries of 24 bytes after the word), as many as
- * the count in the first word of its object_slots record allows: the entry is kept in entry_b92 and its number in entry_id_2ea.
+ * the count in the word at +10 of its object_slots record allows: the entry is kept in entry_b92 and its number in entry_id_2ea.
  * The first unit sets word_2f0 when its object has the count 1 and the others then leave it alone.  Returns 0 when some
  * unit got an entry, else 1 (also 1 and nothing done when fire_latch is not 0; fire_latch is set) */
 uint16_t claim_free_entries(void)
@@ -3433,7 +3433,7 @@ uint16_t claim_free_entries(void)
     for (int u = 0; u < 3; u++) {
         if (*refs[u] < 0)
             continue;
-        int16_t count = ((uint16_t *)&object_slots[*refs[u]])[0];
+        int16_t count = ((uint16_t *)&object_slots[*refs[u]])[5];   /* the word at +10 of the object's record ($A(a2,d4)): how many fans of shots it may have at once */
         int16_t number = first_id[u];
 
         if (u > 0 && count < 0)
