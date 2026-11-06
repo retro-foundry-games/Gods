@@ -13441,7 +13441,6 @@ static int shop_press_work(void)
 {
     while (button_bits[0] & 1)
         wait_vblank();   /* (the original waits at once; it sees the button let go in the vertical blank that polls it: the host's thread must not read the bits in the middle of the poll) */
-    wait_vblank();   /* (what the original does after the button is let go takes it a frame before the message is asked for) */
     int16_t cell = (int16_t)cursor_pos;
 
     if (cell == 0x11)
@@ -13461,7 +13460,7 @@ static int shop_press_work(void)
         message_arg = 0;
         if (id < 0xC0) {
             bits_1970a[id >> 3] &= (uint8_t)~(1 << (id & 7));
-            item_message(id);
+                    item_message(id);
         } else
             object_message(&((const struct Object *)object_slots)[id - 0xC0]);
         return 0;
@@ -13736,10 +13735,13 @@ static void shop_run(void)
         }
         if (cursor_pos != shop_cursor_old)
             play_sound(0x16, 2);
+        host_read_wait();   /* (the lockstep: the original's read of the button, $1390A, is done) */
+        shop_button_older = (joystick >> 7) & 1;
         if (shop_button_older) {
             shop_button_old = shop_button_older = 0;   /* (the old samples are of the press that is handled now) */
             if (shop_press())
                 break;
+            continue;   /* (the original goes back to the top of its loop after a press, without a flip: the frame's toggle, the message tick and the reads are done again before the grid is drawn) */
         }
         shop_draw_grid();
         host_iteration_cpu(2);   /* (the grid takes the original about two frames to draw: the score goes on after) */
