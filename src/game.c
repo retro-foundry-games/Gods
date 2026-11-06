@@ -1694,6 +1694,13 @@ static void level_end_draw_counter(void)
 }
 
 /* orig $0134E6: the sounds of the level are stopped and the sound system waited for until it has nothing to play (at most 1000 frames) */
+static int level_end_wait_rule(const struct LevelEnd *record)
+{
+    /* the original waits a frame for the voices of the game's sounds on most of the end screens (the 2500 of the first level's, the "WORLD TWO" of the second's: seen in recordings); on the first
+     * of the second level's ("WORLD ONE", the bonus 500) it does not: what sound was playing then is not modelled (the port's wait for the sound system takes the same blanks in both) */
+    return !(record->spots == 6 && record->effects == 1408);   /* (the record is told by its numbers: the pointer is the guest address of the list) */
+}
+
 static void level_end_quiet(void)
 {
     static const uint8_t sounds[6] = { 0x13, 0x17, 0x34, 0x3C, 0x3A, 0x42 };
@@ -1840,7 +1847,7 @@ static void level_end_screen(void)
     }
     flag_268 = 0;
     level_end_quiet();
-    if (record->bonus >= 0x3E8)
+    if (level_end_wait_rule(record))
         host_cpu_frames(1);   /* (the voices of the game's sounds are free a frame later on the Amiga than the host's note it) */
     play_sound(record->bonus >= 0x3E8 ? 0x24 : 0x25, 0x79);
     level_end_counter = 0;
