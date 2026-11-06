@@ -472,7 +472,7 @@ table fall_steps_f2   0x000000f2 uint8_t 52    game_d: signed bytes: how far a t
 table frames_44b4 0x000044b4 uint16_t 4   game_d: the four glyphs of the sprite 280, by counter_2b4
 table frames_44bc 0x000044bc uint16_t 4   game_d: ... of the sprite 279
 table frames_44c4 0x000044c4 uint16_t 5   game_d: ... of the glyph 253, by counter_24a (counts 0 to 4)
-table words_3fde 0x00003fde uint16_t 26   game_d: the sprites (less 170) of the ten pieces a chest bursts into, for each chest (every 16 bytes)
+table words_3fde 0x00003fde uint16_t 30   game_d: the sprites (less 170) of the ten pieces a chest bursts into, for each chest (every 16 bytes; the last ten, from $4006, are the guardian's death's)
 table pictures_747e 0x0000747e uint16_t 4   game_d: the four pictures of the shard that goes up and comes down ($73D2), by its frame
 table glyphs_e22c 0x0000e22c uint16_t 4   game_d: the four glyphs of the thing $E144 draws ($E22C), by bits 0 and 1 of its word 2
 table unit_pictures_82d8 0x000082d8 uint16_t 4   game_d: the pictures of the unit move $8274 (first type), by its animation

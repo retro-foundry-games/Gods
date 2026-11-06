@@ -415,11 +415,11 @@ const uint16_t frames_44c4[5] = {
 };
 
 /* $03FDE  game_d: the sprites (less 170) of the ten pieces a chest bursts into, for each chest (every 16 bytes) */
-const uint16_t words_3fde[26] = {
+const uint16_t words_3fde[30] = {
     0x0050, 0x0050, 0x0050, 0x0050, 0x0005, 0x004f, 0x0009, 0x0009,
     0x0009, 0x0009, 0x0050, 0x0050, 0x0050, 0x0050, 0x0005, 0x004e,
     0x000a, 0x0005, 0x0009, 0x0009, 0x0050, 0x0050, 0x0050, 0x0050,
-    0x0005, 0x004e,
+    0x0005, 0x004e, 0x000a, 0x000b, 0x0005, 0x0005,
 };
 
 /* $0747E  game_d: the four pictures of the shard that goes up and comes down ($73D2), by its frame */

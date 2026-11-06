@@ -605,7 +605,7 @@ extern const uint8_t fall_steps_f2[52];   /* $000F2  game_d: signed bytes: how f
 extern const uint16_t frames_44b4[4];   /* $044B4  game_d: the four glyphs of the sprite 280, by counter_2b4 */
 extern const uint16_t frames_44bc[4];   /* $044BC  game_d: ... of the sprite 279 */
 extern const uint16_t frames_44c4[5];   /* $044C4  game_d: ... of the glyph 253, by counter_24a (counts 0 to 4) */
-extern const uint16_t words_3fde[26];   /* $03FDE  game_d: the sprites (less 170) of the ten pieces a chest bursts into, for each chest (every 16 bytes) */
+extern const uint16_t words_3fde[30];   /* $03FDE  game_d: the sprites (less 170) of the ten pieces a chest bursts into, for each chest (every 16 bytes) */
 extern const uint16_t pictures_747e[4];   /* $0747E  game_d: the four pictures of the shard that goes up and comes down ($73D2), by its frame */
 extern const uint16_t glyphs_e22c[4];   /* $0E22C  game_d: the four glyphs of the thing $E144 draws ($E22C), by bits 0 and 1 of its word 2 */
 extern const uint16_t unit_pictures_82d8[4];   /* $082D8  game_d: the pictures of the unit move $8274 (first type), by its animation */
