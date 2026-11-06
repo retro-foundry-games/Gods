@@ -11976,7 +11976,7 @@ void start_record_path(struct EntryRef *entry, int16_t variant)
 
 /* orig $018072 (from $01808E on, with $018092 to $0180C6): the record goes on along its line: the place it reaches is kept in the
  * record; when the line is done the record is at its waypoint, and with a kind above 1 (byte +4) it is done with the path (byte +5
- * -1).  The kinds 0 and 1 go on to the next waypoint ($18106: not run) */
+ * -1).  The kinds 0 and 1 go on to the next waypoint ($18106) */
 void path_continue(struct PathRecord *record, const struct PathDescription *description)
 {
     path_resume(&record->state);
@@ -11984,12 +11984,21 @@ void path_continue(struct PathRecord *record, const struct PathDescription *desc
     record->y = record->state.y;
     if (record->state.count >= 0)
         return;
+
+    int16_t line_x = record->state.x;   /* (d4 and d5 of the original: where the line ended) */
+    int16_t line_y = record->state.y;
     const struct PathPoint *point = &description->waypoint[record->waypoint - 1];
 
     record->x = point->x;
     record->y = point->y;
-    if (record->kind <= 1)
-        return;   /* goes on at $18106 */
+    if (record->kind <= 1) {   /* $18106: the line goes on to the next waypoint (kind 0: the next of the row, 1: the one before) */
+        int16_t tx = line_x, ty = line_y;
+
+        path_target(description, record, record->kind, &tx, &ty);
+        word_185bc = (int16_t)(description->speed + 1);
+        path_start(&record->state, line_x, line_y, tx, ty);
+        return;
+    }
     record->waypoint = (int8_t)0xFF;
 }
 
