@@ -203,6 +203,11 @@ ami.hook(0x1390a, function()
     orig_reads = orig_reads + 1
     sample_stick()
 end)
+-- ... and the end of the wait for the button's release at $13A2C (the port's shop goes on from there when the original has)
+ami.hook(0x13a2c, function()
+    orig_reads = orig_reads + 1
+    sample_stick()
+end)
 -- (outside the game loop - the menu screens, the game over - nothing reads at $363A: the keys are taken from the joystick byte that the original's poll made in the frame it has just run,
 -- before the port's step of that frame, so that the port's own poll of the frame has them as the original's did)
 local function sample_stick_outside_game()
