@@ -3813,8 +3813,9 @@ static int axe_wall_ahead(int16_t x, int16_t y, int right)
     if ((y & 0xF) != 0) {
         if (right ? cell[0x81] == 1 : cell[0x7F] == 1)
             return 1;
+        return right ? cell[1] == 1 : cell[-1] == 1;
     }
-    return right ? cell[1] == 1 : cell[-1] == 1;
+    return cell[1] == 1;   /* (on a row's line the original's left test jumps into the right one: $0165E8 to $0165BE) */
 }
 
 /* orig $01661E (handler 5 of the table at $15260: the magic axe): each of the nine shots that is in use goes on by its table's steps: it turns at a wall (the step -4 or 4, when it is in the far part of
