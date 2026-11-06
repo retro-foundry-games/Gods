@@ -13441,6 +13441,7 @@ static int shop_press_work(void)
 {
     while (button_bits[0] & 1)
         wait_vblank();   /* (the original waits at once; it sees the button let go in the vertical blank that polls it: the host's thread must not read the bits in the middle of the poll) */
+    host_read_wait();   /* (the lockstep: the original's wait for the release is over, $13A2C) */
     int16_t cell = (int16_t)cursor_pos;
 
     if (cell == 0x11)
