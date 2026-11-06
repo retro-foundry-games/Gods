@@ -236,7 +236,9 @@ local last_fade_frame = -100   -- (the frame of the original's last fade step: f
 local fade_line = -1   -- the raster line the original's thread was at when it began the copper fade of its step ($1D1C2 loops over the bands of the list: what lies above that line was shown before the edit)
 ami.hook(0x1d1c2, function() last_fade_frame = ami.frame(); fade_line = math.floor((ami.cycles() - frame_end_cycles) / 454) if args:find("fadelog") then ami.log(("FADELINE frame %d line %d"):format(ami.frame(), fade_line)) end end)
 ami.hook(0x1d168, function() last_fade_frame = ami.frame(); fade_line = math.floor((ami.cycles() - frame_end_cycles) / 454) if args:find("fadelog") then ami.log(("FADELINE-IN frame %d line %d"):format(ami.frame(), fade_line)) end end)
-ami.hook(0x1d23e, function() if disk_pending then disk_pending = false disk_done = disk_done + 1 ami.log(("DBGPHASE frame %d phase %d"):format(ami.frame(), ami.cycles() - frame_end_cycles)) end end)
+ami.hook(0x1d23e, function() if disk_pending then disk_pending = false disk_done = disk_done + 1 end end)
+-- the shop's way out ($1392A): the game's sprites and the sound file are read again (they take what the drive takes) before the fade out at $1D23E
+ami.hook(0x1392a, function() disk_pending = true end)
 local flip_in_frame = false   -- (the autosave looks for a frame in which the original flipped)
 ami.hook(0x1d302, function() orig_flips = orig_flips + 1; flip_in_frame = true end)
 ami.hook(0x1d0c0, function() orig_fades = orig_fades + 1; if args:find("fadelog") then ami.log(("FADE call %d at frame %d"):format(orig_fades, ami.frame())) end end)
