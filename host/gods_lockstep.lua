@@ -613,6 +613,19 @@ lockstep.run {
     keymap = function(key) return KEYS[key] end,
     on_frame = function(count, native, emulated)
         frame_end_cycles = ami.cycles()
+        if args:find("striplog") and ami.frame() >= 1515 and ami.frame() <= 1532 then   -- (the number of lit pixels of the message strip, rows 191 to 199 of the picture, 110 to 250 across)
+            local function lit(img)
+                local n = 0
+                for y = 191, 199 do
+                    for x = 110, 250 do
+                        local o = (y * 320 + x) * 3
+                        if img:byte(o + 1) + img:byte(o + 2) + img:byte(o + 3) > 150 then n = n + 1 end
+                    end
+                end
+                return n
+            end
+            ami.log(("strip frame %d: port %d original %d"):format(ami.frame(), lit(native), lit(emulated)))
+        end
         if count > 0 and count <= (tonumber(args:match("fadetol=(%d+)")) or 600) and ami.frame() - last_fade_frame <= 3 then count = 0 end
         -- a fade shown a step early or late (a frame or two: the port's list edit and the original's raster do not run together) differs on the whole screen by one or two steps of colour (17 a channel):
         -- within 15 frames of a fade step a difference of no more than two steps a channel is not a stop (fadesteps=N: 0 is off, default 2)
