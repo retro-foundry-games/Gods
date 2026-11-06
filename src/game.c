@@ -190,6 +190,9 @@ static void update_records_113c(void);   /* orig $00D32A (below) */
 static void spawn_stone_enemy(int16_t *entry);   /* orig $00D4E2 (below) */
 static void shop_run(void);   /* orig $013690 (below) */
 static void world_end_countdown(void);   /* orig $0032B4 (below) */
+static void boss_start(struct EntryRef *entry);   /* orig $00AFD6 (below) */
+static void boss_rts(void);
+static void boss_load_30da(void);   /* orig $0030DA (below) */
 static void player_state_run(int16_t state, int16_t d7);   /* orig $010368's table (below) */
 uint16_t fade_keep_screens;
 
@@ -571,8 +574,10 @@ static void game_frame_tail(void)
         wait_frames_then_flip(frame_wait);
     if ((int16_t)flag_290 >= 0)
         world_end_countdown();   /* $32B4 (it goes on at $2EF4: the tests below) */
-    if (flag_258)
-        return;   /* goes on at $30DA */
+    if (flag_258) {
+        boss_load_30da();   /* $30DA */
+        return;
+    }
     if (flag_1f0) {   /* $35D2 */
         if (word_200 == 1)
             teleport_player();
@@ -8477,6 +8482,11 @@ void run_cell_entry(int16_t index)
         if (type->bounds == 1)
             type->status = 0;
 
+    if (entry->state == 11) {   /* the eleventh routine of the table, $AFD6 (the table of the program has ten entries here: the guardian's start) */
+        boss_start(entry);
+        return;
+    }
+
     uint32_t routine = table_18714[(int16_t)(entry->state - 1)];
 
     if (routine == 0x18900)
@@ -12517,6 +12527,7 @@ static void loading_screen_328a(void)
     copy_other_screen();
     text_draw_at("LOADING", 0x68, 0x28);
     text_draw_at("PLEASE  WAIT", 0x40, 0x64);
+    host_iteration_cpu(2);   /* (the lockstep: the flip waits for the original's: it draws the two lines in a frame or two and flips then) */
     screens_flip();
 }
 
@@ -12535,6 +12546,106 @@ static void world_end_countdown(void)
     }
     world_door();
     code_3436 = 0x4E71;
+}
+
+/* the boss's variables, in the original's places: the boss's place ($4E8, $4EA), the picture it is in ($508), its energy (a long, $50A: negative when it is dead), where it is on its path ($510: the
+ * address of a row of two signed bytes, a step in x and y, ended by a negative byte) and fifteen records of ten bytes at $518 (the word at +6 is -1 when one is free) */
+#define BOSS_WORD(a) (*(uint16_t *)GUEST(a))
+#define BOSS_LONG(a) (*(uint32_t *)GUEST(a))
+
+/* orig $00B09E: the fifteen records of ten bytes at $518 are free (the word at +6 is -1) */
+static void boss_free_records(void)
+{
+    for (int i = 0; i < 15; i++)
+        BOSS_WORD(0x518 + 10 * i + 6) = 0xFFFF;
+}
+
+/* orig $00B082 and $00B09E: the 500 bytes at the start of ptr_0e44 are cleared, the records of the boss are free */
+static void boss_clear(void)
+{
+    uint8_t *p = (uint8_t *)ptr_0e44;
+
+    for (int i = 0; i < 500; i++)
+        p[i] = 0;
+    boss_free_records();
+}
+
+/* orig $00C216 (the level 1 boss, per frame: callback_4e0): not ported yet */
+static void boss1_frame(void)
+{
+    host_missing_routine(0xC216);
+}
+
+/* orig $00B060 (callback_514: the boss's state is made again when a level is started with the flag on): the place of the level 1 boss and its path */
+static void boss1_514(void)
+{
+    BOSS_WORD(0x4E8) = 0xF20;
+    BOSS_WORD(0x4EA) = 0x230;
+    BOSS_WORD(0x508) = 0;
+    BOSS_LONG(0x510) = (uint32_t)(uintptr_t)GUEST(0xC63E);   /* the path: the original's table at $C63E */
+    boss_clear();
+}
+
+/* orig $00AFD6: the entry of the map (state 11 of table_18714) that begins the fight with the level's guardian: the entry is taken, the flag for the fight is on, the routines of the walkers and of the
+ * things of the level are switched off, the records of the boss are free and the level's own start is made (the table at $B014: $B024 for the level 1) */
+static void boss_start(struct EntryRef *entry)
+{
+    entry->state = 0xFFFF;
+    flags_3b1 |= 4;   /* bset.b #$a, $3b1 */
+    flag_23a = 1;
+    code_8a54 = 0x4E75;
+    code_9ae6 = 0x4E75;
+    code_6ed0 = 0x4E75;
+    boss_free_records();
+    if (param_index != 1) {
+        host_missing_routine(0xB014 + 4 * (uint32_t)(param_index - 1));   /* the guardians of the other levels: not ported */
+        return;
+    }
+    /* $B024 */
+    callback_4e0 = boss1_frame;
+    flag_258 = 1;
+    callback_514 = boss1_514;
+    code_c58e = 0x4E71;
+    code_c406 = 0x4E71;
+    BOSS_LONG(0x50A) = 0x5DC;   /* its energy: the original has the copylock's value here when the lock passes (1500) */
+    BOSS_WORD(0x50A) &= 0xFF7F;   /* bclr.b #7, $50A: the top byte's bit 7 */
+    callback_4e4 = boss_rts;
+    boss1_514();
+}
+
+/* orig $00AFD4: a bare return */
+static void boss_rts(void)
+{
+}
+
+/* orig $0030DA (the frame ends there when flag_258 is on, which the guardian's start sets): the guardian's sprites (the set `guard1` of the level's names) and the sound files are read behind the
+ * loading screen, and the game loop begins again ($2BD6) */
+static void boss_load_30da(void)
+{
+    flag_258 = 0;
+    if (menu_state_25a == 2)
+        return;   /* goes on at $2C20: they are there */
+    loading_screen_328a();
+    if (param_index == 3)
+        host_missing_routine(0x30EC);   /* (the level 3 changes two pointers of the text) */
+    play_sound(0, 0);
+    asset_flag = -1;
+    flags_0ddd |= 0x10;
+    assets_load((const char *)level_names + 0xA2, palette_words, asset_end_0ca2, (struct AssetEntry *)asset_table_0ca6);
+    palette_words[0] = 0;
+    if (param_index == 2)
+        host_missing_routine(0x316A);   /* (the level 2 reads bezier.dat) */
+    drives_idle();   /* $16E3E */
+    menu_state_25a = 2;
+    file_read((const char *)sound1_name, picture_buffer);   /* (the original reads sound1.bin, sound2.bin and, in the odd levels, sound3.bin) */
+    host_disk_wait();   /* (the original's reads take what its drive takes, the loading screen on show) */
+    drives_idle();
+    if (flag_aa8 != 0)
+        play_sound(60, 2);
+    else
+        stop_sound(60);
+    if (param_index == 3)
+        play_sound(66, 1);
 }
 
 /* the first byte of what shop.pi1 and the rest of the shop's screen are drawn on is the screen buffer: the rows are 44 bytes, the planes 8448 bytes apart */
