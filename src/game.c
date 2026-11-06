@@ -13686,6 +13686,8 @@ static void shop_run(void)
         frame_toggle = (uint16_t)~frame_toggle;
         message_tick();
         shop_cursor_old = cursor_pos;
+        host_read_wait();   /* (the lockstep: the original's read of the stick at the top of its loop is done: the byte is the one it had) */
+        shop_stick_older = joystick;
 
         int moved = 1;
 
