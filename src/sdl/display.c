@@ -808,9 +808,16 @@ static void line_palettes(uint16_t colors[][16], int lines)
         memcpy(colors[line++], current, sizeof current);
 }
 
+/* (the lockstep) the raster line the original's thread began the copper fade of this step at, or -1 (devmain.c: fadeline).  The routine edits the colour moves of the list one after the other and
+ * the raster is passing them: for about 58 lines after the line it began at the bands above have been drawn from the list as it was the frame before */
+volatile int host_fade_line = -1;
+static uint16_t previous_list[1024];
+static int previous_list_valid;
+
 void display_render(uint32_t *pixels)
 {
     static uint16_t colors[320][16];
+    static uint16_t colors_before[320][16];
     uint32_t palette[16];
     latched_cop1lc = REG32(0x080);   /* the screen and the scroll as they are now (see display_latch) */
     latched_x_offset = list_scroll[(uint8_t *)(uintptr_t)latched_cop1lc == copper_list_a ? 0 : 1];
@@ -819,6 +826,21 @@ void display_render(uint32_t *pixels)
     int scroll = latched_x_offset & 31;
 
     line_palettes(colors, 320);
+    if (host_fade_line >= 0 && display_fresh && previous_list_valid && latched_list_valid) {
+        static uint16_t now_list[1024];
+        int cut = (host_fade_line * 26 - 90) / 10;
+
+        memcpy(now_list, latched_list, sizeof now_list);
+        memcpy(latched_list, previous_list, sizeof now_list);
+        line_palettes(colors_before, 320);
+        memcpy(latched_list, now_list, sizeof now_list);
+        for (int line = 0; line < cut && line < 320; line++)
+            memcpy(colors[line], colors_before[line], sizeof colors[line]);
+    }
+    if (latched_list_valid) {
+        memcpy(previous_list, latched_list, sizeof previous_list);
+        previous_list_valid = 1;
+    }
     for (int i = 0; i < 16; i++)
         palette[i] = argb(latched_colors[i]);
     for (int i = 0; i < SCREEN_W * SCREEN_H; i++)

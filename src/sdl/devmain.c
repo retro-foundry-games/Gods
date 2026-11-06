@@ -223,6 +223,10 @@ static int lockstep_commands(const uint32_t *pixels, int phase)
 
                 host_flip_late(1);   /* the flips are let go by the original's count of the same step and shown at the next blank, as the original's are */
             }
+        } else if (sscanf(line, "fadeline %d", &a) == 1) {   /* `fadeline N`: the original began the copper fade of its step at the raster line N of this frame (-1: it did not) */
+            extern volatile int host_fade_line;
+
+            host_fade_line = a;
         } else if (sscanf(line, "reads %d", &a) == 1) {   /* `reads N`: the original has read the keys N times since the sync began (host_read_wait) */
             extern volatile int host_reads_orig;
 
