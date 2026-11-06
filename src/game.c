@@ -13674,7 +13674,7 @@ static void shop_run(void)
     word_025c = 1;
     copper_setup_done = 0;
     host_fade_bind();   /* (the lockstep: the fade-in begins when the original calls its own) */
-    host_fade_lag(1);
+    host_fade_lag(0);
     fade_in(palette_words, 1);
     host_fade_lag(0);
     host_cpu_frames(1);   /* (the original goes on 31 frames after the call of the fade) */
