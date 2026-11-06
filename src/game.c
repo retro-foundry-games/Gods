@@ -1808,7 +1808,7 @@ static void level_end_effects(const struct LevelEnd *record)
 }
 
 /* orig $0035DC (flag_1f0 set, word_200 not 1): flag_1f0 is cleared and the record of the level end that table_143c8 has for the door (word_202 less 2, 0 to 3: the last record of a level's list) becomes
- * ptr_0bc6, and flag_230 starts the level's end screen on the frame that follows.  Only the first level's list is in the port (the others are not converted yet) */
+ * ptr_0bc6, and flag_230 starts the level's end screen on the frame that follows */
 static void level_change_35dc(void)
 {
     flag_1f0 = 0;
@@ -1817,11 +1817,9 @@ static void level_change_35dc(void)
 
     if (door < 0 || door >= 4)
         return;
-    if (door != 0) {
-        host_missing_routine(0x35DC);
-        return;
-    }
-    ptr_0bc6 = &level_end_1[3];
+    static const struct LevelEnd *const last[4] = { &level_ends[0].l1[3], &level_ends[0].l2[4], &level_ends[0].l3[2], &level_ends[0].l4[4] };
+
+    ptr_0bc6 = last[door];
     flag_230 = 1;
 }
 

@@ -57,7 +57,7 @@ SECTIONS {
         . = 0x13c56; *(.rodata.shop_pi1_name) *(.data.shop_pi1_name)
         . = 0x14206; *(.rodata.shop_data_14206) *(.data.shop_data_14206)
         . = 0x143b8; *(.rodata.table_143b8) *(.data.table_143b8)
-        . = 0x143d8; *(.rodata.level_end_1) *(.data.level_end_1)
+        . = 0x143d8; *(.rodata.level_ends) *(.data.level_ends)
         . = 0x14988; *(.rodata.object_slot_image) *(.data.object_slot_image)
         . = 0x1527a; *(.rodata.table_1527a) *(.data.table_1527a)
         . = 0x15b5c; *(.rodata.particle_speeds_15b5c) *(.data.particle_speeds_15b5c)

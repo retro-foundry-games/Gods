@@ -526,7 +526,7 @@ table shift_tables 0x00002a0a uint32_t 40   for each level (ten longs): the firs
 table table_17a6e  0x00017a6e uint16_t 8   for each level two words (by word_0266): how many 32 by 16 pixel blocks its background tiles have
 table table_fa5c   0x0000fa5c uint16_t 4   the glyph of the pick-ups of each level (word_26a)
 table table_143b8  0x000143b8 uint32_t 4   for each level the list of spots that ptr_0bc6 points to
-table level_end_1  0x000143d8 struct LevelEnd 4   the first level's list: three spots, six, eight and twelve (the others are not converted yet)
+table level_ends   0x000143d8 struct LevelEnds 1   the lists of the four levels' ends (struct LevelEnd, 34 bytes each: 4, 5, 3 and 5; two bytes before the second list, which the original has at $14462): the first level's is three spots, six, eight and twelve, the second's six, ten, eleven (the guardian's), fifteen and the level's end ($144E8 in the original, here 2 bytes later)
 table table_1527a  0x0001527a uint16_t 4   for each level the value word_272 takes
 table table_1077a  0x0001077a uint32_t 4   for each level the list that ptr_0b76 points to
 table table_5b9e   0x00005b9e uint32_t 4   for each level the first high score

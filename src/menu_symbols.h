@@ -605,7 +605,7 @@ extern const uint8_t fall_steps_f2[52];   /* $000F2  game_d: signed bytes: how f
 extern const uint16_t frames_44b4[4];   /* $044B4  game_d: the four glyphs of the sprite 280, by counter_2b4 */
 extern const uint16_t frames_44bc[4];   /* $044BC  game_d: ... of the sprite 279 */
 extern const uint16_t frames_44c4[5];   /* $044C4  game_d: ... of the glyph 253, by counter_24a (counts 0 to 4) */
-extern const uint16_t words_3fde[30];   /* $03FDE  game_d: the sprites (less 170) of the ten pieces a chest bursts into, for each chest (every 16 bytes) */
+extern const uint16_t words_3fde[30];   /* $03FDE  game_d: the sprites (less 170) of the ten pieces a chest bursts into, for each chest (every 16 bytes; the last ten, from $4006, are the guardian's death's) */
 extern const uint16_t pictures_747e[4];   /* $0747E  game_d: the four pictures of the shard that goes up and comes down ($73D2), by its frame */
 extern const uint16_t glyphs_e22c[4];   /* $0E22C  game_d: the four glyphs of the thing $E144 draws ($E22C), by bits 0 and 1 of its word 2 */
 extern const uint16_t unit_pictures_82d8[4];   /* $082D8  game_d: the pictures of the unit move $8274 (first type), by its animation */
@@ -631,7 +631,7 @@ extern const uint32_t shift_tables[40];   /* $02A0A  for each level (ten longs):
 extern const uint16_t table_17a6e[8];   /* $17A6E  for each level two words (by word_0266): how many 32 by 16 pixel blocks its background tiles have */
 extern const uint16_t table_fa5c[4];   /* $0FA5C  the glyph of the pick-ups of each level (word_26a) */
 extern const uint32_t table_143b8[4];   /* $143B8  for each level the list of spots that ptr_0bc6 points to */
-extern const struct LevelEnd level_end_1[4];   /* $143D8  the first level's list: three spots, six, eight and twelve (the others are not converted yet) */
+extern const struct LevelEnds level_ends[1];   /* $143D8  the lists of the four levels' ends (struct LevelEnd, 34 bytes each: 4, 5, 3 and 5; two bytes before the second list, which the original has at $14462): the first level's is three spots, six, eight and twelve, the second's six, ten, eleven (the guardian's), fifteen and the level's end ($144E8 in the original, here 2 bytes later) */
 extern const uint16_t table_1527a[4];   /* $1527A  for each level the value word_272 takes */
 extern const uint32_t table_1077a[4];   /* $1077A  for each level the list that ptr_0b76 points to */
 extern const uint32_t table_5b9e[4];   /* $05B9E  for each level the first high score */

@@ -326,6 +326,15 @@ struct __attribute__((packed)) LevelEnd {
 };
 _Static_assert(sizeof(struct LevelEnd) == 34, "level end");
 
+/* the four lists in one (the second at $14462 is not on a 4 byte line: the linker puts a table of the compiler's alignment there with a gap): $143D8 on */
+struct __attribute__((packed)) LevelEnds {
+    struct LevelEnd l1[4];
+    uint16_t pad_14460;
+    struct LevelEnd l2[5];
+    struct LevelEnd l3[3];
+    struct LevelEnd l4[5];
+};
+
 /* ... and a record (24 bytes, 25 of them): where it is, which way it goes and the state of its line (the original keeps the line's registers in the record and leaves
  * the loop of the line by storing the address it goes on at; the four loops, the line steeper or flatter, left or right, are tagged by those addresses) */
 struct PathState {
