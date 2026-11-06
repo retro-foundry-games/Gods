@@ -186,6 +186,8 @@ uint8_t *next_message_slot(void)
 
 static void level_end_screen(void);   /* orig $012E08 (below) */
 static int shop_door(void);   /* orig $003438 (below) */
+static void update_records_113c(void);   /* orig $00D32A (below) */
+static void spawn_stone_enemy(int16_t *entry);   /* orig $00D4E2 (below) */
 static void shop_run(void);   /* orig $013690 (below) */
 static void world_end_countdown(void);   /* orig $0032B4 (below) */
 static void player_state_run(int16_t state, int16_t d7);   /* orig $010368's table (below) */
@@ -503,7 +505,7 @@ static void game_frame_tail(void)
         unit3_update();
         unit4_update();
         next_table_entry();
-        find_record_113c();
+        update_records_113c();
         do_nothing_b();
         step_d898();
     } else {
@@ -908,9 +910,9 @@ void mark_target_cells(int16_t x, int16_t y)
 }
 
 /* orig $00D47E: with param_index 1 the entry of table_ed0 index_1ea names (four words) is looked at: the one whose third word is
- * not 0 or that is not in the window of 9 by 11 cells (scroll in cells of 32 by 16) at the scroll is passed by: index_1ea goes on
- * 8, back to 0 at 256 or when the first long of the table is negative.  An entry in the window (third word 0) goes on at $D4E2,
- * which did not run */
+ * not 0 or that is not in the window of 9 by 11 cells (scroll in cells of 32 by 16) at the scroll is passed by; one in the window (third
+ * word 0) may become a stone creature (spawn_stone_enemy, $D4E2); index_1ea goes on 8, back to 0 at 256 or when the first long of the table
+ * is negative */
 void next_table_entry(void)
 {
     if (param_index != 1) {
@@ -924,7 +926,7 @@ void next_table_entry(void)
         int16_t cell_y = scroll_y >> 4;
 
         if (entry[0] > cell_x && entry[1] > cell_y && entry[0] < cell_x + 9 && entry[1] < cell_y + 11)
-            return;   /* goes on at $D4E2 */
+            spawn_stone_enemy(entry);   /* $D4E2 (and on at $D4BE) */
     }
     int16_t next = (int16_t)index_1ea + 8;
 
@@ -5196,6 +5198,151 @@ static void score_add_packed(uint8_t packed)
     score_words[2] = (uint16_t)((score_words[2] & 0xFF00) | b2);
     score_words[3] = (uint16_t)((score_words[3] & 0xFF00) | b3);
     flag_2d0 = 1;
+}
+
+/* orig $00D4E2 to $00D59A (the entry `entry` of table_ed0 - the cell x and y and its state - is in the window of the screen): when the player is not in the box of 48 by 48 round it (the test is
+ * the damage routine's, with the energy put back and the sound of $3436 off when the player is in it), a random word of at most $3E80 (one in four) and one of the ten records of records_113c free, the
+ * statue's cell and the one under it become the tile 13, the entry's state -1 and the creature is made there: a statue of the tile 35 comes out to the left (hit points 32, the picture 0, the speed
+ * -4 across), any other to the right (one pixel on, the picture 2, the speed 4) */
+static void spawn_stone_enemy(int16_t *entry)
+{
+    int16_t saved_energy = (int16_t)player_energy;
+    uint16_t saved_3436 = word_3436;
+
+    word_39c = 0x30;
+    word_39e = 0x30;
+    word_3436 = 0x4E71;
+    int16_t result = damage_player_at((int16_t)((entry[0] << 5) - 8), (int16_t)((entry[1] << 4) - 8), 0x32);
+
+    word_3436 = saved_3436;
+    if (result < 0) {
+        player_energy = (uint16_t)saved_energy;
+        return;
+    }
+    if ((uint16_t)random_word() > 0x3E80)
+        return;
+
+    struct Slot12 *record = 0;
+
+    for (int i = 0; i < 10; i++) {
+        if (records_113c[i].w[2] == 0) {
+            record = &records_113c[i];
+            break;
+        }
+    }
+    if (record == 0)
+        return;
+
+    int16_t x = (int16_t)(entry[0] << 5);
+    int16_t y = (int16_t)(entry[1] << 4);
+    uint8_t *cell = ptr_0b86 + (int16_t)(entry[1] << 7) + entry[0];
+    uint8_t old = cell[0];
+
+    cell[0] = 0x0D;
+    cell[0x80] = 0x0D;
+    entry[2] = -1;
+    if (old != 0x23) {
+        record->w[0] = (int16_t)(x + 1);
+        record->w[1] = y;
+        record->w[2] = 0x20;
+        record->w[3] = 2;
+        record->w[4] = 4;
+        record->w[5] = 0;
+    } else {
+        record->w[0] = x;
+        record->w[1] = y;
+        record->w[2] = 0x20;
+        record->w[3] = 0;
+        record->w[4] = -4;
+        record->w[5] = 0;
+    }
+}
+
+/* orig $00D314 to $00D424 (the loop; the pictures $D3F8 and the hit $D426 below it): the ten stone creatures (records_113c: x, y, hit points, step, speed across and down; hit points 0 is a free one).
+ * A dying one (negative hit points) goes on by its speed and is drawn as the picture 91 plus its step, which counts to 17, then it is free.  A living one: while its hit points are 16 or less (they
+ * count down by one every other frame to 4) and the player is not frozen (timer_306) it goes toward the player, its speed across 1 more or less every frame up to 3 and down up to 4 (-3 and -4 the
+ * other way); its picture is by its step (up every other frame once the hit points are 4 or less; the pictures of unit_pictures_82d8, 3 more when it goes to the right).  It is hit as a box of 32 by 32
+ * (the damage of the player too: the energy of the player goes down and it dies: -1 comes back); killed it drops the thing 16, the 5 points go to the score and it begins to die */
+static void update_records_113c(void)
+{
+    for (int i = 0; i < 10; i++) {
+        struct Slot12 *r = &records_113c[i];
+
+        if (r->w[2] == 0)
+            continue;
+
+        int16_t x = r->w[0], y = r->w[1], hp = r->w[2], frame = r->w[3], vx = r->w[4], vy = r->w[5];
+        int16_t picture;
+
+        if (hp < 0) {   /* $D3B8 */
+            x = (int16_t)(x + vx);
+            y = (int16_t)(y + vy);
+            r->w[0] = x;
+            r->w[1] = y;
+            sprite_draw((int16_t)(x - scroll_x), (int16_t)(y - scroll_y), (uint16_t)(0x5B + frame));
+            if (++r->w[3] >= 0x11) {
+                r->w[2] = 0;
+                r->w[3] = 0;
+            }
+            continue;
+        }
+        if (hp <= 0x10 && timer_306 == 0) {
+            if (x > player_x) {
+                vx--;
+                if (vx <= -4)
+                    vx = -3;
+            } else {
+                vx++;
+                if (vx >= 4)
+                    vx = 3;
+            }
+            if (y > player_y) {
+                vy--;
+                if (vy <= -5)
+                    vy = -4;
+            } else {
+                vy++;
+                if (vy >= 5)
+                    vy = 4;
+            }
+            x = (int16_t)(x + vx);
+            y = (int16_t)(y + vy);
+            r->w[4] = vx;
+            r->w[5] = vy;
+        }
+        r->w[0] = x;
+        r->w[1] = y;
+
+        /* $D3F8: the picture */
+        if (frame_toggle != 0) {
+            if (hp > 4)
+                r->w[2]--;
+            else
+                frame = (int16_t)((frame + 1) & 3);
+        }
+        picture = (int16_t)unit_pictures_82d8[frame & 3];
+        if (vx >= 0)
+            picture = (int16_t)(picture + 3);
+
+        /* $D426: the hit */
+        int16_t strength = r->w[2];
+
+        word_39c = 0x20;
+        word_39e = 0x20;
+        word_3a6 = 0xFFFF;
+        strength = check_hit_and_walls(x, y, strength);
+        word_3a6 = 0;
+        if (strength >= 0) {
+            r->w[2] = strength;
+            r->w[3] = frame;
+        } else {
+            drop_thing(x, y, 0x10);
+            r->w[2] = -1;
+            score_add_packed(5);
+            r->w[3] = (int16_t)score_words[3];   /* (the original's d3 has been loaded with the score's last word by then: its step of dying begins at that) */
+        }
+        sprite_draw((int16_t)(x - scroll_x), (int16_t)(y - scroll_y), (uint16_t)picture);
+    }
 }
 
 /* orig $00E2CC: the cell of the second half of the map at (x, y) (the cells are 32 wide and 16 high) */
