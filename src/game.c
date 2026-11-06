@@ -13755,8 +13755,7 @@ static int shop_press_work(void)
     pick_up_object(item);
     message_arg = saved;
     shop_stock_build();
-    host_cpu_frames(1);
-    return 0;
+    return 2;   /* (a weapon bought: no frame goes by here: the original is back at the top of its loop in the frame it was let go in) */
 }
 
 /* (and about two frames more, the draw of the grid, before its flip) */
@@ -13764,9 +13763,9 @@ static int shop_press(void)
 {
     int leave = shop_press_work();
 
-    if (!leave)
+    if (leave == 0)
         wait_vblank();
-    return leave;
+    return leave == 1;
 }
 
 /* the original waits in the loop until more than two frames have passed since the last flip, then flips ($01D2FC) */
