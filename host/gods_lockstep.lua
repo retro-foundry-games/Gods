@@ -232,16 +232,28 @@ ami.hook(0x1377a, function() if disk_pending then disk_pending = false disk_done
 ami.hook(0x30e8, function() disk_pending = true if args:find("diskdbg") then ami.log(("DISKDBG start frame %d"):format(ami.frame())) end end)
 ami.hook(0x31ca, function() if disk_pending then disk_pending = false disk_done = disk_done + 1 if args:find("diskdbg") then ami.log(("DISKDBG done frame %d"):format(ami.frame())) end end end)
 local frame_end_cycles = 0
-local last_fade_frame = -100   -- (the frame of the original's last fade step: fadetol=N, default 150, lets a difference of that many pixels or fewer pass while a fade goes on: the band of the list edit is a row or two off)
+local last_fade_frame = -100   -- (the frame of the original's last fade step: fadetol=N, default 600, lets a difference of that many pixels or fewer pass while a fade goes on: the band of the list edit is a row or two off)
 local fade_line = -1   -- the raster line the original's thread was at when it began the copper fade of its step ($1D1C2 loops over the bands of the list: what lies above that line was shown before the edit)
 ami.hook(0x1d1c2, function() last_fade_frame = ami.frame(); fade_line = math.floor((ami.cycles() - frame_end_cycles) / 454) if args:find("fadelog") then ami.log(("FADELINE frame %d line %d"):format(ami.frame(), fade_line)) end end)
 ami.hook(0x1d168, function() last_fade_frame = ami.frame(); fade_line = math.floor((ami.cycles() - frame_end_cycles) / 454) if args:find("fadelog") then ami.log(("FADELINE-IN frame %d line %d"):format(ami.frame(), fade_line)) end end)
-ami.hook(0x1d23e, function() if disk_pending then disk_pending = false disk_done = disk_done + 1 end end)
+ami.hook(0x1d23e, function() if next_level_event then next_level_event(3, "start faded out") end if disk_pending then disk_pending = false disk_done = disk_done + 1 if args:find("diskdbg") then ami.log(("DISKDBG done at 1d23e frame %d (%d)"):format(ami.frame(), disk_done)) end end end)
 -- the shop's way out ($1392A): the game's sprites and the sound file are read again (they take what the drive takes) before the fade out at $1D23E
 ami.hook(0x1392a, function() disk_pending = true end)
+-- the start of the next level ($2452, from $13646): three events the port's loading waits for: its loading screen is faded in ($1D0C0), its files are read (until $2AAA) and its start fades out ($1D23E)
+next_level_stage = 0
+function next_level_event(stage, what)
+    if next_level_stage == stage then
+        next_level_stage = (stage + 1) % 4
+        disk_done = disk_done + 1
+        if args:find("diskdbg") then ami.log(("DISKDBG next level %s at frame %d (%d)"):format(what, ami.frame(), disk_done)) end
+    end
+end
+ami.hook(0x2452, function() next_level_stage = 1 end)
+ami.hook(0x2aaa, function() next_level_event(2, "files read") end)
+
 local flip_in_frame = false   -- (the autosave looks for a frame in which the original flipped)
 ami.hook(0x1d302, function() orig_flips = orig_flips + 1; flip_in_frame = true end)
-ami.hook(0x1d0c0, function() orig_fades = orig_fades + 1; if args:find("fadelog") then ami.log(("FADE call %d at frame %d"):format(orig_fades, ami.frame())) end end)
+ami.hook(0x1d0c0, function() if next_level_event then next_level_event(1, "loading screen faded in") end orig_fades = orig_fades + 1; if args:find("fadelog") then ami.log(("FADE call %d at frame %d"):format(orig_fades, ami.frame())) end end)
 ami.hook(0x135c0, function() orig_world_loads = orig_world_loads + 1 end)
 -- autosave=SECONDS (default 30; 0 or `noautosave` off; not while replaying): every SECONDS seconds of play (50 frames each) the original's state is saved, the frame after one in which it flipped (so its iteration has
 -- just ended: a quickload of the port begins one at its top), with its chip RAM: captures/quicksave/auto/auto-K.state and .ram, K going round 0 to 4 (latest.txt names the newest).  A play that stops at a
@@ -601,7 +613,7 @@ lockstep.run {
     keymap = function(key) return KEYS[key] end,
     on_frame = function(count, native, emulated)
         frame_end_cycles = ami.cycles()
-        if count > 0 and count <= (tonumber(args:match("fadetol=(%d+)")) or 150) and ami.frame() - last_fade_frame <= 3 then count = 0 end
+        if count > 0 and count <= (tonumber(args:match("fadetol=(%d+)")) or 600) and ami.frame() - last_fade_frame <= 3 then count = 0 end
         -- A stop (the first difference, from=N, pause=F, break=ADDR) saves both sides to captures/stops/stop-fFRAME[-N].*: the original's state and RAM, the port's memory
         -- from 0 to $80000 (.portmem: as it holds it, words native) and the two pictures; scripts/stop_diff.py compares them offline, however the play got there.
         local stops_here = (pause_at and ami.frame() >= pause_at) or break_hit
