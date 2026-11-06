@@ -613,7 +613,8 @@ lockstep.run {
     keymap = function(key) return KEYS[key] end,
     on_frame = function(count, native, emulated)
         frame_end_cycles = ami.cycles()
-        if args:find("striplog") and ami.frame() >= 1515 and ami.frame() <= 1532 then   -- (the number of lit pixels of the message strip, rows 191 to 199 of the picture, 110 to 250 across)
+        local sl1, sl2 = args:match("striplog=(%d+)-(%d+)")
+        if sl1 and ami.frame() >= tonumber(sl1) and ami.frame() <= tonumber(sl2) then   -- (the number of lit pixels of the message strip, rows 191 to 199 of the picture, 110 to 250 across)
             local function lit(img)
                 local n = 0
                 for y = 191, 199 do
