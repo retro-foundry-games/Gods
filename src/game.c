@@ -4675,8 +4675,11 @@ static void draw_kind5(int16_t x, int16_t y, int16_t glyph)
         glyph_draw(x, y, glyph);
         glyph_draw(x, y - 16, frames_4942[((x >> 5) + counter_2b4) & 3]);
         break;
-    case 0x11b: case 0x11c:
-        break;   /* goes on at $4862 */
+    case 0x11b: case 0x11c:   /* $4862: the table's legs (283 and 284): word_dde is 1, flags_0ddd becomes $0A (the clipped, masked draw: the original leaves them so), the image is drawn at x with the draw offset */
+        word_dde = 1;
+        *(volatile uint8_t *)&flags_0ddd = 0x0A;
+        image_draw_clipped((int16_t)(x + x_offset), y, (uint16_t)glyph);
+        break;
     default:
         glyph_draw(x, y, glyph);
         break;
