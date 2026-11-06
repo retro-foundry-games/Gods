@@ -216,9 +216,10 @@ ami.hook(0x1377a, function() if disk_pending then disk_pending = false disk_done
 ami.hook(0x30e8, function() disk_pending = true if args:find("diskdbg") then ami.log(("DISKDBG start frame %d"):format(ami.frame())) end end)
 ami.hook(0x31ca, function() if disk_pending then disk_pending = false disk_done = disk_done + 1 if args:find("diskdbg") then ami.log(("DISKDBG done frame %d"):format(ami.frame())) end end end)
 local frame_end_cycles = 0
+local last_fade_frame = -100   -- (the frame of the original's last fade step: fadetol=N, default 150, lets a difference of that many pixels or fewer pass while a fade goes on: the band of the list edit is a row or two off)
 local fade_line = -1   -- the raster line the original's thread was at when it began the copper fade of its step ($1D1C2 loops over the bands of the list: what lies above that line was shown before the edit)
-ami.hook(0x1d1c2, function() fade_line = math.floor((ami.cycles() - frame_end_cycles) / 454) if args:find("fadelog") then ami.log(("FADELINE frame %d line %d"):format(ami.frame(), fade_line)) end end)
-ami.hook(0x1d168, function() fade_line = math.floor((ami.cycles() - frame_end_cycles) / 454) if args:find("fadelog") then ami.log(("FADELINE-IN frame %d line %d"):format(ami.frame(), fade_line)) end end)
+ami.hook(0x1d1c2, function() last_fade_frame = ami.frame(); fade_line = math.floor((ami.cycles() - frame_end_cycles) / 454) if args:find("fadelog") then ami.log(("FADELINE frame %d line %d"):format(ami.frame(), fade_line)) end end)
+ami.hook(0x1d168, function() last_fade_frame = ami.frame(); fade_line = math.floor((ami.cycles() - frame_end_cycles) / 454) if args:find("fadelog") then ami.log(("FADELINE-IN frame %d line %d"):format(ami.frame(), fade_line)) end end)
 ami.hook(0x1d23e, function() if disk_pending then disk_pending = false disk_done = disk_done + 1 ami.log(("DBGPHASE frame %d phase %d"):format(ami.frame(), ami.cycles() - frame_end_cycles)) end end)
 local flip_in_frame = false   -- (the autosave looks for a frame in which the original flipped)
 ami.hook(0x1d302, function() orig_flips = orig_flips + 1; flip_in_frame = true end)
@@ -582,6 +583,7 @@ lockstep.run {
     keymap = function(key) return KEYS[key] end,
     on_frame = function(count, native, emulated)
         frame_end_cycles = ami.cycles()
+        if count > 0 and count <= (tonumber(args:match("fadetol=(%d+)")) or 150) and ami.frame() - last_fade_frame <= 3 then count = 0 end
         -- A stop (the first difference, from=N, pause=F, break=ADDR) saves both sides to captures/stops/stop-fFRAME[-N].*: the original's state and RAM, the port's memory
         -- from 0 to $80000 (.portmem: as it holds it, words native) and the two pictures; scripts/stop_diff.py compares them offline, however the play got there.
         local stops_here = (pause_at and ami.frame() >= pause_at) or break_hit
