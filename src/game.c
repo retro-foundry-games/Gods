@@ -13446,6 +13446,8 @@ static void boss2_neck_ce78(void)
 
         if (boss->neck < 0) {
             start_debris_moving((int16_t)(x - 2), (int16_t)(y - 2), (int16_t)(x - boss->points[k][0]), (int16_t)(y - boss->points[k][1]));
+            x = (int16_t)(x - 2);   /* (the original's d0 and d1 are 2 less from there on: the piece is drawn so) */
+            y = (int16_t)(y - 2);
         } else {
             boss->points[k][0] = x;
             boss->points[k][1] = y;
