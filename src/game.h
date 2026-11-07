@@ -209,6 +209,7 @@ void update_bolts(void);                                                       /
 
 
 
+void password_entered(void);          /* orig $0064C2: what follows the password screen */
 void begin_quest(void);                 /* orig $00651E, which jumps to $002452: sets the game up for level 1 and goes on in the game loop */
 void draw_start_frame(void);            /* orig $00FC32: a game frame without the checks of the loop (the set-up draws two before the first fade-in) */
 void level_state_init(void);            /* orig $00F526 */

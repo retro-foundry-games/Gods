@@ -504,6 +504,7 @@ static void level_change_35dc(void);
 static void level_begin(void);
 static int level_next_wait;
 static void game_won_2f12(void);
+static void password_start_334e(void);
 static int level_next_fade;   /* (the fade-in of the next level's start is bound to the original's) */
 /* orig $002D54 on: what ends a frame of the game, after the player has been run (or, when he is dead, after the frame of his death: $3A6C): the units and the other things
  * that are run, the panels, the energy, the keys of the pause and the like, and the wait for the next frame */
@@ -14203,8 +14204,10 @@ static void level_begin(void)
     fill_cce_ones();
     update_energy_display();
     if (menu_active != 0) {
-        if (param_index != 1)
-            return;   /* goes on at $00334E */
+        if (param_index != 1) {   /* a level entered by its password: $00334E */
+            password_start_334e();
+            return;
+        }
         menu_active = 0;
     }
     file_read((const char *)sound1_name, picture_buffer);
@@ -16145,6 +16148,69 @@ static void game_won_2f12(void)
     item_panels_make();
     code_ba34 = 0x4E75;
     level_next_wait = 1;   /* (the lockstep: the level's loading waits for the original's reads, as after the end of a level) */
+    level_begin();
+}
+
+/* orig $00334E (the level of a password is begun: menu_active is 1 and the level is above 1): the score is 80000 (the table at $33C8), the world's sprites and the door are set (as the loading of a world does) and the shop
+ * opens first, to spend it; when it is left the play begins ($33B6: menu_active is cleared and the game goes on at $2BC8) */
+static void password_start_334e(void)
+{
+    word_294 = 0;
+    score_total_1fc = 80000;
+    world_set_up();
+    word_294 = 0;
+    shop_score_shown = score_total_1fc;
+    *(uint16_t *)GUEST(0x38E) = 0;
+    word_0384 = 0;
+    shop_repeat = 0;
+    shop_held[0] = 0;
+    shop_selected = -1;
+    message_shown = 0;
+    word_dde = 0;
+    flags_0ddd = 0;
+    shop_run();
+    menu_active = 0;
+    game_loop();
+}
+
+/* orig $0064C2 (what follows the password screen): the line that was typed (the numbers of the letters, A 1) is compared with the saved codes (the three bytes at the top of each long: the first two entries of the table at
+ * $66BC name the same code, the level 2's); a code that is not there (its first byte 0) is passed; with a match the level is the entry's (the first is 2) and it begins as a password's level (menu_active 1, word_0248 1: the
+ * score and the weapons are made); without one the screen fades out and the menu starts again.  The level the game has now is $6536: not written (the files are there already) */
+void password_entered(void)
+{
+    static const int slot_of_entry[4] = { 0, 0, 1, 2 };
+    const uint8_t *typed = line_text;
+    int16_t level = 0;
+
+    for (int i = 0; i < 4; i++) {
+        uint32_t code = password_slots[slot_of_entry[i]];
+        uint8_t bytes[4] = { (uint8_t)(code >> 24), (uint8_t)(code >> 16), (uint8_t)(code >> 8), (uint8_t)code };
+
+        if (bytes[0] == 0)
+            continue;
+
+        int k = 0;
+
+        while (bytes[k] != 0 && typed[k] == bytes[k])
+            k++;
+        if (bytes[k] != 0 || typed[k] != 0)
+            continue;
+        level = (int16_t)(i + 1);
+        break;
+    }
+    if (level == 0) {
+        fade_out(1, 0xFFFF);
+        menu_main();
+        return;
+    }
+    if (level == 1)
+        level = 2;
+    if (level == (int16_t)param_index)
+        host_missing_routine(0x6536);   /* (the level that is already there: the files are not read again) */
+    param_index = (uint16_t)level;
+    menu_active = 1;
+    word_0248 = 1;
+    word_0266 = 0;
     level_begin();
 }
 

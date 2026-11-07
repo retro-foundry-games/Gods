@@ -644,7 +644,7 @@ void menu_main(void)
                 title_y = 8;
                 password_screen();
                 game_loop_install();
-                original_after_password();
+                password_entered();
                 return;
             }
             if (joystick & 1) {

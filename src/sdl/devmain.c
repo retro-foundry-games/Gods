@@ -269,6 +269,7 @@ static int lockstep_commands(const uint32_t *pixels, int phase)
 
 static const char *dump_prefix, *keys;
 static int dump_every = 50, follow, lockstep, lockstep_extra;
+static unsigned lockstep_menu;   /* --lockstep-menu N: the lockstep begins in the menu, at the Nth frame (no Begin Quest: the keys are the player's) */
 static unsigned lockstep_iteration = 129;   /* --lockstep-level N: Begin Quest starts level N (host_start_level); --lockstep-iteration N: the lockstep begins at that iteration of the game loop (the original's saved state is N - 1 iterations into the level) */
 static int diff_x = -1, diff_y = -1;
 static SDL_Window *diff_window;
@@ -354,7 +355,7 @@ static void dev_after_frame(int frame, int phase, uint32_t *pixels, const int16_
             fprintf(stderr, "gods-sdl: lockstep boot: step %u, phase %d, iteration %u\n", lockstep_ticks, phase, gods_iteration);
         if (lockstep_ready)
             lockstep_reply(pixels, phase);
-        else if (gods_iteration >= lockstep_iteration && lockstep_extra-- <= 0)   /* (the level runs inside the menu's phase: Begin Quest calls the game loop) */
+        else if (lockstep_menu ? (lockstep_ticks >= lockstep_menu && lockstep_extra-- <= 0) : (gods_iteration >= lockstep_iteration && lockstep_extra-- <= 0))   /* (the level runs inside the menu's phase: Begin Quest calls the game loop) */
             lockstep_ready = 1;
     }
     if (follow && phase == PHASE_LEVEL)
@@ -417,6 +418,8 @@ int main(int argc, char **argv)
             host_quickload_file = argv[++i];
         else if (!strcmp(argv[i], "--lockstep-level") && i + 1 < argc)
             host_lockstep_level = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--lockstep-menu") && i + 1 < argc)
+            lockstep_menu = (unsigned)atoi(argv[++i]);
         else if (!strcmp(argv[i], "--lockstep-iteration") && i + 1 < argc)
             lockstep_iteration = (unsigned)atoi(argv[++i]);
         else if (!strcmp(argv[i], "--lockstep-extra") && i + 1 < argc)
