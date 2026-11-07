@@ -195,18 +195,22 @@ local function sample_stick()
 end
 local game_read_frame = -100   -- the emulator frame of the game's last read of the keys
 local orig_reads, reads_at_sync = 0, 0   -- the original's reads of the keys ($363A): the port's read of an iteration waits for the original's (host_read_wait), so that it has the keys the original's read had
-esc_armed, esc_up_step = false, nil   -- (Escape: see esc_press below)
+typed_queue, esc_up_step, esc_up_raw = {}, nil, nil   -- (typed keys given by a replay or Escape: see give_typed below)
+-- a typed key (Escape, or a key of a replay: the live ones go to the original's own keyboard): this host does not run the original's keyboard interrupt, so the request is put where the interrupt would have: the long at
+-- $1E5A8 (the raw code in byte 1, the character in byte 3), at the original's next read of the keys; the port is given the key then too and it is let go three steps later
+function give_typed()
+    if esc_up_step or #typed_queue == 0 then return end
+    local k = table.remove(typed_queue, 1)
+    orig_poke(0x1e5a8, (k.raw << 16) | k.char, 4)
+    pending[#pending + 1] = ("key %d 1\n"):format(k.raw)
+    esc_up_step, esc_up_raw = steps + 3, k.raw
+    if input_log then ami.append_file(input_log, ("%d k %d 1\n"):format(steps - 1, k.char == 27 and 27 or k.char)) end
+end
 ami.hook(0x363a, function()
     game_read_frame = ami.frame()
     orig_reads = orig_reads + 1
     sample_stick()
-    if esc_armed then   -- the port is given the key at the original's read of the keys, the top of the iteration that takes the request at $2E78: the port's own iteration, which runs ahead, then has it too
-        esc_armed = false
-        orig_poke(0x1e5a8, 0x0045001b, 4)   -- (the original takes it at $2E78 of this iteration)
-        pending[#pending + 1] = "key 69 1\n"
-        esc_up_step = steps + 3
-        if input_log then ami.append_file(input_log, ("%d k 27 1\n"):format(steps - 1)) end
-    end
+    give_typed()
 end)
 -- the menu's loop reads the button and the stick at $6422, the password screen's at $6BC2 (the port's menu waits for them, host_read_wait, as the game's iteration does)
 for _, at in ipairs({ 0x6422, 0x6bc2 }) do
@@ -214,6 +218,7 @@ for _, at in ipairs({ 0x6422, 0x6bc2 }) do
         game_read_frame = ami.frame()
         orig_reads = orig_reads + 1
         sample_stick()
+        give_typed()
     end)
 end
 -- the shop's loop reads the stick byte at its top ($13840): the same as a read of the keys (the port's shop waits for it, host_read_wait, and has the byte the original's read had)
@@ -250,9 +255,9 @@ local flip_lag = args:find("%f[%w]lag%f[%W]") ~= nil   -- (the port's flips are 
 local disk_pending, disk_done = false, 0
 ami.hook(0x6a8a, function() disk_pending = true end)
 -- the shop's reads: shop.pi1 ($136EC, until the fade out at $13734, which is $1D23E) and the sound file ($13768, until $1377A)
-ami.hook(0x136ec, function() disk_pending = true end)
-ami.hook(0x13768, function() disk_pending = true end)
-ami.hook(0x1377a, function() if disk_pending then disk_pending = false disk_done = disk_done + 1 end end)
+ami.hook(0x136ec, function() disk_pending = true if args:find("diskdbg") then ami.log(("DISKDBG shop picture read at frame %d"):format(ami.frame())) end end)
+ami.hook(0x13768, function() disk_pending = true if args:find("diskdbg") then ami.log(("DISKDBG shop sound read at frame %d"):format(ami.frame())) end end)
+ami.hook(0x1377a, function() if disk_pending then disk_pending = false disk_done = disk_done + 1 if args:find("diskdbg") then ami.log(("DISKDBG shop sound done at frame %d (%d)"):format(ami.frame(), disk_done)) end end end)
 -- the guardian's start ($0030DA: the loading screen at $30E8, then the guardian's sprites and the sound files; the game loop begins again at $31CA)
 ami.hook(0x30e8, function() disk_pending = true if args:find("diskdbg") then ami.log(("DISKDBG start frame %d"):format(ami.frame())) end end)
 ami.hook(0x31ca, function() if disk_pending then disk_pending = false disk_done = disk_done + 1 if args:find("diskdbg") then ami.log(("DISKDBG done frame %d"):format(ami.frame())) end end end)
@@ -261,7 +266,7 @@ local last_fade_frame = -100   -- (the frame of the original's last fade step: f
 local fade_line = -1   -- the raster line the original's thread was at when it began the copper fade of its step ($1D1C2 loops over the bands of the list: what lies above that line was shown before the edit)
 ami.hook(0x1d1c2, function() if not last_fade_frame or ami.frame() - last_fade_frame > 8 then fade_first_line = math.floor((ami.cycles() - frame_end_cycles) / 454) end last_fade_frame = ami.frame(); fade_line = math.floor((ami.cycles() - frame_end_cycles) / 454) if args:find("fadelog") then ami.log(("FADELINE frame %d line %d"):format(ami.frame(), fade_line)) end end)
 ami.hook(0x1d168, function() last_fade_frame = ami.frame(); fade_line = math.floor((ami.cycles() - frame_end_cycles) / 454) if args:find("fadelog") then ami.log(("FADELINE-IN frame %d line %d"):format(ami.frame(), fade_line)) end end)
-ami.hook(0x1d23e, function() if next_level_event then next_level_event(3, "start faded out") end if disk_pending then disk_pending = false disk_done = disk_done + 1 if args:find("diskdbg") then ami.log(("DISKDBG done at 1d23e frame %d (%d)"):format(ami.frame(), disk_done)) end end end)
+ami.hook(0x1d23e, function() if next_level_event and next_level_event(3, "start faded out") then disk_pending = false end if disk_pending then disk_pending = false disk_done = disk_done + 1 if args:find("diskdbg") then ami.log(("DISKDBG done at 1d23e frame %d (%d)"):format(ami.frame(), disk_done)) end end end)
 -- the shop's way out ($1392A): the game's sprites and the sound file are read again (they take what the drive takes) before the fade out at $1D23E
 ami.hook(0x1392a, function() disk_pending = true end)
 -- the end of the game ($2F12): the picture and the sound file are read from $2F26 on, until the fade-in at $2FCC
@@ -269,12 +274,14 @@ ami.hook(0x2f20, function() disk_pending = true end)
 ami.hook(0x2fcc, function() if disk_pending then disk_pending = false disk_done = disk_done + 1 end end)
 -- the start of the next level ($2452, from $13646): three events the port's loading waits for: its loading screen is faded in ($1D0C0), its files are read (until $2AAA) and its start fades out ($1D23E)
 next_level_stage = 0
-function next_level_event(stage, what)
+function next_level_event(stage, what)   -- (true when the event counted)
     if next_level_stage == stage then
         next_level_stage = (stage + 1) % 4
         disk_done = disk_done + 1
         if args:find("diskdbg") then ami.log(("DISKDBG next level %s at frame %d (%d)"):format(what, ami.frame(), disk_done)) end
+        return true
     end
+    return false
 end
 ami.hook(0x2452, function() next_level_stage = 1 end)
 ami.hook(0x2aaa, function() next_level_event(2, "files read") end)
@@ -304,7 +311,7 @@ local f5_requested, f5_slot = false, 0
 -- would have: the long at $1E5A8 (the raw code in byte 1, the character in byte 3).  The original takes it at $2E78; the port is given the key at the original's read at $363A (above) and it is let go three steps later
 local ESC_KEY = 27
 function esc_press()
-    esc_armed = true   -- (given to both sides at the original's next read of the keys, $363A)
+    typed_queue[#typed_queue + 1] = { raw = 0x45, char = 27 }
 end
 -- (the port is given the key at the original's read of the keys at $363A, the top of the iteration that takes the request at $2E78: the port's own iteration, which runs ahead, then has it too)
 local libretro_input = ami.input
@@ -381,7 +388,7 @@ local delayed = setmetatable({
                         real:send(("worldloads %d\n"):format(orig_world_loads - world_loads_at_sync))
                         last_flips = orig_flips
                     end
-                    if esc_up_step and steps >= esc_up_step then pending[#pending + 1] = "key 69 0\n" esc_up_step = nil end
+                    if esc_up_step and steps >= esc_up_step then pending[#pending + 1] = ("key %d 0\n"):format(esc_up_raw) esc_up_step = nil end
                     for _, p in ipairs(pending) do real:send(p) end
                     pending = {}
                 end
@@ -461,7 +468,13 @@ if replay then
     schedule = setmetatable({}, { __index = function(_, step)
         local lines = {}
         for _, e in ipairs(events[step] or {}) do
-            if e[1] == 27 then if e[2] then esc_press() end else ami.key(e[1], e[2]) end
+            if e[1] == 27 then
+                if e[2] then esc_press() end
+            elseif KEYS[e[1]] and not (KEYS[e[1]] >= 0x4c and KEYS[e[1]] <= 0x4f) and KEYS[e[1]] ~= 0x40 then   -- (a typed key: not through the original's keyboard)
+                if e[2] then typed_queue[#typed_queue + 1] = { raw = KEYS[e[1]], char = e[1] } end
+            else
+                ami.key(e[1], e[2])
+            end
 
             if args:find("%f[%w]keylog%f[%W]") then ami.log(("step %d: key %d %s; table %02x"):format(step, e[1], tostring(e[2]), ami.read(0x1e63a + 0x4e, 1):byte())) end
 
@@ -470,7 +483,7 @@ if replay then
     end })
 end
 -- the keyboard: libretro key -> the Amiga raw code the port's keyboard takes (up, down, right, left, space)
-local KEYS = { [273] = 0x4c, [274] = 0x4d, [275] = 0x4e, [276] = 0x4f, [32] = 0x40 }
+KEYS = { [273] = 0x4c, [274] = 0x4d, [275] = 0x4e, [276] = 0x4f, [32] = 0x40 }
 -- the typed keys (the password screen, the high score name): libretro key -> Amiga raw code, as the port's raw_code has them; the original takes these by its own keyboard, the port is given them at once
 for i, ch in ipairs({ "q", "w", "e", "r", "t", "y", "u", "i", "o", "p" }) do KEYS[ch:byte()] = 0x10 + i - 1 end
 for i, ch in ipairs({ "a", "s", "d", "f", "g", "h", "j", "k", "l" }) do KEYS[ch:byte()] = 0x20 + i - 1 end
