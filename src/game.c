@@ -14850,13 +14850,21 @@ static void boss_load_30da(void)
     if (menu_state_25a == 2)
         return;   /* goes on at $2C20: they are there */
     loading_screen_328a();
-    if (param_index == 3)
-        host_missing_routine(0x30EC);   /* (the level 3 changes two pointers of the text) */
+    if (param_index == 3) {   /* $30EC: the level 3 changes two pointers of the text */
+        line_text = (const uint8_t *)GUEST(0x373BC);
+        ptr_03ac = (uint8_t *)GUEST(0x379FC);
+    }
     play_sound(0, 0);
+    uint8_t *saved_directory = asset_directory;
+
+    if (param_index == 3)   /* $311A: the table of sprite records goes where the list of entries is while the guardian's sprites are read ($315E puts it back) */
+        asset_directory = (uint8_t *)entry_list;
     asset_flag = -1;
     flags_0ddd |= 0x10;
     assets_load((const char *)level_names + 0xA2, palette_words, asset_end_0ca2, (struct AssetEntry *)asset_table_0ca6);
     palette_words[0] = 0;
+    if (param_index == 3)
+        asset_directory = saved_directory;
     if (param_index == 2)
         boss2_bezier_load();   /* $316A: the level 2 reads bezier.dat */
     drives_idle();   /* $16E3E */
