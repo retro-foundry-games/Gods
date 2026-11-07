@@ -376,6 +376,8 @@ int wait_frames_or_button(uint16_t frames)
 
 /* ======== the screens of the menu (was ui.c): the main menu, the password screen, the top ten, and what is done with the joystick and the keyboard on them ======== */
 
+static int menu_draw_delay;   /* frames of the original's drawing that the idle loop of the menu waits for */
+
 /* orig $0066CC: the main menu's screen: the background, the title, the lines of text (the third when there is a game to continue)
  * and the pointer, a glyph at each side of the line cursor_pos names; then it is shown */
 void menu_screen_draw(void)
@@ -398,11 +400,14 @@ void menu_screen_draw(void)
 
     glyph_draw(24, y, 168);
     glyph_draw(280, y, 166);
+    host_cpu_frames(menu_draw_delay);   /* (the lockstep: the original's drawing of the menu takes about 3 frames before its flip) */
     screens_flip();
 }
 
 /* orig $0068DE: the top ten: the background, the title, the ten records and the three saved codes; the colours fade in, it
  * stays for 750 frames (or until a request or a button), and fades out again */
+static int top_ten_delay;   /* frames of the original's CPU work that the next top ten waits for before its fade-in */
+
 void top_ten_screen(void)
 {
     leave_load_screen();
@@ -415,6 +420,8 @@ void top_ten_screen(void)
     wait_vblank();
     screens_flip();
     copy_other_screen();
+    host_cpu_frames(top_ten_delay);   /* (the lockstep: the original's drawing of the lists takes about 9 frames more, after the menu's time ran out) */
+    top_ten_delay = 0;
     fade_in((const uint16_t *)(background + 2), 1);
     wait_request(750);
     fade_out(1, 0);
@@ -453,6 +460,7 @@ void password_screen(void)
         cursor_draw();
         host_cpu_frames(3);   /* (the original's copy of the background and its drawing of the grid, the line and the cursor take about 3 frames, then it reads the keys and the stick, and flips: a pass is 4 with the flip) */
 
+        host_read_wait();   /* (the lockstep: the original's read of the key, $6BC2, is done) */
         uint16_t key = next_request();
         int16_t pick = -1;   /* the character the program numbers, to add to the line, or -1 */
 
@@ -620,13 +628,17 @@ void menu_main(void)
         for (;;) {
             message_shown = 0;
             clear_work_area();
+            menu_draw_delay = 3;
             menu_screen_draw();
+            menu_draw_delay = 0;
             if ((int32_t)tick_count >= 750) {
                 fade_out(1, 0);
                 do_nothing();
+                top_ten_delay = 9;
                 top_ten_screen();
                 break;
             }
+            host_read_wait();   /* (the lockstep: the original's read of the button and the stick, $6422, is done) */
             if (button_bits[0] & 1) {
                 play_sound(33, 2);
                 if ((int16_t)cursor_pos < 1) {
