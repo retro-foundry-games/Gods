@@ -645,9 +645,9 @@ void game_frame(void)
         scroll_push();
     draw_background();
     draw_records_19334();
-    do_nothing_b();
-    do_nothing_b();
-    do_nothing_b();
+    do_nothing_b();   /* $194D0 */
+    update_crumbles();   /* $17CC0 */
+    do_nothing_b();   /* $BA34 */
     if (flag_23a)
         callback_4e4();
     redraw_record_images();
