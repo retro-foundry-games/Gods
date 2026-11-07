@@ -16056,7 +16056,6 @@ static void game_won_2f12(void)
     flags_3b0 &= (uint8_t)~0x40;
     fade_out(1, 0xFFFF);
     load_unpacked("payoff.pi1", picture_buffer);
-    host_disk_wait();   /* (the original's read of the picture takes what its drive takes) */
 
     const uint8_t *file = picture_buffer + 2;
     uint16_t *palette = (uint16_t *)ptr_0cee;
