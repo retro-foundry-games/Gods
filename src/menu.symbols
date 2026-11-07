@@ -500,7 +500,7 @@ table frames_493a 0x0000493a uint16_t 4   game_d: the second glyph of glyph 225,
 table frames_4942 0x00004942 uint16_t 4   game_d: ... of glyph 251
 table frames_494a 0x0000494a uint16_t 4   game_d: ... of glyph 252
 table frames_4af4 0x00004af4 uint16_t 4   game_d: the glyphs of the thing 220, by counter_20c
-table frames_4afc 0x00004afc uint16_t 4   game_d: ... of the thing 287, by counter_262
+table frames_4afc 0x00004afc uint16_t 6   game_d: ... of the thing 287, by counter_262
 table frames_4b08 0x00004b08 uint16_t 6   game_d: ... of the thing 300, by counter_262
 table frames_4ba8 0x00004ba8 uint16_t 20  game_d: five glyphs for each of the four values of param_index (kinds 232, 288, 290, 292)
 fn_10976          0x00010976  void %s(void)  game_d: the pick-up handler 18 of the table at $1067A (game_e writes it in C)

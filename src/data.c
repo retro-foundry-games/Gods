@@ -528,8 +528,8 @@ const uint16_t frames_4af4[4] = {
 };
 
 /* $04AFC  game_d: ... of the thing 287, by counter_262 */
-const uint16_t frames_4afc[4] = {
-    0x011f, 0x01a0, 0x01a1, 0x01a2,
+const uint16_t frames_4afc[6] = {
+    0x011f, 0x01a0, 0x01a1, 0x01a2, 0x01a3, 0x01a4,
 };
 
 /* $04B08  game_d: ... of the thing 300, by counter_262 */

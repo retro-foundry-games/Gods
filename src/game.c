@@ -8,6 +8,9 @@ static void update_archers(void);
 static void update_thrown(void);
 static void archer_thing(struct Slot8 *record, int16_t x, int16_t y, int16_t glyph);
 static int bat_spawn_daa4(int16_t x, int16_t y);
+static void score_add_packed(uint8_t packed);
+static void pod_spawn_d664(int16_t x, int16_t y);
+static void pods_d6b8(void);
 static void bats_db04(void);
 static void aimed_shot(int16_t x, int16_t y, int16_t speed, int16_t kind);
 static void update_crumbles(void);
@@ -248,7 +251,7 @@ static void messages_reset_16ac8(void)
  * does ($2BD6) */
 static void player_respawn(void)
 {
-    host_fade_lag(1);   /* (the original shows the steps of this fade a frame after the registers have them; the other fades of the game do not) */
+    host_fade_lag(4);   /* (the original shows the steps of this fade a frame after the registers have them when its first step began late in a frame, as they are when it began early: host_fade_first) */
     fade_out(0, 0xFFFF);
     player_energy = 0x18;
     energy_shown = 1;
@@ -528,7 +531,7 @@ static void game_frame_tail(void)
         unit4_update();
         next_table_entry();
         update_records_113c();
-        do_nothing_b();
+        pods_d6b8();
         step_d898();
     } else {
         callback_4e0();
@@ -2209,11 +2212,272 @@ void update_choice_888e(void)
         return;
 }
 
-/* orig $00D898: nothing is done when word_10ae is 0; otherwise the original goes on at $D89E, which did not run */
+/* ======== the pods of level 3 (orig $00D664 to $00D836: ten records of 10 bytes at $FD0) and the spores they spit ($00D838 to $00DA50: ten records of 12 bytes at $1036) ======== */
+
+/* a pod (the thing 266): its place (a negative x: free), hit points (negative: dying), the picture state (0 shut, 1 to 3 opening and spitting, or the count of its death's pictures) and
+ * the frames it waits to open */
+struct Pod {
+    int16_t x;        /* +0 */
+    int16_t y;        /* +2 */
+    int16_t energy;   /* +4 */
+    int16_t state;    /* +6 */
+    int16_t timer;    /* +8 */
+};
+
+/* a spore (twelve bytes): its place, speeds, the picture frame (negative: it is dying), the hit points as a byte (0: free, negative: it is born, rising) and the frames it goes on the way it is going */
+struct Spore {
+    int16_t x;        /* +0 */
+    int16_t y;        /* +2 */
+    int16_t speed_x;  /* +4 */
+    int16_t speed_y;  /* +6 */
+    int8_t frame;     /* +8 */
+    int8_t energy;    /* +9 */
+    int16_t count;    /* +10 */
+};
+_Static_assert(sizeof(struct Spore) == 12, "spore");
+
+static struct Pod *pods(void)
+{
+    return (struct Pod *)GUEST(0xFD0);
+}
+
+static struct Spore *spores(void)
+{
+    return (struct Spore *)records_1036;
+}
+
+/* orig $00D838 (d0 and d1 the place): a spore is born there (hit points -10, rising at 10 up) when fewer than ten are going */
+static void spore_spawn_d838(int16_t x, int16_t y)
+{
+    if (word_10ae == 10)
+        return;
+
+    struct Spore *spore = spores();
+    int i;
+
+    for (i = 0; i < 10; i++, spore++)
+        if (spore->energy == 0)
+            break;
+    if (i == 10)
+        spore--;   /* ($D868 leaves a0 on the last one when none is free) */
+    spore->x = x;
+    spore->y = y;
+    spore->energy = -10;
+    spore->speed_y = -10;
+    spore->speed_x = 0;
+    spore->frame = 0;
+    word_10ae++;
+}
+
+/* orig $00DA08: a spore is a box of 24 by 24 for the player's shots; its hit points gone it starts to die (frame -1, hit points 1, 4 up and left) and 5 points are added */
+static void spore_hit_da08(struct Spore *spore, int16_t x, int16_t y)
+{
+    word_39c = 0x18;
+    word_39e = 0x18;
+
+    int16_t energy = check_hit_and_walls(x, y, spore->energy);
+
+    if (energy >= 0) {
+        spore->energy = (int8_t)energy;
+        return;
+    }
+    spore->frame = -1;
+    spore->energy = 1;
+    spore->x = (int16_t)(spore->x - 4);
+    spore->y = (int16_t)(spore->y - 4);
+    score_add_packed(5);
+}
+
+/* orig $00D898 (every frame, when word_10ae is not 0): the spores.  One being born rises (the picture 490) and is a spore with 20 hit points when its hit points have counted up to 0; a dying one drifts on in
+ * the pieces' pictures (91 on) and is free after 17 frames; a going one turns through four frames, walks a few frames (3 to 10) in a direction toward the player, stands a few (0 to 15) and chooses again;
+ * it is hit, drawn (the picture 491 + 4 left, 8 right + its frame) and is free when it is off the screen */
 void step_d898(void)
 {
     if (word_10ae == 0)
         return;
+
+    struct Spore *spore = spores();
+
+    for (int i = 0; i < 10; i++, spore++) {
+        if (spore->energy == 0)
+            continue;
+
+        int16_t x, y;
+
+        if (spore->energy < 0) {   /* $D9C2: being born */
+            x = spore->x;
+            y = (int16_t)(spore->y + spore->speed_y);
+            spore->speed_y++;
+            spore->energy++;
+            if (spore->energy >= 0) {
+                spore->energy = 20;
+                spore->speed_x = 0;
+                spore->speed_y = 0;
+                spore->count = 0xF;
+            }
+            spore->y = y;
+            sprite_draw((int16_t)(x - scroll_x), (int16_t)(y - scroll_y), 0x1EA);
+            continue;
+        }
+        if (spore->frame < 0) {   /* $DA52: dying */
+            x = (int16_t)(spore->x + spore->speed_x);
+            y = (int16_t)(spore->y + spore->speed_y);
+            spore->x = x;
+            spore->y = y;
+            sprite_draw((int16_t)(x - scroll_x), (int16_t)(y - scroll_y), (uint16_t)(-(int16_t)spore->frame - 1 + 0x5B));
+            spore->frame--;
+            if (spore->frame <= (int8_t)0xEE) {
+                spore->energy = 0;
+                word_10ae--;
+            }
+            continue;
+        }
+        spore->frame = (int8_t)((spore->frame + 1) & 3);
+        if (timer_306 != 0) {
+            x = spore->x;
+            y = spore->y;
+        } else if (spore->count != 0) {   /* $D922 */
+            x = (int16_t)(spore->x + spore->speed_x);
+            y = (int16_t)(spore->y + spore->speed_y);
+            spore->x = x;
+            spore->y = y;
+            spore->count--;
+            if (spore->count == 0) {
+                if ((spore->speed_x | spore->speed_y) == 0)
+                    goto choose;
+                spore->count = (int16_t)(random_word() & 0xF);
+                spore->speed_x = 0;
+                spore->speed_y = 0;
+                x = spore->x;
+            }
+        } else {
+choose:     /* $D8D4: a new way: 2 to 9 across and up or down, toward the player */
+            for (;;) {
+                y = spore->y;
+
+                int16_t dx = (int16_t)((random_word() & 7) + 2);
+                int16_t dy = (int16_t)((random_word() & 7) + 2);
+
+                if ((int16_t)(spore->x + 4) >= player_x)
+                    dx = (int16_t)-dx;
+                if ((int16_t)(spore->y + 0xC) >= player_y)
+                    dy = (int16_t)-dy;
+                spore->speed_x = dx;
+                spore->speed_y = dy;
+                spore->count = (int16_t)((random_word() & 7) + 3);
+                x = spore->x;
+                break;
+            }
+        }
+
+        uint16_t image = 0;
+
+        if (spore->speed_x != 0) {
+            if (spore->speed_x > 0)
+                image = 4;
+            image += 4;
+        }
+        image = (uint16_t)(image + (uint8_t)spore->frame + 0x1EB);
+        spore_hit_da08(spore, x, y);
+
+        int16_t sx = (int16_t)(x - scroll_x);
+        int16_t sy = (int16_t)(y - scroll_y);
+
+        if (sx < -0x20 || sx >= 0x160 || sy < -0x20 || sy >= 0xE0) {
+            spore->energy = 0;
+            continue;
+        }
+        sprite_draw(sx, sy, image);
+    }
+}
+
+/* orig $00D664 (d0 the thing's x on the screen, d1 its y in the level): the first free pod (a negative x) gets the place, 200 hit points, the state 0 and 10 frames to wait, and the routine at $D6B8 is switched on; with none free nothing is
+ * made (the thing is taken from the map all the same) */
+static void pod_spawn_d664(int16_t x, int16_t y)
+{
+    struct Pod *pod = pods();
+
+    for (int i = 0; i < 10; i++, pod++) {
+        if (pod->x >= 0)
+            continue;
+        pod->x = (int16_t)(x + scroll_x);
+        pod->y = y;
+        pod->energy = 0xC8;
+        pod->state = 0;
+        pod->timer = 10;
+        code_d6b8 = 0x4E71;
+        return;
+    }
+}
+
+/* orig $00D6B8 (a bare return unless a pod was started): the pods.  A dying one is drawn in the pictures 108 on and is free after seven; one that lives counts its wait down (then 40 to 71 frames) and opens, spits (the third frame:
+ * a spore from 10 above it when it is on the screen) and shuts; it is a box of 32 by 40 for the player's shots (the fight's flag on while it is looked at) and, when it is killed, 10 points are added and it dies; it is drawn
+ * as the picture 266, 445, 446 or 447 by its state */
+static void pods_d6b8(void)
+{
+    static const uint16_t pictures[4] = { 0x10A, 0x1BD, 0x1BE, 0x1BF };
+
+    if (code_d6b8 != 0x4E71)
+        return;
+
+    struct Pod *pod = pods();
+
+    word_1034 = 0;
+    for (int i = 0; i < 10; i++, pod++) {
+        if (pod->x < 0)
+            continue;
+        word_1034++;
+        if (pod->energy < 0) {
+            sprite_draw((int16_t)(pod->x - 4 - scroll_x), (int16_t)(pod->y - 8 - scroll_y), (uint16_t)(pod->state + 0x6C));
+            pod->state++;
+            if (pod->state >= 7)
+                pod->x = -1;
+            continue;
+        }
+
+        int spit = 0;
+
+        if (timer_306 == 0) {
+            if (pod->state == 0) {
+                pod->timer--;
+                if (pod->timer < 0) {
+                    pod->timer = (int16_t)(0x28 + (random_word() & 0x1F));
+                    pod->state++;
+                }
+            } else {
+                pod->state++;
+                if (pod->state == 3)
+                    spit = 1;
+                else if (pod->state > 3)
+                    pod->state = 0;
+            }
+        }
+        if (spit) {
+            int16_t sx = (int16_t)(pod->x - scroll_x);
+            int16_t sy = (int16_t)(pod->y - scroll_y);
+
+            if (!(sx > 0x140 || sx < -0x20 || sy < -8 || sy > 0xC8))
+                spore_spawn_d838(pod->x, (int16_t)(pod->y - 10));
+        }
+
+        uint16_t saved_23a = flag_23a;
+
+        word_39c = 0x20;
+        word_39e = 0x28;
+        flag_23a = 1;
+
+        int16_t energy = check_hit_and_walls((int16_t)(pod->x - 8), (int16_t)(pod->y - 8), pod->energy);
+
+        flag_23a = saved_23a;
+        pod->energy = energy;
+        if (energy < 0) {
+            pod->state = 0;
+            score_add_packed(0x10);
+        }
+        sprite_draw((int16_t)(pod->x - scroll_x), (int16_t)(pod->y - scroll_y), pictures[pod->state & 3]);
+    }
+    if (word_1034 == 0)
+        code_d6b8 = 0x4E75;
 }
 
 /* orig $016AEE: nothing is done unless flag_aa8 is 1; the original then goes on at $16AF6, which did not run */
@@ -4780,8 +5044,10 @@ static void record_update(struct Slot8 *record, uint8_t *flag, int16_t counter)
                 draw_thing_flyer(x, y, glyph);
             else if (glyph == 285)
                 archer_thing(record, x, y, glyph);
-            else if (glyph == 266)
-                host_missing_routine(0xD664);   /* ($4B1C: did not run) */
+            else if (glyph == 266) {
+                pod_spawn_d664(x, y);   /* ($4B1C: the thing is taken from the map: a pod) */
+                record->w[2] = 0xFFFF, record->w[3] = 0;
+            }
             else if (bat_spawn_daa4(x, y))
                 record->w[2] = 0xFFFF, record->w[3] = 0;   /* ($4B7C: the thing is taken from the map and a bat is made) */
             else
@@ -12701,6 +12967,11 @@ void level_tables_quickload(void)
     for (int i = 0; i < 20; i++)   /* the ten shards (struct Shard: four words) that the stone faces spit: the table is typed as longs, which the loader made native as longs: the words of each are the other way round */
         records_737e[i] = (records_737e[i] >> 16) | (records_737e[i] << 16);
     file_words((void *)GUEST(0x10B0), 70);   /* the bats */
+    file_words((void *)GUEST(0xFD0), 50);   /* the pods */
+    for (int i = 0; i < 10; i++) {   /* the spores: the four words and the count of each */
+        file_words(&spores()[i].x, 4);
+        file_words(&spores()[i].count, 1);
+    }
     file_words((void *)GUEST(0x66E), 27);   /* the magic axe's nine shots' steps ($66E) */
     boss_quickload();
 }
