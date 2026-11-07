@@ -208,6 +208,14 @@ ami.hook(0x363a, function()
         if input_log then ami.append_file(input_log, ("%d k 27 1\n"):format(steps - 1)) end
     end
 end)
+-- the menu's loop reads the button and the stick at $6422, the password screen's at $6BC2 (the port's menu waits for them, host_read_wait, as the game's iteration does)
+for _, at in ipairs({ 0x6422, 0x6bc2 }) do
+    ami.hook(at, function()
+        game_read_frame = ami.frame()
+        orig_reads = orig_reads + 1
+        sample_stick()
+    end)
+end
 -- the shop's loop reads the stick byte at its top ($13840): the same as a read of the keys (the port's shop waits for it, host_read_wait, and has the byte the original's read had)
 ami.hook(0x13840, function()
     game_read_frame = ami.frame()
