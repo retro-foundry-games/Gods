@@ -14,6 +14,7 @@ static void pods_d6b8(void);
 static void bats_db04(void);
 static void aimed_shot(int16_t x, int16_t y, int16_t speed, int16_t kind);
 static void update_crumbles(void);
+static void crumble_start(const uint8_t *cell, const int16_t *slot);
 
 /* orig $00363A: this frame's input: the joystick byte and the button bits are kept for the game; when the input is being recorded
  * (demo_mode positive) one byte of them is put in the record (the buttons in bits 6 and 7, the stick below) */
@@ -3009,7 +3010,7 @@ void spawn_debris_at_cell(int16_t x, int16_t y, const uint8_t *record, int16_t *
     }
     play_sound(3, 4);
     if (cell[-8192] == 109 && (int16_t)param_index >= 3)
-        return;   /* calls $17B98 here and goes on */
+        crumble_start(cell, (const int16_t *)record);   /* $17B98, and the original goes on */
     int16_t *debris = records_3a0a6;
     int i;
 
@@ -3967,7 +3968,7 @@ void shot_hit_tile(const struct Object *object, struct Shot *shot, int16_t x, in
     }
     play_sound(3, 4);
     if (tile[-8192] == 109 && param_index >= 3)
-        return;   /* goes on at $169BE: calls $17B98 (did not run) */
+        crumble_start(tile, (const int16_t *)object);   /* $169BE: $17B98, and the original goes on */
     for (int i = 0; i < 20; i++) {
         int16_t *record = &records_3a0a6[i * 6];
 
