@@ -570,8 +570,14 @@ static void game_frame_tail(void)
 
     int16_t request = (int16_t)take_pending_request();
 
-    if (flag_23a == 0 && request == 27)
-        return;   /* goes on at $3A54 */
+    if (flag_23a == 0 && request == 27) {   /* Escape: $3A54 */
+        static const char text_quit[] = "QUIT GAME";
+
+        game_over_message(text_quit);
+        has_continue = 1;
+        menu_start();
+        return;
+    }
     if (request == 32) {   /* the space bar: the game waits for a request or a button, and the clock goes on from where it was */
         uint32_t saved_ticks = tick_count;
 
