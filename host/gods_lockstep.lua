@@ -678,6 +678,24 @@ lockstep.run {
                 if ami.frame() % 100 == 0 then ami.save_file(ap, table.concat(audlog_lines, "\n")) end
             end
         end
+        -- cellwatch=FRAME:ADDR: from the emulator frame FRAME the original is single stepped until the byte at ADDR changes; the program counter of the instruction before the change is logged
+        do
+            local cf, ca = args:match("cellwatch=(%d+):(%x+)")
+            if cf and ami.frame() == tonumber(cf) then
+                local address = tonumber(ca, 16)
+                local before, last_pc, count = ami.peek8(address), 0, 0
+                ami.log(("cellwatch: %x is %02x at frame %d"):format(address, before, ami.frame()))
+                ami.step(function(pc)
+                    count = count + 1
+                    if ami.peek8(address) ~= before then
+                        ami.log(("cellwatch: %x changed to %02x after the instruction at %x (frame %d, %d steps)"):format(address, ami.peek8(address), last_pc, ami.frame(), count))
+                        return false
+                    end
+                    last_pc = pc
+                    return count < 3000000
+                end)
+            end
+        end
         -- blitlog=FRAME=PATH: the custom register writes of the emulator frame FRAME (the blitter's pointers and sizes, with the program counter) are written to PATH
         do
             local bf, bp = args:match("blitlog=(%d+)=(%S+)")
