@@ -353,7 +353,10 @@ end
 local delayed = setmetatable({
     send = function(_, text)
         for line in text:gmatch("[^\n]+") do
-            if not line:match("^key ") then
+            local raw = tonumber(line:match("^key (%d+) "))
+            if raw and not STICK_BITS[raw] and not (raw >= 0x4c and raw <= 0x4f) then   -- the typed keys go to the port with the next step (the joystick keys are sampled from the original's own read)
+                pending[#pending + 1] = line .. "\n"
+            elseif not raw then
                 if line == "step" then
                     steps = steps + 1
                     sample_stick_outside_game()
@@ -460,6 +463,13 @@ if replay then
 end
 -- the keyboard: libretro key -> the Amiga raw code the port's keyboard takes (up, down, right, left, space)
 local KEYS = { [273] = 0x4c, [274] = 0x4d, [275] = 0x4e, [276] = 0x4f, [32] = 0x40 }
+-- the typed keys (the password screen, the high score name): libretro key -> Amiga raw code, as the port's raw_code has them; the original takes these by its own keyboard, the port is given them at once
+for i, ch in ipairs({ "q", "w", "e", "r", "t", "y", "u", "i", "o", "p" }) do KEYS[ch:byte()] = 0x10 + i - 1 end
+for i, ch in ipairs({ "a", "s", "d", "f", "g", "h", "j", "k", "l" }) do KEYS[ch:byte()] = 0x20 + i - 1 end
+for i, ch in ipairs({ "z", "x", "c", "v", "b", "n", "m" }) do KEYS[ch:byte()] = 0x31 + i - 1 end
+for d = 1, 9 do KEYS[48 + d] = d end
+KEYS[48] = 0x0a
+KEYS[13] = 0x44 KEYS[8] = 0x41 KEYS[46] = 0x39 KEYS[44] = 0x38
 local trace = args:find("%f[%w]trace%f[%W]")
 local dump = args:match("dump=(%S+)")
 local watching = args:find("%f[%w]watch%f[%W]")
