@@ -64,6 +64,8 @@ void game_nothing(void);                                   /* orig $003436, $007
 void game_step_4070(void);                                 /* orig $004070 */
 void draw_shutter(void);                               /* orig $0054C4 */
 void game_step_5496(void);                                 /* orig $005496 */
+void bolts_77e6(void);                                       /* orig $0077E6 */
+void bolts_7906(void);                                       /* orig $007906 */
 void game_step_73d2(void);                                 /* orig $0073D2 */
 void update_item_panel(void);                               /* orig $005608 */
 void panel_blank(uint8_t *to);                             /* orig $0057E0 */

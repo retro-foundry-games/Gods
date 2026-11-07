@@ -665,8 +665,8 @@ void game_frame(void)
     update_creatures();
     if (flag_23a == 0) {
         game_step_73d2();
-        game_nothing();
-        game_nothing();
+        bolts_77e6();
+        bolts_7906();
         draw_effects();
         draw_marks_316();
     }
@@ -1366,6 +1366,144 @@ void game_step_73d2(void)
             shard->x = -1;
     }
     word_73ce = (uint16_t)alive;
+}
+
+static void start_debris_moving(int16_t x, int16_t y, int16_t speed_x, int16_t speed_y);
+int16_t damage_player_at(int16_t x, int16_t y, int16_t strength);
+
+/* orig $0076E8 to $0076FB: the speeds (x, y) the bolts of the spitting faces and the pieces a bolt bursts into start with */
+static const int16_t bolt_speeds_76e8[10] = { 4, 4, -4, 4, -1, -6, 0, -7, 1, -6 };
+
+/* orig $00773E (with $0074CA, $007752 to $00777C): `count` records (five words: x, y, picture step, speed x, speed y) are put at the first free ones (step negative) of the `records` records from `first` on (the list at
+ * records_7544: 12 of the bolts, then 30 of the pieces), at (x + 3, y + 11), the speeds from the table */
+static void bolt_records_put(int first, int records, int count, int16_t x, int16_t y, const int16_t *speeds)
+{
+    for (int i = first; i < first + records && count > 0; i++) {
+        int16_t *r = &records_7544[i * 5];
+
+        if (r[2] >= 0)
+            continue;
+        code_77e6 = 0x4E71;
+        code_7906 = 0x4E71;
+        r[0] = (int16_t)(x + 3);
+        r[1] = (int16_t)(y + 11);
+        r[2] = 0;
+        r[3] = speeds[0];
+        r[4] = speeds[1];
+        speeds += 2;
+        count--;
+    }
+}
+
+/* orig $0076FC (the face's step 3 of the movement routine $74F0): two bolts are put at the face's place, with the sound 58 when the face is on the screen (within 24 pixels outside it) */
+static void face_spits_bolts(int16_t x, int16_t y)
+{
+    int16_t sx = (int16_t)(x - scroll_x);
+    int16_t sy = (int16_t)(y - scroll_y);
+
+    if (sx > -24 && sx < 320 && sy > -24 && sy < 192)
+        play_sound(0x3A, 3);
+    bolt_records_put(0, 12, 2, x, y, bolt_speeds_76e8);
+}
+
+/* orig $0077E6 (which is an rts until a bolt is put there): the bolts of the faces (the first 12 records): each moves by its speed, off the screen (16 or more outside it) it is over, else it is drawn as the glyph 529 + its
+ * step; every other frame (frame_phase 0) its step goes on (modulo 4), it falls faster (speed y + 1) and its sideways speed runs down by 1.  A wall cell (the byte $80 on in the second map is 1) under it makes it burst into three pieces
+ * ($77A0, the speeds from $76F0) with the sounds 58 off and 59 on; the player's box hit ($00D270, a 5 by 5 box) bursts it with a spark moving as it did */
+void bolts_77e6(void)
+{
+    if (code_77e6 != 0x4E71)
+        return;
+    int alive = 0;
+
+    for (int i = 0; i < 12; i++) {
+        int16_t *r = &records_7544[i * 5];
+
+        if (r[2] < 0)
+            continue;
+        alive++;
+
+        int16_t step = r[2];
+        int16_t x = (int16_t)(r[0] + r[3]);
+        int16_t y = (int16_t)(r[1] + r[4]);
+
+        r[0] = x;
+        r[1] = y;
+
+        int16_t sx = (int16_t)(x - scroll_x);
+        int16_t sy = (int16_t)(y - scroll_y);
+
+        if (sx <= -16 || sy <= -16 || sx >= 320 || sy >= 192) {
+            r[2] = -1;
+            continue;
+        }
+        glyph_draw(sx, sy, (uint16_t)(step + 0x211));
+        if (frame_phase == 0) {
+            r[2] = (int16_t)((r[2] + 1) & 3);
+            r[4]++;
+            if (r[3] != 0)
+                r[3] = (int16_t)(r[3] < 0 ? r[3] + 1 : r[3] - 1);
+        }
+        if (ptr_0b86[0x2000 + 0x80 + (((int16_t)(x + 8)) >> 5) + ((((int16_t)(y + 4)) & 0xFFF0) << 3)] == 1) {
+            stop_sound(0x3A);
+            play_sound(0x3B, 3);
+            bolt_records_put(12, 30, 3, (int16_t)(x + 2), (int16_t)(y + 2), &bolt_speeds_76e8[4]);
+            r[2] = -1;
+            continue;
+        }
+        word_39c = 5;
+        word_39e = 5;
+        if (damage_player_at(x, y, 0) < 0) {
+            r[2] = -1;
+            start_debris_moving(sx, sy, r[3], r[4]);
+        }
+    }
+    if (alive == 0)
+        code_77e6 = 0x4E75;
+}
+
+/* orig $007908 (a rts, $007906, until a piece is put there): the pieces the bolts burst into (the 30 records after the first 12): each moves by its speed, off the screen it is over, is drawn as the glyph 533 + its step, every other frame
+ * its step goes on and it falls faster; a wall cell (the first byte of the cell is 1) bursts it with a spark, the player's box ($0184EE) takes 2 of the energy */
+void bolts_7906(void)
+{
+    if (code_7906 != 0x4E71)
+        return;
+    int alive = 0;
+
+    for (int i = 12; i < 42; i++) {
+        int16_t *r = &records_7544[i * 5];
+
+        if (r[2] < 0)
+            continue;
+        alive++;
+
+        int16_t step = r[2];
+        int16_t x = (int16_t)(r[0] + r[3]);
+        int16_t y = (int16_t)(r[1] + r[4]);
+
+        r[0] = x;
+        r[1] = y;
+
+        int16_t sx = (int16_t)(x - scroll_x);
+        int16_t sy = (int16_t)(y - scroll_y);
+        int burst = sx <= -16 || sy <= -16 || sx >= 320 || sy >= 192;
+
+        if (!burst) {
+            glyph_draw(sx, sy, (uint16_t)(step + 0x215));
+            if (frame_phase == 0) {
+                r[2] = (int16_t)((r[2] + 1) & 3);
+                r[4]++;
+            }
+            burst = ptr_0b86[0x2000 + (((int16_t)(x + 5)) >> 5) + ((((int16_t)(y - 2)) & 0xFFF0) << 3)] == 1;
+            if (!burst) {
+                aimed_bolt_hits_player((uint32_t *)&r[2], (int16_t)(sx + 2), (int16_t)(sy + 2));
+                continue;
+            }
+        }
+        r[2] = -1;
+        start_debris_moving((int16_t)(sx - 2), (int16_t)(sy - 2), r[3], r[4]);
+    }
+    if (alive == 0)
+        code_7906 = 0x4E75;
 }
 
 /* orig $0057E0: a blank slot picture (image 119, 384 bytes: 24 rows, four planes of 96 bytes... as four longs a row) is copied to `to` */
@@ -5716,6 +5854,23 @@ static int16_t move_72e8(struct Creature *creature)
     return picture;
 }
 
+/* orig $0074F0 (the movement routine of the spitting faces, the table at $74E8: the pictures 514, 515, 516, 515 by its step): the picture is taken from the step first; while the step is not 0 (and frame_toggle is set) it goes on, at 3 the
+ * face spits two bolts ($76FC: records at $7544, not ported) and at 4 it is 0 again */
+static int16_t move_74f0(struct Creature *creature)
+{
+    static const int16_t pictures[4] = { 0x202, 0x203, 0x204, 0x203 };
+    int16_t picture = pictures[creature->state & 3];
+
+    if (frame_toggle != 0 && creature->state != 0) {
+        creature->state++;
+        if (creature->state == 3)
+            face_spits_bolts(creature->x, creature->y);
+        else if (creature->state > 3)
+            creature->state = 0;
+    }
+    return picture;
+}
+
 /* orig $007A36 (the movement routine of a creature that stands where it is: the sprites 523 to 525, the table at $7A6E, 3 more when the type's direction is 0): the step of its animation goes on while it is not 0, and
  * from 0 when the type's speed is not 0 and its timer is 1 (the step of $7AB0 is about to shoot) */
 static int16_t move_7a36(const struct CreatureType *type, struct Creature *creature)
@@ -5746,6 +5901,8 @@ static int call_move(const struct CreatureType *type, struct Creature *creature,
     }
     if (type->move_routine == 0x72E8)
         return move_72e8(creature);
+    if (type->move_routine == 0x74F0)
+        return move_74f0(creature);
     if (type->move_routine == 0x7A36)
         return move_7a36(type, creature);
     /* goes on at the routine the record names ($7BB2, $7A0E, ...): none of those ran */
@@ -5853,7 +6010,7 @@ static void call_step(const struct CreatureType *type, struct Creature *creature
 {
     if (type->step_routine == 0x717E)
         step_717e(type, creature);
-    else if (type->step_routine == 0x74A6)
+    else if (type->step_routine == 0x74A6 || type->step_routine == 0x7520)   /* $7520 is the same code as $74A6 */
         step_74a6(type, creature);
     else if (type->step_routine == 0x7AB0)
         step_7ab0(type, creature);
@@ -12978,8 +13135,8 @@ void draw_start_frame(void)
     flag_20e = -1;
     update_creatures();
     game_step_73d2();
-    game_nothing();
-    game_nothing();
+    bolts_77e6();
+    bolts_7906();
     draw_effects();
     update_falling_thing();
     draw_marks_316();
