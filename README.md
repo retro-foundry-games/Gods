@@ -5,6 +5,18 @@ framework's [recomp-first workflow](../../docs/recomp/porting_game.md): obtain a
 executable baseline by static recompilation, qualify it against original
 execution, then replace translated routines with meaning-backed source.
 
+## Builds
+
+- Amiga: `make -C projects/gods/native` (`build/intro` and `build/menu`, `make adf` for a disk).
+- Desktop SDL port: `make -C projects/gods/native sdl` builds `build/sdl/gods-sdl` (`--disks DIR`, the folder with `gods-disk1.adf` and `gods-disk2.adf`, default the
+  working folder; `--help`) and `gods-sdl-dev` (the lockstep with the original and the tests). The port keeps its own `hiscores.bin` in the working folder.
+- Browser (WebAssembly): `make -f projects/gods/native/src/sdl/Makefile.web` or `nix build projects/gods/native#web` makes `gods.html`, `gods.js` and `gods.wasm`.
+  `python3 projects/gods/native/scripts/serve_web.py [DIR [PORT]]` serves them (default `build/web`, port 8080) with the headers the page needs: the game runs on a thread
+  (a web worker), which wants cross-origin isolation, so a static host has to send `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`.
+  The page asks for the two ADF files (they stay in the tab); the high scores and level codes are kept in the browser (IndexedDB). Arrows and Space; Esc quits a game to the menu.
+  There is no linker script in wasm: the program's variables are macros for the memory at their addresses (`src/sdl/gen_guest.py`, `guest_vars_web.h`) and the program is linked above
+  that memory (`--global-base`, no stack in front of the data).
+
 ## Status
 
 Scaffold only. No media has been identified, no recording made and no claim of
