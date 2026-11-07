@@ -13273,7 +13273,6 @@ void level_tables_quickload(void)
     file_words((void *)GUEST(0x206), 3);   /* the bouncing ball's speeds and jump */
     file_words((void *)GUEST(0xE6C), 50);   /* its burst's pieces */
     file_words((void *)GUEST(0xA6E), 21);   /* and its pillars of fire */
-    file_words((void *)GUEST(0xFD0), 50);   /* the pods */
     for (int i = 0; i < 10; i++) {   /* the spores: the four words and the count of each */
         file_words(&spores()[i].x, 4);
         file_words(&spores()[i].count, 1);
