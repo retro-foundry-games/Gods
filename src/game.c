@@ -7,6 +7,8 @@ static void update_falling_slots(void);
 static void update_archers(void);
 static void update_thrown(void);
 static void archer_thing(struct Slot8 *record, int16_t x, int16_t y, int16_t glyph);
+static int bat_spawn_daa4(int16_t x, int16_t y);
+static void bats_db04(void);
 static void aimed_shot(int16_t x, int16_t y, int16_t speed, int16_t kind);
 static void update_crumbles(void);
 
@@ -505,7 +507,7 @@ static void game_frame_tail(void)
     scroll_y = scroll_y_a;
     step_16aee();
     if (flag_23a == 0) {
-        do_nothing_b();
+        bats_db04();
         step_190f2();
         update_thrown();
         update_archers();
@@ -4778,7 +4780,12 @@ static void record_update(struct Slot8 *record, uint8_t *flag, int16_t counter)
                 draw_thing_flyer(x, y, glyph);
             else if (glyph == 285)
                 archer_thing(record, x, y, glyph);
-            /* any other glyph: the original goes on at $4B14 ($D664 for 266, $DAA4), which did not run */
+            else if (glyph == 266)
+                host_missing_routine(0xD664);   /* ($4B1C: did not run) */
+            else if (bat_spawn_daa4(x, y))
+                record->w[2] = 0xFFFF, record->w[3] = 0;   /* ($4B7C: the thing is taken from the map and a bat is made) */
+            else
+                sprite_draw((int16_t)(x - scroll_x), (int16_t)(y - scroll_y), (uint16_t)glyph);   /* ($4B8A: with no bat free) */
         } else if (kind > 4) {
             draw_kind5(x, y, glyph);
         } else {
@@ -5700,6 +5707,212 @@ static int archer_throws(const int16_t *a)
         code_e142 = 0x4E71;
     }
     return 1;
+}
+
+/* ======== the bats of level 3 and on (orig $00DAA4 to $00DDD6): ten records of 14 bytes at $10B0, started by a thing of kind 4 with a glyph other than 266, 285 and 300 ======== */
+
+/* a bat: its place, hit points (negative: the record is free), its state (-1 hanging and looking at the player, 0 to 3 flying, $2345 diving, $1234 dying), the picture it is turned to and its speeds */
+struct Bat {
+    int16_t x;        /* +0 */
+    int16_t y;        /* +2 */
+    int16_t energy;   /* +4 */
+    int16_t state;    /* +6 */
+    int16_t frame;    /* +8 */
+    int16_t speed_x;  /* +10 */
+    int16_t speed_y;  /* +12 */
+};
+
+static struct Bat *bats(void)
+{
+    return (struct Bat *)GUEST(0x10B0);
+}
+
+/* orig $00DAA4 (d0 the thing's x on the screen, d1 its y in the level): the first free bat gets the place, 25 hit points and the state -1 and the routine at $DB04 is switched on; with none
+ * free the thing is drawn as a sprite (the original's $4B8A takes the scroll from the x again) */
+static int bat_spawn_daa4(int16_t x, int16_t y)
+{
+    struct Bat *bat = bats();
+
+    for (int i = 0; i < 10; i++, bat++) {
+        if (bat->energy >= 0)
+            continue;
+        bat->energy = 0x19;
+        bat->x = (int16_t)(x + scroll_x);
+        bat->y = y;
+        bat->frame = 0;
+        bat->speed_x = 0;
+        bat->speed_y = 0;
+        bat->state = -1;
+        code_db04 = 0x4E71;
+        return 1;
+    }
+    return 0;
+}
+
+/* orig $00DD3A: the bat is a box of 24 by 24 for the player's shots; when its hit points are gone it is paid (5 points hanging, 25 flying), starts to die (state $1234) and keeps its place */
+static void bat_hit_dd3a(struct Bat *bat)
+{
+    word_39c = 0x18;
+    word_39e = 0x18;
+
+    int16_t energy = check_hit_and_walls(bat->x, bat->y, bat->energy);
+
+    if (energy >= 0) {
+        bat->energy = energy;
+        return;
+    }
+    bat->energy = 0;
+    bat->frame = 0;
+    score_add_packed(bat->state < 0 ? 0x05 : 0x25);
+    bat->state = 0x1234;
+}
+
+/* orig $00DBB0: a flying bat's speeds go a step toward the player (the sideways one to 3 either way, the one up and down to 2) and it is turned to the side it goes (picture 4 from 2 to the right,
+ * 0 from 2 to the left) */
+static void bat_steer_dbb0(struct Bat *bat)
+{
+    int16_t vx = bat->speed_x;
+    int16_t vy = bat->speed_y;
+
+    if (bat->x < player_x)
+        vx++;
+    else if (bat->x > player_x)
+        vx--;
+    if (bat->y < player_y)
+        vy++;
+    else if (bat->y > player_y)
+        vy--;
+    if (vx >= 2)
+        bat->frame = 4;
+    if (vx <= -2)
+        bat->frame = 0;
+    if (vx > 3)
+        vx = 3;
+    else if (vx < -3)
+        vx = -3;
+    if (vy > 2)
+        vy = 2;
+    else if (vy < -2)
+        vy = -2;
+    bat->speed_x = vx;
+    bat->speed_y = vy;
+}
+
+/* orig $00DB36: one bat per frame */
+static void bat_frame_db36(struct Bat *bat)
+{
+    if (bat->state == 0x1234) {
+        goto dying;
+    }
+    bat_hit_dd3a(bat);
+    if (bat->state == 0x1234) {
+dying:
+        /* $DD8E: it drifts on by its speeds and is drawn as the pieces (91 + the count, 8 up and left) until the 17th */
+        bat->x = (int16_t)(bat->x + bat->speed_x);
+        bat->y = (int16_t)(bat->y + bat->speed_y);
+        sprite_draw((int16_t)(bat->x - scroll_x - 8), (int16_t)(bat->y - scroll_y - 8), (uint16_t)(0x5B + bat->frame));
+        bat->frame++;
+        if (bat->frame >= 0x11)
+            bat->energy = -1;
+        return;
+    }
+    if (bat->state > 0x1234) {
+        /* $DC1E: the dive: it falls by its speed (which grows every other frame), turned to the player, and is flying again when the speed is above 8 */
+        if (timer_306 == 0)
+            bat->y = (int16_t)(bat->y + bat->speed_y);
+
+        int16_t x = (int16_t)(bat->x - scroll_x);
+        int16_t y = (int16_t)(bat->y - scroll_y);
+        uint16_t image = 0x1F7;
+
+        bat->frame = 0;
+        if (x <= (int16_t)(player_x - scroll_x)) {
+            image += 4;
+            bat->frame = 4;
+        }
+        sprite_draw(x, y, image);
+        if (frame_toggle != 0 && timer_306 == 0) {
+            bat->speed_y++;
+            if (bat->speed_y > 8)
+                bat->state = 0;
+        }
+        return;
+    }
+    if (bat->state < 0) {
+        /* $DC80: hanging: turned to the player (the picture 8 to 10 by where he is), it drops on him by chance (the state $2345) when it is on the screen; off it, out of a margin, it goes back
+         * into the map as the thing 108 */
+        int16_t x = (int16_t)(bat->x - scroll_x);
+        int16_t y = (int16_t)(bat->y - scroll_y);
+        int16_t left = (int16_t)(player_x - scroll_x);
+        int16_t right = (int16_t)(left + 0x40);
+        uint16_t image = 0x1F7;
+
+        left = (int16_t)(left - 0x10);
+        if (x < left)
+            image += 0xA;
+        else if (x > right)
+            image += 8;
+        else
+            image += 9;
+        sprite_draw(x, y, image);
+        x = (int16_t)(bat->x - scroll_x);
+        y = (int16_t)(bat->y - scroll_y);
+        if (y >= 0 && x >= 0 && x <= 0x120 && y < 0x78) {
+            if (random_word() <= 0x9C4 && timer_306 == 0)
+                bat->state = 0x2345;
+            return;
+        }
+        if (x < 0x158 && x > -0x30 && y > -0x30 && y < 0xD8)
+            return;
+
+        struct Slot8 *record = find_free_record_19b14();
+
+        if (record != 0) {
+            record->w[0] = (int16_t)(x + scroll_x);
+            record->w[1] = (int16_t)(y + scroll_y);
+            record->w[2] = 0x6C - 11;
+            record->w[3] = 0;   /* ($8058 sets 1; the clr.w -(a5) after it clears it) */
+            flags_39fde[record - records_19b14] = 0xff;
+        }
+        bat->energy = -1;
+        return;
+    }
+    /* $DB52: flying */
+    if (timer_306 == 0) {
+        bat->y = (int16_t)(bat->y + bat->speed_y);
+        bat->x = (int16_t)(bat->x + bat->speed_x);
+    }
+
+    int16_t x = (int16_t)(bat->x - scroll_x);
+    int16_t y = (int16_t)(bat->y - scroll_y);
+
+    if (y < 0)
+        return;
+    sprite_draw(x, y, (uint16_t)(0x1F7 + bat->frame + bat->state));
+    if (timer_306 == 0)
+        bat_steer_dbb0(bat);
+    bat->state = (int16_t)((bat->state + 1) & 3);
+}
+
+/* orig $00DB04 (a bare return unless a bat was started): the bats that are in use go on one by one; with none the routine is switched off again */
+static void bats_db04(void)
+{
+    if (code_db04 != 0x4E71)
+        return;
+
+    struct Bat *bat = bats();
+    int16_t used = 0;
+
+    *(uint16_t *)GUEST(0x121A) = 0;
+    for (int i = 0; i < 10; i++, bat++) {
+        if (bat->energy < 0)
+            continue;
+        used++;
+        *(uint16_t *)GUEST(0x121A) = (uint16_t)used;
+        bat_frame_db36(bat);
+    }
+    if (used == 0)
+        code_db04 = 0x4E75;
 }
 
 /* orig $00DE56: the ten archers (slots_11b4: x, y, state, hit points, timer).  The state counts -4 (waiting for the screen), -3 to -1 (rising), 0 to 4 (standing: 0 and 1 shooting to the
@@ -12487,6 +12700,7 @@ void level_tables_quickload(void)
     }
     for (int i = 0; i < 20; i++)   /* the ten shards (struct Shard: four words) that the stone faces spit: the table is typed as longs, which the loader made native as longs: the words of each are the other way round */
         records_737e[i] = (records_737e[i] >> 16) | (records_737e[i] << 16);
+    file_words((void *)GUEST(0x10B0), 70);   /* the bats */
     file_words((void *)GUEST(0x66E), 27);   /* the magic axe's nine shots' steps ($66E) */
     boss_quickload();
 }
