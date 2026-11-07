@@ -12350,7 +12350,9 @@ static void show_text_screen(const char *text)
     screens_flip();
     if (level_next_wait)
         host_disk_wait();   /* (the lockstep: the next level's loading screen is faded in when the original has done it) */
+    host_fade_lag(2);   /* (the colours as they are, the copper list's a frame late) */
     fade_in((const uint16_t *)(background + 2), 0);
+    host_fade_lag(0);
 }
 
 /* orig $012D44: the text "LOADING LEVEL n" (the level's number is put in the 15th character) is shown (show_text_screen) */
