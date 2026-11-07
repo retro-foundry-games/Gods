@@ -16057,11 +16057,11 @@ static void game_won_2f12(void)
     fade_out(1, 0xFFFF);
     load_unpacked("payoff.pi1", picture_buffer);
 
-    const uint8_t *file = picture_buffer + 2;
+    const uint16_t *file = (const uint16_t *)(picture_buffer + 2);
     uint16_t *palette = (uint16_t *)ptr_0cee;
 
-    for (int i = 0; i < 16; i++)   /* (the file's words are big endian) */
-        palette[i] = (uint16_t)((file[2 * i] << 8) | file[2 * i + 1]);
+    for (int i = 0; i < 16; i++)   /* (the unpacked file's words are the port's own) */
+        palette[i] = file[i];
 
     const uint16_t *picture = (const uint16_t *)(picture_buffer + 0x22);
     uint8_t *to = screen_buffer;
