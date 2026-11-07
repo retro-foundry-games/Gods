@@ -1707,7 +1707,20 @@ static int level_end_wait_rule(const struct LevelEnd *record)
 {
     /* the original waits a frame for the voices of the game's sounds on most of the end screens (the 2500 of the first level's, the "WORLD TWO" of the second's: seen in recordings); on the first
      * of the second level's ("WORLD ONE", the bonus 500) it does not: what sound was playing then is not modelled (the port's wait for the sound system takes the same blanks in both) */
-    return !(record->spots == 6 && record->effects == 1408);   /* (the record is told by its numbers: the pointer is the guest address of the list) */
+    if (record->spots == 6 && record->effects == 1408)
+        return 0;
+    /* the "WORLD ONE" of the third level ($1450C: 100 spots, the effects 1921) has none either: the second's and the third's are the first of a list whose sound is the level's ambient one */
+    if (param_index >= 2) {
+        static const char world_one[20] = "     WORLD  ONE     ";
+        int same = 1;
+
+        for (int i = 0; i < 20; i++)
+            if (record->text[i] != (uint8_t)world_one[i])
+                same = 0;
+        if (same)
+            return 0;
+    }
+    return 1;
 }
 
 static void level_end_quiet(void)
