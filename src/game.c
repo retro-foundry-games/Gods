@@ -5254,7 +5254,7 @@ static void spawn_shots_axe(struct Shot *slot, int16_t id, struct Object *object
     }
 }
 
-/* orig $0157C8 (fire kind 11, to the right) and $01581A (kind 12, to the left: 16 more to the right and the sideways speeds negative): sound 2 (priority 4); up to three hunters start at (x, 12 above y) with the negative
+/* orig $0157C8 (fire kind 11, to the right) and $01581A (kind 10, to the left: 16 more to the right and the sideways speeds negative): sound 2 (priority 4); up to three hunters start at (x, 12 above y) with the negative
  * numbers -id, -id - 1 and -id - 2 (they are launching: first they fly out with a speed of the high byte across and the low byte down, 11 across and 0, 7 and -7 down, and slow by one a frame, then they wait and
  * then hunt) */
 static void spawn_shots_hunter(struct Shot *slot, int16_t id, struct Object *object, int16_t x, int16_t y, int left)
@@ -5301,8 +5301,7 @@ static void spawn_shots(struct Shot *slot, int16_t id, struct ShotList *list, in
         spawn_shot_ball(slot, id, x, y, object->fire_kind == 9);
         break;
     case 11:
-    case 12:
-        spawn_shots_hunter(slot, id, object, x, y, object->fire_kind == 12);
+        spawn_shots_hunter(slot, id, object, x, y, 0);
         break;
     case 15:
         spawn_shots_axe(slot, id, object, x, y, 0);
@@ -10622,6 +10621,9 @@ static void spawn_player_shots_left(void)
             break;
         case 6:
             spawn_shots_spear(slots[i], ids[i], object, x, y, 0);
+            break;
+        case 10:
+            spawn_shots_hunter(slots[i], ids[i], object, x, y, 1);
             break;
         case 14:
             spawn_shots_axe(slots[i], ids[i], object, x, y, 1);
