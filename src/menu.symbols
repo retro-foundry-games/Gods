@@ -618,6 +618,7 @@ code_77e6         0x000077e6  uint16_t %s
 code_7906         0x00007906  uint16_t %s
 code_c374         0x0000c374  uint16_t %s
 code_ba34         0x0000ba34  uint16_t %s
+code_b958         0x0000b958  uint16_t %s     the first word of the level 4 guardian's throne routine (a nop: it rises)
 code_c58e         0x0000c58e  uint16_t %s
 code_cb0e         0x0000cb0e  uint16_t %s
 code_c406         0x0000c406  uint16_t %s

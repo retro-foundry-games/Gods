@@ -624,6 +624,7 @@ _code_77e6 = 0x77e6;
 _code_7906 = 0x7906;
 _code_c374 = 0xc374;
 _code_ba34 = 0xba34;
+_code_b958 = 0xb958;
 _code_c58e = 0xc58e;
 _code_cb0e = 0xcb0e;
 _code_c406 = 0xc406;

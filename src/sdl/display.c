@@ -452,6 +452,17 @@ void blit_masked(const uint8_t *source, uint8_t *dest, int16_t modulo_ab, uint16
     }
 }
 
+/* orig $01F43C (the entry 0 of the table at $0D9A: word_dde 0): the same without the mask, the image's four planes are copied (D = B) */
+static void blit_plain(const uint8_t *source, uint8_t *dest, int16_t modulo_ab, uint16_t words, int16_t modulo_cd, uint32_t plane_size, uint16_t rows)
+{
+    unsigned source_row = words * 2u + (unsigned)(int)modulo_ab, dest_row = words * 2u + (unsigned)(int)modulo_cd;
+
+    for (unsigned plane = 0; plane < 4; plane++)
+        for (unsigned row = 0; row < rows; row++)
+            for (unsigned word = 0; word < words; word++)
+                *(uint16_t *)(dest + plane * 8448u + row * dest_row + 2 * word) = *(const uint16_t *)(source + plane * plane_size + row * source_row + 2 * word);
+}
+
 /* the clipped draw of an image whose x is not on a word's line (word_d86 not 0: flags_0ddd bit 1): the original shifts the image into a work area ($1F1E6) and blits it with the shift; the host draws it pixel by pixel:
  * the pixels x to x + width (the clip's x0 to x1 only), rows `height` + 1 from the row word_dd4 of the source, a pixel where the mask (the four planes or'ed) is set takes the image's bits on the screen's four planes */
 static void blit_shifted(int16_t x, int16_t y, int16_t width, int16_t height, const uint8_t *source, const int16_t *clip)
@@ -564,8 +575,14 @@ void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uin
     x = (int16_t)(x + (uint16_t)((uint16_t)y * 44));
     if (word_d86 != 0)
         return;   /* goes on at $01F1BE */
-    if (word_dde != 1 || (flags_0ddd & 4))
-        return;   /* goes on at the routine of the table at $0D9A that word_dde and bit 2 of flags_0ddd name */
+    if (flags_0ddd & 4)
+        return;   /* goes on at the routine of the table at $0D9A that word_dde and bit 2 of flags_0ddd name (the entries of bit 2 are not written) */
+    if (word_dde == 0) {
+        blit_plain(source, screen_buffer + x, (int16_t)(modulo_ab >> 2), (uint16_t)(words + 1), modulo_cd, long_dd8, (uint16_t)(height + 1));
+        return;
+    }
+    if (word_dde != 1)
+        return;
     blit_masked(source, screen_buffer + x, (int16_t)(modulo_ab >> 2), (uint16_t)(words + 1), modulo_cd, long_dd8, (uint16_t)(height + 1));
 }
 

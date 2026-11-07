@@ -11,7 +11,10 @@ extern void (*host_draw_hook)(int kind, int16_t x, int16_t y, uint16_t index);  
 /* the part both the one and the two word wide draw have: where on the screen, which rows of the image, and the shift.
  * Returns the number of rows (0: nothing to draw, the image is off the top or the bottom); `skip_bytes` is how many
  * bytes of image data a row takes */
-static int rows_to_draw(int16_t y, const struct Image *img, int skip_bytes, const uint8_t **data, uint8_t **dst)
+/* the last row a sprite may reach (the constant in the original's sprite routine at $17438: the level 4 guardian's head sets it to 89 for a call) */
+uint16_t sprite_last_row = SCREEN_LAST_ROW;
+
+static int rows_to_draw(int16_t y, const struct Image *img, int skip_bytes, const uint8_t **data, uint8_t **dst, int16_t last_row)
 {
     int16_t height = img->height;
 
@@ -24,7 +27,7 @@ static int rows_to_draw(int16_t y, const struct Image *img, int skip_bytes, cons
         *data += above * skip_bytes;
         *dst += above * SCREEN_ROW;
     } else {       /* the bottom rows may be */
-        int16_t over = y - (SCREEN_LAST_ROW - height);
+        int16_t over = y - (last_row - height);
 
         if (over > 0) {
             height -= over;
@@ -215,7 +218,7 @@ void glyph_draw(int16_t x, int16_t y, uint16_t index)
     dst = screen_buffer + y * SCREEN_ROW;
     if (x >= 0)
         dst += (x & -16) >> 3;
-    rows = rows_to_draw(y, img, 2, &data, &dst);
+    rows = rows_to_draw(y, img, 2, &data, &dst, SCREEN_LAST_ROW);
     if (rows == 0)
         return;
     plane = glyph_plane_size != 0 ? glyph_plane_size : (img->height + 1) * 2;
@@ -271,7 +274,7 @@ void sprite_draw(int16_t x, int16_t y, uint16_t index)
     dst = screen_buffer + y * SCREEN_ROW;
     if (x >= 0)
         dst += (x & -16) >> 3;
-    rows = rows_to_draw(y, img, 4, &data, &dst);
+    rows = rows_to_draw(y, img, 4, &data, &dst, (int16_t)sprite_last_row);
     if (rows == 0)
         return;
     plane = (img->height + 1) * 4;

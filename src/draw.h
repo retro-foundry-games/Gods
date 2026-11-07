@@ -13,6 +13,7 @@
 void blit_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows);
 void blit_image_wide(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows);
 
+extern uint16_t sprite_last_row;                                              /* orig $017438 */
 void glyph_draw(int16_t x, int16_t y, uint16_t index);                       /* orig $017686 */
 void sprite_draw(int16_t x, int16_t y, uint16_t index);                      /* orig $0173C4 */
 void text_draw_at(const char *text, int16_t x, int16_t y);                   /* orig $003BF8 */

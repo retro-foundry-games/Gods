@@ -648,7 +648,7 @@ void game_frame(void)
     draw_records_19334();
     do_nothing_b();   /* $194D0 */
     update_crumbles();   /* $17CC0 */
-    do_nothing_b();   /* $BA34 */
+    boss4_death_ba34();   /* $BA34: a bare return unless the level 4 guardian is dead */
     if (flag_23a)
         callback_4e4();
     redraw_record_images();
@@ -15464,6 +15464,585 @@ void boss3_fall_bc1c(void)
     boss3_draw_bf14((int16_t)boss->x, y, picture);
 }
 
+/* ======== the level 4 guardian (orig $00B198 to $00BBF8, the last of the table at $B014): eight pieces (the records at $10B0: x, y, the frames to wait, the place in the path and where it ends) follow a
+ * path of the level (the last entry of entry_list: a step of two signed nibbles each) two steps a frame, the second is the head; the head is hit (energy $50E) and when it is gone the pieces burst, the
+ * guardian's own energy ($50A, a long) goes down by 1000 and they start again; it breathes a ball of fire at the player; the throne rises from below the screen when the fight begins (callback_4e4) ======== */
+
+#define B4_WORD(address) (*(int16_t *)GUEST(address))
+#define BOSS4_Y B4_WORD(0x65A)            /* the throne's y (the guardian sits on it): $180 and it rises to $B0 */
+#define BOSS4_DONE B4_WORD(0x65C)         /* the count of the pieces that are at the end of their path (+1) or burst (-1) */
+#define BOSS4_HEAD_ENERGY B4_WORD(0x50E)  /* the head's energy: 750, then 1000 (negative: the pieces burst) */
+#define BOSS4_FIRE_TIMER B4_WORD(0x4FA)   /* the frames until the fire: it breathes while it is negative */
+#define BOSS4_THRONE_Y B4_WORD(0x4EC)     /* the throne's y of the last frame of its rise */
+#define BOSS4_LAST_X B4_WORD(0x5AE)       /* the place of the piece that was run last */
+#define BOSS4_LAST_Y B4_WORD(0x5B0)
+#define BOSS4_FIRE_X B4_WORD(0x518)       /* the ball of fire: x, y, its picture (-1: none) and the frames of its life (-1: it has hit) */
+#define BOSS4_FIRE_Y B4_WORD(0x51A)
+#define BOSS4_FIRE_PICTURE B4_WORD(0x51C)
+#define BOSS4_FIRE_LIFE B4_WORD(0x51E)
+#define BOSS4_HEAD_TABLE_HIGH B4_WORD(0x664)   /* where the head's table is (the long at $664: an address of the original's $B574 on) */
+#define BOSS4_HEAD_TABLE_LOW B4_WORD(0x666)
+#define BOSS4_HEAD_TABLE_BASE 0xB574u
+
+/* a piece of the guardian's body (14 bytes at $10B0, eight of them): the place, the frames to wait (they count down to -1; then it moves), the place in the path and the end of the path (longs, kept as two words each); a
+ * piece that bursts has the sideways speed there instead of the wait, the speed down where the path is (the word after it the picture of the burst) and -1 for the end */
+struct Boss4Piece {
+    int16_t x;
+    int16_t y;
+    int16_t wait;
+    uint16_t path_high;
+    uint16_t path_low;
+    uint16_t end_high;
+    uint16_t end_low;
+};
+
+#define BOSS4_PIECES ((struct Boss4Piece *)GUEST(0x10B0))
+
+/* the head's pictures: from the byte of the table below (the low three bits the way the head looks, the next bits for the mouth open) */
+static const uint8_t boss4_head_table[256] = {
+    0x06, 0x0E, 0x16, 0x0E, 0x06, 0x06, 0x0E, 0x16, 0x0E, 0x06, 0x06, 0x07, 0x07, 0x07, 0x00, 0x00,
+    0x08, 0x10, 0x08, 0x00, 0x01, 0x01, 0x01, 0x01, 0x02, 0x0A, 0x12, 0x0A, 0x02, 0x02, 0xA2, 0x12,
+    0xA2, 0x02, 0x02, 0x02, 0x02, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x08, 0x10, 0x08, 0x00,
+    0x00, 0x08, 0x10, 0x08, 0x00, 0x00, 0x07, 0x07, 0x07, 0x07, 0x06, 0x06, 0x0E, 0x16, 0x0E, 0x06,
+    0x06, 0x0E, 0x16, 0x0E, 0x06, 0x06, 0x06, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
+    0x04, 0x04, 0x0C, 0x14, 0x0C, 0x04, 0x0C, 0x14, 0x0C, 0x04, 0x03, 0x03, 0x03, 0x03, 0x02, 0x02,
+    0x02, 0x02, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x0A, 0x12, 0x0A, 0x02, 0x03, 0x03, 0x03, 0x04, 0x0C,
+    0x14, 0x0C, 0x04, 0x04, 0x05, 0x05, 0x05, 0x06, 0x06, 0x0E, 0x16, 0x0E, 0x16, 0x0E, 0x06, 0x06,
+    0x06, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x04, 0x04, 0x0C, 0x14, 0x0C, 0x04, 0x04,
+    0x03, 0x03, 0x03, 0x02, 0x0A, 0x12, 0x0A, 0x02, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x06, 0x05, 0x05, 0x05, 0x04, 0x04, 0x03,
+    0x03, 0x02, 0x02, 0x02, 0x02, 0x02, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x02, 0x02, 0x02, 0x02,
+    0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+    0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+};
+
+/* the places (x, y, and the other pair, which the original works out and does not draw) of the head's picture by the way it looks (orig $B4E8) */
+static const int16_t boss4_head_offsets[32] = {
+    11, -3, 32, 0, 3, 7, 19, 19, -13, 10, 0, 32, -26, 1, -20, 18,
+    -27, -13, -32, 0, -17, -25, -18, -20, -4, -30, 0, -32, 9, -18, 20, -18,
+};
+
+/* orig $00B430: the piece goes one step along its path (the high nibble of the byte is the step in x, the low one the step in y, both signed); 0 when it has come to the end of the path */
+static int boss4_step_b430(struct Boss4Piece *piece)
+{
+    uint32_t path = ((uint32_t)piece->path_high << 16) | piece->path_low;
+    uint32_t end = ((uint32_t)piece->end_high << 16) | piece->end_low;
+
+    if (path == end)
+        return 0;
+
+    uint8_t step = *(const uint8_t *)(uintptr_t)path;
+
+    path++;
+    piece->path_high = (uint16_t)(path >> 16);
+    piece->path_low = (uint16_t)path;
+    piece->y = (int16_t)(piece->y + (((int8_t)(uint8_t)(step << 4)) >> 4));
+    piece->x = (int16_t)(piece->x + (((int8_t)(step & 0xF0)) >> 4));
+    return 1;
+}
+
+/* orig $00B6CE and $00B6B4, $00B69A: the pieces are put at the start of the last entry of entry_list (its first two words after the marker are the place; the path begins 8 bytes on) and end where the entry ends;
+ * the first waits `wait` frames and each next two more */
+static void boss4_pieces_b69a(int16_t wait)
+{
+    int count = 0;
+
+    while ((int32_t)entry_list[count].address >= 0)
+        count++;
+
+    const struct Entry8 *entry = &entry_list[count - 1];
+    const uint16_t *place = (const uint16_t *)(uintptr_t)(entry->address + 2);
+    uint32_t path = entry->address + 2 + 8;
+    uint32_t end = entry->address + entry->size;
+    struct Boss4Piece *piece = BOSS4_PIECES;
+
+    for (int i = 0; i < 8; i++, piece++) {
+        piece->x = (int16_t)place[0];
+        piece->y = (int16_t)place[1];
+        piece->wait = wait;
+        piece->path_high = (uint16_t)(path >> 16);
+        piece->path_low = (uint16_t)path;
+        piece->end_high = (uint16_t)(end >> 16);
+        piece->end_low = (uint16_t)end;
+        wait = (int16_t)(wait + 2);
+    }
+}
+
+/* orig $00B674: unless the guardian is dead the pieces start again (they wait 70 frames and two more each), and the head's table from its start */
+static void boss4_restart_b674(void)
+{
+    if ((int16_t)boss_state()->energy_high < 0)
+        return;
+    B4_WORD(0x660) = 6;
+    B4_WORD(0x65E) = 6;
+    BOSS4_HEAD_TABLE_HIGH = 0;
+    BOSS4_HEAD_TABLE_LOW = (int16_t)BOSS4_HEAD_TABLE_BASE;
+    boss4_pieces_b69a(0x46);
+    B4_WORD(0x504) = 3;
+}
+
+/* orig $00B528: the next byte of the head's table: d6 (its low three bits) and d5 (all of it) of the original.  A negative word at $662 would make the original work the byte out and write it (not run) */
+static uint8_t boss4_head_byte_b528(void)
+{
+    if (B4_WORD(0x662) < 0)
+        host_missing_routine(0xB540);
+
+    uint32_t at = ((uint32_t)(uint16_t)BOSS4_HEAD_TABLE_HIGH << 16) | (uint16_t)BOSS4_HEAD_TABLE_LOW;
+    uint8_t byte = boss4_head_table[at - BOSS4_HEAD_TABLE_BASE];
+
+    at++;
+    BOSS4_HEAD_TABLE_HIGH = (int16_t)(at >> 16);
+    BOSS4_HEAD_TABLE_LOW = (int16_t)at;
+    return byte;
+}
+
+/* orig $00B466: the head is drawn (the sprite 479 + the picture, from the place of the piece before it ($5AE) and the offsets of the way it looks).  The sprite's last row is 89 while it is left of 129 on the screen
+ * (the original changes the constant in the sprite routine for the call) */
+static void boss4_head_b466(void)
+{
+    uint8_t byte = boss4_head_byte_b528();
+    int16_t look = byte & 7;
+    int16_t picture = look;
+
+    if (byte & 0xF8) {
+        picture += 0x11;
+        if (byte & 0x10)
+            picture++;
+    }
+
+    const int16_t *offset = &boss4_head_offsets[look * 4];
+    int16_t x = (int16_t)(BOSS4_LAST_X + offset[0] - scroll_x);
+    int16_t y = (int16_t)(BOSS4_LAST_Y + offset[1] - scroll_y);
+    uint16_t saved = sprite_last_row;
+
+    if (x < 0x81)
+        sprite_last_row = 0x59;
+    sprite_draw(x, y, (uint16_t)(picture + 0x1DF));
+    sprite_last_row = saved;
+}
+
+/* orig $00B3A2, $00B370: a piece that bursts (it begins with a speed of -8 to 7 each way, by chance) goes by its speeds and is drawn as the sprites 91 to 107 in turn (centred on the piece); when it has been
+ * through them it is counted as gone */
+static void boss4_burst_b3a2(struct Boss4Piece *piece)
+{
+    int16_t *picture = (int16_t *)&piece->path_low;
+
+    if (*picture < 0) {
+        BOSS4_DONE--;
+        return;
+    }
+    piece->x = (int16_t)(piece->x + piece->wait);
+    piece->y = (int16_t)(piece->y + (int16_t)piece->path_high);
+    sprite_draw((int16_t)(piece->x - 8 - scroll_x), (int16_t)(piece->y - 8 - scroll_y), (uint16_t)(*picture + 0x5B));
+    (*picture)++;
+    if (*picture >= 0x11)
+        *picture = -1;
+}
+
+static void boss4_burst_start_b370(struct Boss4Piece *piece)
+{
+    piece->wait = (int16_t)((random_word() & 0xF) - 8);
+    piece->path_high = (uint16_t)((random_word() & 0xF) - 8);
+    piece->path_low = 0;
+    piece->end_high = 0xFFFF;
+    piece->end_low = 0xFFFF;
+    boss4_burst_b3a2(piece);
+}
+
+/* orig $00B352 (all the pieces have burst): 1000 off the guardian's energy; below 0 it is dead (orig $B32E: it is at (2976, the throne's y), it dies like the others, the fight is over and the wait for the
+ * sequence of its end begins: tick_count from 0), otherwise the head is whole again with 1000 and the pieces start again */
+static void boss4_bursts_done_b352(void)
+{
+    struct BossState *boss = boss_state();
+    int32_t energy = (int32_t)(((uint32_t)boss->energy_high << 16) | boss->energy_low) - 0x3E8;
+
+    boss->energy_high = (uint16_t)((uint32_t)energy >> 16);
+    boss->energy_low = (uint16_t)energy;
+    if (energy < 0) {
+        boss->x = 0xBA0;
+        boss->y = (uint16_t)BOSS4_Y;
+        boss_die();
+        flag_23a = 0;
+        code_ba34 = 0x4E71;
+        tick_count = 0;
+        return;
+    }
+    flags_3b0 &= (uint8_t)~0x10;
+    BOSS4_HEAD_ENERGY = 0x3E8;
+    boss4_restart_b674();
+}
+
+/* orig $00B23A: the eight pieces: each waits, then moves two steps (the head is drawn as well), is hit (a box of 24 by 24: the head's energy goes down, below 0 all burst), is drawn as the glyph 495 (not when
+ * it is left of 130 and below 89 on the screen), and bursts when the head has no energy; pieces that are at the end of their path are counted: with all eight the pieces start again.  The throne's two sprites last */
+static void boss4_pieces_b23a(void)
+{
+    struct Boss4Piece *piece = BOSS4_PIECES;
+
+    BOSS4_DONE = 0;
+    for (int remaining = 7; remaining >= 0; remaining--, piece++) {
+        if (piece->end_high == 0xFFFF && piece->end_low == 0xFFFF) {
+            boss4_burst_b3a2(piece);
+            continue;
+        }
+        if (piece->wait >= 0) {   /* $B404 */
+            if (flag_23a == 2)
+                BOSS4_DONE--;
+            else
+                piece->wait--;
+            continue;
+        }
+        if ((flags_3b0 & 0x10) != 0 || BOSS4_HEAD_ENERGY == 0) {
+            boss4_burst_start_b370(piece);
+            continue;
+        }
+        if (!boss4_step_b430(piece) || !boss4_step_b430(piece)) {   /* $B41C */
+            BOSS4_DONE++;
+            continue;
+        }
+        if (remaining == 6)
+            boss4_head_b466();
+        word_39c = 0x18;
+        word_39e = 0x18;
+
+        int16_t energy = BOSS4_HEAD_ENERGY;
+
+        if (energy < 0) {
+            boss4_burst_start_b370(piece);
+            continue;
+        }
+        energy = check_hit_and_walls(piece->x, piece->y, energy);
+        BOSS4_HEAD_ENERGY = energy;
+        if (energy < 0)
+            flags_3b0 |= 0x10;
+        BOSS4_LAST_X = piece->x;
+        BOSS4_LAST_Y = piece->y;
+
+        int16_t x = (int16_t)(piece->x - scroll_x);
+        int16_t y = (int16_t)(piece->y - scroll_y);
+
+        if (x > 0x81 || y < 0x59)
+            glyph_draw(x, y, 0x1EF);
+    }
+    if (BOSS4_DONE == -8) {
+        boss4_bursts_done_b352();
+        return;
+    }
+    if (BOSS4_DONE == 8) {
+        boss4_restart_b674();
+        return;
+    }
+    if (flag_23a == 2 || BOSS4_THRONE_Y > 0xB0)
+        return;
+    sprite_draw((int16_t)(0xBA0 - scroll_x), (int16_t)(BOSS4_Y + 3 - scroll_y), 0x1D1);
+    sprite_draw((int16_t)(0xBC0 - scroll_x), (int16_t)(BOSS4_Y + 8 - scroll_y), 0x1D2);
+}
+
+/* orig $00B85A: two bolts at the player's place of the screen (the player's place is set to (320, 97) of it for them, the bolts begin at (69, 111) and (98, 110), speed 6) */
+static void boss4_fire_bolts_b85a(void)
+{
+    int16_t saved_x = player_x;
+    int16_t saved_y = player_y;
+    int16_t kind = 0;   /* (d6 of the original: only its bit 0 counts; what the register has) */
+
+    player_y = (int16_t)(0x61 + scroll_y);
+    player_x = (int16_t)(0x140 + scroll_x);
+    aimed_shot((int16_t)(0x45 + scroll_x), (int16_t)(0x6F + scroll_y), 6, kind);
+    aimed_shot((int16_t)(0x62 + scroll_x), (int16_t)(0x6E + scroll_y), 6, kind);
+    player_y = saved_y;
+    player_x = saved_x;
+}
+
+/* orig $00B75C: the ball of fire goes 6 to the right and 1 down (to 73 below the throne) a frame through the pictures 472 to 476 round and round; with the picture counted to 7 it is gone (5 and 6 are its end);
+ * when it is left of 3004 a splash is drawn at the throne's end; it is hit like a shot (a box of 24 by 24, with the fight off for the call): when it is hit or reaches 272 on the screen it ends with
+ * the two bolts */
+static void boss4_fireball_b75c(void)
+{
+    int16_t picture = BOSS4_FIRE_PICTURE;
+
+    if (picture < 0)
+        return;
+
+    int16_t x = BOSS4_FIRE_X;
+    int16_t y = BOSS4_FIRE_Y;
+
+    BOSS4_FIRE_X = (int16_t)(BOSS4_FIRE_X + 6);
+    BOSS4_FIRE_PICTURE++;
+    if (BOSS4_FIRE_PICTURE == 5)
+        BOSS4_FIRE_PICTURE = 0;
+    if (BOSS4_FIRE_PICTURE == 7) {
+        BOSS4_FIRE_PICTURE = -1;
+        return;
+    }
+
+    int16_t limit = (int16_t)(BOSS4_Y + 0x49);
+
+    BOSS4_FIRE_Y++;
+    if (limit < BOSS4_FIRE_Y)
+        BOSS4_FIRE_Y = limit;
+    sprite_draw((int16_t)(x - scroll_x), (int16_t)(y - scroll_y), (uint16_t)(picture + 0x1D8));
+    if (x <= 0xBBC) {
+        int16_t splash_x = (int16_t)(0xBB0 - scroll_x);
+        int16_t splash_y = (int16_t)(BOSS4_Y + 0x38 - scroll_y);
+
+        sprite_draw(splash_x, splash_y, 0x1CE);
+        glyph_draw((int16_t)(splash_x + 0x20), splash_y, 0x1CF);
+        sprite_draw((int16_t)(0xBB0 - scroll_x), (int16_t)(BOSS4_Y + 0x4B - scroll_y), 0x1D0);
+    }
+
+    int16_t life = BOSS4_FIRE_LIFE;
+
+    if (life < 0)
+        return;
+    word_39c = 0x18;
+    word_39e = 0x18;
+
+    uint16_t saved_flag = flag_23a;
+
+    flag_23a = 0;
+    life = check_hit_and_walls(x, y, life);
+    flag_23a = saved_flag;
+    if ((int16_t)(x - scroll_x) < 0x110) {
+        BOSS4_FIRE_LIFE = life;
+        if (life >= 0)
+            return;
+    }
+    BOSS4_FIRE_PICTURE = 5;
+    BOSS4_FIRE_LIFE = -1;
+    boss4_fire_bolts_b85a();
+}
+
+/* orig $00B8F8: the mouth of the wall at the left (x 64 and 96, 58 below the throne) open (the sprites 457 and 458) or half (459 and 460) by `open` (0 to 1: 457, 2: 459) */
+static void boss4_mouth_b8f8(int16_t open)
+{
+    int16_t picture = (int16_t)((open & 2) + 0x1C9);
+    int16_t y = (int16_t)(BOSS4_Y + 0x3A - scroll_y);
+
+    sprite_draw(0x40, y, (uint16_t)picture);
+    sprite_draw(0x60, y, (uint16_t)(picture + 1));
+}
+
+/* orig $00B8B8: while the fire timer is negative the mouth opens and closes (from the frames it has been: 1: the sound 64, 1 and 2 half open, 3 open and the ball of fire starts when none flies, 4 half, 5 the
+ * timer is 40 again) */
+static void boss4_fire_b8b8(void)
+{
+    int16_t phase = (int16_t)((4 - BOSS4_FIRE_TIMER) >> 2);
+
+    if (phase == 1)
+        play_sound(0x40, 0x14);
+    if (phase == 3) {
+        boss4_mouth_b8f8(2);
+        if (BOSS4_FIRE_PICTURE >= 0)
+            return;
+        BOSS4_FIRE_X = 0xBAA;
+        BOSS4_FIRE_Y = (int16_t)(BOSS4_Y + 0x3A);
+        BOSS4_FIRE_PICTURE = 0;
+        BOSS4_FIRE_LIFE = 0x28;
+        return;
+    }
+    if (phase < 3) {
+        boss4_mouth_b8f8(phase);
+        return;
+    }
+    if (phase == 4) {
+        boss4_mouth_b8f8(1);
+        return;
+    }
+    BOSS4_FIRE_TIMER = 0x28;
+}
+
+/* orig $00B6EA (the level 4 guardian, per frame: callback_4e0): the sound 52 once, then (while it is alive) the fire timer, the fire, the pieces and the hit on the guardian's body (a box of 64 by 96 at (2960, the throne)) */
+static void boss4_frame(void)
+{
+    if (!(flags_3b1 & 2)) {
+        flags_3b1 |= 2;
+        play_sound(0x34, 5);
+    }
+    struct BossState *boss = boss_state();
+
+    if ((int16_t)boss->energy_high < 0) {
+        boss4_pieces_b23a();
+        return;
+    }
+    BOSS4_FIRE_TIMER--;
+    if (BOSS4_FIRE_TIMER < 0)
+        boss4_fire_b8b8();
+    boss4_fireball_b75c();
+    boss4_pieces_b23a();
+    word_39c = 0x40;
+    word_39e = 0x60;
+    check_hit_and_walls(0xB90, BOSS4_Y, (int16_t)boss->energy_low);
+}
+
+/* orig $00B1EC (callback_514): the fire is none, the timer 120, the head's energy 750, the head's table from its start and the pieces wait 170 frames (and two more each) */
+static void boss4_514(void)
+{
+    BOSS4_FIRE_PICTURE = -1;
+    BOSS4_FIRE_TIMER = 0x78;
+    BOSS4_HEAD_ENERGY = 0x2EE;
+    BOSS4_HEAD_TABLE_HIGH = 0;
+    BOSS4_HEAD_TABLE_LOW = (int16_t)BOSS4_HEAD_TABLE_BASE;
+    boss4_pieces_b69a(0xAA);
+}
+
+/* orig $00B9B8 and $00BAAE: the 96 by 112 pixels of the screen at row 80, byte 4 (four planes) are copied to the buffer behind the sprites (asset_mem_end, planes $FC0 apart), or back (`restore`) */
+static void boss4_screen_copy(int restore)
+{
+    uint8_t *screen = screen_buffer + 0xDC4;
+    uint8_t *saved = asset_mem_end;
+
+    for (int plane = 0; plane < 4; plane++)
+        for (int row = 0; row < 112; row++) {
+            uint8_t *on_screen = screen + plane * 0x2100 + row * 44;
+            uint8_t *kept = saved + plane * 0xFC0 + row * 12;
+
+            for (int i = 0; i < 12; i++) {
+                if (restore)
+                    on_screen[i] = kept[i];
+                else
+                    kept[i] = on_screen[i];
+            }
+        }
+}
+
+/* orig $00BB68: the throne's pieces (nine, the sprites 448 to 456: a glyph of one word, a sprite of two words or the clipped draw of the image by the list at $BBC2: the place from the throne (2960, its y) and the way it is drawn) */
+static void boss4_throne_bb68(void)
+{
+    static const int16_t list[9][3] = {
+        {0, 0, 0}, {16, 0, 1}, {48, 0, 1}, {16, 10, 2}, {64, 10, 0}, {64, 39, 1}, {64, 59, 0}, {16, 78, 0}, {32, 78, 1},
+    };
+    int16_t x = (int16_t)(0xB90 - scroll_x);
+    int16_t y = (int16_t)(BOSS4_Y - scroll_y);
+
+    flags_0ddd = 8;
+    word_dde = 0;
+    for (int i = 0; i < 9; i++) {
+        int16_t piece_x = (int16_t)(x + list[i][0]);
+        int16_t piece_y = (int16_t)(y + list[i][1]);
+        uint16_t picture = (uint16_t)(0x1C0 + i);
+
+        if (list[i][2] == 0)
+            glyph_draw(piece_x, piece_y, picture);
+        else if (list[i][2] == 1)
+            sprite_draw(piece_x, piece_y, picture);
+        else
+            image_draw_clipped(piece_x, piece_y, picture);
+    }
+}
+
+/* orig $00BB2A: the two sprites (461) at the throne's side */
+static void boss4_throne_bb2a(void)
+{
+    sprite_draw((int16_t)(0xB86 - scroll_x), (int16_t)(BOSS4_Y + 0x67 - scroll_y), 0x1CD);
+    sprite_draw((int16_t)(0xB8D - scroll_x), (int16_t)(BOSS4_Y + 0x4B - scroll_y), 0x1CD);
+}
+
+/* orig $00B958 (callback_4e4 while the throne rises): the screen is eased to (2912, 96); the screen behind the throne is kept, the throne drawn and it rises 2 a frame; at 176 the sound 52 stops, the screen is
+ * kept as the background ($1785C) and the callback is over */
+static void boss4_throne_b958(void)
+{
+    BOSS4_THRONE_Y = BOSS4_Y;
+    word_37e = 0xB60;
+    word_380 = 0x60;
+    if (word_037c == 0)
+        word_037c = 1;
+    boss4_screen_copy(0);
+    boss4_throne_bb2a();
+    boss4_throne_bb68();
+    BOSS4_Y = (int16_t)(BOSS4_Y - 2);
+    if (BOSS4_Y >= 0xB0)
+        return;
+    stop_sound(0x34);
+    BOSS4_Y = 0xB0;
+    word_037c = 3;
+    background = memory_base + 256;   /* $1785C: the screen is kept to be copied the next times */
+    copy_screen(screen_buffer, background);
+    word_037c = 4;
+    code_b958 = 0x4E75;
+    callback_4e4 = boss_rts;
+}
+
+/* orig $00B222: the message of the end (priority 30000) */
+static void boss4_message_b222(void)
+{
+    static uint8_t text[] = "                                         you have destroyed the last great guardian.  reluctantly, the gods bestow upon you the greatest gift of all - immortality.......    collect your gift";
+
+    message_next = text;
+    message_arg = 0;
+    message_request(0x7530);
+}
+
+/* orig $00BA36 (called each frame, when the guardian is dead; $BA34 is a bare return before): from 9 seconds on (tick_count 450) the message of the end is asked for once, and when it has gone ten gifts (the
+ * thing 53) are dropped in a row at (2954, 112) and flags_3b0 bit 5 is set; when the player has them all (item_count is 10 more) bit 6 is set.  From 8 seconds (400) the level is over (flag_230).  The screen behind
+ * the throne is put back each frame */
+void boss4_death_ba34(void)
+{
+    if (code_ba34 != 0x4E71)
+        return;
+    if ((int32_t)tick_count < 0x1C2) {
+        if ((int32_t)tick_count >= 0x190)
+            flag_230 = 1;
+        boss4_screen_copy(1);
+        return;
+    }
+    if (!(flags_3b1 & 1)) {
+        boss4_message_b222();
+        flags_3b1 |= 1;
+    }
+    if (!(flags_3b0 & 0x20)) {
+        if (message_shown != 0) {
+            boss4_screen_copy(1);
+            return;
+        }
+        flags_3b0 |= 0x20;
+        BOSS4_Y = (int16_t)(item_count + 10);
+        for (int i = 0, x = 0xB8A; i < 10; i++, x += 0x17)
+            drop_record((int16_t)x, 0x70, 0x35);
+        boss4_screen_copy(1);
+        return;
+    }
+    if (item_count == BOSS4_Y)
+        flags_3b0 |= 0x40;
+    boss4_screen_copy(1);
+}
+
+/* orig $00B198 (the start): the throne is at 384, the routines are the guardian's, its energy 6000 (the long at $50A) and the head's 750; the throne rises (callback_4e4) and the flags of its end are off */
+static void boss4_start(void)
+{
+    struct BossState *boss = boss_state();
+
+    BOSS4_Y = 0x180;
+    callback_4e0 = boss4_frame;
+    callback_514 = boss4_514;
+    flag_258 = 1;
+    boss->energy_high = 0;
+    boss->energy_low = 0x1770;
+    BOSS4_HEAD_ENERGY = 0x2EE;
+    callback_4e4 = boss4_throne_b958;
+    code_b958 = 0x4E71;
+    code_ba34 = 0x4E75;
+    flags_3b0 &= (uint8_t)~0x20;
+    flags_3b1 &= (uint8_t)~1;
+    flags_3b1 &= (uint8_t)~2;
+    boss4_514();
+}
+
+/* the quickload of the fight (or of the end after it): the words of the guardian's state are the file's (big endian), the routines are the port's */
+static void boss4_quickload(void)
+{
+    file_words((void *)GUEST(0x4E8), 3);
+    file_words((void *)GUEST(0x4FA), 1);
+    file_words((void *)GUEST(0x504), 1);
+    file_words((void *)GUEST(0x50A), 3);
+    file_words((void *)GUEST(0x518), 4);
+    file_words((void *)GUEST(0x5AE), 2);
+    file_words((void *)GUEST(0x65A), 8);
+    callback_4e0 = boss4_frame;
+    callback_4e4 = code_b958 == 0x4E71 ? boss4_throne_b958 : boss_rts;
+    callback_514 = boss4_514;
+}
+
 /* orig $00B17E (callback_514): the place of the level 3 guardian and its path */
 static void boss3_514(void)
 {
@@ -15514,12 +16093,16 @@ static void boss_start(struct EntryRef *entry)
         boss3_514();
         return;
     }
+    if (param_index == 4) {   /* $B198 */
+        boss4_start();
+        return;
+    }
     if (param_index != 1) {
-        host_missing_routine(0xB014 + 4 * (uint32_t)(param_index - 1));   /* the guardian of the level 4: not ported */
-        callback_4e0 = boss_rts;   /* (the original's callbacks are addresses of its own code: a bare return for the port, which would otherwise call what the loader left) */
+        host_missing_routine(0xB014 + 4 * (uint32_t)(param_index - 1));   /* (no other level has a guardian) */
+        callback_4e0 = boss_rts;
         callback_4e4 = boss_rts;
         callback_514 = boss_rts;
-        flag_258 = 1;   /* its sprites and sounds are loaded as the first level's */
+        flag_258 = 1;
         return;
     }
     /* $B024 */
@@ -15565,6 +16148,10 @@ static void boss_quickload(void)
         callback_4e0 = boss3_frame;
         callback_4e4 = boss_rts;
         callback_514 = boss3_514;
+        return;
+    }
+    if (param_index == 4 && (flag_23a != 0 || code_ba34 == 0x4E71)) {
+        boss4_quickload();
         return;
     }
     if (flag_23a != 0 && param_index != 1) {   /* the other levels' guardians are not ported: their callbacks are the original's addresses */

@@ -65,6 +65,7 @@ void game_step_4070(void);                                 /* orig $004070 */
 void draw_shutter(void);                               /* orig $0054C4 */
 void game_step_5496(void);                                 /* orig $005496 */
 void boss3_fall_bc1c(void);                                  /* orig $00BC1A */
+void boss4_death_ba34(void);                                 /* orig $00BA34 */
 void bolts_77e6(void);                                       /* orig $0077E6 */
 void bolts_7906(void);                                       /* orig $007906 */
 void game_step_73d2(void);                                 /* orig $0073D2 */

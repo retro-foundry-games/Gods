@@ -548,6 +548,7 @@ extern uint16_t code_77e6;   /* $077E6 */
 extern uint16_t code_7906;   /* $07906 */
 extern uint16_t code_c374;   /* $0C374 */
 extern uint16_t code_ba34;   /* $0BA34 */
+extern uint16_t code_b958;   /* $0B958  the first word of the level 4 guardian's throne routine (a nop: it rises) */
 extern uint16_t code_c58e;   /* $0C58E */
 extern uint16_t code_cb0e;   /* $0CB0E */
 extern uint16_t code_c406;   /* $0C406 */
