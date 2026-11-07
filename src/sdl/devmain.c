@@ -409,6 +409,9 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--scale") && i + 1 < argc)
             options.scale = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--lockstep")) {
+            extern int keys_space_is_fire;
+
+            keys_space_is_fire = 1;
             lockstep = options.headless = 1;
             host_draw_hook = draw_log;
         }

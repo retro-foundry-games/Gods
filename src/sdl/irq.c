@@ -65,6 +65,7 @@ void keyboard_irq(void)
 static struct { int raw, down; } key_queue[256];
 static volatile unsigned key_head, key_tail;
 int keys_deferred;
+int keys_space_is_fire;   /* the lockstep: the original (with the keyboard patch) takes the space bar as the fire button only, not as a typed character */
 
 static void key_apply(int raw, int down);
 
@@ -106,7 +107,7 @@ static void key_apply(int raw, int down)
     uint8_t code = (uint8_t)(raw & 0x7f);
 
     /* the cursor keys are the port's joystick (see input_poll: not in the original): the stick, not typed characters; the space bar is a typed character again */
-    if (code >= 0x4c && code <= 0x4f) {
+    if ((code >= 0x4c && code <= 0x4f) || (code == 0x40 && keys_space_is_fire)) {
         key_down[code] = down ? 0xff : 0;
         return;
     }
