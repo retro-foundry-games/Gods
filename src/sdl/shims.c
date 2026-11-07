@@ -151,12 +151,12 @@ void host_flip_line_set(int n, int line)
     flip_lines[n & 255] = (short)line;
 }
 
-/* whether the flip the port has just made (its number the original's, less the sync's offset) was made late in its frame by the original (from the raster line 154: its picture then comes a frame later) */
+/* whether the flip the port has just made (its number the original's, less the sync's offset) was made late in its frame by the original (from the raster line 154.5 (the lines are in halves here): its picture then comes a frame later) */
 int host_flip_is_late(void)
 {
     int n = (int)flips_done - host_flips_offset;
 
-    return host_flip_sync && flip_lines[n & 255] >= 154;
+    return host_flip_sync && flip_lines[n & 255] >= 309;
 }
 static int flip_bound;   /* the next flip ends an iteration (host_iteration_cpu): it waits for the original's */
 
