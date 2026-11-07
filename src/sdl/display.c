@@ -921,20 +921,6 @@ void display_render(uint32_t *pixels)
             memcpy(latched_list, now_list, sizeof now_list);
             for (int line = 0; line < cut && line < 320; line++)
                 memcpy(colors[line], colors_before[line], sizeof colors[line]);
-            if (display_fresh_lag == 1) {
-                /* EXPERIMENT: 63 lines from `first` show the list the program's thread has made by now (the memory) */
-                uint32_t head = REG32(0x080);
-                const uint16_t *live = head < 0x10000 ? (const uint16_t *)guest_ptr(head) : (const uint16_t *)(uintptr_t)head;
-                int first = 72 + (host_fade_line * 8 + 5) / 10;
-
-                if (live) {
-                    memcpy(latched_list, live, sizeof now_list);
-                    line_palettes(colors_before, 320);
-                    memcpy(latched_list, now_list, sizeof now_list);
-                    for (int line = first; line < first + 63 && line < 320; line++)
-                        memcpy(colors[line], colors_before[line], sizeof colors[line]);
-                }
-            }
         }
     }
     if (!display_fresh)
