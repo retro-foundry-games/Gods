@@ -228,7 +228,13 @@ static int load_ram_image_held(const char *path, int slots)
     swap_image_table();
     for (int i = 0; i < 16; i++)   /* the colours the chip has: the shadow table, as the original's interrupt keeps them */
         REG16(0x180 + 2 * i) = shadow_table[i];
-    swap16_range((uint32_t)(uintptr_t)asset_memory, 0x21d68);   /* the sprites' planes */
+    {   /* the sprites' planes: as far as the level's assets go (the level 4's reach past the 0x21D68 bytes of the first levels) */
+        uint32_t first = (uint32_t)(uintptr_t)asset_memory;
+        uint32_t end = *(uint32_t *)guest_ptr(0xd3e);   /* asset_mem_end */
+        uint32_t bytes = end > first && end - first >= 0x21d68 && end - first < 0x40000 ? end - first : 0x21d68;
+
+        swap16_range(first, bytes);
+    }
     swap16_range((uint32_t)(uintptr_t)memory_base, 0x8500);      /* the background */
     swap16_range(0x4d8a, 0xa8);   /* the two copper lists (as guest_load_image does: the program changes their words, the display reads them as words) */
     swap16_range(0x4e3c, 0x530a - 0x4e3c);   /* (the first word, copper_colors, has its fixup) the colour bands of the level's copper list (copper_list_make) and the list at $5246 that the two lists go on at, up to its end ($FFFFFFFE) */
