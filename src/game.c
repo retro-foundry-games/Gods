@@ -1788,6 +1788,126 @@ static void level_end_add_score(uint8_t step)
 static void world_records_clear(void);   /* orig $0135C6 (below begin_quest) */
 static void level_load_world(void);   /* orig $013532 (below begin_quest) */
 
+/* orig $01D06C: the shift register of the passwords: the seed word ($1D0AA) is made another (its bits mixed through the carry of the rotates) */
+static uint16_t password_seed;
+
+#define ROXR(v) do { unsigned o = (v) & 1; (v) = (uint8_t)(((v) >> 1) | (x << 7)); x = o; } while (0)
+
+static uint16_t password_next_1d06c(void)
+{
+    uint8_t d7 = (uint8_t)password_seed;
+    uint8_t d6 = (uint8_t)(password_seed >> 8);
+    unsigned x = (password_seed >> 7) & 1;   /* (the bit that the lsr.w #8 shifted out last) */
+    uint8_t d0 = d6;
+
+    ROXR(d0);
+    d6 ^= d0;
+    ROXR(d0);
+    ROXR(d0);
+    d6 ^= d0;
+    ROXR(d0);
+    d7 ^= d0;
+    ROXR(d0);
+    ROXR(d0);
+    d0 &= 1;
+    x = d7 >> 7;   /* asl.b #1,d7 */
+    d7 = (uint8_t)(d7 << 1);
+
+    unsigned top = d6 >> 7;   /* roxl.b #1,d6 */
+
+    d6 = (uint8_t)((d6 << 1) | x);
+    (void)top;
+    d0 = (uint8_t)(d0 + d7);
+    d7 = d0;
+    password_seed = (uint16_t)((d6 << 8) | d7);
+    return password_seed;
+}
+
+/* orig $013470: a code for the level: three numbers of 1 to 26 (the shift register's words by 2521, one added), kept as the three top bytes of a long, that none of the three saved codes ($D12, $D16, $D1A)
+ * has; after a hundred tries the code is 1, 2, 3 and the level */
+static uint32_t password_new_13470(void)
+{
+    int tries = 0x64;
+
+    for (;;) {
+        uint32_t code = 0;
+
+        password_seed = random_word();
+        for (int i = 0; i < 3; i++) {
+            uint16_t word = password_next_1d06c();
+
+            code = (code & 0xFFFFFF00u) | (uint8_t)(word / 0x9D9 + 1);
+            code <<= 8;
+        }
+        tries--;
+        if (tries < 0)
+            return 0x1020300u + ((uint32_t)(param_index & 0xFF) << 8);
+        if (code == password_slots[0] || code == password_slots[1] || code == password_slots[2])
+            continue;
+        return code;
+    }
+}
+
+/* the centre of a text on the screen: 160 less 8 a character (the characters are 16 wide) */
+static void password_text(const char *text, int16_t y)
+{
+    int16_t length = 0;
+
+    while (text[length] != 0)
+        length++;
+    text_draw_at(text, (int16_t)(0xA0 - 8 * length), y);
+}
+
+/* orig $013234 (the effect of the bit 10 of a level end, from the second level on): the level's password is made (once: while the first byte of its code is 0) and shown on the picture of the level with "FIRE TO
+ * CONTINUE": the frame is drawn, the title, the three letters ((byte - 1) + 'A') and the line are put on it, the screen fades out and in and the program waits for the fire button to be let go and pressed; the codes
+ * are saved ($0067FE).  The frames it takes are not counted in the level's tick ($CE2) */
+static void level_password_screen(void)
+{
+    uint32_t saved_ticks = tick_count;
+    int level = (int16_t)param_index;
+
+    if (level == 1)
+        return;
+
+    uint32_t *slot = &password_slots[level - 2];
+
+    if ((*slot >> 24) != 0) {
+        tick_count = saved_ticks;
+        return;
+    }
+    *slot = password_new_13470();
+    draw_start_frame();
+
+    char title[17] = "LEVEL _ PASSWORD";
+    char letters[4];
+
+    title[6] = (char)(0x5D + level);
+    for (int i = 0; i < 3; i++)
+        letters[i] = (char)(((*slot >> (24 - 8 * i)) & 0xFF) - 1 + 0x41);
+    letters[3] = 0;
+    password_text(title, 0x14);
+    password_text(letters, 0x34);
+    password_text("FIRE TO CONTINUE", 0x96);
+    host_cpu_frames(2);   /* (the frame the original draws before the fade-out) */
+    fade_keep_screens = 1;
+    host_fade_lag(1);
+    fade_out(1, 0xFFFF);
+    host_fade_lag(0);
+    fade_keep_screens = 0;
+    screens_flip();
+    level_end_copy();
+    host_fade_bind();
+    host_fade_lag(1);
+    fade_in(palette_words, 0);
+    host_fade_lag(0);
+    while (joystick & 0x80)
+        wait_vblank();
+    while (!(joystick & 0x80))
+        wait_vblank();
+    scores_save();   /* ($0067FE: the codes xored with the constants of the save block, and the block written) */
+    tick_count = saved_ticks;
+}
+
 /* orig $0131E2: the routines the level end's bits name run, the bit 10 first (the table at $13234 backwards).  The ones that did not run in the recording are not written */
 static void level_end_effects(const struct LevelEnd *record)
 {
@@ -1798,6 +1918,9 @@ static void level_end_effects(const struct LevelEnd *record)
         if (!(record->effects & (1u << bit)))
             continue;
         switch (handlers[10 - bit]) {
+        case 0x13234:
+            level_password_screen();
+            break;
         case 0x1361C:   /* the things in the slots that are not kept (their entry's word +4 not 0) are put away */
             for (int i = 0; i < 4; i++) {
                 int16_t item = item_slots[i];
