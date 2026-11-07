@@ -3849,7 +3849,7 @@ int16_t check_hit_and_walls(int16_t x, int16_t y, int16_t strength)
         x = -16;
     }
     if (word_214 >= 0) {
-        int16_t *list = (int16_t *)value_c6c;
+        int16_t *list = (int16_t *)GUEST(value_c6c);
 
         list[0] = x;
         list[1] = y;
@@ -6083,6 +6083,8 @@ static int16_t move_74f0(struct Creature *creature)
 
 /* orig $007A36 (the movement routine of a creature that stands where it is: the sprites 523 to 525, the table at $7A6E, 3 more when the type's direction is 0): the step of its animation goes on while it is not 0, and
  * from 0 when the type's speed is not 0 and its timer is 1 (the step of $7AB0 is about to shoot) */
+static int16_t move_7a0e(const struct CreatureType *type, struct Creature *creature);
+
 static int16_t move_7a36(const struct CreatureType *type, struct Creature *creature)
 {
     int16_t picture = (int16_t)table_7a6e[creature->state & 3];   /* ($7A6E: the pictures the level start put there: 530, 531, 532, 531 in level 1, 523, 524, 525, 524 in the others) */
@@ -6090,6 +6092,18 @@ static int16_t move_7a36(const struct CreatureType *type, struct Creature *creat
     if (type->direction == 0)
         picture += 3;
     if (creature->state != 0 || (type->speed != 0 && creature->timer == 1))
+        creature->state = (int16_t)((creature->state + 1) & 3);
+    return picture;
+}
+
+/* orig $007A0E (the movement routine of a creature that stands where it is, the sprites 545 to 548, 4 more when the type's direction is 0): the step of its animation goes on (modulo 4) every other frame (frame_phase 0) while it is not 0 */
+static int16_t move_7a0e(const struct CreatureType *type, struct Creature *creature)
+{
+    int16_t picture = (int16_t)(creature->state + 0x221);
+
+    if (type->direction == 0)
+        picture += 4;
+    if (creature->state != 0 && frame_phase == 0)
         creature->state = (int16_t)((creature->state + 1) & 3);
     return picture;
 }
@@ -6115,6 +6129,8 @@ static int call_move(const struct CreatureType *type, struct Creature *creature,
         return move_74f0(creature);
     if (type->move_routine == 0x7A36)
         return move_7a36(type, creature);
+    if (type->move_routine == 0x7A0E)
+        return move_7a0e(type, creature);
     /* goes on at the routine the record names ($7BB2, $7A0E, ...): none of those ran */
     return 0;
 }
@@ -9743,7 +9759,7 @@ static void unit_update(int k, uint16_t *words)
                 x = (int16_t)(x - scroll_x);
                 y = (int16_t)(y - scroll_y);
                 if (word_214 >= 0) {
-                    int16_t *list = (int16_t *)(uintptr_t)value_c6c;
+                    int16_t *list = (int16_t *)GUEST(value_c6c);
 
                     list[0] = x;
                     list[1] = y;
