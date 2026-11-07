@@ -17,6 +17,7 @@ static void update_crumbles(void);
 static void crumble_start(const uint8_t *cell, const int16_t *slot);
 static void spawn_shot_ball(struct Shot *slot, int16_t id, int16_t x, int16_t y, int right);
 static void update_shots_ball(struct ShotList *list, struct Object *object);
+static void update_shots_hunter(struct ShotList *list, struct Object *object);
 
 /* orig $00363A: this frame's input: the joystick byte and the button bits are kept for the game; when the input is being recorded
  * (demo_mode positive) one byte of them is put in the record (the buttons in bits 6 and 7, the stick below) */
@@ -4969,6 +4970,123 @@ static void update_shots_ball(struct ShotList *list, struct Object *object)
     ball_draw_160fc(shot, x, y, counter);
 }
 
+/* orig $01645C (handler 4 of the table at $15260: the hunter): each of the nine shots that is in use ($0): a negative number is a shot that is launching: it goes by its speeds (the high byte across, the low
+ * down) that slow by one a frame; when both are 0 the speed word is $0F00 and goes up by $100 a frame until it reaches $0F00 + 1024 * ((8 - its place + 2) mod 4), when the number turns positive.  A positive
+ * one hunts: the target of $8684 (the strongest creature that was hit this frame; with none the shot bursts with its own speeds and is free) is chased, the speeds going toward it by the object's
+ * (last_value - first_value - 2, 1 to 2) a frame up to 6 across and down.  Each is checked against the tiles ($1695E) when it is on the screen and drawn as the glyph of the object's frame + base_frame; the
+ * object's frame goes up to 3 */
+static void update_shots_hunter(struct ShotList *list, struct Object *object)
+{
+    struct Shot *shot = list->shot;
+
+    for (int n = 0; n < 9; n++, shot++) {
+        int16_t d7 = (int16_t)(8 - n);
+
+        if (shot->active == 0)
+            continue;
+
+        int16_t x, y;
+
+        if (shot->active < 0) {
+            int16_t speed = shot->direction;
+
+            if (speed >= 0x0F00) {   /* $163E4: waiting */
+                speed = (int16_t)(speed + 0x100);
+                shot->direction = speed;
+
+                int16_t wait = (int16_t)(((((d7 + 2) & 3) << 2) << 8) + 0x0F00);
+
+                if (speed >= wait) {
+                    shot->direction = 0;
+                    shot->active = (int16_t)-shot->active;
+                }
+            } else {
+                int16_t vx = (int8_t)(speed >> 8);
+                int16_t vy = (int8_t)(speed & 0xFF);
+
+                shot->x = (int16_t)(shot->x + vx);
+                shot->y = (int16_t)(shot->y + vy);
+                if (vx > 0)
+                    vx--;
+                else if (vx < 0)
+                    vx++;
+                if (vy > 0)
+                    vy--;
+                else if (vy < 0)
+                    vy++;
+                shot->direction = (int16_t)(((vx & 0xFF) << 8) | (vy & 0xFF));
+                if (((vx | vy) & 0xFF) == 0)
+                    shot->direction = 0x0F00;
+            }
+        } else {
+            int16_t tx, ty;
+            int16_t value = falcon_target_8684(&tx, &ty);
+            int16_t speed = shot->direction;
+            int16_t vx = (int8_t)(speed >> 8);
+            int16_t vy = (int8_t)(speed & 0xFF);
+
+            if (value < 0) {   /* $16554: no target */
+                start_debris_moving((int16_t)(shot->x - scroll_x), (int16_t)(shot->y - scroll_y), vx, vy);
+                shot->active = 0;
+                continue;
+            }
+
+            int16_t acc = (int16_t)(object->last_value - object->first_value - 2);
+
+            if (acc <= 1)
+                acc = 1;
+            else if (acc > 2)
+                acc = 2;
+            x = (int16_t)(shot->x + vx);
+            y = (int16_t)(shot->y + vy);
+            tx = (int16_t)(tx + 6);
+            ty = (int16_t)(ty + 6);
+            if (x < tx) {
+                vx = (int16_t)(vx + acc);
+                if (vx > 6)
+                    vx = 6;
+            } else {
+                vx = (int16_t)(vx - acc);
+                if (vx < -6) {
+                    vx = (int16_t)(-6 + acc);
+                    if (vx > 6)
+                        vx = 6;
+                }
+            }
+            if (y < ty) {
+                vy = (int16_t)(vy + acc);
+                if (vy > 6)
+                    vy = 6;
+            } else {
+                vy = (int16_t)(vy - acc);
+                if (vy < -6) {
+                    vy = (int16_t)(-6 + acc);
+                    if (vy > 6)
+                        vy = 6;
+                }
+            }
+            shot->x = x;
+            shot->y = y;
+            shot->direction = (int16_t)(((vx & 0xFF) << 8) | (vy & 0xFF));
+        }
+
+        int16_t sx = (int16_t)(shot->x - scroll_x);
+        int16_t sy = (int16_t)(shot->y - scroll_y);
+
+        if (sx <= 0x140 && sx >= -16 && sy <= 0xC0 && sy >= -16) {
+            if (shot->active < 0) {
+                shot->active = (int16_t)-shot->active;
+                shot_hit_tile(object, shot, sx, sy);
+                shot->active = (int16_t)-shot->active;
+            } else {
+                shot_hit_tile(object, shot, sx, sy);
+            }
+        }
+        glyph_draw(sx, sy, (uint16_t)(object->frame + object->base_frame));
+    }
+    object->frame = (int16_t)((object->frame + 1) & 3);
+}
+
 /* orig $015B36: the list of shots of an object (its first word is the number of the object, negative: none) is run by the routine the
  * object's handler number names in the table at $15260: 0 is $1673E (update_shots), 2 is a bare return; 1, 3, 4 and 5 ($168AE, $15DB2,
  * $1645C and $1661E) did not run */
@@ -4991,11 +5109,14 @@ void run_object_list(struct ShotList *list)
     case 3:
         update_shots_ball(list, object);
         break;
+    case 4:
+        update_shots_hunter(list, object);
+        break;
     case 5:
         update_shots_axe(list, object);
         break;
     default:
-        break;   /* goes on at $1645C */
+        break;
     }
 }
 
@@ -5133,6 +5254,30 @@ static void spawn_shots_axe(struct Shot *slot, int16_t id, struct Object *object
     }
 }
 
+/* orig $0157C8 (fire kind 11, to the right) and $01581A (kind 12, to the left: 16 more to the right and the sideways speeds negative): sound 2 (priority 4); up to three hunters start at (x, 12 above y) with the negative
+ * numbers -id, -id - 1 and -id - 2 (they are launching: first they fly out with a speed of the high byte across and the low byte down, 11 across and 0, 7 and -7 down, and slow by one a frame, then they wait and
+ * then hunt) */
+static void spawn_shots_hunter(struct Shot *slot, int16_t id, struct Object *object, int16_t x, int16_t y, int left)
+{
+    static const int16_t right_speeds[3] = { 0x0B00, 0x0B07, 0x0BF9 };
+    static const int16_t left_speeds[3] = { (int16_t)0xF500, (int16_t)0xF507, (int16_t)0xF5F9 };
+    int16_t count = (int16_t)(object->last_value - object->first_value + 1);
+    int16_t number = (int16_t)-id;
+
+    play_sound(2, 4);
+    if (left)
+        x = (int16_t)(x + 0x10);
+    y = (int16_t)(y - 12);
+    for (int i = 0; i < 3; i++) {
+        slot[i].active = (int16_t)(number - i);
+        slot[i].x = x;
+        slot[i].y = y;
+        slot[i].direction = left ? left_speeds[i] : right_speeds[i];
+        if (--count == 0)
+            return;
+    }
+}
+
 /* orig $015510: an object's list `list` gets a shot at (x, y): sound 2 (priority 4) and the routine the object's fire_kind names in the
  * table at $15220: 1 is $1590E (spawn_shots_1590e), 4 and 5 are bare returns; 0, 2, 3, 6 to 15 ($15968, $155EC, $1557C, $158F0 ...) did
  * not run */
@@ -5154,6 +5299,10 @@ static void spawn_shots(struct Shot *slot, int16_t id, struct ShotList *list, in
     case 8:
     case 9:
         spawn_shot_ball(slot, id, x, y, object->fire_kind == 9);
+        break;
+    case 11:
+    case 12:
+        spawn_shots_hunter(slot, id, object, x, y, object->fire_kind == 12);
         break;
     case 15:
         spawn_shots_axe(slot, id, object, x, y, 0);
