@@ -659,6 +659,40 @@ lockstep.run {
                 if worst <= limit then count = 0 end
             end
         end
+        -- frametol=N (default 2, 0 is off): a screen of the port that differs from the original's is not a stop when the original showed the same picture within N frames before it or after it (a flip that comes a frame
+        -- or two early or late); the difference is held back until N frames have passed, so a stop comes up to N frames after the first differing one (the stop's files are those of that later frame)
+        do
+            local tol = tonumber(args:match("frametol=(%d+)")) or 2
+            if tol > 0 then
+                local f = ami.frame()
+                frametol_native, frametol_emulated = frametol_native or {}, frametol_emulated or {}
+                frametol_pending = frametol_pending or {}
+                frametol_native[f], frametol_emulated[f] = native, emulated
+                frametol_native[f - 2 * tol - 2], frametol_emulated[f - 2 * tol - 2] = nil, nil
+                if count > 0 then
+                    frametol_pending[#frametol_pending + 1] = { frame = f, count = count }
+                    count = 0
+                end
+                local keep = {}
+                for _, u in ipairs(frametol_pending) do
+                    local matched = false
+                    local picture = frametol_native[u.frame]
+                    for j = u.frame - tol, f do
+                        local other = frametol_emulated[j]
+                        if other and ami.rgb_diff(picture, other) == 0 then matched = true break end
+                    end
+                    if matched then
+                        ami.log(("frame %d: %d pixels different, but the original showed that picture within %d frames: not a difference"):format(u.frame, u.count, tol))
+                    elseif f - u.frame >= tol then
+                        count = u.count
+                        ami.log(("frame %d: %d pixels different and no picture of the original within %d frames matches"):format(u.frame, u.count, tol))
+                    else
+                        keep[#keep + 1] = u
+                    end
+                end
+                frametol_pending = keep
+            end
+        end
         -- A stop (the first difference, from=N, pause=F, break=ADDR) saves both sides to captures/stops/stop-fFRAME[-N].*: the original's state and RAM, the port's memory
         -- from 0 to $80000 (.portmem: as it holds it, words native) and the two pictures; scripts/stop_diff.py compares them offline, however the play got there.
         local stops_here = (pause_at and ami.frame() >= pause_at) or break_hit
