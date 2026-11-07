@@ -3197,7 +3197,7 @@ uint16_t *clear_72_words(uint16_t *p)
 
 /* orig $00FB2E: the record `index` of object_slots is made ready: its word +4 is cleared, its word +8 gets the word +6 and a
  * 3 in word +2 becomes 0; word_214 is -1.  Ends there when flag_8890 is negative and none of the three slot_refs is 8;
- * otherwise the original goes on at $FB94, which did not run */
+ * otherwise the original goes on at $FB94 (word_214 0) */
 void reset_object_slot(int16_t index, int16_t other)
 {
     uint16_t *r = (uint16_t *)&object_slots[index];
@@ -3209,7 +3209,7 @@ void reset_object_slot(int16_t index, int16_t other)
         r[1] = 0;
     word_214 = -1;
     if (flag_8890 >= 0 || slot_ref_6b6 == 8 || slot_ref_748 == 8 || slot_ref_7da == 8)
-        return;   /* goes on at $FB94 */
+        word_214 = 0;   /* $FB94: the list of the creatures hit stays on while the falcon is there (or a weapon 8 is) */
 }
 
 /* orig $018D14: the four records of records_316 that are in use (the first word not negative) are drawn as the glyph 108 plus
