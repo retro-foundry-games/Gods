@@ -109,9 +109,14 @@ int files_read(const char *name, int prefer, uint8_t *dest)
     }
     if (!dest)
         return 0;
+    /* (the name may be in the place the file goes to: the level 3 guardian leaves the text buffer inside picture_buffer, which the level 4 loads its pictures to; the kind of the file is looked at first) */
+    int is_picture = ends_with(name, ".pi1");
+    int is_scores = ends_with(name, "hiscores.bin");
+    int is_data = ends_with(name, ".dat");
+
     memcpy(dest, file, size);
-    unpack_swaps = ends_with(name, ".pi1");
-    if (ends_with(name, "hiscores.bin") && size >= 216)
+    unpack_swaps = is_picture;
+    if (is_scores && size >= 216)
         for (uint32_t i = 0; i < 14; i++) {
             uint8_t *p = dest + (i < 10 ? 16 + 20 * i : 200 + 4 * (i - 10));
             uint8_t t = p[0];
@@ -122,7 +127,7 @@ int files_read(const char *name, int prefer, uint8_t *dest)
             p[1] = p[2];
             p[2] = t;
         }
-    if (ends_with(name, ".dat"))
+    if (is_data)
         for (uint32_t i = 0; i + 1 < size; i += 2) {
             uint8_t t = dest[i];
 
