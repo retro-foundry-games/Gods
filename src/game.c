@@ -13179,7 +13179,11 @@ static void boss_start(struct EntryRef *entry)
     code_6ed0 = 0x4E75;
     boss_free_records();
     if (param_index != 1) {
-        host_missing_routine(0xB014 + 4 * (uint32_t)(param_index - 1));   /* the guardians of the other levels: not ported */
+        host_missing_routine(0xB014 + 4 * (uint32_t)(param_index - 1));   /* the guardians of the other levels: not ported (the level 2's starts at $B0B4: its routine $C6CC and its path from bezier.dat) */
+        callback_4e0 = boss_rts;   /* (the original's callbacks are addresses of its own code: a bare return for the port, which would otherwise call what the loader left) */
+        callback_4e4 = boss_rts;
+        callback_514 = boss_rts;
+        flag_258 = 1;   /* its sprites and sounds are loaded as the first level's */
         return;
     }
     /* $B024 */
@@ -13203,6 +13207,12 @@ static void boss_rts(void)
  * (big endian); its routines are the port's (the original's callbacks are addresses of its own code) */
 static void boss_quickload(void)
 {
+    if (flag_23a != 0 && param_index != 1) {   /* the other levels' guardians are not ported: their callbacks are the original's addresses */
+        callback_4e0 = boss_rts;
+        callback_4e4 = boss_rts;
+        callback_514 = boss_rts;
+        return;
+    }
     if (flag_23a == 0 || menu_state_25a != 2 || param_index != 1)
         return;
 
