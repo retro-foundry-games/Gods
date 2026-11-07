@@ -505,6 +505,7 @@ static void level_begin(void);
 static int level_next_wait;
 static void game_won_2f12(void);
 static void password_start_334e(void);
+static int shop_from_password;   /* the shop is entered at $136C8 (a level's password): no first fade-out, the saved tick count is 0 and the saved word_025c 1 (what the caller pushed) */
 static int level_next_fade;   /* (the fade-in of the next level's start is bound to the original's) */
 /* orig $002D54 on: what ends a frame of the game, after the player has been run (or, when he is dead, after the frame of his death: $3A6C): the units and the other things
  * that are run, the panels, the energy, the keys of the pause and the like, and the wait for the next frame */
@@ -16168,6 +16169,8 @@ static void password_start_334e(void)
     message_shown = 0;
     word_dde = 0;
     flags_0ddd = 0;
+    level_next_wait = 0;
+    shop_from_password = 1;
     shop_run();
     menu_active = 0;
     game_loop();
@@ -16479,7 +16482,7 @@ static void shop_text_column(void)
         return;
     }
 
-    const uint8_t *character = message_text + column / 10;
+    const uint8_t *character = (message_text != 0 ? message_text : (const uint8_t *)GUEST(0)) + column / 10;   /* (no text: the original's pointer is 0 and it reads the memory from address 0) */
     int16_t rest = (int16_t)(column % 10);
 
     if (*character == 0) {
@@ -16960,7 +16963,7 @@ void shop_flip_strip(void)
  * (cell 17) fades the screen out, draws a frame of the game, and the game goes on from the start of a frame ($2BD6) */
 static void shop_run(void)
 {
-    uint32_t saved_ticks = tick_count;
+    uint32_t saved_ticks = shop_from_password ? 0 : tick_count;
 
     shop_score_shown = score_total_1fc;
     cursor_pos = 0;
@@ -16971,11 +16974,14 @@ static void shop_run(void)
     message_shown = 0;
     word_dde = 0;
     *(volatile uint8_t *)&flags_0ddd = 0;   /* clr.b $ddd.w */
-    host_fade_lag(4);   /* (the lockstep: the steps are shown as the original shows them: a frame after the thread has made them when its first step began late in a frame, as they are when it began early) */
-    fade_out(1, 2);
-    host_fade_lag(0);
+    if (!shop_from_password) {
+        host_fade_lag(4);   /* (the lockstep: the steps are shown as the original shows them: a frame after the thread has made them when its first step began late in a frame, as they are when it began early) */
+        fade_out(1, 2);
+        host_fade_lag(0);
+    }
 
-    uint16_t saved_25c = word_025c;
+    uint16_t saved_25c = shop_from_password ? 1 : word_025c;
+    shop_from_password = 0;
     int16_t saved_x_offset = x_offset;
 
     flags_3b0 &= (uint8_t)~4;
