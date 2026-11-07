@@ -231,6 +231,29 @@ void glyph_draw(int16_t x, int16_t y, uint16_t index)
 
 /* orig $0173C4: the same for an image two words wide: plain blit from x = 0 to 320; the variants for x from 321 to 351 and
  * from -31 to -1 draw the part that is on the screen */
+/* the last rows of the door's sprite (the image 553 of the level 4) lie in the first bytes of the background's buffer (memory_base), which the screen copies write in the original's byte order and the port's sprites
+ * read as native words: the bytes that are there are swapped in a copy of the image's planes */
+static const uint8_t *sprite_planes_as_words(const uint8_t *data, unsigned bytes)
+{
+    static uint8_t copy[4096];
+    uintptr_t first = (uintptr_t)memory_base;
+    uintptr_t last = first + 0x8500;
+    uintptr_t from = (uintptr_t)data;
+    uintptr_t to = from + bytes;
+
+    if (bytes > sizeof copy || to <= first || from >= last)
+        return data;
+    for (unsigned i = 0; i < bytes; i++)
+        copy[i] = data[i];
+    for (uintptr_t a = from & ~(uintptr_t)1; a < to; a += 2) {
+        if (a < first || a + 1 >= last || a < from)
+            continue;
+        copy[a - from] = ((const uint8_t *)a)[1];
+        copy[a + 1 - from] = ((const uint8_t *)a)[0];
+    }
+    return copy;
+}
+
 void sprite_draw(int16_t x, int16_t y, uint16_t index)
 {
 #ifdef GODS_SDL
@@ -246,6 +269,7 @@ void sprite_draw(int16_t x, int16_t y, uint16_t index)
     x += x_offset;
     if (x <= -32 || x >= 352)
         return;
+    data = sprite_planes_as_words(data, (unsigned)(img->height + 1) * 16);
     dst = screen_buffer + y * SCREEN_ROW;
     if (x >= 0)
         dst += (x & -16) >> 3;
