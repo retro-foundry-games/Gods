@@ -275,6 +275,11 @@ extern int16_t word_888e;   /* $0888E  the choice update_choice_888e makes (-1 n
 extern int16_t word_8472;   /* $08472  the glyph draw_sprite_8472 draws (negative: none) */
 extern int16_t word_846e;   /* $0846E  its x */
 extern int16_t word_8470;   /* $08470  its y */
+extern int16_t word_8886;   /* $08886  the falcon's speed across */
+extern int16_t word_8888;   /* $08888  its speed down */
+extern int16_t word_888a;   /* $0888A  the way it faces (-1 left, 1 right) */
+extern int16_t word_888c;   /* $0888C  its wing step (0 to 10, by 2) */
+extern int16_t word_8896;   /* $08896  the way it faced before (the code's own cell) */
 extern uint16_t word_10ae;   /* $010AE */
 extern uint16_t flag_aa8;   /* $00AA8 */
 extern uint16_t word_186be;   /* $186BE */

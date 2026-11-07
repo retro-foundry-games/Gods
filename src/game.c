@@ -2466,11 +2466,169 @@ void do_nothing_b(void)
 {
 }
 
-/* orig $00836C: ends at once when flag_8890 is negative; otherwise the original goes on at $8374, which did not run */
+/* orig $008684: of the records at $0BD6 (x, y, strength: the creatures hit this frame; flag_20e + 1 of them) the one with the highest strength is the target: its place (in the level) is given, its strength is cleared and
+ * it is returned; -1 when there is none */
+static int16_t falcon_target_8684(int16_t *x, int16_t *y)
+{
+    int16_t best = -1;
+    int16_t *chosen = 0;
+    int16_t *list = (int16_t *)GUEST(0xBD6);
+
+    for (int i = 0; i <= flag_20e; i++) {
+        int16_t *record = &list[i * 3];
+
+        if (best >= record[2])
+            continue;
+        chosen = record;
+        *x = (int16_t)(record[0] + scroll_x);
+        *y = (int16_t)(record[1] + scroll_y);
+        best = record[2];
+    }
+    if (best >= 0)
+        chosen[2] = 0;
+    return best;
+}
+
+/* orig $0084BA: the falcon goes after the point (x, y): its speeds (across, down) go one step toward the point's side (up to 2 * word_8894 + 3 across, + 2 down), a place level with the point's is a toss-up, and the way it faces is the one it goes */
+static void falcon_move_84ba(int16_t x, int16_t y)
+{
+    int16_t fx = word_8882;
+    int16_t fy = word_8884;
+    int16_t speed = (int16_t)(word_8894 * 2);
+    int right;
+
+    if (fx == x)
+        right = random_word() & 1;
+    else
+        right = fx < x;
+    if (right) {
+        int16_t limit = (int16_t)(speed + 3);
+        int16_t v = word_8886;
+
+        if (v != limit) {
+            v++;
+            if (v > limit)
+                v = limit;
+        }
+        word_8886 = v;
+        word_888a = 1;
+    } else {
+        int16_t limit = (int16_t)-(speed + 3);
+        int16_t v = word_8886;
+
+        if (v != limit) {
+            v--;
+            if (v < limit)
+                v = limit;
+        }
+        word_8886 = v;
+        word_888a = -1;
+    }
+
+    int down;
+
+    if (fy == y)
+        down = random_word() & 1;
+    else
+        down = fy < y;
+    if (down) {
+        int16_t limit = (int16_t)(speed + 2);
+        int16_t v = word_8888;
+
+        if (v != limit) {
+            v++;
+            if (v > limit)
+                v = limit;
+        }
+        word_8888 = v;
+    } else {
+        int16_t limit = (int16_t)-(speed + 2);
+        int16_t v = word_8888;
+
+        if (v != limit) {
+            v--;
+            if (v < limit)
+                v = limit;
+        }
+        word_8888 = v;
+    }
+    word_8882 = (int16_t)(fx + word_8886);
+    word_8884 = (int16_t)(fy + word_8888);
+}
+
+/* orig $008626: the four cells of the map under the falcon are marked with $FF (a hit that reaches one takes the falcon's energy: the cell type -1) */
+static void falcon_mark_8626(void)
+{
+    int16_t x = (int16_t)(word_8882 - scroll_x);
+    int16_t y = (int16_t)(word_8884 - scroll_y);
+    uint8_t *map = (uint8_t *)line_text;
+    uint8_t *cell = map + 0x64;
+    int16_t d5;
+
+    cell += (int16_t)(x >> 3);
+    d5 = (int16_t)(y & (int16_t)0xFFF8);
+    d5 = (int16_t)(d5 << 1);
+    cell += d5;
+    d5 = (int16_t)(d5 << 1);
+    cell += d5;
+    if (cell < map + 0x30 || cell >= map + 0x5DC)
+        return;
+    cell[0x31] = 0xFF;
+    cell[0x32] = 0xFF;
+    cell[0x61] = 0xFF;
+    cell[0x62] = 0xFF;
+}
+
+/* orig $00836C: the falcon (the pick-up 7; flag_8890 is its energy, negative: it is not there) goes after the player or, with no weapon of its own chosen (word_888e negative), after what the player's shots have hit (the target of
+ * $8684); it is drawn as the picture 389 to 391 (+4 facing right) by draw_sprite_8472, it turns to face where the player does when it is above the player, and its cells are marked */
 void step_836c(void)
 {
+    static const int16_t wings[6] = { 0, 1, 2, 3, 2, 1 };
+    static const int8_t facing[30] = { -1, 1, 1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 0, 0, 1, -1, 1, -1, 1, -1, 1, -1, 1, -1, 0, -1, 1, 0 };
+
     if (flag_8890 < 0)
         return;
+
+    int16_t saved = word_8894;
+    int16_t x = 0, y = 0;
+    int16_t value = falcon_target_8684(&x, &y);
+
+    if (word_888e < 0) {
+        if (value < 0) {
+            y = (int16_t)(player_y - 0x24);
+            word_8894 = 0;
+            x = player_x;
+        }
+    } else {
+        if (value < 0)
+            y = (int16_t)(player_y - 0x24);
+        x = player_x;
+    }
+    word_8896 = word_888a;
+    falcon_move_84ba(x, y);
+
+    int16_t sx = (int16_t)(word_8882 - scroll_x);
+    int16_t sy = (int16_t)(word_8884 - scroll_y);
+    int16_t picture = (int16_t)(0x185 + wings[(word_888c >> 1) % 6]);
+    int16_t limit = (int16_t)(player_x - scroll_x - 8);
+
+    if (!(sx < limit) && !(sx > (int16_t)(limit + 0x10))) {
+        int8_t turn = facing[word_19c & 31];
+
+        word_888a = turn == 0 ? word_8896 : (int16_t)turn;
+    }
+    if (word_888a >= 0)
+        picture += 4;
+    word_846e = sx;
+    word_8470 = sy;
+    word_8472 = picture;
+    if (frame_toggle != 0) {
+        word_888c += 2;
+        if (word_888c >= 0xC)
+            word_888c = 0;
+    }
+    falcon_mark_8626();
+    word_8894 = saved;
 }
 
 /* orig $008452: the glyph word_8472 (if it is not negative) is drawn at (word_846e, word_8470) */
@@ -2481,12 +2639,64 @@ void draw_sprite_8472(void)
     sprite_draw(word_846e, word_8470, word_8472);
 }
 
-/* orig $008742: when flag_8890 is negative nothing is done; otherwise the original goes on at $874C (which looks at the three
- * records of slot_ref_* and sets word_888e), which did not run */
+/* orig $008742: the choice of the falcon's own weapon: of the three weapon slots only those with the object 2 count, and when two or more slots are filled the one with the lowest first value (the
+ * first one of a tie) is chosen, if it is one of them (word_888e 0 to 2; -1 none) */
 void update_choice_888e(void)
 {
     if (flag_8890 < 0)
         return;
+
+    const struct Object *objects = (const struct Object *)object_slots;
+    int16_t slot[3] = { (int16_t)slot_ref_6b6, (int16_t)slot_ref_748, (int16_t)slot_ref_7da };
+    int count = 0;
+
+    for (int i = 0; i < 3; i++)
+        if (slot[i] >= 0)
+            count++;
+    word_888e = -1;
+    if (count < 2)
+        return;
+
+    int16_t d[3];
+
+    for (int i = 0; i < 3; i++) {
+        d[i] = slot[i] >= 0 ? objects[slot[i]].first_value : slot[i];
+        if (slot[i] != 2)
+            d[i] = -1;
+    }
+
+    int chosen;
+
+    if (d[0] >= 0 && (d[1] < 0 || d[0] <= d[1]) && (d[2] < 0 || d[0] <= d[2]))
+        chosen = 0;
+    else if (d[1] < 0)
+        chosen = 2;
+    else if (d[2] < 0 || d[1] <= d[2])
+        chosen = 1;
+    else
+        chosen = 2;
+    if (d[chosen] < 0)
+        return;
+    word_888e = (int16_t)chosen;
+}
+
+/* orig $0086D8 (the pick-up 7 with the falcon not there): it starts 160 above the player, still, facing right, with the energy 1000, the damage a cell of it does 4 and the strength word 0; the list of the creatures hit is switched on (word_214 0) */
+static void falcon_start_86d8(void)
+{
+    word_8882 = player_x;
+    word_8884 = (int16_t)(player_y - 0xA0);
+    word_846e = (int16_t)(word_8882 - scroll_x);
+    word_8470 = (int16_t)(word_8884 - scroll_y);
+    word_8472 = 0x185;
+    word_8886 = 0;
+    word_8888 = 0;
+    word_888a = 1;
+    word_888c = 0;
+    flag_8890 = 0x3E8;
+    word_8892 = 4;
+    word_8894 = 0;
+    word_214 = 0;
+    update_choice_888e();
 }
 
 /* ======== the pods of level 3 (orig $00D664 to $00D836: ten records of 10 bytes at $FD0) and the spores they spit ($00D838 to $00DA50: ten records of 12 bytes at $1036) ======== */
@@ -5233,7 +5443,7 @@ static int16_t pickup_handler(int16_t index, int16_t counter)
             flag_8890 = (int16_t)(flag_8890 + 0x3E8);
             word_8892++;
         } else {
-            host_missing_routine(0x86D8);   /* the rest of $0086C0 (flag_8890 negative) did not run */
+            falcon_start_86d8();   /* the rest of $0086C0 (flag_8890 negative) */
         }
         return 1;
     case 8:                      /* orig $010816 */

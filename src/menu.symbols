@@ -292,6 +292,11 @@ word_888e         0x0000888e int16_t %s    the choice update_choice_888e makes (
 word_8472         0x00008472 int16_t %s    the glyph draw_sprite_8472 draws (negative: none)
 word_846e         0x0000846e int16_t %s    its x
 word_8470         0x00008470 int16_t %s    its y
+word_8886         0x00008886 int16_t %s    the falcon's speed across
+word_8888         0x00008888 int16_t %s    its speed down
+word_888a         0x0000888a int16_t %s    the way it faces (-1 left, 1 right)
+word_888c         0x0000888c int16_t %s    its wing step (0 to 10, by 2)
+word_8896         0x00008896 int16_t %s    the way it faced before (the code's own cell)
 word_10ae         0x000010ae uint16_t %s
 flag_aa8          0x00000aa8 uint16_t %s
 word_186be        0x000186be uint16_t %s
