@@ -8071,10 +8071,9 @@ chosen:
     if ((uint8_t)zone == m->zone && m->new_target == 0)
         return;
     m->zone = (uint8_t)zone;
-    if (zone < 1)
-        return;   /* (the original reads the eight bytes before zone_limits) */
 
-    const uint16_t *limit = &zone_limits[(zone - 1) * 4];
+    /* the zone 0 (in none): the original reads the eight bytes before zone_limits, which are the same four words as its last record ($998A: 110, 60, 210, 136), the middle of the screen */
+    const uint16_t *limit = zone < 1 ? &zone_limits[24] : &zone_limits[(zone - 1) * 4];
     int16_t x = (int16_t)limit[0], y = (int16_t)limit[1];
     int16_t wide = (int16_t)(limit[2] - x), high = (int16_t)(limit[3] - y);
 
