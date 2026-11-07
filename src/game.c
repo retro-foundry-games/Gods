@@ -8034,6 +8034,8 @@ static void walker_group_run(struct WalkGroup *group, struct WalkMember *m)
  * not free are started (walker_group_start) */
 void update_records_12a0(void)
 {
+    if (code_9ae6 == 0x4E75)   /* (a guardian's start made the routine's first instruction an rts) */
+        return;
     struct WalkGroup *group = (struct WalkGroup *)records_12a0;
     uint8_t *block = asset_directory;
 
@@ -8531,6 +8533,8 @@ void unit4_update(void)
  * timer_306 is not 0 frame_toggle is 0 for the duration (the original saves and restores it) */
 void update_creatures(void)
 {
+    if (code_6ed0 == 0x4E75)   /* (a guardian's start made the routine's first instruction an rts) */
+        return;
     uint16_t saved = frame_toggle;
     struct CreatureType *type = (struct CreatureType *)table_199ac;
 
