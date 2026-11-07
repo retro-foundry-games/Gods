@@ -7918,6 +7918,15 @@ static void monster_pickup(const struct MonsterType *type, struct MonsterPart *m
 
 /* orig $009370 (mode 4): the target is where the monster in front (the rank before) was: in the history of the first, 16 places for each rank less 8 bytes back.  The type's bits 6 and
  * 7: 0 that place, 2 a circle round the place of the first ($942E, monster_circle), 1 and 3 that place turned by the angle of the rank (table_1c9e4) */
+/* a word of table_1c9e4, which is kept as the original's bytes (big endian) */
+static int16_t trig_word(int offset)
+{
+    /* (the circle of the monsters reads past the 1024 bytes of the table, into what follows it in the original's memory: that is read from the guest's memory) */
+    const uint8_t *table = offset + 1 < 1024 ? (const uint8_t *)table_1c9e4 : (const uint8_t *)GUEST(0x1C9E4);
+
+    return (int16_t)(((uint16_t)table[offset] << 8) | table[offset + 1]);
+}
+
 static void monster_follow(struct Monster *rec, const struct MonsterType *type, struct MonsterPart *m)
 {
     if (m->speed < 2)
@@ -7952,8 +7961,8 @@ static void monster_follow(struct Monster *rec, const struct MonsterType *type, 
             around = (uint8_t)(around - 0x80);
         angle = (int16_t)(around * 8);
 
-        int16_t dx = (int16_t)(*(const int16_t *)(table_1c9e4 + angle) >> 10);
-        int16_t dy = (int16_t)(*(const int16_t *)(table_1c9e4 + 0x100 + angle) >> 10);
+        int16_t dx = (int16_t)(trig_word(angle) >> 10);
+        int16_t dy = (int16_t)(trig_word(0x100 + angle) >> 10);
 
         m->target_x = (int16_t)(rec->history[last >> 2].x + dx);
         m->target_y = (int16_t)(rec->history[last >> 2].y + dy);
@@ -7965,8 +7974,8 @@ static void monster_follow(struct Monster *rec, const struct MonsterType *type, 
     int16_t dx = (int16_t)(x - px);
     int16_t dy = (int16_t)(y - py);
     int16_t offset = (int16_t)((((m->rank - 2) & 1)) << 7);
-    int16_t sine = *(const int16_t *)(table_1c9e4 + offset);
-    int16_t cosine = *(const int16_t *)(table_1c9e4 + 0x100 + offset);
+    int16_t sine = trig_word(offset);
+    int16_t cosine = trig_word(0x100 + offset);
     int16_t tx = (int16_t)(((int32_t)dy * sine >> 15) + ((int32_t)dx * cosine >> 15));
     int16_t ty = (int16_t)(((int32_t)dy * cosine >> 15) - ((int32_t)dx * sine >> 15));
 
