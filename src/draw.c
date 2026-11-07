@@ -1,5 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
 /* Gods, the menu program: drawing images and text on the screen.  The screen is 44 bytes a row (352 pixels), 192 rows. */
 #include "draw.h"
 
@@ -231,13 +229,13 @@ void glyph_draw(int16_t x, int16_t y, uint16_t index)
 
 /* orig $0173C4: the same for an image two words wide: plain blit from x = 0 to 320; the variants for x from 321 to 351 and
  * from -31 to -1 draw the part that is on the screen */
-/* the last rows of the door's sprite (the image 553 of the level 4) lie in the first bytes of the background's buffer (memory_base), which the screen copies write in the original's byte order and the port's sprites
- * read as native words: the bytes that are there are swapped in a copy of the image's planes */
+/* the last rows of the door's sprite (the image 553 of the level 4) lie in the first bytes of the block at memory_base before the tiles (what the program keeps there is bytes in the original's order) while the port's
+ * sprites read native words: the bytes that are there are swapped in a copy of the image's planes */
 static const uint8_t *sprite_planes_as_words(const uint8_t *data, unsigned bytes)
 {
     static uint8_t copy[4096];
     uintptr_t first = (uintptr_t)memory_base;
-    uintptr_t last = first + 0x8500;
+    uintptr_t last = (uintptr_t)ptr_0c70 > first && (uintptr_t)ptr_0c70 < first + 0x8500 ? (uintptr_t)ptr_0c70 : first + 0x8500;   /* (the tiles, from ptr_0c70 on, are words of the port's too) */
     uintptr_t from = (uintptr_t)data;
     uintptr_t to = from + bytes;
 
