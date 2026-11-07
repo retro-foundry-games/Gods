@@ -1791,12 +1791,8 @@ static void level_end_effects(const struct LevelEnd *record)
         case 0x135C6:   /* the records of the world that is left are cleared */
             world_records_clear();
             break;
-        case 0x13614:   /* $019170: the first three words of each of the first ten records of records_19334 (the things the player picks up) are -1 */
-            for (int i = 0; i < 10; i++) {
-                records_19334[i].w[0] = -1;
-                records_19334[i].w[1] = -1;
-                records_19334[i].w[2] = -1;
-            }
+        case 0x13614:   /* $019170: the first three words of each of the first ten records of records_19334 (the things the player picks up) are -1 and the doors of the map shut (mark_cells_19170) */
+            mark_cells_19170();
             break;
         case 0x1368A:
             tick_count = 0;
