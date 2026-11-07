@@ -218,6 +218,7 @@ end
 local flip_sync = not args:find("%f[%w]nosync%f[%W]")
 local flip_offset = tonumber(args:match("flipoff=(-?%d+)")) or 0
 local orig_flips, flips_at_sync, sync_on, last_flips = 0, 0, false, 0
+local flip_line_queue = {}   -- (the lines of the original's flips since the last step: sent with the count)
 local orig_fades, fades_at_sync = 0, 0   -- the original's calls of its fade-in ($1D0C0): the port's teleport waits for them (host_fade_wait)
 local orig_world_loads, world_loads_at_sync = 0, 0   -- the original's arrivals at the end of the loading of a world ($0135C0, where it puts back the tick count): the port's load waits for them (host_world_load_wait)
 local flip_lag = args:find("%f[%w]lag%f[%W]") ~= nil   -- (the port's flips are let go by the count of the same step and shown at the next blank: the original shows its flip a frame after the call; `lag`: the old way, the count of the step before and shown at once)   -- (the count the port gets is the one of the step before: the original's flip shows a frame after the one the count reaches)
@@ -252,7 +253,13 @@ ami.hook(0x2452, function() next_level_stage = 1 end)
 ami.hook(0x2aaa, function() next_level_event(2, "files read") end)
 
 local flip_in_frame = false   -- (the autosave looks for a frame in which the original flipped)
-ami.hook(0x1d302, function() orig_flips = orig_flips + 1; flip_in_frame = true end)
+ami.hook(0x1d302, function()
+    orig_flips = orig_flips + 1
+    flip_in_frame = true
+    local flip_line = math.floor((ami.cycles() - frame_end_cycles) / 454)
+    if sync_on then flip_line_queue[#flip_line_queue + 1] = ("flipline %d %d\n"):format(orig_flips - flips_at_sync, flip_line) end
+    if args:find("fliplog") then ami.log(("FLIP %d at frame %d line %d"):format(orig_flips, ami.frame(), flip_line)) end
+end)
 ami.hook(0x1d0c0, function() if next_level_event then next_level_event(1, "loading screen faded in") end orig_fades = orig_fades + 1; if args:find("fadelog") then ami.log(("FADE call %d at frame %d"):format(orig_fades, ami.frame())) end end)
 ami.hook(0x135c0, function() orig_world_loads = orig_world_loads + 1 end)
 -- autosave=SECONDS (default 30; 0 or `noautosave` off; not while replaying): every SECONDS seconds of play (50 frames each) the original's state is saved, the frame after one in which it flipped (so its iteration has
@@ -320,6 +327,8 @@ local delayed = setmetatable({
                     sample_stick_outside_game()
                     real:send(("diskdone %d\n"):format(disk_done))
                     if sync_on then
+                        for _, l in ipairs(flip_line_queue) do real:send(l) end
+                        flip_line_queue = {}
                         real:send(("flips %d\n"):format((flip_lag and last_flips or orig_flips) - flips_at_sync))
                         real:send(("reads %d\n"):format(orig_reads - reads_at_sync))
                         real:send(("fadeline %d\n"):format(fade_line))
@@ -823,6 +832,14 @@ lockstep.run {
         if track_at then track_long() end
         if color_n then track_color() end
         if trace then ami.log(("different pixels: %d"):format(count)) end
+        if args:find("hashlog") then ami.log(("HASH %d %s"):format(ami.frame(), tostring(ami.frame_hash(0, 60, 320, 190)))) end
+        do
+            local d1, d2, dd = args:match("dumprange=(%d+)-(%d+):(%S+)")
+            if d1 and ami.frame() >= tonumber(d1) and ami.frame() <= tonumber(d2) then
+                ami.save_file(("%s/%d.o.ppm"):format(dd, ami.frame()), "P6\n320 256\n255\n" .. emulated)
+                ami.save_file(("%s/%d.p.ppm"):format(dd, ami.frame()), "P6\n320 256\n255\n" .. native)
+            end
+        end
         do
             local r1, r2 = args:match("rowlog=(%d+)-(%d+)")
             if r1 and count > 0 and ami.frame() >= tonumber(r1) and ami.frame() <= tonumber(r2) then
