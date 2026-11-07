@@ -187,10 +187,18 @@ local function sample_stick()
 end
 local game_read_frame = -100   -- the emulator frame of the game's last read of the keys
 local orig_reads, reads_at_sync = 0, 0   -- the original's reads of the keys ($363A): the port's read of an iteration waits for the original's (host_read_wait), so that it has the keys the original's read had
+esc_armed, esc_up_step = false, nil   -- (Escape: see esc_press below)
 ami.hook(0x363a, function()
     game_read_frame = ami.frame()
     orig_reads = orig_reads + 1
     sample_stick()
+    if esc_armed then   -- the port is given the key at the original's read of the keys, the top of the iteration that takes the request at $2E78: the port's own iteration, which runs ahead, then has it too
+        esc_armed = false
+        orig_poke(0x1e5a8, 0x0045001b, 4)   -- (the original takes it at $2E78 of this iteration)
+        pending[#pending + 1] = "key 69 1\n"
+        esc_up_step = steps + 3
+        if input_log then ami.append_file(input_log, ("%d k 27 1\n"):format(steps - 1)) end
+    end
 end)
 -- the shop's loop reads the stick byte at its top ($13840): the same as a read of the keys (the port's shop waits for it, host_read_wait, and has the byte the original's read had)
 ami.hook(0x13840, function()
@@ -276,11 +284,19 @@ local auto_slot = 0
 -- (f5-K.port: its quicksave, the file --quickload reads), at the frame after the original flipped.  (ami.input is wrapped to see the key before the lockstep module takes the events.)
 local F5_KEY = 286   -- libretro RETROK_F5
 local f5_requested, f5_slot = false, 0
+-- Escape (the game's "QUIT GAME", request 27): this host does not run the original's keyboard interrupt (only the arrows and the space bar reach it, as the joystick), so the key's request is put where the interrupt
+-- would have: the long at $1E5A8 (the raw code in byte 1, the character in byte 3).  The original takes it at $2E78; the port is given the key at the original's read at $363A (above) and it is let go three steps later
+local ESC_KEY = 27
+function esc_press()
+    esc_armed = true   -- (given to both sides at the original's next read of the keys, $363A)
+end
+-- (the port is given the key at the original's read of the keys at $363A, the top of the iteration that takes the request at $2E78: the port's own iteration, which runs ahead, then has it too)
 local libretro_input = ami.input
 ami.input = function()
     local events = libretro_input()
     for _, e in ipairs(events) do
         if e[1] == "k" and e[2] == F5_KEY and e[3] ~= 0 then f5_requested = true end
+        if e[1] == "k" and e[2] == ESC_KEY and e[3] ~= 0 then esc_press() end
     end
     return events
 end
@@ -341,6 +357,7 @@ local delayed = setmetatable({
                         real:send(("worldloads %d\n"):format(orig_world_loads - world_loads_at_sync))
                         last_flips = orig_flips
                     end
+                    if esc_up_step and steps >= esc_up_step then pending[#pending + 1] = "key 69 0\n" esc_up_step = nil end
                     for _, p in ipairs(pending) do real:send(p) end
                     pending = {}
                 end
@@ -420,7 +437,7 @@ if replay then
     schedule = setmetatable({}, { __index = function(_, step)
         local lines = {}
         for _, e in ipairs(events[step] or {}) do
-            ami.key(e[1], e[2])
+            if e[1] == 27 then if e[2] then esc_press() end else ami.key(e[1], e[2]) end
 
             if args:find("%f[%w]keylog%f[%W]") then ami.log(("step %d: key %d %s; table %02x"):format(step, e[1], tostring(e[2]), ami.read(0x1e63a + 0x4e, 1):byte())) end
 
