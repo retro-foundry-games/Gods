@@ -12855,7 +12855,7 @@ void draw_start_frame(void)
     scroll_x = scroll_x_a;
     scroll_y = scroll_y_a;
     fn_16aee_c();
-    do_nothing_b();
+    bats_db04();   /* $FD02 */
     step_190f2();
     update_archers();   /* $FD0C (this routine, the frame of a change of the screen, does not call the routine at $E142) */
     update_records_12a0();
@@ -12869,7 +12869,7 @@ void draw_start_frame(void)
     unit2_update();
     unit3_update();
     unit4_update();
-    do_nothing_b();
+    pods_d6b8();   /* $FD3C */
     step_d898();
     move_records_3a0a6();
     draw_sprite_8472();
