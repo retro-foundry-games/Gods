@@ -350,6 +350,7 @@ local delayed = setmetatable({
 --   port_read(addr, len)           the port's bytes (as it holds them: the words and longs native, little endian), read in pieces of 4096
 --   port_poke(addr, value, size)   size 1, 2 (default) or 4 bytes of the port's memory are set (value as the program reads it, the number you mean)
 --   orig_poke(addr, value, size)   the same on the original (big endian)
+--   both_poke(addr, value, size)   the original at once and the port with its next step (the same iteration on both sides; use it for cheats instead of the two pokes)
 --   mem_diff(addr, len, size)      where the two differ over len bytes: size 2 (default) compares words (the port's swapped), 4 longs, 1 bytes; returns lines
 --                                  "ADDR original port" with the neighbours joined into runs (at most 60 lines)
 --   port_save(path)                the port's memory to PATH (its quicksave: f5-K.port, which ram= takes to resume it)
@@ -371,6 +372,12 @@ end
 function orig_poke(addr, value, size)
     size = size or 2
     ami.write(addr, string.pack(">I" .. size, value & ((1 << (8 * size)) - 1)))
+end
+-- both_poke(addr, value, size): the original at once, the port with its next step (the port is an iteration ahead, so a plain poke on both is seen a frame early by the port: a difference)
+function both_poke(addr, value, size)
+    size = size or 2
+    orig_poke(addr, value, size)
+    pending[#pending + 1] = ("poke %x %x %d\n"):format(addr, value & ((1 << (8 * size)) - 1), size)
 end
 function port_save(path)
     real:send(("quicksave %s\n"):format(path))
