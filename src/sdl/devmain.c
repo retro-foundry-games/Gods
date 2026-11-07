@@ -397,7 +397,7 @@ static void dev_finish(uint32_t *pixels)
 
 int main(int argc, char **argv)
 {
-    struct HostOptions options = { .disks = "projects/gods/local", .scale = 3, .phase = PHASE_INTRO, .window_x = -1, .window_y = -1, .wav = getenv("GODS_WAV") };
+    struct HostOptions options = { .disks = ".", .scale = 3, .phase = PHASE_INTRO, .window_x = -1, .window_y = -1, .wav = getenv("GODS_WAV") };
     struct HostHooks hooks = { .key = dev_key, .windows = dev_windows, .frame_start = dev_frame_start, .hold = dev_hold, .after_blank = dev_after_blank, .after_frame = dev_after_frame,
                                .paced = dev_paced, .finish = dev_finish };
 
@@ -449,7 +449,12 @@ int main(int argc, char **argv)
             keys = argv[++i];
         else if (!strcmp(argv[i], "--dump-every") && i + 1 < argc)
             dump_every = atoi(argv[++i]);
-        else {
+        else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
+            printf("usage: gods-sdl-dev [--disks FOLDER (default: the working folder)] [--scale N] [--start intro|menu|level] [--skip-intro] [--level1-image FILE]\n"
+                   "                    [--headless --frames N [--dump PREFIX] [--dump-every N] [--keys FRAME:RAW:1|0,...]]\n"
+                   "                    [--lockstep [--lockstep-level N] [--lockstep-iteration N] [--lockstep-extra N] [--lockstep-menu N]] [--quickload FILE] [--quicksave FILE]\n");
+            return 0;
+        } else {
             fprintf(stderr, "usage: gods-sdl-dev [--disks FOLDER] [--scale N] [--start intro|menu|level] [--skip-intro] [--level1-image FILE]\n"
                             "                    [--headless --frames N [--dump PREFIX] [--dump-every N] [--keys FRAME:RAW:1|0,...]]\n"
                             "                    [--lockstep [--lockstep-level N] [--lockstep-iteration N] [--lockstep-extra N]] [--quickload FILE] [--quicksave FILE]\n");

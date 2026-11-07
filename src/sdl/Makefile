@@ -10,7 +10,7 @@
 # folder.  Outside the flake's shell every target is run again inside it.
 #
 #   DEBUG=1      -O0 -ggdb everywhere (the objects are made again when the flags change)
-#   GODS_DISKS   the folder with gods-disk1.adf and gods-disk2.adf (default: ../../../local)
+#   GODS_DISKS   (make run) the folder with gods-disk1.adf and gods-disk2.adf (default: ../../../local); gods-sdl itself takes --disks DIR, default the working folder
 
 HERE   := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 NATIVE := $(abspath $(HERE)/../..)
@@ -78,9 +78,9 @@ $(BUILD)/g_%.o: $(SRC)/%.c $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/h_%.o: $(HERE)/%.c $(BUILD)/guest_tables.h $(BUILD)/guest_fixups.h $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(HOST_CFLAGS) -I$(BUILD) -MMD -MP -c $< -o $@
-# the regular program knows where the disks are (GODS_DISKS), it has no options
+# the regular program has --disks DIR (default: the working folder) and --help
 $(BUILD)/h_main.o: $(HERE)/main.c $(HERE)/host.h $(FLAGS_STAMP) | $(BUILD)
-	$(CC) $(HOST_CFLAGS) -DGODS_DISKS_DEFAULT='"$(GODS_DISKS)"' -I$(BUILD) -MMD -MP -c $< -o $@
+	$(CC) $(HOST_CFLAGS) -I$(BUILD) -MMD -MP -c $< -o $@
 # what the game's thread does for the tests (the development program only)
 $(BUILD)/g_dev_game.o: $(HERE)/dev_game.c $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
@@ -107,7 +107,7 @@ $(BUILD)/gods-sdl-dev: $(BUILD)/h_devmain.o $(BUILD)/g_dev_game.o $(COMMON_OBJS)
 	$(CC) -m32 -no-pie -Wl,--allow-multiple-definition -o $@ $(BUILD)/h_devmain.o $(BUILD)/g_dev_game.o $(COMMON_OBJS) $(HOST_LIBS)
 
 run: $(BUILD)/gods-sdl
-	$(BUILD)/gods-sdl
+	$(BUILD)/gods-sdl --disks $(GODS_DISKS)
 
 clean:
 	rm -rf $(BUILD)
