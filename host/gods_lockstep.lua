@@ -257,8 +257,8 @@ ami.hook(0x1d302, function()
     orig_flips = orig_flips + 1
     flip_in_frame = true
     local flip_line = math.floor((ami.cycles() - frame_end_cycles) / 454)
-    if sync_on then flip_line_queue[#flip_line_queue + 1] = ("flipline %d %d\n"):format(orig_flips - flips_at_sync, flip_line) end
-    if args:find("fliplog") then ami.log(("FLIP %d at frame %d line %d"):format(orig_flips, ami.frame(), flip_line)) end
+    if sync_on then flip_line_queue[#flip_line_queue + 1] = ("flipline %d %d\n"):format(orig_flips - flips_at_sync, math.floor((ami.cycles() - frame_end_cycles) * 2 / 454)) end   -- (in half lines: the flip is late from the line 154.5 on: 154.62 was, 154.12 was not)
+    if args:find("fliplog") then ami.log(("FLIP %d at frame %d line %d (%.2f)"):format(orig_flips, ami.frame(), flip_line, (ami.cycles() - frame_end_cycles) / 454)) end
 end)
 ami.hook(0x1d0c0, function() if next_level_event then next_level_event(1, "loading screen faded in") end orig_fades = orig_fades + 1; if args:find("fadelog") then ami.log(("FADE call %d at frame %d"):format(orig_fades, ami.frame())) end end)
 ami.hook(0x135c0, function() orig_world_loads = orig_world_loads + 1 end)
