@@ -7,7 +7,10 @@
  * Words the program reads as native ones: the files ending in ".dat" are tables of words (swapped here), and the picture files
  * ("c" + name) are packed: unpack() below does the unpacking of the original's and then makes the words of the picture native.
  * The high score file (hiscores.bin) has longs - the ten scores (at +16 of each record of 20 bytes) and the four scrambled codes (+200) -
- * which are made native here as well.  Everything else in the files is bytes. */
+ * which are made native here as well.  Everything else in the files is bytes.
+ *
+ * The port keeps its own high score file, hiscores.bin in the folder of the disks (--disks): when it is there it is read instead of the one of the disk, and the scores and
+ * codes are written to it (scores_save below); the disk's own file is read when there is none. */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,6 +24,7 @@
 static uint8_t *disk[2];
 static int unpack_swaps;   /* the words of what unpack() makes are made native: the file just read is a picture (.pi1: palette and planes) */
 static uint32_t disk_size[2];
+static char scores_path[1100];   /* the port's own high score file: hiscores.bin in the folder of the disks */
 
 extern volatile uint8_t disk_digit;   /* the digit of the disk the program asks for (menu.symbols) */
 
@@ -49,6 +53,8 @@ static uint8_t *slurp(const char *path, uint32_t *size)
 int files_open(const char *folder)
 {
     char path[1024];
+
+    snprintf(scores_path, sizeof scores_path, "%s/hiscores.bin", folder);
 
     for (int i = 0; i < 2; i++) {
         snprintf(path, sizeof path, "%s/gods-disk%d.adf", folder, i + 1);
@@ -100,7 +106,18 @@ int files_read(const char *name, int prefer, uint8_t *dest)
 
     if (name[0] == '\\')
         name++;
-    file = files_find(name, prefer, &size);
+    uint8_t *own = 0;   /* the port's own high score file, when there is one */
+
+    if (strcmp(name, "hiscores.bin") == 0 && scores_path[0] != 0) {
+        own = slurp(scores_path, &size);
+        if (own && size < 216) {
+            free(own);
+            own = 0;
+        }
+        file = own;
+    }
+    if (!file)
+        file = files_find(name, prefer, &size);
     if (!file)
         file = files_find(name, !prefer, &size);
     if (!file) {
@@ -134,6 +151,7 @@ int files_read(const char *name, int prefer, uint8_t *dest)
             dest[i] = dest[i + 1];
             dest[i + 1] = t;
         }
+    free(own);
     return 0;
 }
 
@@ -150,9 +168,34 @@ int32_t file_read(const char *name, void *dest)
     return files_read(name, wanted, dest);
 }
 
-/* orig $01CEEA: the high scores are written to the disk; the port keeps them in record_text (nothing is written to the guest's disk) */
+/* orig $01CEEA: the high scores are written: record_text (216 bytes, its longs made native) goes to the port's own hiscores.bin (the disks are not written) */
 void scores_save(void)
 {
+    extern uint8_t record_text[216];
+    uint8_t out[216];
+
+    if (scores_path[0] == 0)
+        return;
+    memcpy(out, record_text, sizeof out);
+    for (uint32_t i = 0; i < 14; i++) {   /* the longs are native in the program's memory: back to the file's byte order (the swap of files_read) */
+        uint8_t *p = out + (i < 10 ? 16 + 20 * i : 200 + 4 * (i - 10));
+        uint8_t t = p[0];
+
+        p[0] = p[3];
+        p[3] = t;
+        t = p[1];
+        p[1] = p[2];
+        p[2] = t;
+    }
+
+    FILE *f = fopen(scores_path, "wb");
+
+    if (!f) {
+        fprintf(stderr, "gods-sdl: cannot write %s\n", scores_path);
+        return;
+    }
+    fwrite(out, 1, sizeof out, f);
+    fclose(f);
 }
 
 /* orig $01D966: the drives are put to rest */
