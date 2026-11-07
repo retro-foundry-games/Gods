@@ -294,11 +294,16 @@ end
 local libretro_input = ami.input
 ami.input = function()
     local events = libretro_input()
+    local kept = {}
     for _, e in ipairs(events) do
         if e[1] == "k" and e[2] == F5_KEY and e[3] ~= 0 then f5_requested = true end
-        if e[1] == "k" and e[2] == ESC_KEY and e[3] ~= 0 then esc_press() end
+        if e[1] == "k" and e[2] == ESC_KEY then
+            if e[3] ~= 0 then esc_press() end   -- (Escape does not go on to the original's own keyboard: its release would clear the request, $1E598, before the game takes it at $2E78)
+        else
+            kept[#kept + 1] = e
+        end
     end
-    return events
+    return kept
 end
 local function f5_step()
     if not (f5_requested and flip_in_frame) then return end
