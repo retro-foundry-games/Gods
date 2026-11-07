@@ -125,7 +125,7 @@ ami.machine{
     content = "../local/gods.m3u", roms = { { "kick34005.A500", 0xc4f0f55f } },
     opt = { puae_chipmem_size = 2, puae_joyport_order = "2143" },   -- 1 MB chip RAM as the saved states have it, the joystick in port 1
     peers = {
-        native = { ami.script_dir .. "/../native/build/sdl/gods-sdl-dev", "--disks", ami.script_dir .. "/../local", "--skip-intro", "--lockstep",
+        native = { ami.script_dir .. "/../native/build/sdl/gods-sdl-dev", "--disks", ami.script_dir .. "/../" .. (args:match("disks=(%S+)") or "local"), "--skip-intro", "--lockstep",
                    "--lockstep-extra", tostring(EXTRA), "--lockstep-level", tostring(LEVEL), "--lockstep-iteration", args:match("iter=(%d+)") or tostring(args:find("ram=") and 1 or ({ [2] = 124 })[LEVEL] or 129), 
                    table.unpack(native_extra) },
     },
