@@ -10678,6 +10678,9 @@ static void spawn_player_shots_left(void)
         case 6:
             spawn_shots_spear(slots[i], ids[i], object, x, y, 0);
             break;
+        case 8:
+            spawn_shot_ball(slots[i], ids[i], x, y, 0);   /* $015870: the ball (the time bomb) to the left */
+            break;
         case 10:
             spawn_shots_hunter(slots[i], ids[i], object, x, y, 1);
             break;
