@@ -111,6 +111,14 @@ local START_SKIP = tonumber(args:match("from=(%d+)")) or (LEVEL > 1 and 12 or 0)
 local STATE = args:match("%f[%w]state=(%S+)") or ("gods-level" .. LEVEL .. "-1m.state")
 local EXTRA = tonumber(args:match("extra=(%d+)")) or (args:find("ram=%S*%.port") and 0 or args:find("ram=") and 1 or 2)   -- (ram=X.port: the port's own memory, its phase is the one it was saved in; ram=X.ram: the original's RAM, the port is a step behind with 0: found by trying, f5-3 resumed equal for 1250 frames with 1)   -- (a quickload from a state saved at a flip: the port begins its first iteration with the first step)   -- (found by trying: with 3, the comparison starting at frame 5, the idle level is pixel for pixel the same)
 
+local native_extra = {}   -- (the port's other options: from a RAM image of the original, in the menu, or Begin Quest by the fire key at frame 300)
+if args:match("ram=(%S+)") then
+    native_extra = { "--keys", "300:40:1,320:40:0", "--quickload", args:match("ram=(%S+)") }
+elseif args:find("%f[%w]menu=%d+") then
+    native_extra = { "--lockstep-menu", args:match("menu=(%d+)") }
+else
+    native_extra = { "--keys", "300:40:1,320:40:0" }
+end
 ami.machine{
     name = "Gods lockstep", model = "A500", system = "../local/system", save = "../local/save", files = "..",
     snapshots = "../local/save",
@@ -118,8 +126,8 @@ ami.machine{
     opt = { puae_chipmem_size = 2, puae_joyport_order = "2143" },   -- 1 MB chip RAM as the saved states have it, the joystick in port 1
     peers = {
         native = { ami.script_dir .. "/../native/build/sdl/gods-sdl-dev", "--disks", ami.script_dir .. "/../local", "--skip-intro", "--lockstep",
-                   "--lockstep-extra", tostring(EXTRA), "--lockstep-level", tostring(LEVEL), "--lockstep-iteration", args:match("iter=(%d+)") or tostring(args:find("ram=") and 1 or ({ [2] = 124 })[LEVEL] or 129), "--keys", "300:40:1,320:40:0",
-                   table.unpack(args:match("ram=(%S+)") and { "--quickload", args:match("ram=(%S+)") } or {}) },
+                   "--lockstep-extra", tostring(EXTRA), "--lockstep-level", tostring(LEVEL), "--lockstep-iteration", args:match("iter=(%d+)") or tostring(args:find("ram=") and 1 or ({ [2] = 124 })[LEVEL] or 129), 
+                   table.unpack(native_extra) },
     },
 }
 ami.boot()
