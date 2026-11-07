@@ -144,8 +144,7 @@ void guest_load_image(const uint8_t *image, uint32_t size)
  * and longs of the program's variables (guest_fixups.h, from menu.symbols' types) are made native, and so are the pictures: the two
  * screens, the sprites of the image table, the background.  What the image has that the C reads in other ways (the level's map, ...) is
  * not known here and is left as it is. */
-extern uint8_t *image_table, *asset_memory, *memory_base;
-extern uint16_t shadow_table[];
+#include "guest_vars.h"
 
 static void swap_image_table(void)
 {

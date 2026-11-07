@@ -1857,7 +1857,7 @@ static int level_end_wait_rule(const struct LevelEnd *record)
 {
     /* the original waits a frame for the voices of the game's sounds on most of the end screens (the 2500 of the first level's, the "WORLD TWO" of the second's: seen in recordings); on the first
      * of the second level's ("WORLD ONE", the bonus 500) it does not: what sound was playing then is not modelled (the port's wait for the sound system takes the same blanks in both) */
-    if (record->spots == 6 && record->effects == 1408)
+    if (record->spots == 6 && record->end_effects == 1408)
         return 0;
     /* the "WORLD ONE" of the third level ($1450C: 100 spots, the effects 1921) has none either: the second's and the third's are the first of a list whose sound is the level's ambient one */
     if (param_index >= 2) {
@@ -2065,7 +2065,7 @@ static void level_end_effects(const struct LevelEnd *record)
 
     flag_230 = 0;
     for (int bit = 10; bit >= 0; bit--) {
-        if (!(record->effects & (1u << bit)))
+        if (!(record->end_effects & (1u << bit)))
             continue;
         switch (handlers[10 - bit]) {
         case 0x13234:
@@ -3396,8 +3396,8 @@ void take_record_to_199ac(struct EntryRef *a0)
     const struct CreatureTemplate *template = (const struct CreatureTemplate *)ptr_0b82 + entry->template_index;
 
     type->status = 2;
-    type->start_x = entry->start_x;
-    type->start_y = entry->start_y;
+    type->spawn_x = entry->spawn_x;
+    type->spawn_y = entry->spawn_y;
     type->direction = entry->direction;
     type->bounds = entry->bounds;
     type->delay_step = entry->delay_step;
@@ -6479,8 +6479,8 @@ static void creatures_start(struct CreatureType *type)
     int number = 0;
 
     do {
-        creature->x = type->start_x;
-        creature->y = type->start_y;
+        creature->x = type->spawn_x;
+        creature->y = type->spawn_y;
         creature->state = 0;
         creature->delay = delay;
         if (delay == 0)
@@ -13920,7 +13920,7 @@ static void level_tables_from_disk(void)
     for (int i = 0; i < 100; i++) {
         struct CreatureEntry *entry = &ptr_0d0e[i];
 
-        file_words(&entry->start_x, 2);
+        file_words(&entry->spawn_x, 2);
         file_words(&entry->delay_step, 1);
         file_words(&entry->template_index, 1);
     }
@@ -13965,7 +13965,7 @@ void level_tables_quickload(void)
     for (int i = 0; i < 100; i++) {
         struct CreatureEntry *entry = &ptr_0d0e[i];
 
-        file_words(&entry->start_x, 2);
+        file_words(&entry->spawn_x, 2);
         file_words(&entry->delay_step, 1);
         file_words(&entry->template_index, 1);
     }

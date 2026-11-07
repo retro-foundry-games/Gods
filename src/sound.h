@@ -4,7 +4,7 @@
 
 #include <stdint.h>
 
-void voice_start(uint16_t sound, uint16_t voice);   /* orig $01FE3E (d0 the sound, d1 the voice) */
+void voice_start(uint16_t sound, uint16_t voice_index);   /* orig $01FE3E (d0 the sound, d1 the voice) */
 void play_sound(uint16_t id, uint16_t priority);   /* orig $01FAF6: d0 the id, d1 the priority (a voice with a higher one is not taken) */
 void sound_tick(void);               /* orig $01FCB8 */
 uint16_t random_word(void);          /* orig $00633E */

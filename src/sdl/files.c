@@ -26,7 +26,7 @@ static int unpack_swaps;   /* the words of what unpack() makes are made native: 
 static uint32_t disk_size[2];
 static char scores_path[1100];   /* the port's own high score file: hiscores.bin in the working folder */
 
-extern volatile uint8_t disk_digit;   /* the digit of the disk the program asks for (menu.symbols) */
+#include "guest_vars.h"
 
 static uint8_t *slurp(const char *path, uint32_t *size)
 {

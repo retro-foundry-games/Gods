@@ -652,4 +652,8 @@ extern const char objects_name[8];   /* $196DE  "objects": the asset set of the 
 extern const uint16_t death_steps[14];   /* $00096  the seven pieces of the player's death: the steps (x, y) each starts with */
 extern const uint16_t respawn_search[45];   /* $03864  fifteen records of three words: where, from the cell the player was last at, the cell that is looked for (an offset into the collision map, then the step of x and y) */
 
+#ifdef GODS_WEB   /* the browser build: no linker script, a variable is the memory at its address (sdl/gen_guest.py) */
+#include "guest_vars_web.h"
+#endif
+
 #endif

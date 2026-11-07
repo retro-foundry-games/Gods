@@ -9,6 +9,7 @@
 
 #include "menu.h"
 #include "guest.h"
+#include "menu_symbols.h"
 
 /* orig $01CFAC: clear a screen buffer, 8448 longs */
 void clear_screen_buffer(uint32_t *buffer)
@@ -399,7 +400,6 @@ void blitter_setup_copy(void)
 /* orig $017082: one column of a tile: four copies of (rows + 1) rows of 4 bytes (two words) from consecutive source bytes to the screen's rows (44 bytes
  * apart); the source moves by src_step and the destination by dst_step bytes between them */
 extern volatile int gods_trace;
-extern uint8_t *screen_buffer;
 
 void blit_tile(int16_t src_step, int16_t dst_step, int16_t rows, const uint8_t *src, uint8_t *dst)
 {
@@ -597,8 +597,6 @@ void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uin
  * row cut by first_mask and last_mask; the screen's rows are 44 bytes and its planes blit_plane_stride apart.  The words are native. */
 
 
-extern uint16_t blit_extra_modulo;
-extern uint32_t blit_plane_stride;
 
 
 /* the mask word j of row r (words wide): the four planes ORed; the word after the last one is the first of the next row */
@@ -619,7 +617,6 @@ static uint16_t mask_word(const uint8_t *src, unsigned plane, unsigned stride, u
 
 /* orig $017208 (draw.c): the arguments are the program's */
 volatile int gods_trace;   /* the lockstep's peer: GODS_TRACE=FIRST-LAST (ticks of the port): the draws near the top of the screen are written to stderr */
-extern uint8_t *screen_buffer;
 
 void blit_masked_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t shift, uint16_t rows, uint16_t words,
                        uint16_t extra_modulo, uint16_t first_mask, uint16_t last_mask)
@@ -628,7 +625,7 @@ void blit_masked_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_
     unsigned stride = words * 2u + (unsigned)extra;
     unsigned out_words = words + ((shift & 0xff) != 0 && (int16_t)extra_modulo >= 0 ? 1 : 0);
     unsigned count = rows;
-    unsigned shift_bits = shift & 0xff;
+    unsigned blit_shift = shift & 0xff;
     int16_t plane_stride = (int16_t)blit_plane_stride;
 
     if (gods_trace && (long)(dst - screen_buffer) < 44 * 6)
@@ -636,7 +633,7 @@ void blit_masked_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_
     if (src == 0)
         return;   /* an image the table has no data for: on the Amiga the vectors at address 0 are drawn */
     blit_extra_modulo = extra_modulo;
-    if (shift_bits == 0)
+    if (blit_shift == 0)
         last_mask = 0xffff;
     for (unsigned i = 0; i < 4; i++) {
         for (unsigned r = 0; r < count; r++) {
@@ -653,8 +650,8 @@ void blit_masked_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_
                 if (j == out_words - 1)
                     keep &= last_mask;
                 a &= keep;
-                a_shifted = (uint16_t)(((previous_a << 16 | a) >> shift_bits) & 0xffff);
-                b_shifted = (uint16_t)(((previous_b << 16 | b) >> shift_bits) & 0xffff);
+                a_shifted = (uint16_t)(((previous_a << 16 | a) >> blit_shift) & 0xffff);
+                b_shifted = (uint16_t)(((previous_b << 16 | b) >> blit_shift) & 0xffff);
                 previous_a = a;
                 previous_b = b;
                 out[j] = (uint16_t)((a_shifted & b_shifted) | (~a_shifted & out[j]));
@@ -694,13 +691,7 @@ void blit_image_wide(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t 
 #define MESSAGE_TOP 253
 #define PLANE_SIZE 8448
 
-extern uint8_t copper_list_a[];
-extern uint8_t screen_1[];
-extern uint8_t screen_2[];
-extern uint32_t *work_area;
 extern const uint32_t message_pairs[8];
-extern uint16_t message_shown;
-extern uint16_t menu_active;
 
 /* what the display hardware has at the start of a frame: the copper restarts from COP1LC at the vertical blank, the scroll and the colours come from the
  * copper list and the registers as they were then.  The program's thread sets them whenever it likes (it flips the screens just after the vertical blank
@@ -1000,7 +991,7 @@ void display_render(uint32_t *pixels)
 
     /* the message: seven lines, the colour of the text and of the background by line */
     if (message_shown || !menu_active) {   /* (the band is there in the level also when no message is on show) */
-        static const uint16_t background[7] = { 0x030, 0x042, 0x060, 0x082, 0x060, 0x042, 0x030 };
+        static const uint16_t message_background[7] = { 0x030, 0x042, 0x060, 0x082, 0x060, 0x042, 0x030 };
         static const int band[7] = { 0, 2, 4, 6, 5, 3, 1 };   /* which of message_pairs colours the text of the line */
 
         for (int line = 0; line < 7; line++) {
@@ -1009,7 +1000,7 @@ void display_render(uint32_t *pixels)
             const uint16_t *bits = (const uint16_t *)((const uint8_t *)work_area + 40 * (line + 1));   /* words of the machine; the band shows the work area from its second row on (the text is drawn from there) */
 
             for (int x = 0; x < SCREEN_W; x++)
-                out[x] = (message_shown && (bits[x >> 4] >> (15 - (x & 15)) & 1)) ? argb(*text_color) : argb(background[line]);
+                out[x] = (message_shown && (bits[x >> 4] >> (15 - (x & 15)) & 1)) ? argb(*text_color) : argb(message_background[line]);
         }
     }
 }

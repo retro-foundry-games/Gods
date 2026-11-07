@@ -20,9 +20,8 @@
 
 extern void menu_boot(void);    /* boot.c: the start-up (orig $039E50) */
 extern void menu_start(void);   /* menu.c: the menu (orig $006388) */
-extern uint32_t heap_base;
+#include "guest_vars.h"
 extern void sr_set(uint16_t value);
-extern uint8_t *mask_buffer;    /* shares its address with restart_address, which menu_boot sets to its own address: the original blits into the (finished) boot code */
 extern void host_begin_quest(void);   /* shims.c: the menu's Begin Quest */
 void intro_render(uint32_t *pixels);   /* intro_view.c */
 

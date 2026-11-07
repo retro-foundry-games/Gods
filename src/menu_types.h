@@ -112,8 +112,8 @@ struct ShotList { int16_t object; struct Shot shot[18]; };   /* 146 bytes: the n
 
 /* the creatures of a level (game.c, take_record_to_199ac): an entry of the table that says where and how a group starts (16 bytes, 25 for each level)... */
 struct CreatureEntry {
-    int16_t start_x;
-    int16_t start_y;
+    int16_t spawn_x;
+    int16_t spawn_y;
     int8_t direction;
     uint8_t bounds;
     int16_t delay_step;
@@ -258,8 +258,8 @@ struct CreatureType {
     struct Creature *creatures;   /* +0 */
     int16_t count;                /* +4 */
     uint16_t status;              /* +6 bit 1: in use, bit 0: started */
-    int16_t start_x;              /* +8 */
-    int16_t start_y;              /* +10 */
+    int16_t spawn_x;              /* +8 */
+    int16_t spawn_y;              /* +10 */
     int8_t direction;             /* +12 */
     int8_t bounds;                /* +13 0, 1 none; 2 left, 3 right, 4 top, 5 bottom: the creature is gone when it leaves the screen that way */
     int16_t delay_step;           /* +14 */
@@ -321,7 +321,7 @@ struct __attribute__((packed)) LevelEnd {
     uint32_t bonus;
     uint8_t text[20];
     uint16_t unused_26;
-    uint32_t effects;   /* +28 one bit for each of the routines the level's end runs (bit 8: the things in the slots that are not kept are put away, bit 6: where the list of the teleport gems goes on, ...) */
+    uint32_t end_effects;   /* +28 one bit for each of the routines the level's end runs (bit 8: the things in the slots that are not kept are put away, bit 6: where the list of the teleport gems goes on, ...) */
     uint16_t list_offset;   /* +32 */
 };
 _Static_assert(sizeof(struct LevelEnd) == 34, "level end");
@@ -332,7 +332,7 @@ struct __attribute__((packed)) LevelEndShort {   /* a record without its last wo
     uint32_t bonus;
     uint8_t text[20];
     uint16_t unused_26;
-    uint32_t effects;
+    uint32_t end_effects;
 };
 _Static_assert(sizeof(struct LevelEndShort) == 32, "short level end");
 

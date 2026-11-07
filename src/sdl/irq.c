@@ -7,14 +7,8 @@
 
 extern void input_poll(void);
 extern void frame_tick(void);
-extern uint16_t palette_dirty;
-extern uint16_t shadow_table[];
-extern volatile uint16_t vbl_saturating;
-extern volatile uint16_t vbl_count;
-extern volatile uint32_t pending_request;
-extern volatile uint8_t key_down[128];
+#include "guest_vars.h"
 extern const uint8_t keymap[128];
-extern uint8_t *ptr_0cc6;
 
 static volatile int interrupts_on;
 
