@@ -485,6 +485,7 @@ static void teleport_player(void)
 
 static void boss_sparks_c58e(void);
 static void boss_shots_c406(void);
+static void boss2_shots_cb0e(void);
 static void boss_score_c374(void);
 static void boss_quickload(void);
 static void start_debris_moving(int16_t x, int16_t y, int16_t speed_x, int16_t speed_y);
@@ -530,7 +531,7 @@ static void game_frame_tail(void)
     } else {
         callback_4e0();
         boss_sparks_c58e();
-        do_nothing_b();
+        boss2_shots_cb0e();
         boss_shots_c406();
     }
     do_nothing_b();
@@ -13167,6 +13168,506 @@ static void boss1_514(void)
     boss_clear();
 }
 
+/* ======== the level 2 guardian (orig $00B0B4 to $00D008): a body with a jaw that moves about, a neck of ten pieces (a curve of bezier.dat, four weights of a hundred and ninety-nine... 200 words each,
+ * halved when read) that is drawn from the head's three joints, and a head at its end that sometimes shoots at the player ======== */
+
+/* the variables of the level 2 guardian in the original's places ($4E8 to $632) */
+struct Boss2Box {
+    int16_t x;   /* the screen place the piece was drawn at (the hit boxes of $C6F2) */
+    int16_t y;
+    int16_t w;
+    int16_t h;
+};
+
+struct Boss2 {
+    int16_t x;                        /* $4E8 */
+    int16_t y;                        /* $4EA */
+    int16_t jaw;                      /* $4EC */
+    int16_t neck;                     /* $4EE: the strength of the neck and head (-2: it is gone) */
+    int16_t unused_4f0;
+    int16_t body;                     /* $4F2: the strength of the body */
+    int16_t offset_x;                 /* $4F4: where the body piece goes on its moves from the place */
+    int16_t offset_y;                 /* $4F6 */
+    int16_t step;                     /* $4F8: the move (a row of three bytes of boss2_moves) it is in, as a byte offset */
+    int16_t angle_a;                  /* $4FA: the angles of the neck's three joints (offsets in table_1c9e4, $100 to $258) */
+    int16_t angle_b;                  /* $4FC */
+    int16_t angle_c;                  /* $4FE */
+    int16_t speed_b;                  /* $500 */
+    int16_t speed_c;                  /* $502 */
+    int16_t speed_a;                  /* $504 */
+    int16_t shots_made;               /* $506: shots started in this move (-1: not shooting) */
+    uint16_t picture;                 /* $508 */
+    uint16_t energy_high;             /* $50A */
+    uint16_t energy_low;              /* $50C */
+    uint16_t unused_50e[5];           /* $50E */
+    struct BossShot shots[8];         /* $518: x, y, count (the +4 word: speed_y), frame (-1: free) */
+    uint16_t pad_568[9];
+    int16_t cycle;                    /* $57A: 0 to 2, the shots' picture offset */
+    uint16_t pad_57c[25];
+    int16_t tail_x;                   /* $5AE */
+    int16_t tail_y;                   /* $5B0 */
+    int16_t target_x;                 /* $5B2 */
+    int16_t target_y;                 /* $5B4 */
+    int16_t unused_5b6[2];
+    struct Boss2Box boxes[7];         /* $5BA: the jaw 1.. see boss2_draw */
+    uint16_t pad_5f2[12];
+    int16_t points[10][2];            /* $60A: the places of the neck's pieces (screen) */
+};
+
+_Static_assert(offsetof(struct Boss2, shots) == 0x518 - 0x4E8, "shots");
+_Static_assert(offsetof(struct Boss2, cycle) == 0x57A - 0x4E8, "cycle");
+_Static_assert(offsetof(struct Boss2, tail_x) == 0x5AE - 0x4E8, "tail");
+_Static_assert(offsetof(struct Boss2, boxes) == 0x5BA - 0x4E8, "boxes");
+_Static_assert(offsetof(struct Boss2, points) == 0x60A - 0x4E8, "points");
+
+static struct Boss2 *boss2_state(void)
+{
+    return (struct Boss2 *)GUEST(0x4E8);
+}
+
+/* orig $00CDE4: the moves of the body (the step in x and y and what it is: 0 nothing, 1 and 2 other pictures, 2 it shoots; a negative one ends the table) */
+static const int8_t boss2_moves[25][3] = {
+    {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {1, -1, 0}, {1, -1, 0}, {2, -1, 0}, {3, -1, 0}, {-3, 2, 1}, {-3, 4, 1}, {-3, 4, 1}, {-2, 4, 2}, {0, 0, 2},
+    {0, 0, 2}, {0, 0, 2}, {1, -3, 1}, {1, -3, 0}, {1, -2, 0}, {1, -2, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, -1}};
+/* orig $00CE30: the jaw's picture (from 448) and place (the y) in its four frames */
+static const int16_t boss2_jaw[4][2] = {{6, 0}, {4, 14}, {5, 27}, {4, 14}};
+/* orig $00CC96: the head's picture (from 482) places by what it does */
+static const int16_t boss2_head[8][2] = {{-8, 0}, {-11, -4}, {-7, -7}, {-4, -10}, {-1, -7}, {2, -4}, {-1, -2}, {-4, 2}};
+/* orig $00CCB6: what the head does for the angle of the neck's first joint (twenty for the angle going up, twenty for going down): 1 shoots */
+static const int8_t boss2_head_by_angle[40] = {6, 5, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 7, 6, 0, 0, 0, 0};
+
+/* bezier.dat: four weights of 200 words each, halved (orig $CE64) when it is read; the neck's points are weighed from them */
+static uint16_t boss2_bezier[800];
+/* orig $00CFBA to $00CFCC: the neck's anchor, three joints and the last point */
+static int16_t boss2_anchor_x, boss2_anchor_y, boss2_joint_b[2], boss2_joint_c[2], boss2_joint_a[2], boss2_point[2];
+
+static void boss2_bezier_load(void)
+{
+    static uint16_t raw[1024];   /* (the file layer reads whole sectors, and makes the words of a .dat file native) */
+
+    file_read("bezier.dat", raw);
+    for (int i = 0; i < 800; i++)
+        boss2_bezier[i] = (uint16_t)(raw[i] >> 1);
+}
+
+/* orig $00B09E and the rest of $00B0EE: the eight shots are free, the body is at its start place, the neck's joints are at their angles */
+static void boss2_514(void)
+{
+    struct Boss2 *boss = boss2_state();
+
+    word_268 = 1;
+    boss->x = 0x280;
+    boss->y = 0x370;
+    boss->offset_x = -28;
+    boss->offset_y = -30;
+    boss->step = 0;
+    boss->shots_made = -1;
+    boss->angle_a = 0x100;
+    boss->angle_c = 0x150;
+    boss->angle_b = 0x130;
+    boss->speed_a = 0x18;
+    boss->speed_b = 0x18;
+    boss->speed_c = 0x18;
+    boss->target_x = 0x280;
+    boss->target_y = 0x370;
+    boss->unused_5b6[0] = 0;
+    boss->unused_5b6[1] = 0;
+    boss_free_records();
+    boss->cycle = 0;
+}
+
+/* orig $00C7BA: the body goes to the point it aims at (a quarter of the way, at most 12 in x); when it is there, or while it shoots, a new point is taken: 112 right and 60 above the player or
+ * (while the player is in front of a thing of the kind 109 in the list of this frame) of that thing, further right the further the player is right of 128, and a spread of 16 either way */
+static void boss2_target_c7ba(void)
+{
+    struct Boss2 *boss = boss2_state();
+    int pick = boss->shots_made >= 0;
+
+    if (!pick) {
+        if (boss->x == boss->target_x && boss->y == boss->target_y) {
+            pick = 1;
+        } else {
+            int16_t dx = (int16_t)((boss->x - boss->target_x) >> 2);
+            int16_t dy = (int16_t)((boss->y - boss->target_y) >> 2);
+
+            if (dx > 12)
+                dx = 12;
+            boss->x = (int16_t)(boss->x - dx);
+            boss->y = (int16_t)(boss->y - dy);
+            return;
+        }
+    }
+    for (;;) {
+        if (word_037c <= 2)
+            return;
+
+        int16_t tx = player_x;
+        int16_t ty = player_y;
+
+        if (list_count_1294 != 0) {
+            int16_t n = list_count_1294 > 0x14 ? 0x14 : (int16_t)list_count_1294;
+            const int16_t *thing = (const int16_t *)GUEST(0x121C);
+            int found = 0;
+
+            for (int i = 0; i < n; i++, thing += 3) {
+                if (thing[2] == 0x6D) {
+                    tx = (int16_t)(thing[0] + scroll_x);
+                    ty = (int16_t)(thing[1] + scroll_y - 0x30);
+                    found = 1;
+                    break;
+                }
+            }
+            if (!found) {
+                tx = player_x;
+                ty = player_y;
+            }
+        }
+
+        int16_t away = (int16_t)(tx - 0x80);
+
+        tx = (int16_t)(tx + 0x70);
+        ty = (int16_t)(ty - 0x3C);
+        if (away >= 0) {
+            away = (int16_t)(away >> 2);
+            ty = (int16_t)(ty + away);
+            away = (int16_t)(away >> 1);
+            tx = (int16_t)(tx - away);
+        }
+        tx = (int16_t)(tx + (int16_t)((random_word() & 0x1F) - 0x10));
+        ty = (int16_t)(ty + (int16_t)((random_word() & 0x1F) - 0x10));
+        boss->target_x = tx;
+        boss->target_y = ty;
+        if (boss->shots_made >= 0)
+            return;
+        /* $C852 */
+        if (boss->x == tx && boss->y == ty)
+            continue;
+        int16_t dx = (int16_t)((boss->x - tx) >> 2);
+        int16_t dy = (int16_t)((boss->y - ty) >> 2);
+
+        if (dx > 12)
+            dx = 12;
+        boss->x = (int16_t)(boss->x - dx);
+        boss->y = (int16_t)(boss->y - dy);
+        return;
+    }
+}
+
+/* orig $00CA8E: a shot is started at the body (the sound 65 with the first of a row): the first free record gets the place (6 right and 16 below the body's piece), the count 7 and the frame 0 */
+static void boss2_shoot_ca8e(void)
+{
+    struct Boss2 *boss = boss2_state();
+
+    if (boss->shots_made == 7)
+        return;
+    if (boss->shots_made == 0)
+        play_sound(0x41, 0x3C);
+    for (int i = 0; i < 8; i++) {
+        struct BossShot *shot = &boss->shots[i];
+
+        if (shot->frame >= 0)
+            continue;
+        shot->x = (int16_t)(boss->x + boss->offset_x + 6);
+        shot->y = (int16_t)(boss->y + boss->offset_y + 0x10);
+        shot->speed_y = 7;
+        shot->frame = 0;
+        boss->shots_made++;
+        return;
+    }
+}
+
+/* orig $00CCDE: the neck's three joints are put at their angles from the anchor (the sine and cosine of table_1c9e4 less 9, 11 and 10 bits), and the angles go on by their speeds (back at $100 and $258) */
+static void boss2_joints_ccde(void)
+{
+    struct Boss2 *boss = boss2_state();
+    int16_t *angles[3] = {&boss->angle_a, &boss->angle_b, &boss->angle_c};
+    int16_t *speeds[3] = {&boss->speed_a, &boss->speed_b, &boss->speed_c};
+    int16_t *joints[3] = {boss2_joint_a, boss2_joint_b, boss2_joint_c};
+    static const int bits[3] = {9, 11, 10};
+
+    for (int i = 0; i < 3; i++) {
+        const uint8_t *entry = table_1c9e4 + (uint16_t)*angles[i];
+        int16_t sine = (int16_t)((entry[0] << 8) | entry[1]);   /* (the table's bytes are the original's, big endian words) */
+        int16_t cosine = (int16_t)-(int16_t)((entry[0x100] << 8) | entry[0x101]);
+
+        sine = (int16_t)(sine >> bits[i]);
+        cosine = (int16_t)(cosine >> bits[i]);
+        if (i == 0) {
+            sine = (int16_t)(sine >> 1);
+            cosine = (int16_t)(cosine >> 1);
+            sine = (int16_t)(sine + (sine >> 1));
+            cosine = (int16_t)(cosine + (cosine >> 1));
+        }
+        joints[i][0] = (int16_t)(sine + boss2_anchor_x);
+        joints[i][1] = (int16_t)(cosine + boss2_anchor_y);
+    }
+    for (int i = 0; i < 3; i++) {
+        int16_t next = (int16_t)(*angles[i] + *speeds[i]);
+
+        if (next <= 0x100)
+            *speeds[i] = (int16_t)-*speeds[i];
+        if (next >= 0x258)
+            *speeds[i] = (int16_t)-*speeds[i];
+        *angles[i] = next;
+    }
+}
+
+/* orig $00CF0A: the point of the neck at the weight index `index` (weights of the four tables of bezier.dat times the anchor and the three joints, 15 bits down) */
+static void boss2_point_cf0a(int16_t index)
+{
+    const int16_t *anchor[4] = {&boss2_anchor_x, boss2_joint_b, boss2_joint_c, boss2_joint_a};
+    int16_t x = 0, y = 0;
+
+    for (int i = 0; i < 4; i++) {
+        int16_t weight = (int16_t)boss2_bezier[i * 200 + index];
+        int16_t px = i == 0 ? boss2_anchor_x : anchor[i][0];
+        int16_t py = i == 0 ? boss2_anchor_y : anchor[i][1];
+
+        x = (int16_t)(x + (int16_t)(((int32_t)weight * px) >> 15));
+        y = (int16_t)(y + (int16_t)(((int32_t)weight * py) >> 15));
+    }
+    boss2_point[0] = x;
+    boss2_point[1] = y;
+}
+
+/* orig $00CE78: the neck is drawn as ten pieces (the glyph 451, every 20 words of the weights) and their places kept (for the hits); when it is dying (the strength below 0) the pieces fly off as debris
+ * with the speed they moved at, and the neck is gone (-2) */
+static void boss2_neck_ce78(void)
+{
+    struct Boss2 *boss = boss2_state();
+
+    if (boss->neck < -1)
+        return;
+    int k = 0;
+
+    for (int16_t index = 0; index < 0xC8; index += 0x14, k++) {
+        boss->tail_x = boss2_point[0];
+        boss->tail_y = boss2_point[1];
+        boss2_point_cf0a(index);
+
+        int16_t x = (int16_t)(boss2_point[0] - scroll_x);
+        int16_t y = (int16_t)(boss2_point[1] - scroll_y);
+
+        if (boss->neck < 0) {
+            start_debris_moving((int16_t)(x - 2), (int16_t)(y - 2), (int16_t)(x - boss->points[k][0]), (int16_t)(y - boss->points[k][1]));
+        } else {
+            boss->points[k][0] = x;
+            boss->points[k][1] = y;
+        }
+        glyph_draw(x, y, 0x1C3);
+    }
+    if (boss->neck < 0)
+        boss->neck = -2;
+}
+
+/* orig $00CBCA: the head at the end of the neck: its picture by the first joint's angle (boss2_head_by_angle); the picture 1 shoots at the player from the end of the neck (aimed_shot, the player's place
+ * moved a little at random for it) in the frames of frame_toggle */
+static void boss2_head_cbca(void)
+{
+    struct Boss2 *boss = boss2_state();
+
+    if (boss->neck <= -2)
+        return;
+
+    int16_t angle = (int16_t)(boss->angle_a - 0x100);
+
+    if (angle < 0)
+        angle = 0;
+
+    const int8_t *table = boss2_head_by_angle + (boss->speed_a < 0 ? 20 : 0);
+    int16_t kind = table[(uint16_t)angle / 0x18];
+
+    if (kind == 1 && frame_toggle != 0) {
+        int16_t old_x = player_x;
+        int16_t old_y = player_y;
+
+        player_y = (int16_t)(player_y - (int16_t)((random_word() & 7) - 3));
+        player_x = (int16_t)(player_x + (int16_t)((random_word() & 0xF) - 8));
+        aimed_shot((int16_t)(boss2_point[0] + (int16_t)(((uint16_t)table[0] << 8) | (uint8_t)table[1])), (int16_t)(boss2_point[1] + (int16_t)(((uint16_t)table[2] << 8) | (uint8_t)table[3])), 6, 0);
+        player_y = old_y;
+        player_x = old_x;
+    }
+
+    int16_t x = (int16_t)(boss2_point[0] + boss2_head[kind][0] - scroll_x);
+    int16_t y = (int16_t)(boss2_point[1] + boss2_head[kind][1] - scroll_y);
+
+    boss->boxes[6].x = x;
+    boss->boxes[6].y = y;
+    boss->boxes[6].w = 0x10;
+    boss->boxes[6].h = 0x10;
+    glyph_draw(x, y, (uint16_t)(0x1E2 + kind));
+}
+
+/* orig $00C886: the body, its jaw, the neck and the head are drawn; every other frame the body goes on in its moves (boss2_moves); the pieces' places are kept as the boxes the hits are made against */
+static void boss2_draw_c886(void)
+{
+    struct Boss2 *boss = boss2_state();
+    int16_t x = (int16_t)(boss->x - scroll_x + boss->offset_x);
+    int16_t y = (int16_t)(boss->y - scroll_y + boss->offset_y);
+    int16_t step = boss->step;
+
+    if (frame_phase == 0) {
+        step = (int16_t)(step + 3);
+        if (boss2_moves[step / 3][2] < 0)
+            step = 0;
+        boss->step = step;
+        x = (int16_t)(x + boss2_moves[step / 3][0]);
+        boss->offset_x = (int16_t)(boss->offset_x + boss2_moves[step / 3][0]);
+        y = (int16_t)(y + boss2_moves[step / 3][1]);
+        boss->offset_y = (int16_t)(boss->offset_y + boss2_moves[step / 3][1]);
+    }
+
+    int16_t kind = boss2_moves[step / 3][2];
+
+    if (kind == 2)
+        boss2_shoot_ca8e();
+    else
+        boss->shots_made = -1;
+    kind = (int16_t)(kind + 0x1C7);
+
+    boss->boxes[0] = (struct Boss2Box){x, y, 0x20, 0x20};
+
+    int16_t bx = (int16_t)(boss->x - scroll_x);
+    int16_t by = (int16_t)(boss->y - scroll_y);
+    int16_t x4 = (int16_t)(bx + 0x1E + boss->offset_x);
+    int16_t y4 = (int16_t)(by + 5 + boss->offset_y);
+    int16_t x2 = (int16_t)(bx + 0x10);
+    int16_t y2 = (int16_t)(by - 0xB);
+
+    boss->boxes[1] = (struct Boss2Box){x2, y2, 0x10, 0x10};
+    glyph_draw(x2, y2, 0x1C2);
+
+    int16_t half_x = (int16_t)((x2 - x4) >> 1);
+    int16_t half_y = (int16_t)((y2 - y4) >> 1);
+    int16_t x3 = (int16_t)(x2 - half_x + 1);
+    int16_t y3 = (int16_t)(y2 - half_y);
+
+    boss->boxes[2] = (struct Boss2Box){x3, y3, 0x10, 0x10};
+    glyph_draw(x3, y3, 0x1C2);
+    boss->boxes[3] = (struct Boss2Box){x4, y4, 0x10, 0x10};
+    glyph_draw(x4, y4, 0x1C2);
+    sprite_draw(x, y, (uint16_t)kind);
+
+    x = (int16_t)(bx + 0x24);
+    y = (int16_t)(by - 0x1A);
+    if (frame_phase == 0) {
+        boss->jaw = (int16_t)((boss->jaw + 1) & 3);
+        if (boss->jaw == 0)
+            play_sound(0x27, 0x0B);
+    }
+    y = (int16_t)(y + boss2_jaw[boss->jaw][1]);
+    boss->boxes[4] = (struct Boss2Box){x, y, 0x10, 0x10};
+    sprite_draw(x, y, (uint16_t)(0x1C0 + boss2_jaw[boss->jaw][0]));
+
+    boss2_anchor_x = (int16_t)(boss->x + 0x3C);
+    boss2_anchor_y = (int16_t)(boss->y + 0x1F);
+    boss2_joints_ccde();
+    boss2_neck_ce78();
+    boss2_head_cbca();
+
+    x = bx;
+    y = by;
+    boss->boxes[5] = (struct Boss2Box){x, y, 0x40, 0x40};
+    sprite_draw(x, y, 0x1C0);
+    sprite_draw((int16_t)(x + 0x20), y, 0x1C1);
+}
+
+/* orig $00C6F2: the pieces are hit by the player's shots: the six boxes of the body, the head and the pieces of the neck (8 by 8) each against the strength it has (check_hit_and_walls); then the neck's
+ * strength is shared (half of what it has more than the body's goes to the body), the energy is the two together and when it is below 0 the guardian dies (the thing 31 is dropped at (352, 896)) */
+static void boss2_hits_c6f2(void)
+{
+    struct Boss2 *boss = boss2_state();
+
+    for (int i = 0; i < 6; i++) {
+        word_39c = boss->boxes[i].w;
+        word_39e = boss->boxes[i].h;
+        boss->body = check_hit_and_walls((int16_t)(boss->boxes[i].x + scroll_x), (int16_t)(boss->boxes[i].y + scroll_y), boss->body);
+    }
+    if (boss->neck >= 0) {
+        word_39c = boss->boxes[6].w;
+        word_39e = boss->boxes[6].h;
+        boss->neck = check_hit_and_walls((int16_t)(boss->boxes[6].x + scroll_x), (int16_t)(boss->boxes[6].y + scroll_y), boss->neck);
+        for (int i = 0; i < 10; i++) {
+            word_39c = 8;
+            word_39e = 8;
+            boss->neck = check_hit_and_walls((int16_t)(boss->points[i][0] + scroll_x), (int16_t)(boss->points[i][1] + scroll_y), boss->neck);
+        }
+    }
+
+    int16_t neck = boss->neck;
+    int16_t total = (int16_t)((neck < 0 ? 0 : neck) + boss->body);
+
+    boss->energy_low = (uint16_t)total;
+    boss->energy_high = total < 0 ? 0xFFFF : 0;
+    if (total < 0) {
+        drop_thing(0x160, 0x380, 0x1F);
+        boss_die();
+        return;
+    }
+    if (neck >= 0 && neck >= boss->body) {
+        neck = (int16_t)(neck >> 1);
+        boss->neck = (int16_t)(boss->neck - neck);
+        boss->body = (int16_t)(boss->body + neck);
+    }
+}
+
+/* orig $00C6CC (the level 2 guardian, per frame: callback_4e0): the scroll is eased to (160, 832), the body goes after its point, is drawn and hit */
+static void boss2_frame(void)
+{
+    word_37e = 0xA0;
+    word_380 = 0x340;
+    if (word_037c == 0)
+        word_037c = 1;
+    boss2_target_c7ba();
+    boss2_draw_c886();
+    boss2_hits_c6f2();
+}
+
+/* orig $00CB10 (called after the sparks, a bare return unless the level 2 guardian's start made it a nop): the shots fall by 7 to the left and 5 down; one below the screen's row 176 bursts
+ * into debris; the others turn through their pictures (the glyph 458 + 3 * count + the cycle), hit the player and are drawn; every other frame the count goes down to 0 */
+static void boss2_shots_cb0e(void)
+{
+    if (code_cb0e != 0x4E71)
+        return;
+
+    struct Boss2 *boss = boss2_state();
+    int16_t cycle = boss->cycle;
+
+    for (int i = 0; i < 8; i++) {
+        struct BossShot *shot = &boss->shots[i];
+
+        if (shot->frame >= 0) {
+            shot->x = (int16_t)(shot->x - 7);
+            shot->y = (int16_t)(shot->y + 5);
+
+            int16_t x = (int16_t)(shot->x - scroll_x);
+            int16_t y = (int16_t)(shot->y - scroll_y);
+
+            if (y >= 0xB0) {
+                int16_t speed_x = (int16_t)(-6 - (random_word() & 3));
+                int16_t speed_y = (int16_t)(random_word() & 3);
+
+                start_debris_moving(x, y, speed_x, speed_y);
+                shot->frame = -1;
+            } else {
+                glyph_draw(x, y, (uint16_t)(shot->speed_y * 3 + cycle + 0x1CA));
+                aimed_bolt_hits_player((uint32_t *)&shot->speed_y, (int16_t)(x + 4), (int16_t)(y + 4));
+                if (frame_phase == 0) {
+                    shot->speed_y--;
+                    if (shot->speed_y < 0)
+                        shot->speed_y = 0;
+                }
+            }
+        }
+        cycle++;
+        if (cycle >= 3)
+            cycle = 0;
+    }
+    boss->cycle++;
+    if (boss->cycle >= 3)
+        boss->cycle = 0;
+}
+
 /* orig $00AFD6: the entry of the map (state 11 of table_18714) that begins the fight with the level's guardian: the entry is taken, the flag for the fight is on, the routines of the walkers and of the
  * things of the level are switched off, the records of the boss are free and the level's own start is made (the table at $B014: $B024 for the level 1) */
 static void boss_start(struct EntryRef *entry)
@@ -13178,8 +13679,23 @@ static void boss_start(struct EntryRef *entry)
     code_9ae6 = 0x4E75;
     code_6ed0 = 0x4E75;
     boss_free_records();
+    if (param_index == 2) {   /* $B0B4 */
+        struct Boss2 *boss = boss2_state();
+
+        callback_4e0 = boss2_frame;
+        callback_514 = boss2_514;
+        flag_258 = 1;
+        boss->neck = 0x7D0;
+        boss->body = 0x960;
+        boss->energy_high = 0;
+        boss->energy_low = 0x1130;
+        code_cb0e = 0x4E71;
+        callback_4e4 = boss_rts;
+        boss2_514();
+        return;
+    }
     if (param_index != 1) {
-        host_missing_routine(0xB014 + 4 * (uint32_t)(param_index - 1));   /* the guardians of the other levels: not ported (the level 2's starts at $B0B4: its routine $C6CC and its path from bezier.dat) */
+        host_missing_routine(0xB014 + 4 * (uint32_t)(param_index - 1));   /* the guardians of the levels 3 and 4: not ported */
         callback_4e0 = boss_rts;   /* (the original's callbacks are addresses of its own code: a bare return for the port, which would otherwise call what the loader left) */
         callback_4e4 = boss_rts;
         callback_514 = boss_rts;
@@ -13207,6 +13723,17 @@ static void boss_rts(void)
  * (big endian); its routines are the port's (the original's callbacks are addresses of its own code) */
 static void boss_quickload(void)
 {
+    if (flag_23a != 0 && menu_state_25a == 2 && param_index == 2) {
+        struct Boss2 *boss = boss2_state();
+
+        file_words(boss, (0x632 - 0x4E8) / 2);
+        file_words((void *)GUEST(0x668), 1);
+        callback_4e0 = boss2_frame;
+        callback_4e4 = boss_rts;
+        callback_514 = boss2_514;
+        boss2_bezier_load();
+        return;
+    }
     if (flag_23a != 0 && param_index != 1) {   /* the other levels' guardians are not ported: their callbacks are the original's addresses */
         callback_4e0 = boss_rts;
         callback_4e4 = boss_rts;
@@ -13244,7 +13771,7 @@ static void boss_load_30da(void)
     assets_load((const char *)level_names + 0xA2, palette_words, asset_end_0ca2, (struct AssetEntry *)asset_table_0ca6);
     palette_words[0] = 0;
     if (param_index == 2)
-        host_missing_routine(0x316A);   /* (the level 2 reads bezier.dat) */
+        boss2_bezier_load();   /* $316A: the level 2 reads bezier.dat */
     drives_idle();   /* $16E3E */
     menu_state_25a = 2;
     file_read((const char *)sound1_name, picture_buffer);   /* (the original reads sound1.bin, sound2.bin and, in the odd levels, sound3.bin) */
