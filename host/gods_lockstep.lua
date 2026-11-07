@@ -823,6 +823,22 @@ lockstep.run {
         if track_at then track_long() end
         if color_n then track_color() end
         if trace then ami.log(("different pixels: %d"):format(count)) end
+        do
+            local r1, r2 = args:match("rowlog=(%d+)-(%d+)")
+            if r1 and count > 0 and ami.frame() >= tonumber(r1) and ami.frame() <= tonumber(r2) then
+                local parts, start, last = {}, nil, nil
+                for y = 0, 255 do
+                    if native:sub(y * 960 + 1, y * 960 + 960) ~= emulated:sub(y * 960 + 1, y * 960 + 960) then
+                        if not start then start = y end
+                        last = y
+                    elseif start then
+                        parts[#parts + 1] = start == last and tostring(start) or (start .. "-" .. last); start = nil
+                    end
+                end
+                if start then parts[#parts + 1] = start == last and tostring(start) or (start .. "-" .. last) end
+                ami.log(("ROWLOG frame %d: %d pixels, rows %s"):format(ami.frame(), count, table.concat(parts, ",")))
+            end
+        end
         if dump and count > 0 and not dumped and ami.frame() >= (tonumber(args:match("dumpfrom=(%d+)")) or 0) then
             dumped = true
             ami.save_file(dump .. ".native.ppm", "P6\n320 256\n255\n" .. native)
