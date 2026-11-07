@@ -542,7 +542,7 @@ static void game_frame_tail(void)
         boss2_shots_cb0e();
         boss_shots_c406();
     }
-    do_nothing_b();
+    boss3_fall_bc1c();   /* $BC1A: a bare return unless the level 3 guardian is dead */
     move_records_3a0a6();
     draw_sprite_8472();
     update_bolts();
@@ -14755,6 +14755,281 @@ static void boss2_shots_cb0e(void)
         boss->cycle = 0;
 }
 
+/* ======== the level 3 guardian (orig $00B158, $00B17E and $00BBF8 to $00BF3A, the path at $BF3C): a big creature that walks along a path of three bytes (a picture, a step in x, a step in y; the picture 29 and 39 shoot a
+ * ball to the left and to the right), the two halves of the picture (448 + 2n and +1, 32 apart) are drawn, 15 balls fly and bounce... ======== */
+
+#define BOSS3_PATH 0xBF3Cu
+
+/* the guardian's path (orig $BF3C: picture, step in x, step in y; a row of -3 knocks the player back, one of -2 goes 31 rows back unless the guardian is right of the player; a first byte of -1 ends the table) */
+static const int8_t boss3_path[][3] = {
+    {0, -4, 0}, {0, 0, 0}, {2, -4, 0}, {2, 0, 0}, {4, -4, 0}, {4, 0, 0}, {6, -4, 0}, {6, 0, 0},
+    {8, -4, 0}, {8, 0, 0}, {10, -4, 0}, {10, 0, 0}, {12, -4, 0}, {12, 0, 0}, {14, -4, 0}, {14, 0, 0},
+    {0, -4, 0}, {0, 0, 0}, {2, -4, 0}, {2, 0, 0}, {4, -4, 0}, {4, 0, 0}, {6, -4, 0}, {6, 0, 0},
+    {25, 0, 0}, {25, 0, 0}, {27, 0, 0}, {27, 0, 0}, {29, 0, 0}, {29, 0, 0}, {29, 0, 0}, {25, 0, 0},
+    {8, -4, 0}, {8, 0, 0}, {10, -4, 0}, {10, 0, 0}, {12, -4, 0}, {12, 0, 0}, {14, -4, 0}, {14, 0, 0},
+    {12, 4, 0}, {12, 0, 0}, {10, 4, 0}, {10, 0, 0}, {8, 4, 0}, {8, 0, 0}, {6, 4, 0}, {6, 0, 0},
+    {4, 4, 0}, {4, 0, 0}, {2, 4, 0}, {2, 0, 0}, {0, 4, 0}, {0, 0, 0}, {14, 4, 0}, {14, 0, 0},
+    {0, -4, 0}, {0, 0, 0}, {2, -4, 0}, {2, 0, 0}, {4, -4, 0}, {4, 0, 0}, {6, -4, 0}, {6, 0, 0},
+    {25, 0, 0}, {25, 0, 0}, {27, 0, 0}, {27, 0, 0}, {29, 0, 0}, {29, 0, 0}, {29, 0, 0}, {25, 0, 0},
+    {8, -4, 0}, {8, 0, 0}, {10, -4, 0}, {10, 0, 0}, {12, -4, 0}, {12, 0, 0}, {14, -4, 0}, {14, 0, 0},
+    {0, -4, 0}, {0, 0, 0}, {2, -4, 0}, {2, 0, 0}, {4, -4, 0}, {4, 0, 0}, {6, -4, 0}, {6, 0, 0},
+    {25, 0, 0}, {27, 0, 0}, {31, -6, -8}, {31, -6, -8}, {31, -6, -8}, {31, -6, -8}, {31, -6, -8}, {31, -6, -7},
+    {31, -6, -6}, {31, -6, -5}, {31, -6, -4}, {31, -6, -3}, {31, -6, -2}, {31, -6, -1}, {31, -6, 0}, {31, -6, 1},
+    {31, -6, 2}, {31, -6, 3}, {31, -6, 4}, {31, -6, 5}, {31, -6, 6}, {31, -6, 7}, {31, -6, 8}, {31, -6, 8},
+    {31, -6, 8}, {31, -6, 8}, {31, -6, 8}, {-3, 0, 0}, {25, 0, 0}, {25, 0, 0}, {25, 0, 0}, {25, 0, 0},
+    {35, 0, 0}, {35, 0, 0}, {35, 0, 0}, {35, 0, 0}, {37, 0, 0}, {37, 0, 0}, {39, 0, 0}, {39, 0, 0},
+    {39, 0, 0}, {35, 0, 0}, {35, 0, 0}, {35, 0, 0}, {35, 0, 0}, {35, 0, 0}, {35, 0, 0}, {37, 0, 0},
+    {37, 0, 0}, {33, 6, -8}, {33, 6, -8}, {33, 6, -8}, {33, 6, -8}, {33, 6, -8}, {33, 6, -7}, {33, 6, -6},
+    {33, 6, -5}, {33, 6, -4}, {33, 6, -3}, {33, 6, -2}, {33, 6, -1}, {33, 6, 0}, {33, 6, 1}, {33, 6, 2},
+    {33, 6, 3}, {33, 6, 4}, {33, 6, 5}, {33, 6, 6}, {33, 6, 7}, {33, 6, 8}, {33, 6, 8}, {33, 6, 8},
+    {33, 6, 8}, {33, 6, 8}, {-3, 0, 0}, {35, 0, 0}, {35, 0, 0}, {35, 0, 0}, {35, 0, 0}, {-2, 0, 0},
+    {25, 0, 0}, {25, 0, 0}, {8, -4, 0}, {8, 0, 0}, {10, -4, 0}, {10, 0, 0}, {12, -4, 0}, {12, 0, 0},
+    {14, -4, 0}, {14, 0, 0}, {0, -4, 0}, {0, 0, 0}, {2, -4, 0}, {2, 0, 0}, {4, -4, 0}, {4, 0, 0},
+    {6, -4, 0}, {6, 0, 0}, {8, -4, 0}, {8, 0, 0}, {10, -4, 0}, {10, 0, 0}, {12, -4, 0}, {12, 0, 0},
+    {14, -4, 0}, {14, 0, 0}, {0, -4, 0}, {0, 0, 0}, {2, -4, 0}, {2, 0, 0}, {4, -4, 0}, {4, 0, 0},
+    {6, -4, 0}, {6, 0, 0}, {25, 0, 0}, {25, 0, 0}, {27, 0, 0}, {27, 0, 0}, {29, 0, 0}, {29, 0, 0},
+    {29, 0, 0}, {25, 0, 0}, {8, -4, 0}, {8, 0, 0}, {10, -4, 0}, {10, 0, 0}, {12, -4, 0}, {12, 0, 0},
+    {14, -4, 0}, {14, 0, 0}, {0, -4, 0}, {0, 0, 0}, {2, -4, 0}, {2, 0, 0}, {4, -4, 0}, {4, 0, 0},
+    {6, -4, 0}, {6, 0, 0}, {25, 0, 0}, {25, 0, 0}, {27, 0, 0}, {27, 0, 0}, {29, 0, 0}, {29, 0, 0},
+    {29, 0, 0}, {25, 0, 0}, {8, -4, 0}, {8, 0, 0}, {10, -4, 0}, {10, 0, 0}, {12, -4, 0}, {12, 0, 0},
+    {14, -4, 0}, {14, 0, 0}, {-1, 0, 0}
+};
+
+/* a ball of the guardian (the records at $518: ten bytes, 15 of them): its place, the sideways speed, the picture (0 to 3, -1: free) and the fall speed (it goes up by one each frame) */
+struct Boss3Shot {
+    int16_t x;
+    int16_t y;
+    int16_t speed_x;
+    int16_t frame;
+    int16_t speed_y;
+};
+
+#define BOSS3_CAN_SHOOT (*(uint16_t *)GUEST(0x5B2))
+#define BOSS3_FALL (*(uint16_t *)GUEST(0x5B8))
+
+/* orig $00BD6E: a spark of blood (debris) at the place (x, y) of the screen: moved by up to 8 in each direction, with speeds -4 to 3 */
+static void boss3_blood_bd6e(int16_t x, int16_t y)
+{
+    int16_t saved_x = x;
+
+    y = (int16_t)(y + (int16_t)((random_word() & 0xF) - 8));
+
+    int16_t speed_x = (int16_t)((random_word() & 7) - 4);
+    int16_t speed_y = (int16_t)((random_word() & 7) - 4);
+
+    x = (int16_t)(saved_x + (int16_t)((random_word() & 0xF) - 8));
+    start_debris_moving(x, y, speed_x, speed_y);
+}
+
+/* orig $00BCDA: the fifteen balls: each goes by its speeds (the fall speed goes up by one), the picture goes on every other frame (frame_toggle 0), one below the screen is free, the others are drawn as the sprite 469 + the picture and
+ * hit the player (aimed_bolt_hits_player 12 pixels in): a hit takes 2 more of the energy and two bursts of blood */
+static void boss3_shots_bcda(void)
+{
+    struct Boss3Shot *shot = (struct Boss3Shot *)boss_state()->shots;
+
+    for (int i = 0; i < 15; i++, shot++) {
+        if (shot->frame < 0)
+            continue;
+
+        int16_t x = (int16_t)(shot->x + shot->speed_x);
+        int16_t y = (int16_t)(shot->y + shot->speed_y);
+        int16_t picture = shot->frame;
+
+        shot->x = x;
+        shot->y = y;
+        shot->speed_y++;
+        if (frame_toggle == 0)
+            shot->frame = (int16_t)((shot->frame + 1) & 3);
+
+        x = (int16_t)(x - scroll_x);
+        y = (int16_t)(y - scroll_y);
+        if (y >= 0xC0) {
+            shot->frame = -1;
+            continue;
+        }
+        sprite_draw(x, y, (uint16_t)(picture + 0x1D5));
+        aimed_bolt_hits_player((uint32_t *)&shot->frame, (int16_t)(x + 0xC), (int16_t)(y + 0xC));
+        if (shot->frame < 0) {
+            player_energy = (uint16_t)(player_energy - 2);
+            boss3_blood_bd6e(x, y);
+            boss3_blood_bd6e(x, y);
+        }
+    }
+}
+
+/* orig $00BE1E and $00BDA8: when the guardian has just come into the picture 29 (to the left) or 39 (to the right) a ball starts at its mouth in the first free record (3 or 29 right of it, 19 down, the sideways speed -8 or 8,
+ * the picture 2, the fall speed -1 or 1 by chance) */
+static void boss3_shoots_bda8(int16_t picture)
+{
+    struct Boss3Shot *shot = (struct Boss3Shot *)boss_state()->shots;
+    struct BossState *boss = boss_state();
+    int right;
+
+    if (BOSS3_CAN_SHOOT == 0)
+        return;
+    if (picture == 0x1D)
+        right = 0;
+    else if (picture == 0x27)
+        right = 1;
+    else
+        return;
+    for (int i = 0; i < 15; i++, shot++) {
+        if (shot->frame >= 0)
+            continue;
+        shot->x = (int16_t)(boss->x + (right ? 0x1D : 3));
+        shot->y = (int16_t)(boss->y + 0x13);
+        shot->speed_x = (int16_t)(right ? 8 : -8);
+        shot->frame = 2;
+        shot->speed_y = (int16_t)((random_word() & 2) - 1);
+        return;
+    }
+}
+
+/* orig $00BF14: the two halves of the guardian are drawn (the sprites 448 + the picture and the next, 32 further) */
+static void boss3_draw_bf14(int16_t x, int16_t y, int16_t picture)
+{
+    x = (int16_t)(x - scroll_x);
+    y = (int16_t)(y - scroll_y);
+    picture = (int16_t)(picture + 0x1C0);
+    sprite_draw(x, y, (uint16_t)picture);
+    sprite_draw((int16_t)(x + 0x20), y, (uint16_t)(picture + 1));
+}
+
+/* orig $00BE34 (the guardian's path): it goes along the rows of the path from the place $510 names: the sound 61 starts with a picture of 0, 25 or 8 (when it is not the one it was in), a row of -3 knocks the player
+ * back (the sound 63; the player's place goes 16 up, the scroll 8) and goes on to the next row, a row of -2 goes 31 rows back when the guardian is not right of the player (and on to the next row when it is);
+ * a row with a picture of 0 or more moves it (x in 96 to 704) and is the one of the frame, ending the path restarts it.  `*x`, `*y` and `*picture` are the place and the picture at the end */
+static void boss3_path_be34(int16_t *x_out, int16_t *y_out, int16_t *picture_out)
+{
+    struct BossState *boss = boss_state();
+    int16_t x = (int16_t)boss->x;
+    int16_t y = (int16_t)boss->y;
+    int16_t picture = (int16_t)boss->picture;
+    uint32_t path = ((uint32_t)boss->path_high << 16) | boss->path_low;
+
+    BOSS3_CAN_SHOOT = 1;
+    if (picture == 0x1D || picture == 0x27)
+        BOSS3_CAN_SHOOT = 0;
+
+    for (;;) {
+        const int8_t *row = boss3_path[(path - BOSS3_PATH) / 3];
+        int16_t id = (uint8_t)row[0];   /* (move.b into a word that has the high byte 0) */
+        int16_t dx = row[1];
+        int16_t dy = row[2];
+
+        path += 3;
+        if (id != picture && (id == 0 || id == 0x19 || id == 8))
+            play_sound(0x3D, 0x28);
+        if ((int8_t)id >= 0) {
+            x = (int16_t)(x + dx);
+            if (x <= 0x60)
+                x = 0x60;
+            if (x > 0x2C0)
+                x = 0x2C0;
+            boss->x = (uint16_t)x;
+            y = (int16_t)(y + dy);
+            boss->y = (uint16_t)y;
+            if ((uint8_t)boss3_path[(path - BOSS3_PATH) / 3][0] == 0xFF)
+                path = BOSS3_PATH;
+            picture = (int16_t)(int8_t)id;
+            break;
+        }
+        if ((int8_t)id == -3) {
+            flag_26e = 8;
+            scroll_y_b = (int16_t)(scroll_y_b - 8);
+            player_y = (int16_t)(player_y - 0x10);
+            play_sound(0x3F, 0x4B);
+            continue;
+        }
+        if (x > player_x)
+            continue;
+        path -= 0x5D;
+    }
+    boss->picture = (uint16_t)picture;
+    boss->path_high = (uint16_t)(path >> 16);
+    boss->path_low = (uint16_t)path;
+    *x_out = x;
+    *y_out = y;
+    *picture_out = picture;
+}
+
+/* orig $00BCC8: the thing the guardian leaves (kind 31) is dropped at (544, 128) */
+static void boss3_drop_bcc8(void)
+{
+    drop_thing(0x220, 0x80, 0x1F);
+}
+
+/* orig $00BC86: the player's shots are looked at against a box of 40 by 88 at the guardian (12 right of its place); the energy is what is left; below 0 the guardian dies (boss_die), the death's fall starts (bc1a is switched on),
+ * the thing it leaves is dropped and word_284 (the armour) goes up */
+static void boss3_hits_bc86(void)
+{
+    struct BossState *boss = boss_state();
+
+    word_39c = 0x28;
+    word_39e = 0x58;
+
+    int16_t energy = check_hit_and_walls((int16_t)(boss->x + 0xC), boss->y, (int16_t)boss->energy_low);
+
+    boss->energy_low = (uint16_t)energy;
+    boss->energy_high = energy < 0 ? 0xFFFF : 0;
+    if (energy >= 0)
+        return;
+    boss_die();
+    code_bc1a = 0x4E71;
+    BOSS3_FALL = 0;
+    boss3_drop_bcc8();
+    word_284++;
+}
+
+/* orig $00BBF8 (the level 3 guardian, per frame: callback_4e0): the path, the balls, a new ball, the drawing and the hit; a dead guardian (energy below 0) is left to the death fall at $BC1C */
+static void boss3_frame(void)
+{
+    struct BossState *boss = boss_state();
+    int16_t x, y, picture;
+
+    if ((int16_t)boss->energy_high < 0)
+        return;   /* (the original goes on with whatever the registers have: after its death the frame is not run: flag_23a is off) */
+    boss3_path_be34(&x, &y, &picture);
+    boss3_shots_bcda();
+    boss3_shoots_bda8(picture);
+    boss3_draw_bf14(x, y, picture);
+    boss3_hits_bc86();
+}
+
+/* orig $00BC1C (what $BC1A, called each frame after the fight's callbacks, becomes when the guardian dies): the body falls to y 112 (the fall speed goes up to 16) in the picture 41, or 43 when its picture was 32 or more,
+ * and is drawn as its two halves */
+void boss3_fall_bc1c(void)
+{
+    if (code_bc1a != 0x4E71)
+        return;
+
+    struct BossState *boss = boss_state();
+    int16_t picture = (int16_t)boss->picture >= 0x20 ? 0x2B : 0x29;
+    int16_t y = (int16_t)(boss->y + BOSS3_FALL);
+
+    if (y >= 0x70) {
+        y = 0x70;
+        BOSS3_FALL = 0;
+    } else {
+        BOSS3_FALL++;
+        if (BOSS3_FALL >= 0x10)
+            BOSS3_FALL = 0x10;
+    }
+    boss->y = (uint16_t)y;
+    boss3_draw_bf14((int16_t)boss->x, y, picture);
+}
+
+/* orig $00B17E (callback_514): the place of the level 3 guardian and its path */
+static void boss3_514(void)
+{
+    struct BossState *boss = boss_state();
+
+    boss->x = 0x2C0;
+    boss->y = 0x70;
+    boss->picture = 0;
+    boss->path_high = 0;
+    boss->path_low = BOSS3_PATH;
+}
+
 /* orig $00AFD6: the entry of the map (state 11 of table_18714) that begins the fight with the level's guardian: the entry is taken, the flag for the fight is on, the routines of the walkers and of the
  * things of the level are switched off, the records of the boss are free and the level's own start is made (the table at $B014: $B024 for the level 1) */
 static void boss_start(struct EntryRef *entry)
@@ -14781,8 +15056,20 @@ static void boss_start(struct EntryRef *entry)
         boss2_514();
         return;
     }
+    if (param_index == 3) {   /* $B158 */
+        struct BossState *boss = boss_state();
+
+        callback_4e0 = boss3_frame;
+        flag_258 = 1;
+        callback_514 = boss3_514;
+        boss->energy_high = 0;
+        boss->energy_low = 0x8CA;
+        callback_4e4 = boss_rts;
+        boss3_514();
+        return;
+    }
     if (param_index != 1) {
-        host_missing_routine(0xB014 + 4 * (uint32_t)(param_index - 1));   /* the guardians of the levels 3 and 4: not ported */
+        host_missing_routine(0xB014 + 4 * (uint32_t)(param_index - 1));   /* the guardian of the level 4: not ported */
         callback_4e0 = boss_rts;   /* (the original's callbacks are addresses of its own code: a bare return for the port, which would otherwise call what the loader left) */
         callback_4e4 = boss_rts;
         callback_514 = boss_rts;
@@ -14819,6 +15106,19 @@ static void boss_quickload(void)
         callback_4e4 = boss_rts;
         callback_514 = boss2_514;
         boss2_bezier_load();
+        return;
+    }
+    if (flag_23a != 0 && menu_state_25a == 2 && param_index == 3) {
+        struct BossState *boss = boss_state();
+
+        file_words(boss, 2);
+        file_words(&boss->picture, 6);
+        file_words(boss->shots, 75);
+        file_words((void *)GUEST(0x5B2), 1);
+        file_words((void *)GUEST(0x5B8), 1);
+        callback_4e0 = boss3_frame;
+        callback_4e4 = boss_rts;
+        callback_514 = boss3_514;
         return;
     }
     if (flag_23a != 0 && param_index != 1) {   /* the other levels' guardians are not ported: their callbacks are the original's addresses */
