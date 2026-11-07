@@ -16138,6 +16138,7 @@ static void game_won_2f12(void)
         slots_30c[i] = -1;
     item_panels_make();
     code_ba34 = 0x4E75;
+    level_next_wait = 1;   /* (the lockstep: the level's loading waits for the original's reads, as after the end of a level) */
     level_begin();
 }
 
