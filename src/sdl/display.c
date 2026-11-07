@@ -174,7 +174,8 @@ void copper_colors_restore(void)
         *colour = *from++;
 }
 
-static int display_fade_out;   /* a fade-out is on (the old list's stripe of the band model is longer: the shop's entry) */
+static int display_fade_out;
+static int display_fade_step;   /* the step of the fade-in the program is at (0 to 14) */   /* a fade-out is on (the old list's stripe of the band model is longer: the shop's entry) */
 extern volatile int host_fade_line;
 volatile int host_fade_first = -1;   /* the raster line the original began the first step of its latest fade at (the lockstep) */
 extern volatile int display_fresh_lag;   /* render.c: (with display_fresh) shown a frame late */
@@ -220,6 +221,7 @@ void fade_in(const uint16_t *target, uint16_t delay)
                 colour += 0x100;
             shadow_set(i, colour);
         }
+        display_fade_step = step;
         copper_fade_up();
         palette_dirty = 0xffff;
         for (int frame = 0; frame <= delay; frame++)
@@ -918,6 +920,9 @@ void display_render(uint32_t *pixels)
             /* the shop's fade-in: the original's edit of the list is slow.  A frame after it began (at the raster line host_fade_line) it has done the lines from 2.6 times that line for 63 lines
              * and the raster passes them after the edit: they show the new list, the others the one before */
             int first = 72 + (host_fade_line * 8 + 5) / 10;   /* (104 for the line 40 of the shop's fade-in, 77 for the line 6 of the level end's fade-out) */
+            int stripe_end = first + (display_fade_out ? 100 : 63);
+            if (!display_fade_out)
+                first -= 2 * ((display_fade_step + 1) / 5);   /* (the shop's fade-in: the edit comes to the bands sooner as the fade goes on, a band's two lines in five steps) */
             if (first < cut)
                 first = cut - 1;   /* (the lines above the cut were drawn before the edit began) */
 
@@ -929,7 +934,7 @@ void display_render(uint32_t *pixels)
                 memcpy(latched_list, late_list, sizeof now_list);
                 line_palettes(colors_before, 320);
                 memcpy(latched_list, now_list, sizeof now_list);
-                for (int line = first; line < first + (display_fade_out ? 100 : 63) && line < 320; line++)
+                for (int line = first; line < stripe_end && line < 320; line++)
                     memcpy(colors[line], colors_before[line], sizeof colors[line]);
             }
         } else {
