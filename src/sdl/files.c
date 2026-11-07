@@ -172,7 +172,6 @@ int32_t file_read(const char *name, void *dest)
 /* orig $01CEEA: the high scores are written: record_text (216 bytes, its longs made native) goes to the port's own hiscores.bin in the working folder (the disks are not written) */
 void scores_save(void)
 {
-    extern uint8_t record_text[216];
     uint8_t out[216];
 
     if (scores_path[0] == 0)

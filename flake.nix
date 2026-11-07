@@ -18,74 +18,33 @@
       };
     in {
       packages = forAll (pkgs: {
-        # Desktop build against nixpkgs' SDL3, then retargeted at the system
-        # loader with no rpath so a host-installed libSDL3.so.0 takes over. The game's data structures
-        # have the 68000's layout with 32-bit pointers, so this is a 32-bit build (x86_64-linux hosts):
-        # gcc_multi for -m32 and the 32-bit SDL3 from pkgsi686Linux.
-        native = (pkgs.overrideCC pkgs.stdenv pkgs.gcc_multi).mkDerivation {
-          pname = "fa18-native";
-          version = "0";
-          src = src pkgs;
-          nativeBuildInputs = [
-            pkgs.cmake
-            pkgs.ninja
-            pkgs.pkg-config
-            pkgs.python3
-            pkgs.patchelf
-          ];
-          buildInputs = [
-            pkgs.pkgsi686Linux.sdl3
-          ];
-          cmakeFlags = [ "-DBUILD_TESTING=OFF" "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_C_FLAGS=-m32" ];
-          ninjaFlags = [ "fa18_native" ];
-          installPhase = ''
-            install -Dm755 native/fa18_native $out/bin/fa18_native
-          '';
-          postFixup = ''
-            patchelf --set-interpreter /lib/ld-linux.so.2 --remove-rpath $out/bin/fa18_native
-          '';
-        };
-
+        # SDL3 compiled once for Emscripten (nixpkgs' source), so rebuilds of the game reuse it.
         sdl3-emscripten = import ./sdl3-emscripten.nix { inherit pkgs; };
 
-        # Browser build; SDL3 is compiled from nixpkgs' source for Emscripten.
+        # The browser build: gods.html, gods.js and gods.wasm (src/sdl/Makefile.web).  The page asks for the two disk images; serve it with scripts/serve_web.py
+        # (the game runs on a thread: the page needs cross-origin isolation).
         web = pkgs.stdenv.mkDerivation {
-          pname = "fa18-web";
+          pname = "gods-web";
           version = "0";
           src = src pkgs;
           nativeBuildInputs = [
-            pkgs.cmake
-            pkgs.ninja
+            pkgs.gnumake
             pkgs.python3
-            pkgs.nodejs
             pkgs.emscripten
           ];
           dontUseCmakeConfigure = true;
           buildPhase = ''
             export HOME=$TMPDIR EM_CACHE=$TMPDIR/em-cache
-            emcmake cmake -S . -B build-web -G Ninja \
-              -DBUILD_TESTING=OFF \
-              -DCMAKE_BUILD_TYPE=Release \
-              -DSDL3_DIR=${self.packages.${pkgs.system}.sdl3-emscripten}/lib/cmake/SDL3
-            cmake --build build-web --target fa18_native
+            make -f src/sdl/Makefile.web GODS_NO_NIX=1 SDL3_PREFIX=${self.packages.${pkgs.system}.sdl3-emscripten} W=$PWD/build/web
           '';
           installPhase = ''
             mkdir -p $out
-            cp build-web/native/fa18.html $out/
-            cp build-web/native/fa18.js $out/
-            cp build-web/native/fa18.wasm $out/
-            cp build-web/native/fa18-pcm-worklet.js $out/
-            cp build-web/native/retro-foundry.png $out/
-            cp build-web/native/gamepad-controls.svg $out/
-            cp build-web/native/flight-controls.js $out/
-            cp build-web/native/controller-overlay.js $out/
-            cp build-web/native/flightstick-controls.svg $out/
-            cp build-web/native/hotas-controls.svg $out/
-            cp build-web/native/flightstick-controls.png $out/
-            cp build-web/native/hotas-controls.png $out/
+            cp build/web/gods.html build/web/gods.js build/web/gods.wasm $out/
+            if [ -f build/web/gods.worker.js ]; then cp build/web/gods.worker.js $out/; fi
+            cp scripts/serve_web.py $out/
           '';
         };
-        default = self.packages.${pkgs.system}.native;
+        default = self.packages.${pkgs.system}.web;
       });
 
       devShells = forAll (pkgs: {

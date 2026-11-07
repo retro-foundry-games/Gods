@@ -10,7 +10,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef __EMSCRIPTEN__
 #include <sys/mman.h>
+#endif
 
 #include "guest.h"
 #include "guest_tables.h"
@@ -18,6 +20,14 @@
 
 #define IMAGE_BASE 0x84u
 
+#ifdef __EMSCRIPTEN__
+/* the browser build: the memory is one linear memory (the program is linked above the addresses of the original's memory, see Makefile.web): nothing is mapped */
+static void map_page(uintptr_t address, size_t size)
+{
+    (void)address;
+    (void)size;
+}
+#else
 static void map_page(uintptr_t address, size_t size)
 {
     void *p = mmap((void *)address, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
@@ -27,6 +37,7 @@ static void map_page(uintptr_t address, size_t size)
         exit(1);
     }
 }
+#endif
 
 uint8_t *guest_ptr(uint32_t address)
 {
@@ -131,7 +142,9 @@ void guest_load_image(const uint8_t *image, uint32_t size)
     memcpy(guest_ptr(0x1ed72), names, sizeof names);
 
     /* message_pairs (a table of longs, in the executable): the addresses of the copper colour moves the message fades */
+#ifndef __EMSCRIPTEN__
     mprotect((void *)((uintptr_t)pairs & ~0xfffu), 0x2000, PROT_READ | PROT_WRITE);
+#endif
     for (int i = 0; i < 8; i++)
         if (pairs[i] < GUEST_LOW_LIMIT) {
             pairs[i] += GUEST_LOW_BASE;

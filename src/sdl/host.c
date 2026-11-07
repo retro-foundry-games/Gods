@@ -5,14 +5,18 @@
  * its thread ends, the memory is reset as the loader leaves it, and the next program is started on a new thread; the window and the audio
  * stream stay.  main.c runs it as the game is played; devmain.c adds the options and the tests (the lockstep with the original) through the hooks of host.h. */
 #include <SDL3/SDL.h>
-#include <execinfo.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ucontext.h>
 #include <unistd.h>
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#else
+#include <execinfo.h>
+#include <ucontext.h>
+#endif
 
 #include "guest.h"
 #include "host.h"
@@ -116,6 +120,7 @@ static int raw_code(SDL_Scancode s)
     return -1;
 }
 
+#ifndef __EMSCRIPTEN__
 static void crash(int sig, siginfo_t *info, void *context)
 {
     void *frames[24];
@@ -125,6 +130,7 @@ static void crash(int sig, siginfo_t *info, void *context)
     backtrace_symbols_fd(frames, backtrace(frames, 24), 2);
     _exit(3);
 }
+#endif
 
 /* a key: the intro takes the fire buttons, the menu and the game the keyboard */
 void host_key(int phase, int code, int down)
@@ -137,9 +143,88 @@ void host_key(int phase, int code, int down)
     }
 }
 
+#ifdef __EMSCRIPTEN__
+/* The browser build: the machine's loop is a function the browser calls at the display's refresh (requestAnimationFrame); the program runs on a thread of its own (a web worker),
+ * as it does on the desktop.  Nothing of the tests: no hooks, no window without the canvas. */
+extern void host_blank_begin(void);
+extern void display_latch_fresh(void);
+extern void display_latch_late(void);
+
+static struct {
+    SDL_Window *window;
+    SDL_Renderer *renderer;
+    SDL_Texture *texture;
+    SDL_AudioStream *audio;
+    int phase;
+    uint64_t next;
+} web;
+
+static void web_frame(void)
+{
+    static uint32_t pixels[SCREEN_W * SCREEN_H];
+    SDL_Event event;
+    int16_t samples[882 * 2];
+
+    if (next_phase >= 0) {   /* the program on asked for the next one */
+        pthread_join(program_thread, 0);
+        web.phase = next_phase;
+        next_phase = -1;
+        start_phase(web.phase);
+    }
+    while (SDL_PollEvent(&event)) {
+        if ((event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_KEY_UP) && !event.key.repeat) {
+            int code = raw_code(event.key.scancode);
+
+            if (event.key.scancode == SDL_SCANCODE_LCTRL && web.phase == PHASE_INTRO)
+                code = 0x40;
+            if (code >= 0)
+                host_key(web.phase, code, event.type == SDL_EVENT_KEY_DOWN);
+        }
+    }
+
+    uint64_t now = SDL_GetTicksNS();
+    int due = 0;
+
+    if (now > web.next + 100000000ull)
+        web.next = now;   /* far behind (the tab was hidden): start again */
+    while (web.next <= now && due < 3) {
+        due++;
+        web.next += 20000000ull;
+    }
+    for (int tick = 0; tick < due; tick++) {
+        extern volatile int host_irq_hold;
+
+        if (web.phase == PHASE_INTRO) {
+            ih_vbl();
+            ih_music_mix(samples, 882, 44100);
+        } else {
+            display_latch();
+            host_blank_begin();
+            if (!host_irq_hold)
+                irq_vbl();
+            display_latch_fresh();
+            display_latch_late();
+            sound_mix(samples);
+        }
+        if (web.audio && SDL_GetAudioStreamQueued(web.audio) < 44100 / 5 * 4)
+            SDL_PutAudioStreamData(web.audio, samples, sizeof samples);
+    }
+    if (web.phase == PHASE_INTRO)
+        intro_render(pixels);
+    else
+        display_render(pixels);
+    SDL_UpdateTexture(web.texture, 0, pixels, SCREEN_W * 4);
+    SDL_RenderClear(web.renderer);
+    SDL_RenderTexture(web.renderer, web.texture, 0, 0);
+    SDL_RenderPresent(web.renderer);
+}
+#endif
+
 int host_run(const struct HostOptions *options)
 {
+#ifndef __EMSCRIPTEN__
     struct sigaction sa = { .sa_sigaction = crash, .sa_flags = SA_SIGINFO };
+#endif
     const struct HostHooks *hooks = options->hooks;
     const int headless = options->headless, scale = options->scale;
     int phase = options->phase;
@@ -149,7 +234,9 @@ int host_run(const struct HostOptions *options)
     SDL_Texture *texture = 0;
     SDL_AudioStream *audio = 0;
 
+#ifndef __EMSCRIPTEN__
     sigaction(SIGSEGV, &sa, 0);
+#endif
     guest_init();
     if (files_open(options->disks) != 0)
         return 1;
@@ -179,6 +266,16 @@ int host_run(const struct HostOptions *options)
             SDL_ResumeAudioStreamDevice(audio);
     }
     start_phase(phase);
+#ifdef __EMSCRIPTEN__
+    web.window = window;
+    web.renderer = renderer;
+    web.texture = texture;
+    web.audio = audio;
+    web.phase = phase;
+    web.next = SDL_GetTicksNS();
+    emscripten_set_main_loop(web_frame, 0, 1);   /* (does not return) */
+    return 0;
+#endif
 
     int vsync = !headless && renderer && !(hooks && hooks->no_vsync) && SDL_SetRenderVSync(renderer, 1);   /* presented at the display's refresh */
     uint64_t next = SDL_GetTicksNS();

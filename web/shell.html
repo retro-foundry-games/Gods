@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gods</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #05070a; color: #d8dee9; font: 15px/1.4 system-ui, sans-serif; }
+  main { max-width: 34rem; margin: 8vh auto 0; padding: 1.5rem; background: #10151c; border: 1px solid #263140; border-radius: 6px; }
+  h1 { margin: 0 0 .5rem; font-size: 1.6rem; letter-spacing: .08em; }
+  small { display: block; margin: .6rem 0; color: #8d9db0; }
+  button { font: inherit; padding: .45rem 1rem; margin-right: .5rem; background: #1d2733; color: inherit; border: 1px solid #3b4a5e; border-radius: 4px; cursor: pointer; }
+  button:disabled { opacity: .45; cursor: default; }
+  #status { min-height: 1.4em; margin-top: .8rem; color: #e5c07b; }
+  #game { display: none; height: 100%; align-items: center; justify-content: center; }
+  canvas { max-width: 100vw; max-height: 100vh; width: 100vw; height: calc(100vw * 5 / 6 * 0.8333); image-rendering: pixelated; outline: none; background: #000; }
+  @media (min-aspect-ratio: 6/5) { canvas { width: calc(100vh * 6 / 5); height: 100vh; } }
+</style>
+</head>
+<body>
+<main id="launcher">
+  <h1>GODS</h1>
+  <p>The Bitmap Brothers' Gods (Amiga, 1991) as a WebAssembly build of the C port. It needs your own copy of the two disks.</p>
+  <div>
+    <button id="choose" type="button">Choose the two ADF files</button>
+    <button id="start" type="button" disabled>Start game</button>
+  </div>
+  <input id="files" type="file" accept=".adf,application/octet-stream" multiple hidden>
+  <small id="picked">Disk 1 of 2: not chosen &middot; Disk 2 of 2: not chosen</small>
+  <small>The disks stay in this tab and are never uploaded. The high scores and the level codes are kept in this browser.
+    Arrows and Space (fire); Esc leaves a game for the menu; letters, Return and Backspace type a level code.</small>
+  <div id="status" role="status">Loading...</div>
+</main>
+<div id="game"><canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas></div>
+<script>
+  const status = document.getElementById('status');
+  const chooser = document.getElementById('files');
+  const startButton = document.getElementById('start');
+  const picked = document.getElementById('picked');
+  const disks = [null, null];
+  var Module = {
+    canvas: document.getElementById('canvas'),
+    noInitialRun: true,
+    print: (text) => console.log(text),
+    printErr: (text) => console.warn(text),
+    onRuntimeInitialized: () => { runtimeReady = true; refresh(); },
+  };
+  let runtimeReady = false;
+  function refresh() {
+    picked.innerHTML = 'Disk 1 of 2: ' + (disks[0] ? disks[0].name : 'not chosen') + ' &middot; Disk 2 of 2: ' + (disks[1] ? disks[1].name : 'not chosen');
+    const ready = runtimeReady && disks[0] && disks[1];
+    startButton.disabled = !ready;
+    status.textContent = !runtimeReady ? 'Loading...' : ready ? 'Ready.' : 'Choose the two disk images (gods-disk1.adf and gods-disk2.adf).';
+  }
+  document.getElementById('choose').addEventListener('click', () => chooser.click());
+  chooser.addEventListener('change', async () => {
+    const list = [...chooser.files];
+    // the disk's number: the name says it ("Disk 1 of 2", "gods-disk2.adf"); else the order they were chosen in
+    for (const [i, file] of list.entries()) {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const named = /(?:disk|d)\s*([12])/i.exec(file.name);
+      const slot = named ? Number(named[1]) - 1 : i;
+      if (slot < 2) disks[slot] = { name: file.name, bytes };
+    }
+    refresh();
+  });
+  startButton.addEventListener('click', async () => {
+    startButton.disabled = true;
+    status.textContent = 'Starting...';
+    const FS = Module.FS;
+    FS.writeFile('/gods-disk1.adf', disks[0].bytes);
+    FS.writeFile('/gods-disk2.adf', disks[1].bytes);
+    // the high scores (hiscores.bin, in the working folder) are kept in the browser
+    FS.mkdir('/save');
+    FS.mount(FS.filesystems.IDBFS, {}, '/save');
+    await new Promise((done) => FS.syncfs(true, done));
+    FS.chdir('/save');
+    setInterval(() => FS.syncfs(false, () => {}), 5000);
+    document.getElementById('launcher').style.display = 'none';
+    const game = document.getElementById('game');
+    game.style.display = 'flex';
+    Module.canvas.focus();
+    Module.callMain(['--disks', '/']);
+  });
+</script>
+{{{ SCRIPT }}}
+</body>
+</html>

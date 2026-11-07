@@ -20,6 +20,7 @@
 #define pending_request (*(volatile uint32_t *)GODS_ADDR_pending_request)
 #define key_down ((volatile uint8_t *)GODS_ADDR_key_down)
 #define ptr_0cc6 (*(uint8_t **)GODS_ADDR_ptr_0cc6)
+#define record_text ((uint8_t *)GODS_ADDR_record_text)
 #else
 extern volatile uint8_t disk_digit;   /* the digit of the disk the program asks for (menu.symbols) */
 extern uint8_t *image_table, *asset_memory, *memory_base;
@@ -32,6 +33,7 @@ extern volatile uint16_t vbl_count;
 extern volatile uint32_t pending_request;
 extern volatile uint8_t key_down[128];
 extern uint8_t *ptr_0cc6;
+extern uint8_t record_text[216];
 #endif
 
 #endif
