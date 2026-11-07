@@ -234,7 +234,7 @@ ami.hook(0x31ca, function() if disk_pending then disk_pending = false disk_done 
 local frame_end_cycles = 0
 local last_fade_frame = -100   -- (the frame of the original's last fade step: fadetol=N, default 600, lets a difference of that many pixels or fewer pass while a fade goes on: the band of the list edit is a row or two off)
 local fade_line = -1   -- the raster line the original's thread was at when it began the copper fade of its step ($1D1C2 loops over the bands of the list: what lies above that line was shown before the edit)
-ami.hook(0x1d1c2, function() last_fade_frame = ami.frame(); fade_line = math.floor((ami.cycles() - frame_end_cycles) / 454) if args:find("fadelog") then ami.log(("FADELINE frame %d line %d"):format(ami.frame(), fade_line)) end end)
+ami.hook(0x1d1c2, function() if not last_fade_frame or ami.frame() - last_fade_frame > 8 then fade_first_line = math.floor((ami.cycles() - frame_end_cycles) / 454) end last_fade_frame = ami.frame(); fade_line = math.floor((ami.cycles() - frame_end_cycles) / 454) if args:find("fadelog") then ami.log(("FADELINE frame %d line %d"):format(ami.frame(), fade_line)) end end)
 ami.hook(0x1d168, function() last_fade_frame = ami.frame(); fade_line = math.floor((ami.cycles() - frame_end_cycles) / 454) if args:find("fadelog") then ami.log(("FADELINE-IN frame %d line %d"):format(ami.frame(), fade_line)) end end)
 ami.hook(0x1d23e, function() if next_level_event then next_level_event(3, "start faded out") end if disk_pending then disk_pending = false disk_done = disk_done + 1 if args:find("diskdbg") then ami.log(("DISKDBG done at 1d23e frame %d (%d)"):format(ami.frame(), disk_done)) end end end)
 -- the shop's way out ($1392A): the game's sprites and the sound file are read again (they take what the drive takes) before the fade out at $1D23E
@@ -323,6 +323,7 @@ local delayed = setmetatable({
                         real:send(("flips %d\n"):format((flip_lag and last_flips or orig_flips) - flips_at_sync))
                         real:send(("reads %d\n"):format(orig_reads - reads_at_sync))
                         real:send(("fadeline %d\n"):format(fade_line))
+                        real:send(("fadefirst %d\n"):format(fade_first_line or -1))
                         fade_line = -1
                         real:send(("fades %d\n"):format(orig_fades - fades_at_sync))
                         real:send(("worldloads %d\n"):format(orig_world_loads - world_loads_at_sync))
