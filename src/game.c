@@ -16056,6 +16056,7 @@ static void game_won_2f12(void)
     flags_3b0 &= (uint8_t)~0x40;
     fade_out(1, 0xFFFF);
     load_unpacked("payoff.pi1", picture_buffer);
+    host_disk_wait();   /* (the original's read of the picture takes what its drive takes) */
 
     const uint8_t *file = picture_buffer + 2;
     uint16_t *palette = (uint16_t *)ptr_0cee;
@@ -16090,6 +16091,7 @@ static void game_won_2f12(void)
     screen_buffer = other;   /* (the sound file is read with the screens as they are swapped) */
     screen_other = shown;
     file_read((const char *)sound1_name, picture_buffer);
+    host_disk_wait();
     screen_buffer = shown;
     screen_other = other;
     *(uint16_t *)(screen_buffer + 0x4200) = 0xFFFF;
