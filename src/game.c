@@ -503,6 +503,7 @@ static void chest_burst_at(int16_t x, int16_t y, const uint16_t *sprites);
 static void level_change_35dc(void);
 static void level_begin(void);
 static int level_next_wait;
+static void game_won_2f12(void);
 static int level_next_fade;   /* (the fade-in of the next level's start is bound to the original's) */
 /* orig $002D54 on: what ends a frame of the game, after the player has been run (or, when he is dead, after the frame of his death: $3A6C): the units and the other things
  * that are run, the panels, the energy, the keys of the pause and the like, and the wait for the next frame */
@@ -606,8 +607,10 @@ static void game_frame_tail(void)
             level_change_35dc();
         return;
     }
-    if (flags_3b0 & 0x40)
-        return;   /* goes on at $2F12 */
+    if (flags_3b0 & 0x40) {
+        game_won_2f12();   /* $2F12 */
+        return;
+    }
 }
 
 /* orig $002C20: one frame of the game.  The routines it calls are the original's (fn_ and the address) until they are written
@@ -15357,7 +15360,7 @@ static void boss3_path_be34(int16_t *x_out, int16_t *y_out, int16_t *picture_out
         BOSS3_CAN_SHOOT = 0;
 
     for (;;) {
-        const int8_t *row = boss3_path[(path - BOSS3_PATH) / 3];
+        const int8_t *row = &boss3_path[0][0] + (path - BOSS3_PATH);   /* (a row is three bytes, as the path's addresses go by) */
         int16_t id = (uint8_t)row[0];   /* (move.b into a word that has the high byte 0) */
         int16_t dx = row[1];
         int16_t dy = row[2];
@@ -15374,7 +15377,7 @@ static void boss3_path_be34(int16_t *x_out, int16_t *y_out, int16_t *picture_out
             boss->x = (uint16_t)x;
             y = (int16_t)(y + dy);
             boss->y = (uint16_t)y;
-            if ((uint8_t)boss3_path[(path - BOSS3_PATH) / 3][0] == 0xFF)
+            if ((uint8_t)(&boss3_path[0][0])[path - BOSS3_PATH] == 0xFF)
                 path = BOSS3_PATH;
             picture = (int16_t)(int8_t)id;
             break;
@@ -16041,6 +16044,100 @@ static void boss4_quickload(void)
     callback_4e0 = boss4_frame;
     callback_4e4 = code_b958 == 0x4E71 ? boss4_throne_b958 : boss_rts;
     callback_514 = boss4_514;
+}
+
+/* orig $002F12 (the player has all ten gifts of the guardian of the level 4: bit 6 of flags_3b0): the picture "payoff.pi1" (the palette 32 bytes after a word, then the 192 rows of the picture) fades in, two messages are
+ * shown (the second until a button is pressed), and the game begins again at the level 1 with more armour (word_284 from 2 to 4 more) and the items and score made again; the original goes on at $2452 */
+static void game_won_2f12(void)
+{
+    static uint8_t text_one[] = " The way to mount olympus lies open...  You may now claim your place among the gods...  Enjoy your life, it will last forever. ";
+    static uint8_t text_two[] = " So what will you do with this gift?     journey again to the city if you dare... this time your task will be harder. ";
+
+    flags_3b0 &= (uint8_t)~0x40;
+    fade_out(1, 0xFFFF);
+    load_unpacked("payoff.pi1", picture_buffer);
+
+    const uint8_t *file = picture_buffer + 2;
+    uint16_t *palette = (uint16_t *)ptr_0cee;
+
+    for (int i = 0; i < 16; i++)   /* (the file's words are big endian) */
+        palette[i] = (uint16_t)((file[2 * i] << 8) | file[2 * i + 1]);
+
+    const uint16_t *picture = (const uint16_t *)(picture_buffer + 0x22);
+    uint8_t *to = screen_buffer;
+
+    for (int row = 0; row < 192; row++) {
+        for (int word = 0; word < 20; word++) {
+            *(uint16_t *)to = *picture++;
+            to += 2;
+            *(uint16_t *)(to + 0x20FE) = *picture++;
+            *(uint16_t *)(to + 0x41FE) = *picture++;
+            *(uint16_t *)(to + 0x62FE) = *picture++;
+        }
+        for (int plane = 0; plane < 4; plane++) {
+            uint16_t *tail = (uint16_t *)(to + (plane == 0 ? 0 : 4 + plane * 0x2100 - 2));
+
+            tail[0] = 0;
+            tail[1] = 0;
+        }
+        to += 4;
+    }
+    display_reset();
+
+    uint8_t *shown = screen_buffer;
+    uint8_t *other = screen_other;
+
+    screen_buffer = other;   /* (the sound file is read with the screens as they are swapped) */
+    screen_other = shown;
+    file_read((const char *)sound1_name, picture_buffer);
+    screen_buffer = shown;
+    screen_other = other;
+    *(uint16_t *)(screen_buffer + 0x4200) = 0xFFFF;
+    *(uint16_t *)(screen_buffer + 0x6300) = 0xFFFF;
+    screens_flip();
+    copper_setup_done = 1;
+    fade_in(palette, 1);
+
+    message_next = text_one;
+    message_arg = 0;
+    message_request(0x7D00);
+    do {
+        wait_vblank();
+        wait_vblank();
+        wait_vblank();
+        message_tick();
+    } while (message_shown != 0);
+    message_next = text_two;
+    message_request(0x7CFF);
+    do {
+        wait_vblank();
+        message_tick();
+        wait_vblank();
+        wait_vblank();
+    } while (!(button_bits[0] & 1));
+    fade_out(0, 0xFFFF);
+
+    word_284++;
+    if (word_284 < 2)
+        word_284 = 2;
+    if (word_284 >= 4)
+        word_284 = 4;
+    param_index = 1;
+    word_0266 = 0;
+    flag_2d0 = 0xFFFF;
+    clear_shot_lists();
+    copy_block_16bb4();
+    word_0248++;
+    end_flag_8890();
+    word_0248 = 0;
+    score_total_1fc = 0;
+    word_2cc = 3;
+    word_2ce = 3;
+    for (int i = 0; i < 4; i++)
+        slots_30c[i] = -1;
+    item_panels_make();
+    code_ba34 = 0x4E75;
+    level_begin();
 }
 
 /* orig $00B17E (callback_514): the place of the level 3 guardian and its path */
