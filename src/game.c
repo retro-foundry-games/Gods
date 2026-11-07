@@ -7918,15 +7918,6 @@ static void monster_pickup(const struct MonsterType *type, struct MonsterPart *m
 
 /* orig $009370 (mode 4): the target is where the monster in front (the rank before) was: in the history of the first, 16 places for each rank less 8 bytes back.  The type's bits 6 and
  * 7: 0 that place, 2 a circle round the place of the first ($942E, monster_circle), 1 and 3 that place turned by the angle of the rank (table_1c9e4) */
-/* a word of table_1c9e4, which is kept as the original's bytes (big endian) */
-static int16_t trig_word(int offset)
-{
-    /* (the circle of the monsters reads past the 1024 bytes of the table, into what follows it in the original's memory: that is read from the guest's memory) */
-    const uint8_t *table = offset + 1 < 1024 ? (const uint8_t *)table_1c9e4 : (const uint8_t *)GUEST(0x1C9E4);
-
-    return (int16_t)(((uint16_t)table[offset] << 8) | table[offset + 1]);
-}
-
 static void monster_follow(struct Monster *rec, const struct MonsterType *type, struct MonsterPart *m)
 {
     if (m->speed < 2)
@@ -7961,8 +7952,8 @@ static void monster_follow(struct Monster *rec, const struct MonsterType *type, 
             around = (uint8_t)(around - 0x80);
         angle = (int16_t)(around * 8);
 
-        int16_t dx = (int16_t)(trig_word(angle) >> 10);
-        int16_t dy = (int16_t)(trig_word(0x100 + angle) >> 10);
+        int16_t dx = (int16_t)((int16_t)table_1c9e4[angle >> 1] >> 10);
+        int16_t dy = (int16_t)((int16_t)table_1c9e4[(0x100 + angle) >> 1] >> 10);
 
         m->target_x = (int16_t)(rec->history[last >> 2].x + dx);
         m->target_y = (int16_t)(rec->history[last >> 2].y + dy);
@@ -7974,8 +7965,8 @@ static void monster_follow(struct Monster *rec, const struct MonsterType *type, 
     int16_t dx = (int16_t)(x - px);
     int16_t dy = (int16_t)(y - py);
     int16_t offset = (int16_t)((((m->rank - 2) & 1)) << 7);
-    int16_t sine = trig_word(offset);
-    int16_t cosine = trig_word(0x100 + offset);
+    int16_t sine = (int16_t)table_1c9e4[offset >> 1];
+    int16_t cosine = (int16_t)table_1c9e4[(0x100 + offset) >> 1];
     int16_t tx = (int16_t)(((int32_t)dy * sine >> 15) + ((int32_t)dx * cosine >> 15));
     int16_t ty = (int16_t)(((int32_t)dy * cosine >> 15) - ((int32_t)dx * sine >> 15));
 
@@ -13173,19 +13164,18 @@ void mark_cells_19170(void)
     }
 }
 
-/* orig $00FB9A: 256 bytes at table_1c9e4 are copied 1024 bytes on (copy_1cde4), and the 32 pairs of words at table_1c9e4 (at +0 and +256 of 32
+/* orig $00FB9A: 256 bytes (128 words) at table_1c9e4 are copied 1024 bytes on (the words from 512), and the 32 pairs of words at table_1c9e4 (at +0 and +256 of 32
  * bytes each) become 32 pairs of bytes at bytes_fbf2: the first divided by 1366, less 5, plus 16; the second shifted right
  * by 10, less 5, plus 24 */
 void make_pairs_fb9a(void)
 {
-    const uint8_t *table = table_1c9e4;
     uint8_t *out = bytes_fbf2;
 
-    for (int i = 0; i < 256; i++)
-        copy_1cde4[i] = table[i];
+    for (int i = 0; i < 128; i++)
+        table_1c9e4[512 + i] = table_1c9e4[i];
     for (int n = 0; n < 32; n++) {
-        int32_t first = *(int16_t *)(table + n * 32);
-        int32_t second = *(int16_t *)(table + 256 + n * 32);
+        int32_t first = (int16_t)table_1c9e4[n * 16];
+        int32_t second = (int16_t)table_1c9e4[128 + n * 16];
         /* the signed division by 1366 of the original (divs.w) as a multiplication, which the 68000 can do in a word (exact for 0 to 32768) */
         uint16_t magnitude = (uint16_t)(first < 0 ? -first : first);
         int16_t quotient = (int16_t)(((uint32_t)magnitude * (uint16_t)49129u) >> 26);
@@ -14929,9 +14919,8 @@ static void boss2_joints_ccde(void)
     static const int bits[3] = {9, 11, 10};
 
     for (int i = 0; i < 3; i++) {
-        const uint8_t *entry = table_1c9e4 + (uint16_t)*angles[i];
-        int16_t sine = (int16_t)((entry[0] << 8) | entry[1]);   /* (the table's bytes are the original's, big endian words) */
-        int16_t cosine = (int16_t)-(int16_t)((entry[0x100] << 8) | entry[0x101]);
+        int16_t sine = (int16_t)table_1c9e4[(uint16_t)*angles[i] >> 1];
+        int16_t cosine = (int16_t)-(int16_t)table_1c9e4[((uint16_t)*angles[i] + 0x100) >> 1];
 
         sine = (int16_t)(sine >> bits[i]);
         cosine = (int16_t)(cosine >> bits[i]);

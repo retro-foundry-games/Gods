@@ -556,7 +556,7 @@ extern uint16_t code_8a54;   /* $08A54  the first word of the routine at $8A54 (
 extern uint16_t code_9ae6;   /* $09AE6 */
 extern uint16_t code_6ed0;   /* $06ED0 */
 extern uint8_t level_text[16];   /* $028F8  "LOADING LEVEL " and the level's number (plus 93): the text of the loading screen */
-extern uint8_t copy_1cde4[256];   /* $1CDE4  a copy of the first 256 bytes of table_1c9e4 that make_pairs_fb9a makes */
+extern uint16_t table_1c9e4[640];   /* $1C9E4  the sines (the first 256 words) and the cosines (the next 256) and then a copy of the first 128 words that make_pairs_fb9a makes; the circle of the monsters reads that far */
 extern const uint8_t *unit_path_end[5];   /* $00C74  where the path of each unit's members ends */
 extern int16_t unit_count[5];   /* $00C8C  how many members each unit has */
 extern int16_t word_7edc;   /* $07EDC  in the code area: the rate of the shots of the unit that is run */
@@ -648,7 +648,6 @@ extern const uint16_t sound_periods[480];   /* $2080E  the period tables: an ins
 extern const uint32_t sound_tracks[137];   /* $21C3A  the address of the track (the commands of the sequencer) of each track number, 0 for none */
 extern const struct SoundInstrument sound_instruments[53];   /* $3A38A  the instruments: the sample, its loop, and the period table */
 extern const char objects_name[8];   /* $196DE  "objects": the asset set of the objects */
-extern const uint8_t table_1c9e4[1024];   /* $1C9E4  two tables of 256 words (the first and the second word of each of 32 pairs, 32 bytes apart) make_pairs_fb9a reads */
 extern const uint16_t death_steps[14];   /* $00096  the seven pieces of the player's death: the steps (x, y) each starts with */
 extern const uint16_t respawn_search[45];   /* $03864  fifteen records of three words: where, from the cell the player was last at, the cell that is looked for (an offset into the collision map, then the step of x and y) */
 

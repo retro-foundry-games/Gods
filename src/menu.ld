@@ -70,7 +70,6 @@ SECTIONS {
         . = 0x196fe; *(.rodata.tocache_name) *(.data.tocache_name)
         . = 0x1c678; *(.rodata.table_1c678) *(.data.table_1c678)
         . = 0x1c698; *(.rodata.creature_templates) *(.data.creature_templates)
-        . = 0x1c9e4; *(.rodata.table_1c9e4) *(.data.table_1c9e4)
         . = 0x1d3d2; *(.rodata.sound1_name) *(.data.sound1_name)
         . = 0x1e5ae; *(.rodata.keymap) *(.data.keymap)
         . = 0x1e7f4; *(.rodata.font_8x8) *(.data.font_8x8)
@@ -633,7 +632,7 @@ _code_8a54 = 0x8a54;
 _code_9ae6 = 0x9ae6;
 _code_6ed0 = 0x6ed0;
 _level_text = 0x28f8;
-_copy_1cde4 = 0x1cde4;
+_table_1c9e4 = 0x1c9e4;
 _unit_path_end = 0xc74;
 _unit_count = 0xc8c;
 _word_7edc = 0x7edc;

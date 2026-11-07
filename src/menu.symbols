@@ -626,8 +626,7 @@ code_8a54         0x00008a54  uint16_t %s     the first word of the routine at $
 code_9ae6         0x00009ae6  uint16_t %s
 code_6ed0         0x00006ed0  uint16_t %s
 level_text       0x000028f8  uint8_t %s[16]   "LOADING LEVEL " and the level's number (plus 93): the text of the loading screen
-table table_1c9e4 0x0001c9e4 uint8_t 1024   two tables of 256 words (the first and the second word of each of 32 pairs, 32 bytes apart) make_pairs_fb9a reads
-copy_1cde4        0x0001cde4  uint8_t %s[256]   a copy of the first 256 bytes of table_1c9e4 that make_pairs_fb9a makes
+table_1c9e4      0x0001c9e4  uint16_t %s[640]   the sines (the first 256 words) and the cosines (the next 256) and then a copy of the first 128 words that make_pairs_fb9a makes; the circle of the monsters reads that far
 unit_path_end     0x00000c74  const uint8_t *%s[5]   where the path of each unit's members ends
 unit_count        0x00000c8c  int16_t %s[5]    how many members each unit has
 word_7edc         0x00007edc  int16_t %s       in the code area: the rate of the shots of the unit that is run
