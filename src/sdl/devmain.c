@@ -227,6 +227,10 @@ static int lockstep_commands(const uint32_t *pixels, int phase)
             extern volatile int host_fade_line;
 
             host_fade_line = a;
+        } else if (sscanf(line, "flipline %d %d", &a, &b) == 2) {   /* `flipline N L`: the original's Nth flip was made at the raster line L of its frame */
+            extern void host_flip_line_set(int n, int line);
+
+            host_flip_line_set(a, b);
         } else if (sscanf(line, "fadefirst %d", &a) == 1) {   /* `fadefirst N`: the raster line the first step of the original's latest fade began at */
             extern volatile int host_fade_first;
 

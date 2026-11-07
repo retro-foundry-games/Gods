@@ -144,6 +144,20 @@ volatile int host_flip_sync;
 volatile unsigned host_flips_orig;   /* the original's flips since the sync began */
 volatile int host_flips_offset;
 static unsigned flips_done;
+static short flip_lines[256];   /* the raster line of the original's Nth flip (N modulo 256), sent by the driver with its count */
+
+void host_flip_line_set(int n, int line)
+{
+    flip_lines[n & 255] = (short)line;
+}
+
+/* whether the flip the port has just made (its number the original's, less the sync's offset) was made late in its frame by the original (from the raster line 154: its picture then comes a frame later) */
+int host_flip_is_late(void)
+{
+    int n = (int)flips_done - host_flips_offset;
+
+    return host_flip_sync && flip_lines[n & 255] >= 154;
+}
 static int flip_bound;   /* the next flip ends an iteration (host_iteration_cpu): it waits for the original's */
 
 void host_flip_wait(void)

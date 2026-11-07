@@ -67,6 +67,8 @@ void copy_other_screen(void)
 
 static int flip_late;   /* the flips are shown a frame after the vertical blank that ends their wait (a flip that comes late in a frame of the original's work) */
 static uint8_t *flip_pending;
+static uint8_t *flip_pending_late;   /* a flip the original made late in its frame: taken by the blank after the next */
+extern int host_flip_is_late(void);
 
 void host_flip_late(int on)
 {
@@ -78,7 +80,8 @@ void host_flip_apply(void)
 {
     if (flip_pending)
         custom->cop1lc = (uint32_t)(uintptr_t)flip_pending;
-    flip_pending = 0;
+    flip_pending = flip_pending_late;
+    flip_pending_late = 0;
 }
 
 /* orig $01D302: show the screen that was drawn and draw on the other: the per-screen state, the two screens and so which
@@ -102,12 +105,18 @@ void screens_flip(void)
     shop_flip_strip();
     list = screen_other == screen_1 ? copper_list_a : copper_list_b;
     set_scroll(list, (uint8_t)x_offset);
-    if (flip_late)
+    int late = flip_late && host_flip_is_late();
+
+    if (late)
+        flip_pending_late = list;
+    else if (flip_late)
         flip_pending = list;
     else
         display_show(list);
     vbl_saturating = 0;
     wait_vblank();
+    if (late)
+        wait_vblank();   /* (the screen that is shown is not drawn on before the blank that takes the new one) */
 }
 
 /* the value word of the next move to COLOR01 in the copper list from `from` on, or 0 when there is none.  The search goes on
