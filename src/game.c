@@ -3802,10 +3802,21 @@ static int16_t hit_marked_cell(const uint8_t *after, int16_t x, int16_t y, int16
  * screen's cells (8 pixels) in x and y; when nothing is left that is all.  The cells of the map (line_text + 100, 48 columns)
  * that the box covers, less a column, are looked at; the first cell that is not 0 is dealt with by hit_marked_cell and ends the
  * routine.  Returns the strength (or -1, or the strength left after a hit on a cell) */
+/* where the original's a4 is after $007EAE / $00D270 wrote a record of the list of hits ($0BD6, while the falcon is there): the next free record.  The routines that give the score of a monster killed ($9DDA) read the byte
+ * at +1 of a4 as the monster's value, which is the template's when nothing was written and the low byte of the x of that free record (what an earlier frame left there) when the falcon made the list */
+static const uint8_t *hit_list_a4;
+
+static uint8_t kill_value_9dda(uint8_t life)
+{
+    return hit_list_a4 != 0 ? hit_list_a4[0] : life;
+}
+
 int16_t check_hit_and_walls(int16_t x, int16_t y, int16_t strength)
 {
     int16_t hit_x = x;
     int16_t hit_y = y;
+
+    hit_list_a4 = 0;
 
     strength = damage_player_at(x, y, strength);
     if (strength < 0) {
@@ -3856,6 +3867,7 @@ int16_t check_hit_and_walls(int16_t x, int16_t y, int16_t strength)
         list[2] = strength;
         value_c6c += 6;
         flag_20e++;
+        hit_list_a4 = (const uint8_t *)GUEST(value_c6c);
     }
 
     const uint8_t *cell = line_text + 100 + (x >> 3);
@@ -8032,7 +8044,7 @@ static void monster_step(struct Monster *rec, const struct MonsterType *type, st
     monster_hit(m, x, y);
     word_3a6 = 0;
     if (m->hp < 0)
-        add_kill_score(type->life);   /* $9DDA: the same adding as $9DEA (did not run) */
+        add_kill_score(kill_value_9dda(type->life));   /* $9DDA: the same adding as $9DEA, with the byte the original's a4 points at */
     sprite_draw(x, y, (uint16_t)picture);
 
     if ((int8_t)index_246 == rec->special) {
@@ -9195,7 +9207,7 @@ static void walker_step(const struct MonsterType *type, struct WalkMember *m)
     sy = (int16_t)(m->y - scroll_y);
     monster_hit((struct MonsterPart *)m, sx, sy);
     if (m->hp < 0)
-        add_kill_score(type->life);
+        add_kill_score(kill_value_9dda(type->life));
     sprite_draw(sx, sy, (uint16_t)picture);
     if (m->item < 0)
         return;
