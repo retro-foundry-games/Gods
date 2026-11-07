@@ -227,6 +227,10 @@ static int lockstep_commands(const uint32_t *pixels, int phase)
             extern volatile int host_fade_line;
 
             host_fade_line = a;
+        } else if (sscanf(line, "fadefirst %d", &a) == 1) {   /* `fadefirst N`: the raster line the first step of the original's latest fade began at */
+            extern volatile int host_fade_first;
+
+            host_fade_first = a;
         } else if (sscanf(line, "reads %d", &a) == 1) {   /* `reads N`: the original has read the keys N times since the sync began (host_read_wait) */
             extern volatile int host_reads_orig;
 

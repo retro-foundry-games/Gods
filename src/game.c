@@ -14374,7 +14374,7 @@ static void shop_run(void)
     message_shown = 0;
     word_dde = 0;
     *(volatile uint8_t *)&flags_0ddd = 0;   /* clr.b $ddd.w */
-    host_fade_lag(1);   /* (the lockstep: the steps are shown as the original's, a frame after the thread has made them) */
+    host_fade_lag(4);   /* (the lockstep: the steps are shown as the original shows them: a frame after the thread has made them when its first step began late in a frame, as they are when it began early) */
     fade_out(1, 2);
     host_fade_lag(0);
 

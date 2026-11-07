@@ -174,10 +174,22 @@ void copper_colors_restore(void)
         *colour = *from++;
 }
 
+static int display_fade_out;   /* a fade-out is on (the old list's stripe of the band model is longer: the shop's entry) */
+extern volatile int host_fade_line;
+volatile int host_fade_first = -1;   /* the raster line the original began the first step of its latest fade at (the lockstep) */
 extern volatile int display_fresh_lag;   /* render.c: (with display_fresh) shown a frame late */
 void host_fade_lag(int on)
 {
     display_fresh_lag = on;
+}
+
+/* the lag the fade is shown with: 4 is for a fade-out that the original shows its steps a frame after the registers have them when its first step began late in a frame (from the line 100: the
+ * thread came to the call after the blank's interrupt had run) and as they are when it began early */
+static int effective_lag(void)
+{
+    if (display_fresh_lag != 4)
+        return display_fresh_lag;
+    return host_fade_first >= 100 ? 1 : 0;
 }
 
 extern volatile int display_fresh;   /* render.c: the fades show their colours and copper list as they are */
@@ -214,7 +226,7 @@ void fade_in(const uint16_t *target, uint16_t delay)
             wait_vblank();
     }
     palette_lit = 0xff;
-    display_fresh_tail = display_fresh_lag;
+    display_fresh_tail = effective_lag() != 0;
     display_fresh = 0;
 }
 
@@ -255,6 +267,8 @@ void frame_tick(void)
 void fade_out(uint16_t delay, uint16_t arg)
 {
     display_fresh = 1;
+    display_fade_out = 1;
+
     (void)delay;
     message_start(arg);
     delay = 1;   /* the original's d0, which is the delay, is the result of the routine that starts the message (orig $016DF8: 1): every step waits two frames */
@@ -286,8 +300,9 @@ void fade_out(uint16_t delay, uint16_t arg)
     copper_move_b = 0x00865246;
     copper_colors_restore();
     palette_lit = 0;
-    display_fresh_tail = display_fresh_lag;
+    display_fresh_tail = effective_lag() != 0;
     display_fresh = 0;
+    display_fade_out = 0;
 }
 
 /* ---- what the display needs of the chips (the host's) ---- */
@@ -743,7 +758,7 @@ void display_latch_fresh(void)
 {
     if (!display_fresh)
         return;
-    if (display_fresh_lag != 1)   /* (1: the colours are shown a frame late) */
+    if (effective_lag() != 1)   /* (1: the colours are shown a frame late) */
         for (int i = 0; i < 16; i++)
             latched_colors[i] = REG16(0x180 + 2 * i);
     uint32_t cop1lc = REG32(0x080);
@@ -763,7 +778,7 @@ static int late_list_valid;
 
 void display_latch_late(void)
 {
-    if (display_fresh && display_fresh_lag == 0) {
+    if (display_fresh && effective_lag() == 0) {
         uint32_t head = REG32(0x080);
         const uint16_t *now = head < 0x10000 ? (const uint16_t *)guest_ptr(head) : (const uint16_t *)(uintptr_t)head;
 
@@ -773,7 +788,7 @@ void display_latch_late(void)
         }
         return;
     }
-    if (!display_fresh || display_fresh_lag != 2)
+    if (!display_fresh || effective_lag() != 2)
         return;
     uint32_t cop1lc = REG32(0x080);
     const uint16_t *list = cop1lc < 0x10000 ? (const uint16_t *)guest_ptr(cop1lc) : (const uint16_t *)(uintptr_t)cop1lc;
@@ -899,10 +914,12 @@ void display_render(uint32_t *pixels)
         int cut = (host_fade_line * 26 - 90) / 10;
 
         memcpy(now_list, latched_list, sizeof now_list);
-        if (display_fresh_lag == 0 && late_list_valid) {
+        if (effective_lag() == 0 && late_list_valid) {
             /* the shop's fade-in: the original's edit of the list is slow.  A frame after it began (at the raster line host_fade_line) it has done the lines from 2.6 times that line for 63 lines
              * and the raster passes them after the edit: they show the new list, the others the one before */
             int first = 72 + (host_fade_line * 8 + 5) / 10;   /* (104 for the line 40 of the shop's fade-in, 77 for the line 6 of the level end's fade-out) */
+            if (first < cut)
+                first = cut - 1;   /* (the lines above the cut were drawn before the edit began) */
 
             int dark = 1;
 
@@ -912,7 +929,7 @@ void display_render(uint32_t *pixels)
                 memcpy(latched_list, late_list, sizeof now_list);
                 line_palettes(colors_before, 320);
                 memcpy(latched_list, now_list, sizeof now_list);
-                for (int line = first; line < first + 63 && line < 320; line++)
+                for (int line = first; line < first + (display_fade_out ? 100 : 63) && line < 320; line++)
                     memcpy(colors[line], colors_before[line], sizeof colors[line]);
             }
         } else {
