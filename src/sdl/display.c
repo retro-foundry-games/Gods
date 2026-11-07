@@ -426,6 +426,45 @@ void blit_masked(const uint8_t *source, uint8_t *dest, int16_t modulo_ab, uint16
     }
 }
 
+/* the clipped draw of an image whose x is not on a word's line (word_d86 not 0: flags_0ddd bit 1): the original shifts the image into a work area ($1F1E6) and blits it with the shift; the host draws it pixel by pixel:
+ * the pixels x to x + width (the clip's x0 to x1 only), rows `height` + 1 from the row word_dd4 of the source, a pixel where the mask (the four planes or'ed) is set takes the image's bits on the screen's four planes */
+static void blit_shifted(int16_t x, int16_t y, int16_t width, int16_t height, const uint8_t *source, const int16_t *clip)
+{
+    unsigned bytes = ((uint16_t)width + 1u) >> 3;
+    uint32_t plane_size = long_dd8;
+    const int16_t plane_stride = 8448;
+
+    for (int r = 0; r <= height; r++) {
+        unsigned source_row = (unsigned)word_dd4 + (unsigned)r;
+        uint16_t *screen_row = (uint16_t *)(screen_buffer + (long)(int16_t)(y + r) * 44);
+
+        for (int px = 0; px <= width; px++) {
+            int16_t dx = (int16_t)(x + px);
+
+            if (dx < clip[0] || dx > clip[1])
+                continue;
+
+            unsigned at = source_row * bytes + (unsigned)(px >> 4) * 2u;
+            unsigned bit = 15u - (unsigned)(px & 15);
+            uint16_t mask = 0;
+
+            for (unsigned i = 0; i < 4; i++)
+                mask |= *(const uint16_t *)(source + i * plane_size + at);
+            if (!((mask >> bit) & 1))
+                continue;
+            for (unsigned i = 0; i < 4; i++) {
+                uint16_t *to = (uint16_t *)((uint8_t *)screen_row + i * plane_stride) + (dx >> 4);
+                uint16_t pixel = (uint16_t)(1u << (15 - (dx & 15)));
+
+                if ((*(const uint16_t *)(source + i * plane_size + at) >> bit) & 1)
+                    *to |= pixel;
+                else
+                    *to &= (uint16_t)~pixel;
+            }
+        }
+    }
+}
+
 /* orig $01F0AA: the image (x, y, `width` pixels, `height` + 1 rows, at `source`: the first of its four planes) is clipped by the
  * rectangle `clip` (x0, x1, y0, y1) and drawn on the screen buffer.  Only the way that ran is written: an image that is mirrored
  * (word_d82 negative), the shift in the bits of x (word_d86) and the other draw routines of the table at $0D9A are not */
@@ -460,6 +499,10 @@ void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uin
         return;
     if ((int16_t)(height + y) > high)
         height = (int16_t)(high - y);
+    if (word_d86 != 0) {
+        blit_shifted(x, y, width, height, source, clip);
+        return;
+    }
     low = clip[0];
     rest = width;
     if (x <= low) {
