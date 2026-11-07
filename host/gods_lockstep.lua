@@ -240,6 +240,9 @@ ami.hook(0x1d168, function() last_fade_frame = ami.frame(); fade_line = math.flo
 ami.hook(0x1d23e, function() if next_level_event then next_level_event(3, "start faded out") end if disk_pending then disk_pending = false disk_done = disk_done + 1 if args:find("diskdbg") then ami.log(("DISKDBG done at 1d23e frame %d (%d)"):format(ami.frame(), disk_done)) end end end)
 -- the shop's way out ($1392A): the game's sprites and the sound file are read again (they take what the drive takes) before the fade out at $1D23E
 ami.hook(0x1392a, function() disk_pending = true end)
+-- the end of the game ($2F12): the picture and the sound file are read from $2F26 on, until the fade-in at $2FCC
+ami.hook(0x2f20, function() disk_pending = true end)
+ami.hook(0x2fcc, function() if disk_pending then disk_pending = false disk_done = disk_done + 1 end end)
 -- the start of the next level ($2452, from $13646): three events the port's loading waits for: its loading screen is faded in ($1D0C0), its files are read (until $2AAA) and its start fades out ($1D23E)
 next_level_stage = 0
 function next_level_event(stage, what)
