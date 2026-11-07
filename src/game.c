@@ -16211,6 +16211,7 @@ void password_entered(void)
     menu_active = 1;
     word_0248 = 1;
     word_0266 = 0;
+    level_next_wait = 1;   /* (the lockstep: the level's loading waits for the original's reads, as after the end of a level) */
     level_begin();
 }
 
