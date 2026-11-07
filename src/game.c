@@ -15,6 +15,8 @@ static void bats_db04(void);
 static void aimed_shot(int16_t x, int16_t y, int16_t speed, int16_t kind);
 static void update_crumbles(void);
 static void crumble_start(const uint8_t *cell, const int16_t *slot);
+static void spawn_shot_ball(struct Shot *slot, int16_t id, int16_t x, int16_t y, int right);
+static void update_shots_ball(struct ShotList *list, struct Object *object);
 
 /* orig $00363A: this frame's input: the joystick byte and the button bits are kept for the game; when the input is being recorded
  * (demo_mode positive) one byte of them is put in the record (the buttons in bits 6 and 7, the stick below) */
@@ -3600,14 +3602,12 @@ static void kind_set_entry(const struct ScriptRecord *a1, int on)
     play_sound(on ? 7 : 0x2B, 5);
 }
 
-/* orig $018C30 (kind 6): every record of records_19b14 within 12 of the record a1's position (words +12, +14) whose number's
+/* orig $018C50 (the box d0 to d2 across and d1 to d3 down: the entry of $018C30, kind 6, with the box 12 round the record a1's position (words +12, +14)): every record of records_19b14 within 12 of the record a1's position (words +12, +14) whose number's
  * table_14cf8 entry has the word +4 at 4 is taken out (word +4 -1, +6 0) and makes a mark in records_316 (state 0, x less 8, y
  * (8 less for the number 96)), at most two, each with the sound 4 (priority 15); the marks go to the first free entry and on
  * from there (this may pass the end of the four, as in the original) */
-static void kind_burst(const struct ScriptRecord *a1)
+static void thing_burst_box(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
 {
-    int16_t x0 = (int16_t)(a1->x - 12), y0 = (int16_t)(a1->y - 12);
-    int16_t x1 = (int16_t)(a1->x + 12), y1 = (int16_t)(a1->y + 12);
     int16_t *mark = records_316;
     int16_t hits = 0;
 
@@ -3640,6 +3640,11 @@ static void kind_burst(const struct ScriptRecord *a1)
         if (hits == 2)
             return;
     }
+}
+
+static void kind_burst(const struct ScriptRecord *a1)
+{
+    thing_burst_box((int16_t)(a1->x - 12), (int16_t)(a1->y - 12), (int16_t)(a1->x + 12), (int16_t)(a1->y + 12));
 }
 
 /* orig $018F16 (kind 10): the slot_ref (6b6, 748, 7da) that equals the word +18 of the record a1 becomes -1; the first only */
@@ -4178,6 +4183,296 @@ static void update_shots_axe(struct ShotList *list, struct Object *object)
         object->frame = 0;
 }
 
+/* ======== the bouncing ball (the fire kinds 8 and 9, orig $015870 and $015898, the object handler 3, $015DB2 to $01634C) ======== */
+
+/* orig $015870 (to the left) and $015898 (to the right, 16 on): sound 2 (priority 4); the ball goes at 4 across (right) or -4 (left), no fall, no jump ($206, $208 and $20A), and the list's first shot is the number,
+ * the place (the y 32 up, a multiple of 4) and 47 frames of life */
+static void spawn_shot_ball(struct Shot *slot, int16_t id, int16_t x, int16_t y, int right)
+{
+    int16_t *speed_x = (int16_t *)GUEST(0x206);
+    int16_t *speed_y = (int16_t *)GUEST(0x208);
+    int16_t *jump = (int16_t *)GUEST(0x20A);
+
+    play_sound(2, 4);
+    if (right) {
+        x = (int16_t)(x + 0x10);
+        *speed_x = 4;
+    } else {
+        *speed_x = -4;
+    }
+    *speed_y = 0;
+    *jump = -1;
+    y = (int16_t)((y - 0x20) & 0xFFFC);
+    slot[0].active = id;
+    slot[0].x = x;
+    slot[0].y = y;
+    slot[0].direction = 0x2F;
+}
+
+/* the ten pieces of the ball's burst ($E6C: x, y, the steps across and down, the picture count; the count negative: free) and the seven pillars of fire ($A6E: x, y, the count) */
+struct BallPiece {
+    int16_t x;
+    int16_t y;
+    int16_t speed_x;
+    int16_t speed_y;
+    int16_t count;
+};
+
+struct BallPillar {
+    int16_t x;
+    int16_t y;
+    int16_t count;
+};
+
+/* the collision map's cell (ptr_0b86 + 8192) under (x, y) */
+static uint8_t *ball_cell(int16_t x, int16_t y)
+{
+    return ptr_0b86 + 0x2000 + (int16_t)((int16_t)(x & 0xFFE0) >> 5) + (int16_t)((int16_t)(y & 0xFFF0) << 3);
+}
+
+/* orig $0160FC: the ball is at (x, y): the shot's x is kept, its life counts down and it is drawn as the glyph 339 + the low two bits of the count it had */
+static void ball_draw_160fc(struct Shot *shot, int16_t x, int16_t y, int16_t counter)
+{
+    shot->x = x;
+    shot->direction--;
+    glyph_draw((int16_t)(x - scroll_x), (int16_t)(y - scroll_y), (uint16_t)((counter & 3) + 0x153));
+}
+
+/* orig $01634E: a pillar of fire (every fourth picture) that has a corner of the player's box (5 and 27 across, 4 and 44 down from the screen place of the player) in its box of 32 by 32 takes an energy off */
+static void ball_pillar_hurts(int16_t x, int16_t y, int16_t image)
+{
+    if ((image & 3) != 0)
+        return;
+
+    int16_t x2 = (int16_t)(x + 0x20);
+    int16_t y2 = (int16_t)(y + 0x20);
+    int16_t px = (int16_t)(player_x - scroll_x);
+    int16_t py = (int16_t)(player_y - scroll_y);
+    int16_t left = (int16_t)(px + 5), right = (int16_t)(px + 0x1B), top = (int16_t)(py + 4), bottom = (int16_t)(py + 0x2C);
+    const int16_t corners[4][2] = { { left, top }, { right, top }, { left, bottom }, { right, bottom } };
+
+    for (int i = 0; i < 4; i++) {
+        if (corners[i][0] >= x && corners[i][0] <= x2 && corners[i][1] >= y && corners[i][1] <= y2) {
+            player_energy--;
+            return;
+        }
+    }
+}
+
+/* orig $01611E and $016274 (the life of the ball is below 0): at -1 it bursts (sound 4, priority 16: pieces fly up and sideways, as many pairs (at most five) as the object's last value less its first,
+ * the pillars of fire start staggered, the things of kind 4 in the box are hit: thing_burst_box); every frame the pieces move (the step down grows every third frame), are drawn as the glyph 77 + their count when they are on
+ * the screen (the tiles are looked at: a piece that hits one is over) and the pillars go through their seven pictures (the sprites 108 to 114), mark the cells and hurt the player; when nothing is left the shot is over */
+static void ball_burst(struct Object *object, struct Shot *shot, int16_t x, int16_t y, int16_t counter)
+{
+    struct BallPiece *pieces = (struct BallPiece *)GUEST(0xE6C);
+    struct BallPillar *pillars = (struct BallPillar *)GUEST(0xA6E);
+
+    if (counter == -1) {
+        static const int16_t steps[5] = { -8, -6, -4, -2, -10 };
+
+        play_sound(4, 0x10);
+        for (int i = 0; i < 10; i++)
+            pieces[i].count = -1;
+
+        int16_t pairs = (int16_t)(object->last_value - object->first_value);
+
+        if (pairs != 0) {
+            for (int n = 0; n < 5; n++) {
+                pieces[2 * n] = (struct BallPiece){ x, y, 5, steps[n], 0 };
+                pieces[2 * n + 1] = (struct BallPiece){ x, y, -5, steps[n], 0 };
+                pairs--;
+                if (pairs == 0)
+                    break;
+            }
+        }
+
+        int16_t px = (int16_t)(x - 8);
+        int16_t py = (int16_t)(y - 0x10 - 0x7E);
+        int16_t count = -12;
+
+        for (int k = 0; k < 7; k++) {
+            pillars[k] = (struct BallPillar){ px, py, count };
+            py = (int16_t)(py + 0x15);
+            count = (int16_t)(count + 2);
+        }
+        shot->direction--;
+
+        int16_t valid = (int16_t)(object->last_value - object->first_value + 2);
+
+        for (int m = 1; m <= 7; m++) {
+            valid--;
+            if (valid < 0)
+                pillars[7 - m].count = (int16_t)0xD8F0;
+        }
+        thing_burst_box((int16_t)(x - 0x10), (int16_t)(y - 0x14), (int16_t)(x + 0x10), (int16_t)(y + 4));
+    }
+
+    int16_t alive = 0;
+
+    for (int i = 0; i < 10; i++) {
+        struct BallPiece *piece = &pieces[i];
+
+        if (piece->count < 0)
+            continue;
+        alive++;
+        piece->count++;
+        if (piece->count >= 3) {
+            piece->count = 0;
+            piece->speed_y++;
+        }
+        piece->x = (int16_t)(piece->x + piece->speed_x);
+        piece->y = (int16_t)(piece->y + piece->speed_y);
+
+        int16_t sx = (int16_t)(piece->x - scroll_x);
+        int16_t sy = (int16_t)(piece->y - scroll_y);
+
+        if (sx > 0x13F || sx < -8 || sy < -8 || sy > 0xBF) {
+            piece->count = -1;
+            continue;
+        }
+
+        uint16_t image = (uint16_t)(piece->count + 0x4D);
+
+        shot_hit_tile(object, shot, sx, sy);
+        if (shot->active != 0) {
+            glyph_draw(sx, sy, image);
+        } else {
+            shot->active = 1;
+            piece->count = -1;
+        }
+    }
+    for (int k = 0; k < 7; k++) {
+        struct BallPillar *pillar = &pillars[k];
+
+        if (pillar->count >= 0) {
+            alive++;
+
+            int16_t sx = (int16_t)(pillar->x - scroll_x);
+            int16_t sy = (int16_t)(pillar->y - scroll_y);
+            int16_t image = (int16_t)(pillar->count + 0x6C);
+
+            mark_shot_cells_3x3(sx, sy, shot);
+            if (flag_aa8 == 0)
+                ball_pillar_hurts(sx, sy, image);
+            sprite_draw(sx, sy, (uint16_t)image);
+        }
+        pillar->count++;
+        if (pillar->count >= 7)
+            pillar->count = -100;
+    }
+    if (alive == 0)
+        shot->active = 0;
+}
+
+/* orig $015DB2 (the handler 3 of the table at $15260: the bouncing ball): the list's first shot goes on, its words the number, x, y and the frames it has left.  Going across ($206 not 0) it falls (the step $208 up to 4,
+ * every fourth frame), lands on a floor (the cells two rows down: the speed is 0 and the sound 11) or turns at a wall (the sound 11 and the speed negated); with no speed across it jumps along the table at $F2
+ * (the sounds at $10A, the count in $20A; 100 is the landing) or falls ($20A negative) until it lands.  When its life is below 0 it bursts (ball_burst) */
+static void update_shots_ball(struct ShotList *list, struct Object *object)
+{
+    struct Shot *shot = &list->shot[0];
+    int16_t *speed_x = (int16_t *)GUEST(0x206);
+    int16_t *speed_y = (int16_t *)GUEST(0x208);
+    int16_t *jump = (int16_t *)GUEST(0x20A);
+
+    if (shot->active == 0)
+        return;
+
+    int16_t x = shot->x;
+    int16_t y = shot->y;
+    int16_t counter = shot->direction;
+
+    if (counter < 0) {
+        ball_burst(object, shot, x, y, counter);
+        return;
+    }
+
+    uint8_t *cell = ball_cell(x, y);
+
+    if (*speed_x != 0) {
+        if (((counter + 2) & 3) == 0) {
+            (*speed_y)++;
+            if (*speed_y > 4)
+                *speed_y = 4;
+        }
+        if ((int16_t)((y + *speed_y) & 0xFFF0) != (int16_t)(y & 0xFFF0)) {
+            int land = (cell[0x100] == 1 && cell[0x80] != 1) || ((x & 0x1F) >= 0x10 && cell[0x101] == 1 && cell[0x81] != 1);
+
+            if (land) {
+                y = (int16_t)((y + *speed_y) & 0xFFF0);
+                shot->y = y;
+                *speed_x = 0;
+                *speed_y = 0;
+                *jump = 0;
+                play_sound(0xB, 6);
+                ball_draw_160fc(shot, x, y, counter);
+                return;
+            }
+        }
+        y = (int16_t)(y + *speed_y);
+        x = (int16_t)(x + *speed_x);
+        if (*speed_x < 0) {
+            if ((counter & 3) == 0)
+                (*speed_x)++;
+
+            const uint8_t *side = ball_cell(x, y);
+
+            if (side[0] == 1 || side[0x80] == 1) {
+                play_sound(0xB, 6);
+                *speed_x = (int16_t)-*speed_x;
+            }
+        } else {
+            if ((counter & 3) == 0)
+                (*speed_x)--;
+
+            const uint8_t *side = ball_cell((int16_t)(x + 0xF), y);
+
+            if (side[0] == 1 || side[0x80] == 1) {
+                play_sound(0xB, 6);
+                *speed_x = (int16_t)-*speed_x;
+            }
+        }
+        shot->y = y;
+        ball_draw_160fc(shot, x, y, counter);
+        return;
+    }
+    if (*jump < 0) {   /* $15FB6: falling */
+        y = (int16_t)(y + *speed_y);
+
+        const uint8_t *below = ball_cell(x, y);
+        int land = (below[0x80] == 1 && below[0] != 1) || ((x & 0x1F) > 0xF && below[0x81] == 1 && below[1] != 1);
+
+        if (land) {
+            y = (int16_t)(y & 0xFFF0);
+            shot->y = y;
+            *speed_y = 0;
+            *jump = 0x64;
+        } else {
+            shot->y = y;
+        }
+        ball_draw_160fc(shot, x, y, counter);
+        return;
+    }
+    if (*jump != 0) {   /* $15F48: the jump */
+        int16_t step = *jump;
+
+        if (step == 0x64) {
+            play_sound(0xB, 6);
+            y = (int16_t)(y - 4);
+            shot->y = y;
+            *jump = 1;
+        } else {
+            y = (int16_t)(y + (int8_t)fall_steps_f2[step]);
+            if (fall_steps_f2[0x18 + step] != 0)
+                play_sound(0xB, 6);
+            shot->y = y;
+            *jump = (int16_t)(step + 1);
+            if (step >= 0x17)
+                *jump = 0;
+        }
+    }
+    ball_draw_160fc(shot, x, y, counter);
+}
+
 /* orig $015B36: the list of shots of an object (its first word is the number of the object, negative: none) is run by the routine the
  * object's handler number names in the table at $15260: 0 is $1673E (update_shots), 2 is a bare return; 1, 3, 4 and 5 ($168AE, $15DB2,
  * $1645C and $1661E) did not run */
@@ -4197,11 +4492,14 @@ void run_object_list(struct ShotList *list)
         break;
     case 2:
         break;
+    case 3:
+        update_shots_ball(list, object);
+        break;
     case 5:
         update_shots_axe(list, object);
         break;
     default:
-        break;   /* goes on at $15DB2 or $1645C */
+        break;   /* goes on at $1645C */
     }
 }
 
@@ -4356,6 +4654,10 @@ static void spawn_shots(struct Shot *slot, int16_t id, struct ShotList *list, in
         break;
     case 7:
         spawn_shots_spear(slot, id, object, x, y, 1);
+        break;
+    case 8:
+    case 9:
+        spawn_shot_ball(slot, id, x, y, object->fire_kind == 9);
         break;
     case 15:
         spawn_shots_axe(slot, id, object, x, y, 0);
@@ -12968,6 +13270,9 @@ void level_tables_quickload(void)
     for (int i = 0; i < 20; i++)   /* the ten shards (struct Shard: four words) that the stone faces spit: the table is typed as longs, which the loader made native as longs: the words of each are the other way round */
         records_737e[i] = (records_737e[i] >> 16) | (records_737e[i] << 16);
     file_words((void *)GUEST(0x10B0), 70);   /* the bats */
+    file_words((void *)GUEST(0x206), 3);   /* the bouncing ball's speeds and jump */
+    file_words((void *)GUEST(0xE6C), 50);   /* its burst's pieces */
+    file_words((void *)GUEST(0xA6E), 21);   /* and its pillars of fire */
     file_words((void *)GUEST(0xFD0), 50);   /* the pods */
     for (int i = 0; i < 10; i++) {   /* the spores: the four words and the count of each */
         file_words(&spores()[i].x, 4);
