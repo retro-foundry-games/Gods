@@ -235,6 +235,11 @@ static int load_ram_image_held(const char *path, int slots)
     if (slots) {
         swap_entry_list();
         level_tables_quickload();   /* game.c: the level's tables whose words the program makes native when it loads the level */
+        {
+            extern void sound_restore_quick(void);
+
+            sound_restore_quick();   /* sound.c: the voices the original has going */
+        }
     }
     return 0;
 }

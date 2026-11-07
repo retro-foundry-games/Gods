@@ -342,6 +342,41 @@ done:
     pthread_mutex_unlock(&lock);
 }
 
+
+/* the quickload (the chip RAM of the original at some moment of a play): the voices that the original had going are given the port's: a voice whose busy byte ($207A0, the priority) is not 0 plays the track its id
+ * byte ($207A6) names, from its start (a looped sound goes on as it did), or, with no id (stop_sound has cleared it), the silent track that runs out in 32 frames; the game waits for the voices (level_end_quiet) and
+ * stops sounds by their track */
+void sound_restore_quick(void)
+{
+    uint32_t raw = sound_busy_207a0;   /* (a long to the loader: the first voice's byte is the top one) */
+
+    pthread_mutex_lock(&lock);
+    for (int i = 0; i < VOICES && i < 4; i++) {
+        unsigned busy = (raw >> (24 - 8 * i)) & 0xff;
+        unsigned number = voice_ids_207a6[i];
+
+        memset(&sound_voice[i], 0, sizeof sound_voice[i]);
+        if (busy == 0)
+            continue;
+        if (number == 0) {
+            start_voice(&sound_voice[i], 22, ~0u, busy);
+            sound_voice[i].number = 0;
+            continue;
+        }
+
+        unsigned id = ~0u;
+
+        for (unsigned k = 0; k < sizeof sound_records / sizeof sound_records[0]; k++)
+            if (sound_records[k].track[0] == number) {
+                id = k;
+                break;
+            }
+        start_voice(&sound_voice[i], number, id, busy);
+    }
+    sync_busy();
+    pthread_mutex_unlock(&lock);
+}
+
 /* orig $01FE3E: the sound track `sound` is started on the voice `index`; stop_sound starts the silent one (22), which stops the voice */
 void voice_start(uint16_t sound, uint16_t index)
 {
