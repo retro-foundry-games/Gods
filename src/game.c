@@ -15632,8 +15632,7 @@ static int shop_press_work(void)
     if (id != chosen) {   /* choosing */
         shop_selected = (uint16_t)id;
         message_arg = 0;
-        if (message_shown != 0)
-            host_cpu_frames(1);   /* (the choice of an item while a message is on show: the original takes a frame more before it clears and restarts, the old text scrolled out one step more in its frames; the question of a replacement does not) */
+        host_cpu_frames(1);   /* (the choice of an item while a message is on show: the original takes a frame more before it clears and restarts, the old text scrolled out one step more in its frames; the question of a replacement does not) */
         if (id < 0xC0) {
             bits_1970a[id >> 3] &= (uint8_t)~(1 << (id & 7));
                     item_message(id);
