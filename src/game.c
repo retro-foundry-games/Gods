@@ -6244,6 +6244,7 @@ static int16_t move_74f0(struct Creature *creature)
 /* orig $007A36 (the movement routine of a creature that stands where it is: the sprites 523 to 525, the table at $7A6E, 3 more when the type's direction is 0): the step of its animation goes on while it is not 0, and
  * from 0 when the type's speed is not 0 and its timer is 1 (the step of $7AB0 is about to shoot) */
 static int16_t move_7a0e(const struct CreatureType *type, struct Creature *creature);
+static int16_t move_7d08(struct Creature *creature, int16_t *x, int16_t y);
 
 static int16_t move_7a36(const struct CreatureType *type, struct Creature *creature)
 {
@@ -6266,6 +6267,59 @@ static int16_t move_7a0e(const struct CreatureType *type, struct Creature *creat
     if (creature->state != 0 && frame_phase == 0)
         creature->state = (int16_t)((creature->state + 1) & 3);
     return picture;
+}
+
+/* orig $007D08 (the movement routine of a walker of ten steps: the pictures 484 + its step): the screen stopped (timer_306) it is only drawn.  To the left (direction 0) the step goes down by one a frame; below 0, off a
+ * cell border (x not a multiple of 32) it goes to 9 and 16 to the left, on one it looks at the cells: a wall ahead (the byte before it or the one under that is 1) or no floor turns it (to the step 1), floor goes
+ * to 9 and 16 to the left.  To the right the step goes up by one; at 10, off a border it goes to 0 and 16 to the right, on one a wall ahead (the next cell or the one under) or no floor turns it, and either way it goes
+ * to 0 and 16 to the right */
+static int16_t move_7d08(struct Creature *creature, int16_t *x_io, int16_t y)
+{
+    int16_t state = creature->state;
+    int16_t x = *x_io;
+
+    if (timer_306 != 0)
+        return (int16_t)(state + 0x1E4);
+    if (creature->direction == 0) {
+        state--;
+        if (state < 0) {
+            if ((x & 31) != 0) {
+                state = 9;
+                x = (int16_t)(x - 16);
+            } else {
+                const uint8_t *cell = map_cell(x, y);
+
+                if (cell[-1] == 1 || cell[0x7F] == 1) {
+                    creature->direction ^= 1;
+                    state = 1;
+                } else if (cell[0xFF] == 1) {
+                    state = 9;
+                    x = (int16_t)(x - 16);
+                } else {
+                    creature->direction ^= 1;
+                    state = 1;
+                }
+            }
+        }
+    } else {
+        state++;
+        if (state >= 10) {
+            if ((x & 31) != 0) {
+                state = 0;
+                x = (int16_t)(x + 16);
+            } else {
+                const uint8_t *cell = map_cell(x, y);
+
+                if (cell[1] == 1 || cell[0x81] == 1 || cell[0x101] != 1)
+                    creature->direction ^= 1;
+                state = 0;
+                x = (int16_t)(x + 16);
+            }
+        }
+    }
+    creature->state = state;
+    *x_io = x;
+    return (int16_t)(state + 0x1E4);
 }
 
 /* orig $007B44 to $007BA8 as the movement routine of a creature's record (the one at +22): the new x (d0) and the picture (d2).  Only the
@@ -6291,6 +6345,8 @@ static int call_move(const struct CreatureType *type, struct Creature *creature,
         return move_7a36(type, creature);
     if (type->move_routine == 0x7A0E)
         return move_7a0e(type, creature);
+    if (type->move_routine == 0x7D08)
+        return move_7d08(creature, x, y);
     /* goes on at the routine the record names ($7BB2, $7A0E, ...): none of those ran */
     return 0;
 }
