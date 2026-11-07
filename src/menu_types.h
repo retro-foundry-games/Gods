@@ -327,10 +327,22 @@ struct __attribute__((packed)) LevelEnd {
 _Static_assert(sizeof(struct LevelEnd) == 34, "level end");
 
 /* the four lists in one (the second at $14462 is not on a 4 byte line: the linker puts a table of the compiler's alignment there with a gap): $143D8 on */
+struct __attribute__((packed)) LevelEndShort {   /* a record without its last word, which the next record's first word is (the fourth of the second level's: 32 bytes) */
+    uint16_t spots;
+    uint32_t bonus;
+    uint8_t text[20];
+    uint16_t unused_26;
+    uint32_t effects;
+};
+_Static_assert(sizeof(struct LevelEndShort) == 32, "short level end");
+
 struct __attribute__((packed)) LevelEnds {
     struct LevelEnd l1[4];
     uint16_t pad_14460;
-    struct LevelEnd l2[5];
+    struct LevelEnd l2[3];
+    struct LevelEndShort l2_3;   /* $144C8: its list offset is the next record's spots */
+    struct LevelEnd l2_4;        /* $144E8: the level's end (the guardian's) */
+    uint16_t l2_end;             /* $1450A: $FFFF */
     struct LevelEnd l3[3];
     struct LevelEnd l4[5];
 };

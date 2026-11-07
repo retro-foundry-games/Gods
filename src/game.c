@@ -1828,7 +1828,7 @@ static void level_change_35dc(void)
 
     if (door < 0 || door >= 4)
         return;
-    static const struct LevelEnd *const last[4] = { &level_ends[0].l1[3], &level_ends[0].l2[4], &level_ends[0].l3[2], &level_ends[0].l4[4] };
+    static const struct LevelEnd *const last[4] = { &level_ends[0].l1[3], &level_ends[0].l2_4, &level_ends[0].l3[2], &level_ends[0].l4[4] };
 
     ptr_0bc6 = last[door];
     flag_230 = 1;
