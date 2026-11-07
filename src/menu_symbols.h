@@ -576,7 +576,7 @@ extern void (*callback_514)(void);   /* $00514 */
 extern struct Planner planner;   /* $004BE  the path planner of the walkers (orig $A492) */
 extern struct PlanItem plan_queue[32];   /* $1971C  the places the planner has still to look at (x and y 0: free) */
 extern struct PlanItem plan_list[50];   /* $1981C  the places along the floor that the planner has been to */
-extern const struct CreatureTemplate creature_templates[49];   /* $1C698  what a group is: its draw kind, move and step routines and its box (the pointers of table_1c678 point into it) */
+extern const struct CreatureTemplate creature_templates[51];   /* $1C698  what a group is: its draw kind, move and step routines and its box (the pointers of table_1c678 point into it) */
 extern const uint16_t clip_rectangles[6];   /* $00128  the clip rectangles of image_draw_clipped (x0, x1, y0, y1: the whole screen; a negative x0 ends the list) */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
 extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */

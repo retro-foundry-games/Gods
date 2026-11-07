@@ -3,7 +3,7 @@
 #include "menu_symbols.h"
 
 /* $1C698  what a group is: its draw kind, move and step routines and its box (the pointers of table_1c678 point into it) */
-const struct CreatureTemplate creature_templates[49] __attribute__((aligned(1))) = {
+const struct CreatureTemplate creature_templates[51] __attribute__((aligned(1))) = {
     { 448, 1, 33378, 32, 32, 32482 },
     { 514, 1, 33512, 32, 32, 32928 },
     { 454, 1, 33386, 32, 32, 32482 },
@@ -52,6 +52,8 @@ const struct CreatureTemplate creature_templates[49] __attribute__((aligned(1)))
     { 484, 1, 32008, 32, 32, 29054 },
     { 466, 1, 31556, 32, 32, 29054 },
     { 545, 1, 31246, 24, 24, 31408 },
+    { 484, 1, 32008, 32, 32, 29054 },
+    { 484, 1, 32008, 32, 32, 29054 },
     { 484, 1, 32008, 32, 32, 29054 },
 };
 
