@@ -14010,6 +14010,7 @@ void level_tables_quickload(void)
     }
     for (int i = 0; i < 20; i++)   /* the ten shards (struct Shard: four words) that the stone faces spit: the table is typed as longs, which the loader made native as longs: the words of each are the other way round */
         records_737e[i] = (records_737e[i] >> 16) | (records_737e[i] << 16);
+    file_words((void *)GUEST(0xBD6), 75);   /* the list of the creatures hit (x, y, strength: 25 of them): what an earlier frame left there is read as the value of a killed monster ($9DDA) */
     file_words((void *)GUEST(0x10B0), 70);   /* the bats */
     file_words((void *)GUEST(0x206), 3);   /* the bouncing ball's speeds and jump */
     file_words((void *)GUEST(0xE6C), 50);   /* its burst's pieces */
