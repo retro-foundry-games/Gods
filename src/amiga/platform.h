@@ -3,8 +3,6 @@
 #ifndef GODS_AMIGA_PLATFORM_H
 #define GODS_AMIGA_PLATFORM_H
 
-#define GUEST(address) (address)   /* an address of the program's memory as a pointer's value */
-
 /* start the blitter: the registers are set, `size` (height and width) starts it */
 static inline void blit_start(uint16_t size)
 {

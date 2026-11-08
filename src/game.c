@@ -12704,8 +12704,8 @@ uint16_t random_next(void)
 #define SEED_HIGH 0x64
 #define SEED_LOW 0xFF
 #else
-#define SEED_HIGH (*(volatile uint8_t *)GUEST(0xFF8207))
-#define SEED_LOW (*(volatile uint8_t *)GUEST(0xFF8209))
+#define SEED_HIGH (*(volatile uint8_t *)0xFF8207)
+#define SEED_LOW (*(volatile uint8_t *)0xFF8209)
 #endif
 
 /* orig $0062E6: the table of 256 random words at ptr_0cc6 is made (the seed comes from two bytes of the address space that the
