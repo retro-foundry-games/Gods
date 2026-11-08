@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Serve the browser build with the headers a page that runs the game on a thread needs (cross-origin isolation, for SharedArrayBuffer).
 
-    python3 projects/gods/native/scripts/serve_web.py [DIR [PORT]]      (default: build/web, 8080)
+    python3 serve_web.py [DIR [PORT]]      (default: the folder this script is in, 8080)
+
+`nix build .#web` puts this script next to gods.html, gods.js and gods.wasm in `result`, so `python3 result/serve_web.py` serves the page; DIR serves another folder.
 """
 import functools
 import http.server
@@ -20,8 +22,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 
 def main() -> None:
-    folder = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parents[1] / "build" / "web"
+    folder = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent
     port = int(sys.argv[2]) if len(sys.argv) > 2 else 8080
+    if not (folder / "gods.html").exists():
+        sys.exit(f"{folder}/gods.html is not there: serve the folder `nix build .#web` makes (`result`): python3 result/serve_web.py")
     handler = functools.partial(Handler, directory=str(folder))
     print(f"http://localhost:{port}/gods.html  ({folder})")
     http.server.ThreadingHTTPServer(("127.0.0.1", port), handler).serve_forever()
