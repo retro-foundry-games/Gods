@@ -84,7 +84,7 @@ extern volatile uint8_t video_address_low;   /* $FF8209  ... and the low byte */
 extern const struct CreatureTemplate creature_templates[51];   /* $1C698  what a group is: its draw kind, move and step routines and its box (the pointers of table_1c678 point into it) */
 extern const uint16_t clip_rectangles[6];   /* $00128  the clip rectangles of image_draw_clipped (x0, x1, y0, y1: the whole screen; a negative x0 ends the list) */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
-extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_table_14cf8 puts in the table */
+extern const uint8_t offsets_4cba[132];   /* $04CBA  signed bytes that build_thing_kinds puts in the table */
 extern const uint8_t object_slot_image[880];   /* $14988  the eleven slots as the original has them before a level is loaded: the words of each that survive the weapons file (the SDL port starts from them) */
 extern const uint32_t message_pairs[8];   /* $16F6E  four pairs of addresses of the two copper lists' colour moves the message fades */
 extern const uint8_t font_8x8[1272];   /* $1E7F4  the text font (8 bytes a character) */
@@ -101,7 +101,7 @@ extern const uint8_t keymap[128];   /* $1E5AE  the character a raw key code give
 extern const char background_name[12];   /* $026D2  "backscr.pi1": the file of the menu's background picture */
 extern const char small_font_name[9];   /* $03232  "smallfnt": the asset set of the small font */
 extern const uint16_t fill_words[14];   /* $05FAE  fourteen words that fill_buffer makes longs of (sign extended) and repeats */
-extern const uint32_t fill_longs[14];   /* $05FCA  fourteen longs it repeats instead when flag_290 is not negative */
+extern const uint32_t fill_longs[14];   /* $05FCA  fourteen longs it repeats instead when world_end_steps is not negative */
 extern const uint16_t zone_limits[28];   /* $09992  seven records of four words: the limits of the zones the player is tested against */
 extern const uint8_t zone_groups[18];   /* $099CA  six groups of three zone numbers */
 extern const uint16_t shutter_masks[12];   /* $0542C  the rows of the shutter a step shows (one bit a row) */
@@ -111,12 +111,12 @@ extern const uint16_t jump_deltas[23];   /* $11318  how many rows up the player 
 extern const uint16_t frame_map_125ac[6];   /* $125AC  the frame after a frame of the state 5 (five words), then how near the left or right of the screen the player may go before the scroll follows */
 extern const uint32_t state_table[58];   /* $10280  29 states of the player, two longs each: the first sprite and the routine (the C does not use the second) */
 extern const char text_power[12];   /* $12CEE  "Power", 0, "Value", 0 (text_power + 6 is "Value") */
-extern const uint32_t table_18714[10];   /* $18714  the routines (take_record_to_199ac, finish_record_1895a, ...) the cell kinds' states name */
+extern const uint32_t table_18714[10];   /* $18714  the routines (take_creature_entry, finish_script_record, ...) the cell kinds' states name */
 extern const uint8_t text_10a34[8];   /* $10A34  the first eight bytes of the message fn_10976 makes */
 extern const uint8_t fall_steps_f2[52];   /* $000F2  game_d: signed bytes: how far a thing falls (added to y) at each step 0 to 23 of its flag byte (steps 24 to 37 read on into the next bytes, the sounds: up to $12F, where clip_rectangles is from $128) */
 extern const uint16_t frames_44b4[4];   /* $044B4  game_d: the four glyphs of the sprite 280, by glyph_frame */
 extern const uint16_t frames_44bc[4];   /* $044BC  game_d: ... of the sprite 279 */
-extern const uint16_t frames_44c4[5];   /* $044C4  game_d: ... of the glyph 253, by counter_24a (counts 0 to 4) */
+extern const uint16_t frames_44c4[5];   /* $044C4  game_d: ... of the glyph 253, by anim_cycle_5 (counts 0 to 4) */
 extern const uint16_t words_3fde[30];   /* $03FDE  game_d: the sprites (less 170) of the ten pieces a chest bursts into, for each chest (every 16 bytes; the last ten, from $4006, are the guardian's death's) */
 extern const uint16_t pictures_747e[4];   /* $0747E  game_d: the four pictures of the shard that goes up and comes down ($73D2), by its frame */
 extern const uint16_t glyphs_e22c[4];   /* $0E22C  game_d: the four glyphs of the thing $E144 draws ($E22C), by bits 0 and 1 of its word 2 */
@@ -132,9 +132,9 @@ extern const char text_replace[38];   /* $10029  the message that a weapon repla
 extern const uint16_t frames_493a[4];   /* $0493A  game_d: the second glyph of glyph 225, by the column */
 extern const uint16_t frames_4942[4];   /* $04942  game_d: ... of glyph 251 */
 extern const uint16_t frames_494a[4];   /* $0494A  game_d: ... of glyph 252 */
-extern const uint16_t frames_4af4[4];   /* $04AF4  game_d: the glyphs of the thing 220, by counter_20c */
-extern const uint16_t frames_4afc[6];   /* $04AFC  game_d: ... of the thing 287, by counter_262 */
-extern const uint16_t frames_4b08[6];   /* $04B08  game_d: ... of the thing 300, by counter_262 */
+extern const uint16_t frames_4af4[4];   /* $04AF4  game_d: the glyphs of the thing 220, by anim_cycle_4 */
+extern const uint16_t frames_4afc[6];   /* $04AFC  game_d: ... of the thing 287, by anim_cycle_6 */
+extern const uint16_t frames_4b08[6];   /* $04B08  game_d: ... of the thing 300, by anim_cycle_6 */
 extern const uint16_t frames_4ba8[20];   /* $04BA8  game_d: five glyphs for each of the four values of param_index (kinds 232, 288, 290, 292) */
 extern const uint16_t mask_table[32];   /* $17380  draw: the masks of the screen edges, two words for each shift (16 less the shift, times two): the first-word mask of a right edge, the first-word mask of a left edge */
 extern const uint8_t level_name_template[196];   /* $02752  file names of a level: `?` is the level's number, `*` its letter (a or b) */
@@ -142,13 +142,13 @@ extern const uint32_t level_starts[4];   /* $028DA  where the player starts each
 extern const uint32_t shift_tables[40];   /* $02A0A  for each level (ten longs): the first is the shift register's start, the others its source */
 extern const uint16_t table_17a6e[8];   /* $17A6E  for each level two words (by word_0266): how many 32 by 16 pixel blocks its background tiles have */
 extern const uint16_t table_fa5c[4];   /* $0FA5C  the glyph of the pick-ups of each level (pickup_glyph) */
-extern const ByteP table_143b8[4];   /* $143B8  for each level the list of spots that ptr_0bc6 points to */
+extern const ByteP table_143b8[4];   /* $143B8  for each level the list of spots that level_end_record points to */
 extern const struct LevelEnds level_ends[1];   /* $143D8  the lists of the four levels' ends (struct LevelEnd, 34 bytes each: 4, 5, 3 and 5; two bytes before the second list, which the original has at $14462): the first level's is three spots, six, eight and twelve, the second's six, ten, eleven (the guardian's), fifteen and the level's end ($144E8 in the original, here 2 bytes later) */
-extern const uint16_t table_1527a[4];   /* $1527A  for each level the value word_272 takes */
-extern const ByteP table_1077a[4];   /* $1077A  for each level the list that ptr_0b76 points to */
+extern const uint16_t table_1527a[4];   /* $1527A  for each level the value slot_value_target takes */
+extern const ByteP table_1077a[4];   /* $1077A  for each level the list that teleport_list_cursor points to */
 extern const uint32_t table_5b9e[4];   /* $05B9E  for each level the first high score */
 extern const uint32_t table_5bb2[4];   /* $05BB2  ... and the second */
-extern const ByteP table_1c678[8];   /* $1C678  for each level two pointers (level_creature_templates, ptr_0b82) */
+extern const ByteP table_1c678[8];   /* $1C678  for each level two pointers (level_creature_templates, level_walker_templates) */
 extern const char sound1_name[11];   /* $1D3D2  "sound1.bin" */
 extern const struct SoundRecord sound_records[67];   /* $20BCE  the sounds: for each, its voices' tracks (the second byte names its voice entry) */
 extern const uint16_t sound_periods[480];   /* $2080E  the period tables: an instrument names where its table starts (word 0, 48 or 96); a note indexes it by 4 words, so they run into each other up to the sounds table */

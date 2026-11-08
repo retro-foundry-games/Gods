@@ -595,7 +595,7 @@ static const struct TeamPage team[7] = {
 };
 
 /* the fade-in that every page of the credits ends with */
-static void team_fade(uint16_t frames)
+static void credits_fade(uint16_t frames)
 {
     palette_fade_in_fast(palette_white, 0);
     palette_fade_to(palette_intro, frames);
@@ -626,14 +626,14 @@ static void intro_team(void)
             text_draw(team[i].line[l].text, team[i].line[l].y);
         wait_ticks(team[i].until);
         screens_flip();
-        team_fade(1);
+        credits_fade(1);
     }
     picture_show_title();
     plane5_set();
     title_letters();
     wait_ticks(0x1c24);
     screens_flip();
-    team_fade(1);
+    credits_fade(1);
 
     screen_restore();
     text_draw("INTO THE WONDERFUL", 0x64);
@@ -683,7 +683,7 @@ void game_start(void)
     draw_flag = 1;
     text_draw("LOADING GAME", 0x50);
     screens_flip();
-    team_fade(1);
+    credits_fade(1);
     if (screen_back != &screen_a) {   /* show the right one of the two screens */
         screen_restore();
         screens_flip();

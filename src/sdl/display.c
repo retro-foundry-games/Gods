@@ -255,8 +255,8 @@ void frame_tick(void)
     if (guest.sound_enabled)
         sound_tick();
     guest.tick_count++;
-    if (guest.countdown_220)
-        guest.countdown_220--;
+    if (guest.jump_boost_timer)
+        guest.jump_boost_timer--;
     if (!guest.message_shown)
         return;
     if (guest.tick_hold_38a) {
@@ -463,8 +463,8 @@ static void blit_plain(const uint8_t *source, uint8_t *dest, int16_t modulo_ab, 
                 *(uint16_t *)(dest + plane * 8448u + row * dest_row + 2 * word) = *(const uint16_t *)(source + plane * plane_size + row * source_row + 2 * word);
 }
 
-/* the clipped draw of an image whose x is not on a word's line (image_x_shift not 0: flags_0ddd bit 1): the original shifts the image into a work area ($1F1E6) and blits it with the shift; the host draws it pixel by pixel:
- * the pixels x to x + width (the clip's x0 to x1 only), rows `height` + 1 from the row word_dd4 of the source, a pixel where the mask (the four planes or'ed) is set takes the image's bits on the screen's four planes */
+/* the clipped draw of an image whose x is not on a word's line (image_x_shift not 0: image_draw_flags bit 1): the original shifts the image into a work area ($1F1E6) and blits it with the shift; the host draws it pixel by pixel:
+ * the pixels x to x + width (the clip's x0 to x1 only), rows `height` + 1 from the row image_clip_skip_rows of the source, a pixel where the mask (the four planes or'ed) is set takes the image's bits on the screen's four planes */
 static void blit_shifted(int16_t x, int16_t y, int16_t width, int16_t height, const uint8_t *source, const int16_t *clip)
 {
     unsigned bytes = ((uint16_t)width + 1u) >> 3;
@@ -472,7 +472,7 @@ static void blit_shifted(int16_t x, int16_t y, int16_t width, int16_t height, co
     const int16_t plane_stride = 8448;
 
     for (int r = 0; r <= height; r++) {
-        unsigned source_row = (unsigned)guest.word_dd4 + (unsigned)r;
+        unsigned source_row = (unsigned)guest.image_clip_skip_rows + (unsigned)r;
         uint16_t *screen_row = (uint16_t *)(guest.screen_buffer + (long)(int16_t)(y + r) * 44);
 
         for (int px = 0; px <= width; px++) {
@@ -527,9 +527,9 @@ void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uin
 
         int16_t skipped = (int16_t)(low - y);
 
-        if (guest.flags_0ddd & 0x20)
+        if (guest.image_draw_flags & 0x20)
             skipped = (int16_t)-skipped;
-        guest.word_dd4 = (uint16_t)(guest.word_dd4 + skipped);
+        guest.image_clip_skip_rows = (uint16_t)(guest.image_clip_skip_rows + skipped);
         y = low;
     }
     if (y > high)
@@ -564,9 +564,9 @@ void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uin
     if (!(guest.image_mirrored & 0x8000))
         return;   /* goes on at $01F13A */
     width = (int16_t)(((uint16_t)width >> 1) & 0xFFF8);
-    product = (uint32_t)(uint16_t)(width + 8) * guest.word_dd4;
+    product = (uint32_t)(uint16_t)(width + 8) * guest.image_clip_skip_rows;
     source += (int16_t)((uint16_t)product >> 2);
-    if (guest.flags_0ddd & 0x20)
+    if (guest.image_draw_flags & 0x20)
         return;   /* goes on at $01F186 */
     modulo_ab = (int16_t)(width - rest);
     modulo_cd = (int16_t)(((uint16_t)(guest.screen_row_bytes - 8 - rest)) >> 2);
@@ -575,8 +575,8 @@ void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uin
     x = (int16_t)(x + (uint16_t)((uint16_t)y * 44));
     if (guest.image_x_shift != 0)
         return;   /* goes on at $01F1BE */
-    if (guest.flags_0ddd & 4)
-        return;   /* goes on at the routine of the table at $0D9A that draw_routine_index and bit 2 of flags_0ddd name (the entries of bit 2 are not written) */
+    if (guest.image_draw_flags & 4)
+        return;   /* goes on at the routine of the table at $0D9A that draw_routine_index and bit 2 of image_draw_flags name (the entries of bit 2 are not written) */
     if (guest.draw_routine_index == 0) {
         blit_plain(source, guest.screen_buffer + x, (int16_t)(modulo_ab >> 2), (uint16_t)(words + 1), modulo_cd, guest.image_plane_bytes, (uint16_t)(height + 1));
         return;

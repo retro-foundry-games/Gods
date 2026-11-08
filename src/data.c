@@ -69,7 +69,7 @@ const uint16_t param_table[24] = {
     0x0004, 0x0205, 0x0060, 0x002b, 0x006c, 0x0062, 0x004b, 0x0206,
 };
 
-/* $04CBA  signed bytes that build_table_14cf8 puts in the table */
+/* $04CBA  signed bytes that build_thing_kinds puts in the table */
 const uint8_t offsets_4cba[132] __attribute__((aligned(1))) = {
     0x00, 0x02, 0x00, 0x00, 0x02, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
     0x01, 0x01, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x03, 0x03, 0x03, 0x03, 0x02, 0x02, 0x02, 0x02,
@@ -332,7 +332,7 @@ const uint16_t fill_words[14] = {
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
 };
 
-/* $05FCA  fourteen longs it repeats instead when flag_290 is not negative */
+/* $05FCA  fourteen longs it repeats instead when world_end_steps is not negative */
 const uint32_t fill_longs[14] = {
     0xfefefefe, 0xfefefefe, 0xfefefefe, 0xfefefefe,
     0xfefefefe, 0xfefefefe, 0xfefefefe, 0xfefefefe,
@@ -411,7 +411,7 @@ const uint32_t state_table[58] = {
 /* $12CEE  "Power", 0, "Value", 0 (text_power + 6 is "Value") */
 const char text_power[12] __attribute__((aligned(1))) = "Power\000Value";
 
-/* $18714  the routines (take_record_to_199ac, finish_record_1895a, ...) the cell kinds' states name */
+/* $18714  the routines (take_creature_entry, finish_script_record, ...) the cell kinds' states name */
 const uint32_t table_18714[10] = {
     0x00018900, 0x00018890, 0x0001895a, 0x00008898,
     0x000088dc, 0x000187b8, 0x00017e0a, 0x00017e0e,
@@ -441,7 +441,7 @@ const uint16_t frames_44bc[4] = {
     0x0117, 0x018d, 0x018e, 0x018f,
 };
 
-/* $044C4  game_d: ... of the glyph 253, by counter_24a (counts 0 to 4) */
+/* $044C4  game_d: ... of the glyph 253, by anim_cycle_5 (counts 0 to 4) */
 const uint16_t frames_44c4[5] = {
     0x00fd, 0x01b1, 0x01b2, 0x01b3, 0x01b4,
 };
@@ -554,17 +554,17 @@ const uint16_t frames_494a[4] = {
     0x00fc, 0x0147, 0x0148, 0x0147,
 };
 
-/* $04AF4  game_d: the glyphs of the thing 220, by counter_20c */
+/* $04AF4  game_d: the glyphs of the thing 220, by anim_cycle_4 */
 const uint16_t frames_4af4[4] = {
     0x00dc, 0x0139, 0x013a, 0x013b,
 };
 
-/* $04AFC  game_d: ... of the thing 287, by counter_262 */
+/* $04AFC  game_d: ... of the thing 287, by anim_cycle_6 */
 const uint16_t frames_4afc[6] = {
     0x011f, 0x01a0, 0x01a1, 0x01a2, 0x01a3, 0x01a4,
 };
 
-/* $04B08  game_d: ... of the thing 300, by counter_262 */
+/* $04B08  game_d: ... of the thing 300, by anim_cycle_6 */
 const uint16_t frames_4b08[6] = {
     0x012c, 0x01a5, 0x01a6, 0x01a7, 0x01a8, 0x01a9,
 };
@@ -630,7 +630,7 @@ const uint16_t table_fa5c[4] = {
     0x0218, 0x0214, 0x0219, 0x0229,
 };
 
-/* $143B8  for each level the list of spots that ptr_0bc6 points to */
+/* $143B8  for each level the list of spots that level_end_record points to */
 const ByteP table_143b8[4] = {
     (ByteP)((const uint8_t *)level_ends + 0),
     (ByteP)((const uint8_t *)level_ends + 138),
@@ -643,17 +643,17 @@ const struct LevelEnds level_ends[1] __attribute__((aligned(1))) = {
     { 3, 500, 32, 32, 32, 32, 32, 87, 79, 82, 76, 68, 32, 32, 79, 78, 69, 32, 32, 32, 32, 32, 0, 320, 0, 6, 500, 32, 32, 32, 32, 32, 87, 79, 82, 76, 68, 32, 32, 84, 87, 79, 32, 32, 32, 32, 32, 0, 865, 4, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 12, 2500, 32, 32, 32, 32, 32, 76, 69, 86, 69, 76, 32, 32, 79, 78, 69, 32, 32, 32, 32, 32, 0, 258, 0, 65535, 6, 500, 32, 32, 32, 32, 32, 87, 79, 82, 76, 68, 32, 32, 79, 78, 69, 32, 32, 32, 32, 32, 0, 1408, 0, 10, 500, 32, 32, 32, 32, 32, 87, 79, 82, 76, 68, 32, 32, 84, 87, 79, 32, 32, 32, 32, 32, 0, 961, 8, 11, 0, 32, 70, 85, 78, 75, 89, 32, 71, 73, 66, 66, 79, 78, 32, 32, 32, 32, 32, 32, 32, 0, 384, 0, 15, 0, 32, 70, 85, 78, 75, 89, 32, 71, 73, 66, 66, 79, 78, 32, 32, 32, 32, 32, 32, 32, 0, 128, 16, 2500, 32, 32, 32, 32, 32, 76, 69, 86, 69, 76, 32, 32, 84, 87, 79, 32, 32, 32, 32, 32, 0, 258, 0, 65535, 100, 500, 32, 32, 32, 32, 32, 87, 79, 82, 76, 68, 32, 32, 79, 78, 69, 32, 32, 32, 32, 32, 0, 1921, 0, 6, 500, 32, 32, 32, 32, 32, 87, 79, 82, 76, 68, 32, 32, 84, 87, 79, 32, 32, 32, 32, 32, 0, 928, 0, 100, 2500, 32, 32, 32, 32, 76, 69, 86, 69, 76, 32, 32, 84, 72, 82, 69, 69, 32, 32, 32, 32, 0, 770, 0, 5, 500, 32, 32, 32, 32, 32, 87, 79, 82, 76, 68, 32, 32, 79, 78, 69, 32, 32, 32, 32, 32, 0, 1793, 0, 6, 0, 32, 70, 85, 78, 75, 89, 32, 71, 73, 66, 66, 79, 78, 32, 32, 32, 32, 32, 32, 32, 0, 512, 0, 9, 0, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 0, 512, 0, 12, 500, 32, 32, 32, 32, 32, 87, 79, 82, 76, 68, 32, 32, 84, 87, 79, 32, 32, 32, 32, 32, 0, 640, 0, 20, 25000, 32, 32, 32, 32, 32, 32, 32, 32, 71, 65, 77, 69, 32, 32, 32, 32, 32, 32, 32, 32, 0, 0, 0 },
 };
 
-/* $1527A  for each level the value word_272 takes */
+/* $1527A  for each level the value slot_value_target takes */
 const uint16_t table_1527a[4] = {
     0x0000, 0x000e, 0x0016, 0x0022,
 };
 
-/* $1077A  for each level the list that ptr_0b76 points to */
+/* $1077A  for each level the list that teleport_list_cursor points to */
 const ByteP table_1077a[4] = {
-    &guest.lists_1078a[0],
-    &guest.lists_1078a[16],
-    &guest.lists_1078a[26],
-    &guest.lists_1078a[42],
+    &guest.teleport_lists[0],
+    &guest.teleport_lists[16],
+    &guest.teleport_lists[26],
+    &guest.teleport_lists[42],
 };
 
 /* $05B9E  for each level the first high score */
@@ -666,7 +666,7 @@ const uint32_t table_5bb2[4] = {
     0x00100000, 0x00250000, 0x00400000, 0x00600000,
 };
 
-/* $1C678  for each level two pointers (level_creature_templates, ptr_0b82) */
+/* $1C678  for each level two pointers (level_creature_templates, level_walker_templates) */
 const ByteP table_1c678[8] = {
     (ByteP)((const uint8_t *)creature_templates + 0),
     (ByteP)((const uint8_t *)creature_templates + 64),

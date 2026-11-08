@@ -91,7 +91,7 @@ void assign_addresses(void)
 }
 
 /* orig $00F488: fill the 2400-byte buffer: first clear it, then copy the bytes in */
-void load_buffer_2400(const uint8_t *from)
+void load_script_records(const uint8_t *from)
 {
     uint8_t *to = (uint8_t *)guest.script_records;
     int i;
@@ -121,14 +121,14 @@ void select_params(void)
 
 /* orig $004C90: build the 132 entries of the table: the first word counts up from 170, the third is the signed byte from
  * the table of offsets */
-void build_table_14cf8(void)
+void build_thing_kinds(void)
 {
     uint16_t count = 170;
     int i;
 
     for (i = 0; i < 132; i++) {
-        guest.table_14cf8[i].w[0] = count;
-        guest.table_14cf8[i].w[2] = (uint16_t)(int16_t)(int8_t)offsets_4cba[i];
+        guest.thing_kinds[i].w[0] = count;
+        guest.thing_kinds[i].w[2] = (uint16_t)(int16_t)(int8_t)offsets_4cba[i];
         count++;
     }
 }
@@ -237,7 +237,7 @@ void leave_load_screen(void)
     play_sound(0, 0);
     guest.glyph_base = (uint16_t)(((uint32_t)guest.asset_table_0ca6 - (uint32_t)guest.image_table) >> 3);
     guest.asset_flag = -1;
-    guest.flags_0ddd |= 0x10;
+    guest.image_draw_flags |= 0x10;
     assets_load((const char *)small_font_name, guest.palette_words, guest.asset_end_0ca2, (struct AssetEntry *)guest.asset_table_0ca6);
     guest.palette_words[0] = 0;
     guest.menu_state_25a = 3;

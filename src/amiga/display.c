@@ -184,8 +184,8 @@ void frame_tick(void)
     if (guest.sound_enabled)
         sound_tick();
     guest.tick_count++;
-    if (guest.countdown_220)
-        guest.countdown_220--;
+    if (guest.jump_boost_timer)
+        guest.jump_boost_timer--;
     if (!guest.message_shown)
         return;
     if (guest.tick_hold_38a) {
@@ -562,9 +562,9 @@ void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uin
     if (!(guest.image_mirrored & 0x8000))
         return;   /* goes on at $01F13A */
     width = (int16_t)(((uint16_t)width >> 1) & 0xFFF8);
-    product = (uint32_t)(uint16_t)(width + 8) * guest.word_dd4;
+    product = (uint32_t)(uint16_t)(width + 8) * guest.image_clip_skip_rows;
     source += (int16_t)((uint16_t)product >> 2);
-    if (guest.flags_0ddd & 0x20)
+    if (guest.image_draw_flags & 0x20)
         return;   /* goes on at $01F186 */
     modulo_ab = (int16_t)(width - rest);
     modulo_cd = (int16_t)(((uint16_t)(guest.screen_row_bytes - 8 - rest)) >> 2);
@@ -573,7 +573,7 @@ void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uin
     x = (int16_t)(x + (uint16_t)((uint16_t)y * 44));
     if (guest.image_x_shift != 0)
         return;   /* goes on at $01F1BE */
-    if (guest.draw_routine_index != 1 || (guest.flags_0ddd & 4))
-        return;   /* goes on at the routine of the table at $0D9A that draw_routine_index and bit 2 of flags_0ddd name */
+    if (guest.draw_routine_index != 1 || (guest.image_draw_flags & 4))
+        return;   /* goes on at the routine of the table at $0D9A that draw_routine_index and bit 2 of image_draw_flags name */
     blit_masked(source, guest.screen_buffer + x, (int16_t)(modulo_ab >> 2), (uint16_t)(words + 1), modulo_cd, guest.image_plane_bytes, (uint16_t)(height + 1));
 }

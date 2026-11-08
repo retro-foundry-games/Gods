@@ -113,7 +113,7 @@ struct Shot { int16_t active; int16_t x; int16_t y; int16_t direction; };
 struct ShotList { int16_t object; struct Shot shot[18]; };   /* 146 bytes: the number of the object (negative: none) and its shots */
 
 
-/* the creatures of a level (game.c, take_record_to_199ac): an entry of the table that says where and how a group starts (16 bytes, 25 for each level)... */
+/* the creatures of a level (game.c, take_creature_entry): an entry of the table that says where and how a group starts (16 bytes, 25 for each level)... */
 struct CreatureEntry {
     int16_t spawn_x;
     int16_t spawn_y;
@@ -235,7 +235,7 @@ struct UnitMember {
 };
 _Static_assert(sizeof(struct UnitMember) == 20, "unit member");
 
-/* the creatures of a level: ten records of 36 bytes at $199AC (table_199ac), each the type of a group of up to 255 creatures whose 14
+/* the creatures of a level: ten records of 36 bytes at $199AC (creature_types), each the type of a group of up to 255 creatures whose 14
  * byte records (struct Creature) it points to.  Its movement and step routines are the original's (addresses in the record); only
  * the ones that ran are written (see call_move / call_step) */
 struct Creature {
@@ -318,7 +318,7 @@ struct LeverFlag {
 _Static_assert(sizeof(struct LeverFlag) == 6, "lever flag");
 
 /* what the end of a level shows and how many spots end it (34 bytes, a list for each level at the addresses table_143b8 names; the list of the first level has four): the number of
- * spots remembered (word_22e) that ends the level, the bonus, the text (the first line of the screen), and the routines to run */
+ * spots remembered (visited_spots_count) that ends the level, the bonus, the text (the first line of the screen), and the routines to run */
 struct __attribute__((packed)) LevelEnd {
     uint16_t spots;
     uint32_t bonus;
@@ -373,7 +373,7 @@ struct PathRecord {
 _Static_assert(sizeof(struct PathRecord) == 24, "path record");
 
 
-/* the entries of the cells of the level's map (4 bytes: ptr_0cbe, 253 of them, loaded from the disk): what the entry does (a state: how it is run, see run_cell_entry; negative or 0: nothing) and the number of the record it
+/* the entries of the cells of the level's map (4 bytes: cell_entry_table, 253 of them, loaded from the disk): what the entry does (a state: how it is run, see run_cell_entry; negative or 0: nothing) and the number of the record it
  * is about */
 struct EntryRef {
     uint16_t state;
@@ -397,7 +397,7 @@ _Static_assert(sizeof(struct ScriptRecord) == 24, "script record");
 
 
 /* the monsters of a level: ten records of 428 bytes (struct Monster, at $1354) each run a group of up to ten monsters (struct MonsterPart, 40 bytes, in a block of 400 bytes of its own at
- * ptr_0cee) whose kind is a struct MonsterType of the level's file (22 bytes, at monster_types).  The group's monsters fly to a target (the player, an object lying about or a zone of the
+ * monster_part_blocks) whose kind is a struct MonsterType of the level's file (22 bytes, at monster_types).  The group's monsters fly to a target (the player, an object lying about or a zone of the
  * screen), the first of a chain is followed by the others along the places it has been (history), and they shoot and carry the objects they pick up. */
 struct MonsterType {
     int8_t count;         /* +0 how many monsters */

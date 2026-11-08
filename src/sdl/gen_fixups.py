@@ -35,7 +35,7 @@ STRUCTS = {
     "Planner": (34, [(2 * i, 2) for i in range(17)]),
     "PlanItem": (8, [(0, 2), (2, 2), (4, 2), (6, 2)]),
 }
-POINTER_LONGS = {"marker_table", "value_1296"}   # variables typed as longs that hold addresses (cells, the list of the records that go along)
+POINTER_LONGS = {"marker_table", "screen_list_cursor"}   # variables typed as longs that hold addresses (cells, the list of the records that go along)
 fixups: set[tuple[int, int, int]] = set()   # address, width, count
 for line in (src / "menu.symbols").read_text().splitlines():
     if not line.strip() or line.startswith("#") or line.split()[0] == "table" or "(void)" in line:

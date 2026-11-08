@@ -40,9 +40,9 @@ void copy_record_table(const struct Rec6 *from);                         /* orig
 void clear_entry_table(void);                                            /* orig $017DF8 */
 void narrow_words_to_bytes(void);                                        /* orig $00F382 */
 void assign_addresses(void);                                             /* orig $00F3C0 */
-void load_buffer_2400(const uint8_t *from);                              /* orig $00F488 */
+void load_script_records(const uint8_t *from);                              /* orig $00F488 */
 void select_params(void);                                                /* orig $0029B4 */
-void build_table_14cf8(void);                                            /* orig $004C90 */
+void build_thing_kinds(void);                                            /* orig $004C90 */
 void save_slot_words(void);                                              /* orig $01494C */
 void restore_slot_words(void)                                            /* orig $01496A */;
 

@@ -103,11 +103,11 @@ void hardware_setup(void)
 /* orig $01AA3C: five pointers into the data the loader brings */
 void data_pointers_init(void)
 {
-    guest.unit_scripts = guest.data_1aa66;
-    guest.ptr_0cbe = (struct EntryRef *)guest.data_1ad8a;
-    guest.creature_entries = (struct CreatureEntry *)guest.data_1b17e;
-    guest.monster_types = guest.data_1b7be;
-    guest.ptr_0c9a = guest.path_descriptions;
+    guest.unit_scripts = guest.unit_script_data;
+    guest.cell_entry_table = (struct EntryRef *)guest.cell_entry_data;
+    guest.creature_entries = (struct CreatureEntry *)guest.creature_entry_data;
+    guest.monster_types = guest.monster_type_data;
+    guest.path_description_base = guest.path_descriptions;
 }
 
 /* orig $03A060: the memory map: each buffer of the program is a pointer into one block that begins at program_end, a buffer
@@ -120,26 +120,26 @@ void memory_map_init(void)
     p += 0x32;
     guest.asset_memory = p;
     p += 0x21d68;
-    guest.ptr_0b5a = p;
+    guest.line_text_default = p;
     guest.line_text = p;
     p += 0x640;
-    guest.ptr_0b5e = p;
-    guest.ptr_03ac = p;
+    guest.target_map_default = p;
+    guest.target_map = p;
     p += 0x190;
     guest.asset_directory = p;
-    guest.ptr_0b52 = p;
+    guest.asset_directory_default = p;
     p += 0x960;
     guest.memory_base = p;
     guest.background = p;
     p += 0x8500;
     guest.entry_list = (struct Entry8 *)p;
     p += 0x1518;
-    guest.ptr_0e4c = p;
+    guest.copper_save_first = p;
     guest.copper_save = (uint16_t *)p;
     p += 0xc8;
-    guest.ptr_0cee = p;
+    guest.monster_part_blocks = p;
     p += 0x960;
-    *(uint32_t *)guest.table_199ac = (uint32_t)(uintptr_t)p;
+    *(uint32_t *)guest.creature_types = (uint32_t)(uintptr_t)p;
     p += 0x578;
     guest.random_words = p;
     p += 0x200;
@@ -150,13 +150,13 @@ void memory_map_init(void)
     guest.copper_message_5254[2] = (uint16_t)(uintptr_t)p;          /* the copper list's bitplane pointer for the message: the work area */
     guest.copper_message_5254[0] = (uint16_t)((uintptr_t)p >> 16);
     p += 0x140;
-    guest.ptr_0b86 = p;
+    guest.level_map = p;
     p += 0x4000;
     guest.ptr_0cc2 = p;
     p += 0x200;
     guest.copper_colours = p;
     p += 0xc0;
-    guest.ptr_0cfa[0] = p;
+    guest.unit_member_blocks[0] = p;
     p += 0x3e8;
     guest.script_records = (struct ScriptRecord *)p;
     p += 0x960;
@@ -164,16 +164,16 @@ void memory_map_init(void)
     p += 0x50;
     guest.ptr_0bce = p;
     p += 0xa;
-    guest.ptr_0cce = p;
+    guest.bolt_slots = p;
     p += 0xa0;
-    guest.ptr_0c9e = (struct PathRecord *)p;
+    guest.path_records = (struct PathRecord *)p;
     p += 0x258;
     guest.ptr_0bb2 = p;
-    guest.ptr_0e44 = p;
+    guest.scratch_buffer = p;
     p += 0x300;
-    guest.ptr_0e5c = p;
+    guest.message_text_block = p;
     data_pointers_init();
-    guest.ptr_0cf2 = guest.data_1c5be;
+    guest.hint_list = guest.hint_data;
     guest.restart_address = (uint8_t *)(uintptr_t)menu_boot;
 }
 
@@ -181,7 +181,7 @@ void memory_map_init(void)
 void display_state_reset(void)
 {
     uint32_t first = (uint32_t)(uintptr_t)guest.copper_save;
-    uint32_t second = (uint32_t)(uintptr_t)guest.ptr_0e58;
+    uint32_t second = (uint32_t)(uintptr_t)guest.copper_save_second;
 
     guest.buffer_state[0].w[2] = 0;
     guest.buffer_state[0].w[0] = first >> 16;
@@ -199,7 +199,7 @@ void menu_boot(void)
 {
     custom->dmacon = 0x7fff;
     guest.message_shown = 0;
-    guest.word_037c = 0;
+    guest.scroll_ease_phase = 0;
     guest.message_arg = 0;
     guest.message_current = 0;
     guest.word_5418 = 0;
@@ -209,7 +209,7 @@ void menu_boot(void)
     guest.screen_prepared = 0;
     guest.frame_wait = 2;
     guest.asset_flag = -1;
-    guest.word_0248 = 1;
+    guest.play_starting = 1;
     play_sound(0, 0);
     hardware_setup();
     memory_map_init();
@@ -222,9 +222,9 @@ void menu_boot(void)
     message_request(20);
 
     for (int k = 1; k <= 4; k++)
-        guest.ptr_0cfa[k] = guest.ptr_0cfa[k - 1] + 0xc8;
+        guest.unit_member_blocks[k] = guest.unit_member_blocks[k - 1] + 0xc8;
     for (int k = 1; k <= 9; k++)
-        *(uint32_t *)(guest.table_199ac + 0x24 * k) = *(uint32_t *)guest.table_199ac + 0x8c * k;
+        *(uint32_t *)(guest.creature_types + 0x24 * k) = *(uint32_t *)guest.creature_types + 0x8c * k;
     guest.param_index = 0;
     guest.word_025c = 0;
     guest.word_0266 = 0;
@@ -232,7 +232,7 @@ void menu_boot(void)
     guest.menu_active = 0;
     guest.has_continue = 0;
     guest.param_index = 1;
-    guest.flags_0ddd |= 0x10;
+    guest.image_draw_flags |= 0x10;
     guest.asset_flag = -1;
     assets_load(guest.first_asset_name, guest.palette_words, guest.asset_memory, (struct AssetEntry *)guest.image_table);
     guest.asset_end_28ec = guest.asset_mem_end;
