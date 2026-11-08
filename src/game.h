@@ -186,15 +186,15 @@ struct Gods {
     int16_t word_2be;   /* $002BE */
     int16_t word_2c0;   /* $002C0 */
     PAD(10)
-    uint16_t word_2cc;   /* $002CC */
-    uint16_t word_2ce;   /* $002CE */
+    uint16_t item_shown;   /* $002CC */
+    uint16_t item_chosen;   /* $002CE */
     uint16_t flag_2d0;   /* $002D0 */
     uint16_t score_words[4];   /* $002D2 */
     PAD(4)
     uint16_t word_2de;   /* $002DE */
     uint16_t flag_2e0;   /* $002E0 */
     PAD(2)
-    int16_t word_2e4;   /* $002E4 */
+    int16_t shot_speed;   /* $002E4 */
     uint16_t word_2e6;   /* $002E6 */
     PAD(2)
     union {   /* the variables that overlap */
@@ -260,8 +260,8 @@ struct Gods {
     PAD(4)
     uint16_t screen_prepared;   /* $00398 */
     PAD(2)
-    int16_t word_39c;   /* $0039C */
-    int16_t word_39e;   /* $0039E */
+    int16_t hit_box_extra_width;   /* $0039C */
+    int16_t hit_box_extra_height;   /* $0039E */
     int16_t word_3a0;   /* $003A0 */
     int16_t word_3a2;   /* $003A2 */
     int16_t word_3a4;   /* $003A4 */
@@ -561,7 +561,7 @@ struct Gods {
     int16_t word_888a;   /* $0888A */
     int16_t word_888c;   /* $0888C */
     int16_t word_888e;   /* $0888E */
-    int16_t flag_8890;   /* $08890 */
+    int16_t falcon_energy;   /* $08890 */
     int16_t word_8892;   /* $08892 */
     int16_t word_8894;   /* $08894 */
     int16_t word_8896;   /* $08896 */
@@ -885,13 +885,13 @@ _Static_assert(offsetof(struct Gods, word_2ba) == 0x2ba, "word_2ba");
 _Static_assert(offsetof(struct Gods, word_2bc) == 0x2bc, "word_2bc");
 _Static_assert(offsetof(struct Gods, word_2be) == 0x2be, "word_2be");
 _Static_assert(offsetof(struct Gods, word_2c0) == 0x2c0, "word_2c0");
-_Static_assert(offsetof(struct Gods, word_2cc) == 0x2cc, "word_2cc");
-_Static_assert(offsetof(struct Gods, word_2ce) == 0x2ce, "word_2ce");
+_Static_assert(offsetof(struct Gods, item_shown) == 0x2cc, "item_shown");
+_Static_assert(offsetof(struct Gods, item_chosen) == 0x2ce, "item_chosen");
 _Static_assert(offsetof(struct Gods, flag_2d0) == 0x2d0, "flag_2d0");
 _Static_assert(offsetof(struct Gods, score_words) == 0x2d2, "score_words");
 _Static_assert(offsetof(struct Gods, word_2de) == 0x2de, "word_2de");
 _Static_assert(offsetof(struct Gods, flag_2e0) == 0x2e0, "flag_2e0");
-_Static_assert(offsetof(struct Gods, word_2e4) == 0x2e4, "word_2e4");
+_Static_assert(offsetof(struct Gods, shot_speed) == 0x2e4, "shot_speed");
 _Static_assert(offsetof(struct Gods, word_2e6) == 0x2e6, "word_2e6");
 _Static_assert(offsetof(struct Gods, entry_id_2ea) == 0x2ea, "entry_id_2ea");
 _Static_assert(offsetof(struct Gods, word_2ea) == 0x2ea, "word_2ea");
@@ -945,8 +945,8 @@ _Static_assert(offsetof(struct Gods, cursor_pos) == 0x38e, "cursor_pos");
 _Static_assert(offsetof(struct Gods, shop_cursor_old) == 0x390, "shop_cursor_old");
 _Static_assert(offsetof(struct Gods, shop_count) == 0x392, "shop_count");
 _Static_assert(offsetof(struct Gods, screen_prepared) == 0x398, "screen_prepared");
-_Static_assert(offsetof(struct Gods, word_39c) == 0x39c, "word_39c");
-_Static_assert(offsetof(struct Gods, word_39e) == 0x39e, "word_39e");
+_Static_assert(offsetof(struct Gods, hit_box_extra_width) == 0x39c, "hit_box_extra_width");
+_Static_assert(offsetof(struct Gods, hit_box_extra_height) == 0x39e, "hit_box_extra_height");
 _Static_assert(offsetof(struct Gods, word_3a0) == 0x3a0, "word_3a0");
 _Static_assert(offsetof(struct Gods, word_3a2) == 0x3a2, "word_3a2");
 _Static_assert(offsetof(struct Gods, word_3a4) == 0x3a4, "word_3a4");
@@ -1166,7 +1166,7 @@ _Static_assert(offsetof(struct Gods, word_8888) == 0x8888, "word_8888");
 _Static_assert(offsetof(struct Gods, word_888a) == 0x888a, "word_888a");
 _Static_assert(offsetof(struct Gods, word_888c) == 0x888c, "word_888c");
 _Static_assert(offsetof(struct Gods, word_888e) == 0x888e, "word_888e");
-_Static_assert(offsetof(struct Gods, flag_8890) == 0x8890, "flag_8890");
+_Static_assert(offsetof(struct Gods, falcon_energy) == 0x8890, "falcon_energy");
 _Static_assert(offsetof(struct Gods, word_8892) == 0x8892, "word_8892");
 _Static_assert(offsetof(struct Gods, word_8894) == 0x8894, "word_8894");
 _Static_assert(offsetof(struct Gods, word_8896) == 0x8896, "word_8896");

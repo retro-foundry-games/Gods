@@ -275,8 +275,8 @@ word_2ae          0x000002ae  uint16_t %s
 word_2c0          0x000002c0  int16_t %s
 word_2bc          0x000002bc  uint16_t %s
 word_73ce         0x000073ce  uint16_t %s   a word in the middle of the code
-word_2ce          0x000002ce  uint16_t %s
-word_2cc          0x000002cc  uint16_t %s
+item_chosen          0x000002ce  uint16_t %s
+item_shown          0x000002cc  uint16_t %s
 word_2de          0x000002de  uint16_t %s   0 to 3: the picture of the energy bar cycles with it (goes on every other frame)
 high_score_baa    0x00000baa  int32_t %s    the first high score (two decimal digits a byte, as the score packed by score_packed)
 high_score_bae    0x00000bae  int32_t %s    the second
@@ -289,7 +289,7 @@ word_2be          0x000002be  int16_t %s   the way the shutter goes (draw_shutte
 table shutter_masks 0x0000542c uint16_t 12   the rows of the shutter a step shows (one bit a row)
 item_slots 0x0000030c int16_t %s[4]   the item (index of table_14cf8, -1 none) of each of the four slots
 fn_5af6           0x00005af6 void %s(void)
-flag_8890         0x00008890 int16_t %s    negative: the routines that look at it end at once (at the start of a level?)
+falcon_energy         0x00008890 int16_t %s    negative: the routines that look at it end at once (at the start of a level?)
 word_888e         0x0000888e int16_t %s    the choice update_choice_888e makes (-1 none, else 0 to 2)
 word_8472         0x00008472 int16_t %s    the glyph draw_sprite_8472 draws (negative: none)
 word_846e         0x0000846e int16_t %s    its x
@@ -303,8 +303,8 @@ word_10ae         0x000010ae uint16_t %s
 flag_aa8          0x00000aa8 uint16_t %s
 word_186be        0x000186be uint16_t %s
 word_354          0x00000354 int16_t %s
-word_39c          0x0000039c int16_t %s    added (half of it) to the width of the box the player is hit in
-word_39e          0x0000039e int16_t %s    the same for its height
+hit_box_extra_width          0x0000039c int16_t %s    added (half of it) to the width of the box the player is hit in
+hit_box_extra_height          0x0000039e int16_t %s    the same for its height
 word_19c          0x0000019c int16_t %s
 word_3436         0x00003436 uint16_t %s   the first word of the original's routine at $3436 (an rts, $4E75)
 word_214          0x00000214 int16_t %s
@@ -319,8 +319,8 @@ word_4a2          0x000004a2 uint16_t %s
 sound_last_variant 0x0001faca uint8_t %s   the last choice of the sounds that vary (variant 6): it is not chosen twice in a row
 voice_ids_207a6   0x000207a6 uint8_t %s[4]   the sound each of the four voices plays
 word_17e9c        0x00017e9c uint16_t %s   the first word of the routine at $17E9C (a nop; the routine makes it an rts, $4E75)
-word_3a0           0x000003a0 int16_t %s    the width word_39c had before check_hit_and_walls cut it
-word_3a2           0x000003a2 int16_t %s    the height word_39e had
+word_3a0           0x000003a0 int16_t %s    the width hit_box_extra_width had before check_hit_and_walls cut it
+word_3a2           0x000003a2 int16_t %s    the height hit_box_extra_height had
 word_3a6           0x000003a6 uint16_t %s
 ptr_0b66           0x00000b66 uint8_t *%s    the base the message offsets (words) point from
 words_300          0x00000300 int16_t %s[3]  the three results of the calls of finish_record_1895a (-1: yes)
@@ -460,7 +460,7 @@ ptr_0364          0x00000364  uint8_t *%s   the entry of the list at ptr_0cf2 + 
 word_22c          0x0000022c  uint16_t %s
 ptrs_10a20        0x00010a20  uint32_t %s[5]   five texts (set when the level loads; word_22c names one)
 table text_10a34  0x00010a34  uint8_t 8     the first eight bytes of the message fn_10976 makes
-word_2e4          0x000002e4  int16_t %s    the speed of the enemy shot being made (negative: to the left)
+shot_speed          0x000002e4  int16_t %s    the speed of the enemy shot being made (negative: to the left)
 list_count_1294   0x00001294  uint16_t %s    game_d: how many things were put in the list at $121C this frame (the list holds 20 of three words)
 flag_25e          0x0000025e  uint16_t %s    game_d: set when a thing of kind 45 was met (the list was cut at 20 entries)
 counter_204       0x00000204  uint16_t %s    game_d: counts 0 to 31 each frame (the bat's flap)
