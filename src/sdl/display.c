@@ -67,8 +67,8 @@ void copy_other_screen(void)
 }
 
 static int flip_late;   /* the flips are shown a frame after the vertical blank that ends their wait (a flip that comes late in a frame of the original's work) */
-static uint8_t *flip_pending;
-static uint8_t *flip_pending_late;   /* a flip the original made late in its frame: taken by the blank after the next */
+static struct CopperHead *flip_pending;
+static struct CopperHead *flip_pending_late;   /* a flip the original made late in its frame: taken by the blank after the next */
 extern int host_flip_is_late(void);
 
 void host_flip_late(int on)
@@ -92,7 +92,7 @@ extern void shop_flip_strip(void);
 void screens_flip(void)
 {
     struct Rec6 state = guest.buffer_state[0];
-    void *list;
+    struct CopperHead *list;
     uint8_t *swap;
     extern void host_flip_wait(void);
 
@@ -104,7 +104,7 @@ void screens_flip(void)
     guest.screen_buffer = guest.screen_other;
     guest.screen_other = swap;
     shop_flip_strip();
-    list = guest.screen_other == guest.screen_1 ? (void *)&guest.copper_list_a : (void *)&guest.copper_list_b;
+    list = guest.screen_other == guest.screen_1 ? &guest.copper_list_a.head : &guest.copper_list_b.head;
     set_scroll(list, (uint8_t)guest.x_offset);
     int late = flip_late && host_flip_is_late();
 
@@ -250,8 +250,8 @@ void frame_tick(void)
 
     if (guest.copper_setup_done)
         scroll = guest.shadow_table[1];
-    guest.copper_list_a.color01 = scroll;
-    guest.copper_list_b.color01 = scroll;
+    guest.copper_list_a.head.color01 = scroll;
+    guest.copper_list_b.head.color01 = scroll;
     if (guest.sound_enabled)
         sound_tick();
     guest.tick_count++;
@@ -323,9 +323,9 @@ void fade_out(uint16_t delay, uint16_t arg)
  * the screen with the scroll of the list COP1LC names, as the copper does (the program has already set the next frame's x_offset when the screen is on show) */
 uint8_t list_scroll[2];
 
-void set_scroll(void *copper_list, uint8_t x)
+void set_scroll(struct CopperHead *copper_list, uint8_t x)
 {
-    list_scroll[copper_list == (void *)&guest.copper_list_a ? 0 : 1] = x;
+    list_scroll[copper_list == &guest.copper_list_a.head ? 0 : 1] = x;
 }
 
 /* orig $01D05C: wait for the next vertical blank (the main thread raises it) */

@@ -652,24 +652,47 @@ LAYOUT_ASSERT(sizeof(((struct Guardian *)0)->boss2) == 390, "boss2");
 LAYOUT_ASSERT(sizeof(((struct Guardian *)0)->boss3) == 390, "boss3");
 LAYOUT_ASSERT(sizeof(((struct Guardian *)0)->boss4) == 390, "boss4");
 
-/* the copper list of the first screen ($4D8A, 84 bytes): the words the frame tick sets in it are COLOR01 (the shadow of the colour 1) at +6 */
+/* the part of a copper list that sets the screen up (72 bytes: pairs of words, a register of the chip and its value): both lists have it, the first for the screen_1 and the second for screen_2.  set_scroll
+ * writes the low bytes of some of the values (the fetch start, BPLCON1, the modulos and the bitplane pointers' low words) */
+struct CopperMove { uint16_t reg, value; };
+struct CopperPlane { struct CopperMove high, low; };   /* the bitplane pointer: BPLxPTH and BPLxPTL */
+struct CopperHead {
+    uint16_t wait[2];             /* +0: a WAIT for the line 8 */
+    uint16_t color01_register;    /* +4: $0182 */
+    uint16_t color01;             /* +6: the value of the move to COLOR01 (the frame tick puts shadow_table[1] there) */
+    struct CopperMove diwstrt;    /* +8 */
+    struct CopperMove diwstop;    /* +12 */
+    struct CopperMove ddfstrt;    /* +16: the low byte is the fetch start set_scroll sets */
+    struct CopperMove ddfstop;    /* +20 */
+    struct CopperMove bplcon1;    /* +24: the low byte is the scroll */
+    struct CopperMove bplcon2;    /* +28 */
+    struct CopperMove modulo_odd; /* +32 */
+    struct CopperMove modulo_even;/* +36 */
+    struct CopperPlane planes[4]; /* +40: the four bitplanes of the screen */
+};
+LAYOUT_ASSERT(sizeof(struct CopperHead) == 72, "copper head");
+
+/* the copper list of the first screen ($4D8A, 84 bytes): its head and then the moves that send the copper on to the tail of the second list (COP2LC = $4E26 and the strobe of COPJMP2) */
 struct CopperListA {
-    uint16_t head[3];
-    uint16_t color01;          /* +6: the value of the move to COLOR01 */
-    uint16_t rest[38];
+    struct CopperHead head;
+    struct CopperMove jump_high;  /* +72: COP2LCH */
+    struct CopperMove jump_low;   /* +76: COP2LCL: the tail of the second list */
+    struct CopperMove strobe;     /* +80: COPJMP2 */
 };
 LAYOUT_ASSERT(sizeof(struct CopperListA) == 84, "copper list a");
 
-/* ... and of the second ($4DDE, 92 bytes): COLOR01 at +6 too and, at +$50, the two moves that fade_in and fade_out set */
+/* ... and of the second ($4DDE, 92 bytes): its head and the tail both lists run through: the WAIT for the line $3C, BPLCON0 with the bitplanes on, the two moves that send the copper on to the colour
+ * bands (COP2LC = $4E3A) or over them ($5246), which fade_in and fade_out set (move_a and move_b), and the strobe */
 struct CopperListB {
-    uint16_t head[3];
-    uint16_t color01;          /* +6 */
-    uint16_t middle[36];
-    uint32_t move_a;           /* +$50: two words of the list (a register move) */
-    uint32_t move_b;           /* +$54 */
-    uint16_t end[2];
+    struct CopperHead head;
+    uint16_t wait[2];             /* +72: a WAIT for the line $3C */
+    struct CopperMove bplcon0;    /* +76 */
+    uint32_t move_a;              /* +80: COP2LCH: two words of the list (a register move) */
+    uint32_t move_b;              /* +84: COP2LCL */
+    struct CopperMove strobe;     /* +88: COPJMP2 */
 };
 LAYOUT_ASSERT(sizeof(struct CopperListB) == 92, "copper list b");
+LAYOUT_ASSERT(offsetof(struct CopperListB, move_a) == 0x50, "move a");
 
 /* the sound system's variables ($2079E, 14 bytes): the start-up clears them; busy is not 0 while there is something to play (a long to the loader: the first voice's byte is the top one) and voice_ids the sound each of the four voices plays */
 struct SoundState {

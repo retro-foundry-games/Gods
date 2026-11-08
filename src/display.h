@@ -9,7 +9,7 @@
 #include "game.h"
 #include "sound.h"
 
-void set_scroll(void *copper_list, uint8_t x);              /* orig $004D3E */
+void set_scroll(struct CopperHead *copper_list, uint8_t x);              /* orig $004D3E */
 void wait_vblank(void);                                        /* orig $01D05C */
 void screens_flip(void);                                       /* orig $01D302 */
 void copper_fade_up(void);                                     /* orig $01D168 */
