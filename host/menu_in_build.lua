@@ -6,7 +6,7 @@ ami.machine{ name = "Gods C menu", model = "A500", system = "../local/system", s
     content = "../local/gods-c.m3u", roms = { { "kick34005.A500", 0xc4f0f55f } }, opt = { puae_chipmem_size = 2 } }
 ami.boot()
 local function read_file(name) return ami.file_read(name, 0, ami.file_size(name)) end
-local syms = load(read_file("native/build/menu_syms.lua"))()
+local syms = load(read_file("native/build/game_syms.lua"))()
 local seen = {}
 for _, name in ipairs({ "menu_entry", "menu_boot", "menu_start", "menu_main", "password_screen", "top_ten_screen" }) do
     ami.hook(syms[name], function() if not seen[name] then seen[name] = ami.frame(); ami.log(name .. " at frame " .. ami.frame()) end end)

@@ -13,7 +13,7 @@ N = 0xF00
 
 N = 0xF00
 syms = []
-for line in (PROJECT / "native" / "src" / "menu.symbols").read_text().split("\n"):
+for line in (PROJECT / "native" / "src" / "game.symbols").read_text().split("\n"):
     m = re.match(r"(\w+)\s+0x([0-9a-f]+)\s+(?:const\s+)?(\w+)\s*(\*)?\s*%s(\[(\d+)\])?", line)
     if m:
         name, addr, ty, ptr, _, cnt = m.groups()

@@ -5,7 +5,7 @@
 
 The original's RAM (.ram, big endian) is compared with the port's memory (.portmem: the program's own words, native) from START (default
 0x100) for LENGTH bytes (default up to $80000), as words (SIZE 2, the default), longs (4) or bytes (1).  The runs that differ are listed with
-the name of the nearest symbol of native/src/menu.symbols at or below the address."""
+the name of the nearest symbol of native/src/game.symbols at or below the address."""
 import re
 import struct
 import sys
@@ -16,7 +16,7 @@ HERE = Path(__file__).resolve().parent.parent
 
 def symbols():
     table = []
-    for line in (HERE / "native/src/menu.symbols").read_text().splitlines():
+    for line in (HERE / "native/src/game.symbols").read_text().splitlines():
         m = re.match(r"(?:table\s+)?(\w+)\s+0x([0-9a-fA-F]+)\s", line)
         if m:
             table.append((int(m.group(2), 16), m.group(1)))

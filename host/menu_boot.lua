@@ -1,5 +1,5 @@
 -- Boot the original from the disks to the menu, with chosen routines of the menu program replaced by their C versions
--- (native/build/menu.blob, with the shims of native/build/takeover_glue.bin that give the C functions the original's register interface).
+-- (native/build/game.blob, with the shims of native/build/takeover_glue.bin that give the C functions the original's register interface).
 -- At the end the RAM is saved, to be compared with the same run of the original alone.
 --
 --   ami9000_host projects/gods/host/menu_boot.lua --headless --script-args "use=load_file,load_unpacked until=6500 out=FILE"
@@ -15,8 +15,8 @@ ami.machine{
 }
 ami.boot()
 local function read_file(name) return ami.file_read(name, 0, ami.file_size(name)) end
-local syms = load(read_file("native/build/menu_syms.lua"))()
-local blob = read_file("native/build/menu.blob")
+local syms = load(read_file("native/build/game_syms.lua"))()
+local blob = read_file("native/build/game.blob")
 local glue = read_file("native/build/takeover_glue.bin")
 local glue_at = load(read_file("native/build/takeover_glue.lua"))()
 -- the original's entry of each routine that can be replaced

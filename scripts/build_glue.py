@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import build_menu as BM  # noqa: E402
+import build_game as BM  # noqa: E402
 
 GLUE_BASE = 0xEA000
 # name: (C function, [registers pushed as arguments, last argument first])
@@ -33,7 +33,7 @@ AFTER = {"assets_load": ["        movea.l ($d3e).w,a3", "        movea.l ($d3a).
 
 
 def main() -> None:
-    syms = {m.group(1): int(m.group(2), 16) for m in re.finditer(r"^\s+(\w+) = 0x([0-9a-f]+),", (BM.BUILD / "menu_syms.lua").read_text(), re.M)}
+    syms = {m.group(1): int(m.group(2), 16) for m in re.finditer(r"^\s+(\w+) = 0x([0-9a-f]+),", (BM.BUILD / "game_syms.lua").read_text(), re.M)}
     lines = []
     for n, (name, (func, regs)) in enumerate(SHIMS.items()):
         lines += ([f"        org ${GLUE_BASE:x}"] if n == 0 else ["        cnop 0,64"]) + [f"glue_{name}:", "        movem.l d0-d7/a0-a6,-(sp)",

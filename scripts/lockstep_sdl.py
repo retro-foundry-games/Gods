@@ -5,7 +5,7 @@ iteration of the game loop, shifted by the 128 iterations its state is into the 
     1. the Amiga build (the C disk in the emulator):
        tools/engine9000/ami9000_host projects/gods/host/gods.lua --headless --script-args "rebuilt joy1 press=space@2800 joy=6450:fire,6470:none iterhook=ADDR
            iterkeysfile=captures/input/level1-run1-iterkeys-gods.txt itervars=PROJECT/native/build/lock_amiga.iter frames=17500 shots=/tmp/x"
-       (ADDR is `_game_frame` in native/build/menu.sym plus $C0000, in hex)
+       (ADDR is `_game_frame` in native/build/game.sym plus $C0000, in hex)
     2. the SDL port:
        GODS_ITERMAX=3000 GODS_ITERKEYS=../captures/input/level1-run1-iterkeys.txt GODS_ITERDUMP=$PWD/build/lock_sdl.iter native/build/sdl/gods-sdl-dev --disks local --skip-intro
            --headless --frames 20000 --keys 300:40:1,320:40:0
@@ -32,7 +32,7 @@ TIME_ONLY = {"shift_source", "password_slots", "message_next", "message_hold", "
 def byte_variables() -> set[int]:
     """The addresses of the variables that are bytes or arrays of bytes (a word variable over them is an alias: those bytes are left out of the comparison)."""
     covered = set()
-    for line in (PROJECT / "native/src/menu.symbols").read_text().splitlines():
+    for line in (PROJECT / "native/src/game.symbols").read_text().splitlines():
         m = re.match(r"(\w+)\s+0x([0-9a-f]+)\s+(?:const\s+|volatile\s+)*(u?int8_t|char)\s+%s(?:\[(\d*)\])?", line)
         if m:
             addr, count = int(m.group(2), 16), int(m.group(4)) if m.group(4) else 1

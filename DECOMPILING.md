@@ -19,11 +19,11 @@ which of its instructions ran.  `native/build/game-ram.bin` is the program's RAM
   entries.  Names by what the code does; a provisional name is `fn_` and the address.  A small helper that cannot be a C function
   (it passes its results in registers or the condition codes, or jumps out) is written into its caller (say so in the caller's
   comment: `/* inlined: $12BDA */` and the tool counts it as done).
-* Data: every variable the original keeps at an absolute address is a line in `native/src/menu.symbols`: `name 0xADDRESS type %s  comment`
+* Data: every variable the original keeps at an absolute address is a line in `native/src/game.symbols`: `name 0xADDRESS type %s  comment`
   (the `%s` is where the name goes), or `table name 0xADDR uint8_t|uint16_t|uint32_t COUNT  comment` for constant data (tables are
   copied from `native/build/game-ram.bin` into `data.c`; use a plain variable for something the code changes).  Before you add
   a line, search the file for the address (`grep -i 0x0000ABCD`): reuse the name that is there.  Types of records are in
-  `menu_types.h` (add yours).  Use `volatile` for what an interrupt changes.  The generated files (`menu_symbols.h`, `menu.ld`,
+  `menu_types.h` (add yours).  Use `volatile` for what an interrupt changes.  The generated files (`menu_symbols.h`, `game.ld`,
   `data.c`, `amiga/amiga.asm`) are made by the build; do not edit them by hand.
 * The program is a 68000 program: arithmetic is on 16-bit words most of the time (`addw`, `subqw`); signed comparisons (`blt`, `bgt`,
   `bge`, `ble`) are signed, `bcs/bcc/bhi/bls` unsigned.  Copy the width exactly.  `d0`-`d7` arguments in a function's registers become
@@ -31,7 +31,7 @@ which of its instructions ran.  `native/build/game-ram.bin` is the program's RAM
 
 ## Checking it against the original
 
-1. `uv run python projects/gods/scripts/build_menu.py` builds the C (all modules) into `native/build/menu.blob` and fails on a C error.
+1. `uv run python projects/gods/scripts/build_game.py` builds the C (all modules) into `native/build/game.blob` and fails on a C error.
 2. Add a case for each function to `host/menu_cases.lua`, inserted before the final `}`:
    `{ name = "function_name", orig = 0xADDR, args = { "d0.w", "a0" }, ret = "d0.w", blitter = true, scenario = "game" },`
    (`args`: the registers the arguments come in, `.w` and `.b` for the low part; `ret`: the register of the result if the caller uses it;
@@ -52,7 +52,7 @@ symlink it into the tree (a symlink named `local` or `captures` replaced the rea
 
     W=$(pwd); R=/home/boran/git/amiga-decomp
     mkdir -p projects/gods/native/build projects/gods/captures/input
-    cp $R/projects/gods/native/build/{menu-ram.bin,menu-image.bin,game-ram.bin,keyboard_patch.bin} projects/gods/native/build/
+    cp $R/projects/gods/native/build/{game-ram.bin,game-image.bin,keyboard_patch.bin} projects/gods/native/build/
     cp -r $R/projects/gods/local projects/gods/local
     cp -r $R/projects/gods/captures/ref100k projects/gods/captures/ 2>/dev/null; cp $R/projects/gods/captures/input/* projects/gods/captures/input/
     export AMI_HOST=$R/tools/engine9000/ami9000_host
@@ -80,7 +80,7 @@ the loading screen).  How it was made and checked:
 * Its coverage: `host/gods.lua` from a snapshot of the C disk just before the fire (a run from the boot with `press=space@2800
   snap=6440 snapname=gods-c-menu shots=DIR frames=6440`), then `rebuilt joy1 load=gods-c-menu.state joy=10:fire,30:none
   coverstop=ADDR cover=PATH until=3100`.  `coverstop=` writes the coverage and quits when the program first reaches ADDR (`2c20`
-  for the original's start of the loop, the C `game_loop` address of `native/build/menu_syms.lua` for the C); `ram=PATH` writes the RAM
+  for the original's start of the loop, the C `game_loop` address of `native/build/game_syms.lua` for the C); `ram=PATH` writes the RAM
   there too, which `MENU_RAM=... MENU_COVERAGE=coverage-begin.txt menu_dis.py --todo` wants (the original's loader overwrites
   parts of the program, so only the RAM at the end of the window has the code the window ran at its address).  Leave `press=` out of a
   cover run: it is only read by the runs without cover/record.  `analysis/coverage-begin.txt` is the original's code;
@@ -122,7 +122,7 @@ Checked with `count=ADDR` (hits of an address in the emulator; the counts are on
 boot to level 1 played with the joystick: the original's frame tick ($16C30..), message ticker ($16C78), sound driver ($1FCB8..$20344), file
 layer ($1D4CA..$1E252) and random routine ($633E) are not run once the C is in (hits 0 from boot to frame 9400).  Earlier they were: the
 generated asm called them by absolute address (`jsr $633e.w`, the VBL's `jsr $16c30`, a pushed return address $1D61C); amiga_asm.py and
-gen_menu_amiga_asm.py now send these calls to the copies in amiga.asm or to the C functions.  What still runs from the original's code
+gen_game_amiga_asm.py now send these calls to the copies in amiga.asm or to the C functions.  What still runs from the original's code
 in the C disk is the start-up before the menu (frames below ~5400: the start stub $240C, the original's load_unpacked/load_directory and the
 file layer it uses, the protection stub amboot3 at $35DAC, the loader), the patched jump at $2C20, and Continue and the password route.
 (The host's coverage cannot be started at a later frame reliably: instructions reached before it are reported again; count addresses instead.)

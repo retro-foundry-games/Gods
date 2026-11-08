@@ -107,8 +107,8 @@ def main() -> int:
     tramp_src = BUILD / "trampoline.asm"
     # The stage's last jump goes here every time it loads something.  The first time it is the C game; later it is the part
     # of the game that the C asked the loader for (a fire button or the space bar), which the original runs from $0084.
-    menu_syms = {m.group(1): int(m.group(2), 16) for m in re.finditer(r"^\s+(\w+) = 0x([0-9a-f]+),", (BUILD / "menu_syms.lua").read_text(), re.M)}
-    menu_blob = (BUILD / "menu.blob").read_bytes()
+    menu_syms = {m.group(1): int(m.group(2), 16) for m in re.finditer(r"^\s+(\w+) = 0x([0-9a-f]+),", (BUILD / "game_syms.lua").read_text(), re.M)}
+    menu_blob = (BUILD / "game.blob").read_bytes()
     menu_base = menu_syms["base"]
     tramp_src.write_text(f"        org ${L.SLOW_BASE:x}\n        tst.w ${STARTED_FLAG:x}.l\n        bne.b next_stage\n"
                          f"        move.w #1,${STARTED_FLAG:x}.l\n        movea.l #${STACK_TOP:x},a7\n        jmp ${game_main:x}.l\n"

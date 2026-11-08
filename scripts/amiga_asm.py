@@ -1,4 +1,4 @@
-"""Shared by the generators of the programs' assembly (gen_intro_amiga_asm.py, gen_menu_amiga_asm.py): the original's
+"""Shared by the generators of the programs' assembly (gen_intro_amiga_asm.py, gen_game_amiga_asm.py): the original's
 instructions from a memory image as vasm source, with data addresses as symbols and branch targets as labels, every
 instruction checked by assembling it again at its original address.
 

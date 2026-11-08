@@ -1,6 +1,6 @@
 -- Check the C functions of menu.c against the original program, on the machine as it runs.
 --
--- Boots the original disks, loads the C code (native/build/menu.blob, from scripts/build_menu.py) into RAM above the original's
+-- Boots the original disks, loads the C code (native/build/game.blob, from scripts/build_game.py) into RAM above the original's
 -- 512 KB, presses the fire button (the left mouse button) at frame CLICK so that the original loads the menu, and hooks the
 -- original's entry of every function in host/menu_cases.lua.  At each call (the first SAMPLES of them) the state is saved,
 -- the original routine is run on it with ami.call, the memory is put back, the C function is run on the same state with the
@@ -27,8 +27,8 @@ ami.machine{
 ami.boot()
 
 local function read_file(name) return ami.file_read(name, 0, ami.file_size(name)) end
-local syms = load(read_file("native/build/menu_syms.lua"))()
-local blob = read_file("native/build/menu.blob")
+local syms = load(read_file("native/build/game_syms.lua"))()
+local blob = read_file("native/build/game.blob")
 local cases = load(read_file("host/menu_cases.lua"))()
 
 local BLITTER_WAIT = 0x01dfd8   -- the original's blitter_wait
@@ -162,7 +162,7 @@ for _, case in ipairs(cases) do
         active[#active + 1] = case
         ami.hook(case.orig, function() check(case) end)
     elseif not syms[case.name] then
-        say("missing in native/build/menu_syms.lua: %s", case.c or case.name)
+        say("missing in native/build/game_syms.lua: %s", case.c or case.name)
     end
 end
 

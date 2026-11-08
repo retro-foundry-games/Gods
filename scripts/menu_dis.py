@@ -4,7 +4,7 @@
                                                                         # executed instruction, executed instructions marked *
     uv run python projects/gods/scripts/menu_dis.py --todo             # the functions not decompiled yet, the leaves first
 
-The code is the program's RAM while the menu is on show (native/build/menu-ram.bin: frame 8,000 of captures/menu_ref); the executed
+The code is the program's RAM while the menu is on show (native/build/game-ram.bin: frame 8,000 of captures/menu_ref); the executed
 instructions are those of analysis/coverage-menu-handling.txt (the menu on show, the selection moved, the password screen and
 a start of Begin Quest); what is decompiled is read from the `orig $ADDR` comments of native/src/*.c.
 """
@@ -22,7 +22,7 @@ sys.path.insert(0, str(PROJECT / "scripts"))
 import intro_analysis as G  # noqa: E402
 import menu_analysis as M  # noqa: E402
 
-RAM = (PROJECT / "native" / "build" / os.environ.get("MENU_RAM", "menu-ram.bin")).read_bytes()   # e.g. game-ram.bin with MENU_COVERAGE=coverage-game.txt
+RAM = (PROJECT / "native" / "build" / os.environ.get("MENU_RAM", "game-ram.bin")).read_bytes()   # e.g. game-ram.bin with MENU_COVERAGE=coverage-game.txt
 COVERAGE = PROJECT / "analysis" / os.environ.get("MENU_COVERAGE", "coverage-menu-handling.txt")   # e.g. coverage-menu.txt, coverage-game-start.txt
 SRC = PROJECT / "native" / "src"
 MENU_C = ["menu", "disk", "alloc", "decrunch", "input", "draw", "amiga/display", "message", "file", "boot", "game"]

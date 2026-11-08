@@ -2,7 +2,7 @@
 --
 -- Loads a savestate of the original menu (1 MB chip RAM), and records per frame the checksums of the screens, the copper
 -- lists, the palette and the program's variables.  With mode=c, when the original reaches the top of its main menu loop (orig
--- $0063A2, after the top ten) the main thread continues in C (menu_main of native/build/menu.blob) while the original's interrupt
+-- $0063A2, after the top ten) the main thread continues in C (menu_main of native/build/game.blob) while the original's interrupt
 -- handlers go on; with mode=irq the interrupt vectors are C's too (vbl_irq, audio_irq).  mode=orig only records.
 --
 --   ami9000_host projects/gods/host/menu_takeover.lua --headless --script-args "mode=orig|c|irq state=NAME.state until=F out=FILE"
@@ -19,8 +19,8 @@ ami.machine{
 }
 ami.boot()
 local function read_file(name) return ami.file_read(name, 0, ami.file_size(name)) end
-local syms = load(read_file("native/build/menu_syms.lua"))()
-local blob = read_file("native/build/menu.blob")
+local syms = load(read_file("native/build/game_syms.lua"))()
+local blob = read_file("native/build/game.blob")
 
 -- the regions that are recorded: name, first address, length
 local REGIONS = {
