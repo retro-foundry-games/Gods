@@ -29,6 +29,9 @@
 #define FILE_BUFFER_LINE_TEXT 0x53DE
 #define FILE_BUFFER_TARGET_MAP 0x5A1E
 
+/* the walkers' monster types come after the fifty of the flying groups in monster_types */
+#define WALKER_TYPES_FIRST 50
+
 /* the stack of the program is the first bytes of the block the memory map divides: stack_top is after them */
 #define MEMORY_MAP_STACK_SIZE 0x300
 
@@ -437,7 +440,7 @@ LAYOUT_ASSERT(sizeof(struct ScriptRecord) == 24, "script record");
 struct MonsterType {
     int8_t count;         /* +0 how many monsters */
     uint8_t life;         /* +1 hit points of one (doubled for the one the record picked), and its score */
-    RECORD_PAD(2)
+    PAD(2)
     uint16_t flags;       /* +4 bits 0 to 3: who takes objects up (by the kind of object), 4 and 5: how it shoots (0 sideways, 1 aimed at a place near the player, 2 and 3 aimed), 6 and 7: how the chain
                            * follows (0 the places, 2 a circle, 1 and 3 turned), 8: the first to leave is chosen by chance */
     uint8_t fire;         /* +6 low nibble: how often it shoots, high: the speed of the shot */
@@ -453,7 +456,6 @@ struct MonsterType {
     int16_t item;         /* +16 what it drops when all are gone, negative none */
     uint16_t start;       /* +18 the cell it starts in: x in the high byte, y in the low (32 by 16 pixels) */
     uint8_t spacing;      /* +20 the delay between one monster and the next */
-    RECORD_PAD(1)
 };
 LAYOUT_ASSERT(sizeof(struct MonsterType) == 22, "monster type");
 
@@ -760,7 +762,7 @@ struct LevelData {
     uint8_t unit_scripts[804];                 /* +0: the scripts of the units (unit_scripts points here) */
     struct EntryRef cell_entries[253];         /* +804: the entries of the cells (cell_entry_table points here) */
     struct CreatureEntry creature_entries[100];/* +1816: 25 for each level (creature_entries points here) */
-    uint8_t monster_types[2200];               /* +3416: 22 bytes each (monster_types points here) */
+    struct MonsterType monster_types[100];     /* +3416: the monster types of the level (monster_types points here): the first fifty are the flying groups', the next fifty the walkers' */
     struct LeverFlag lever_flags[64];          /* +5616: the switches of the level; bit 0 of the state is a flag call_by_kind tests */
     int16_t teleport_gems[90];                 /* +6000: thirty entries of three words (the gem's x, and two words that say where it sends the player) */
     uint16_t level_pickups[60];                /* +6180: twenty entries of three words (x, y, kind) of the level's pick-ups */
@@ -1102,7 +1104,7 @@ struct Gods {
     uint8_t *copper_colours;   /* $00CDA */
     PAD(4)
     volatile uint32_t tick_count;   /* $00CE2 */
-    uint8_t *monster_types;   /* $00CE6 */
+    struct MonsterType *monster_types;   /* $00CE6 */
     uint8_t *asset_directory;   /* $00CEA */
     uint8_t *monster_part_blocks;   /* $00CEE */
     uint8_t *hint_list;   /* $00CF2 */

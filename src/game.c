@@ -1,5 +1,7 @@
 /* Gods, the game: what runs while a level is played.  The loop that calls it all is at $2C20; the routines are written in the
  * order they were found, named by what they do (a provisional name is `fn_` and the address). */
+#include <string.h>
+
 #include "menu.h"
 #include "sound.h"
 
@@ -1938,41 +1940,6 @@ static void level_end_add_score(uint8_t step)
 static void world_records_clear(void);   /* orig $0135C6 (below begin_quest) */
 static void level_load_world(void);   /* orig $013532 (below begin_quest) */
 
-/* orig $01D06C: the shift register of the passwords: the seed word ($1D0AA) is made another (its bits mixed through the carry of the rotates) */
-static uint16_t password_seed;
-
-#define ROXR(v) do { unsigned o = (v) & 1; (v) = (uint8_t)(((v) >> 1) | (x << 7)); x = o; } while (0)
-
-static uint16_t next_password_word(void)
-{
-    uint8_t d7 = (uint8_t)password_seed;
-    uint8_t d6 = (uint8_t)(password_seed >> 8);
-    unsigned x = (password_seed >> 7) & 1;   /* (the bit that the lsr.w #8 shifted out last) */
-    uint8_t d0 = d6;
-
-    ROXR(d0);
-    d6 ^= d0;
-    ROXR(d0);
-    ROXR(d0);
-    d6 ^= d0;
-    ROXR(d0);
-    d7 ^= d0;
-    ROXR(d0);
-    ROXR(d0);
-    d0 &= 1;
-    x = d7 >> 7;   /* asl.b #1,d7 */
-    d7 = (uint8_t)(d7 << 1);
-
-    unsigned top = d6 >> 7;   /* roxl.b #1,d6 */
-
-    d6 = (uint8_t)((d6 << 1) | x);
-    (void)top;
-    d0 = (uint8_t)(d0 + d7);
-    d7 = d0;
-    password_seed = (uint16_t)((d6 << 8) | d7);
-    return password_seed;
-}
-
 /* orig $013470: a code for the level: three numbers of 1 to 26 (the shift register's words by 2521, one added), kept as the three top bytes of a long, that none of the three saved codes ($D12, $D16, $D1A)
  * has; after a hundred tries the code is 1, 2, 3 and the level */
 static uint32_t password_generate(void)
@@ -1982,9 +1949,9 @@ static uint32_t password_generate(void)
     for (;;) {
         uint32_t code = 0;
 
-        password_seed = random_word();
+        guest.random_seed = random_word();   /* (the shift register of $01D06C is the program's random number: its seed is the word random_seed) */
         for (int i = 0; i < 3; i++) {
-            uint16_t word = next_password_word();
+            uint16_t word = random_next();
 
             code = (code & 0xFFFFFF00u) | (uint8_t)(word / 0x9D9 + 1);
             code <<= 8;
@@ -8460,7 +8427,7 @@ static void monster_run(struct Monster *rec, struct MonsterPart *block)
  * -1) and the first free one of the ten monster records is to start (state 2) with that type; when none is free that is all */
 void take_monster_record(struct EntryRef *a0)
 {
-    struct MonsterType *type = (struct MonsterType *)(guest.monster_types + (int16_t)a0->number * 22);
+    struct MonsterType *type = &guest.monster_types[(int16_t)a0->number];
 
     a0->state = 0xFFFF;
     for (int i = 0; i < 10; i++) {
@@ -8475,7 +8442,7 @@ void take_monster_record(struct EntryRef *a0)
 /* orig $008898 (the entry 4 of the table at $18714): the same for the groups of walkers: the type is 50 on in the level's file (at monster_types + $44C), the record one of the ten at $12A0 */
 void take_walker_group_record(struct EntryRef *a0)
 {
-    struct MonsterType *type = (struct MonsterType *)(guest.monster_types + 0x44c + (int16_t)a0->number * 22);
+    struct MonsterType *type = &guest.monster_types[WALKER_TYPES_FIRST + (int16_t)a0->number];
     struct WalkGroup *group = (struct WalkGroup *)guest.walker_groups;
 
     a0->state = 0xFFFF;
@@ -13873,12 +13840,60 @@ static void loading_level_screen(void)
 /* the level file's monster types (struct MonsterType, 22 bytes, fifty of them from monster_types for the flying groups and fifty on for the walkers): the words (flags, drop and start cell) are made the machine's own */
 static void monster_types_from_disk(void)
 {
-    struct MonsterType *type = (struct MonsterType *)guest.monster_types;
+    struct MonsterType *type = guest.monster_types;
 
     for (int i = 0; i < 100; i++, type++) {   /* (the second fifty are the groups of walkers') */
         file_words(&type->flags, 1);
         file_words(&type->item, 2);
     }
+}
+
+/* the level file calfils (7000 bytes, as the original has it in memory from level_data on, and the text table of the hints after it): the tables of the level one after the other.  Each goes to its member of
+ * level_data (the records with unused bytes in the file are made field by field); level_tables_from_disk makes their words the machine's own */
+#define LEVEL_FILE_UNIT_SCRIPTS 0
+#define LEVEL_FILE_CELL_ENTRIES 804
+#define LEVEL_FILE_CREATURE_ENTRIES 1816
+#define LEVEL_FILE_MONSTER_TYPES 3416
+#define LEVEL_FILE_LEVER_FLAGS 5616
+#define LEVEL_FILE_TELEPORT_GEMS 6000
+#define LEVEL_FILE_LEVEL_PICKUPS 6180
+#define LEVEL_FILE_PATH_DESCRIPTIONS 6300
+#define MONSTER_TYPE_FILE_SIZE 22
+
+/* a monster type as the file has it: 22 bytes (the words are as the file has them: monster_types_from_disk makes them native) */
+static void monster_type_from_file(struct MonsterType *type, const uint8_t *record)
+{
+    type->count = (int8_t)record[0];
+    type->life = record[1];
+    /* +2: two bytes the program does not use */
+    memcpy(&type->flags, record + 4, 2);
+    type->fire = record[6];
+    type->picture = record[7];
+    type->mode = record[8];
+    type->mode_chance = record[9];
+    type->chance = record[10];
+    type->limit_b = (int8_t)record[11];
+    type->limit_c = (int8_t)record[12];
+    type->zone_chance = record[13];
+    type->delay = record[14];
+    type->wall = record[15];
+    memcpy(&type->item, record + 16, 2);
+    memcpy(&type->start, record + 18, 2);
+    type->spacing = record[20];
+    /* +21: a byte the program does not use */
+}
+
+static void level_tables_from_file(const uint8_t *file)
+{
+    memcpy(guest.level_data.unit_scripts, file + LEVEL_FILE_UNIT_SCRIPTS, sizeof guest.level_data.unit_scripts);
+    memcpy(guest.level_data.cell_entries, file + LEVEL_FILE_CELL_ENTRIES, sizeof guest.level_data.cell_entries);
+    memcpy(guest.level_data.creature_entries, file + LEVEL_FILE_CREATURE_ENTRIES, sizeof guest.level_data.creature_entries);
+    for (int i = 0; i < 100; i++)
+        monster_type_from_file(&guest.level_data.monster_types[i], file + LEVEL_FILE_MONSTER_TYPES + i * MONSTER_TYPE_FILE_SIZE);
+    memcpy(guest.level_data.lever_flags, file + LEVEL_FILE_LEVER_FLAGS, sizeof guest.level_data.lever_flags);
+    memcpy(guest.level_data.teleport_gems, file + LEVEL_FILE_TELEPORT_GEMS, sizeof guest.level_data.teleport_gems);
+    memcpy(guest.level_data.level_pickups, file + LEVEL_FILE_LEVEL_PICKUPS, sizeof guest.level_data.level_pickups);
+    memcpy(guest.level_data.path_descriptions, file + LEVEL_FILE_PATH_DESCRIPTIONS, sizeof guest.level_data.path_descriptions);
 }
 
 /* the tables of the level that the file calfils brings (7000 bytes from level_data on, loaded from the disk): the entries of the cells (cell_entry_table, 253), the groups of creatures (creature_entries, 100)
@@ -14055,8 +14070,7 @@ static void load_level_files(void)
     load_level_objects(names);
     guest.level_files_read = -1;
     load_unpacked((const char *)names + NAME_ALFILS, guest.background);
-    for (int i = 0; i < 7000; i++)
-        ((uint8_t *)&guest.level_data)[i] = guest.background[i];
+    level_tables_from_file(guest.background);
     level_tables_from_disk();
     read_text_table_word_offsets((const uint16_t *)(guest.background + 7000), (uint16_t *)guest.level_data.hint_data);
     place_pickups();

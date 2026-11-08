@@ -134,7 +134,7 @@ message_text_block          0x00000e5c  uint8_t *%s
 unit_scripts          0x00000cb2  uint8_t *%s
 cell_entry_table          0x00000cbe  struct EntryRef *%s
 creature_entries          0x00000d0e  struct CreatureEntry *%s
-monster_types          0x00000ce6  uint8_t *%s
+monster_types          0x00000ce6  struct MonsterType *%s
 path_description_base          0x00000c9a  const struct PathDescription *%s
 hint_list          0x00000cf2  uint8_t *%s
 program_end       0x0003a670  uint8_t %s[]      the end of the program as the loader reads it: the memory map begins here

@@ -11,3 +11,14 @@ void *memset(void *destination, int value, size_t count)
         *p++ = (unsigned char)value;
     return destination;
 }
+
+__attribute__((optimize("no-tree-loop-distribute-patterns")))
+void *memcpy(void *destination, const void *source, size_t count)
+{
+    unsigned char *to = destination;
+    const unsigned char *from = source;
+
+    while (count--)
+        *to++ = *from++;
+    return destination;
+}
