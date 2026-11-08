@@ -633,9 +633,6 @@ struct CopperListB {
 };
 _Static_assert(sizeof(struct CopperListB) == 92, "copper list b");
 
-#define COPPER_LIST_A ((uint8_t *)&guest.copper_list_a)
-#define COPPER_LIST_B ((uint8_t *)&guest.copper_list_b)
-
 /* the sound system's variables ($2079E, 14 bytes): the start-up clears them; busy is not 0 while there is something to play (a long to the loader: the first voice's byte is the top one) and voice_ids the sound each of the four voices plays */
 struct SoundState {
     uint16_t word_0;
@@ -645,6 +642,22 @@ struct SoundState {
     uint16_t word_c;
 };
 _Static_assert(sizeof(struct SoundState) == 14, "sound state");
+
+/* the level's tables as the file alfils brings them ($1AA66, 7160 bytes: 7000 loaded from the disk and made the machine's own by level_tables_from_disk; the text table at its end is made by read_text_table_word_offsets): one after the other */
+struct LevelData {
+    uint8_t unit_scripts[804];                 /* +0: the scripts of the units (unit_scripts points here) */
+    struct EntryRef cell_entries[253];         /* +804: the entries of the cells (cell_entry_table points here) */
+    struct CreatureEntry creature_entries[100];/* +1816: 25 for each level (creature_entries points here) */
+    uint8_t monster_types[2200];               /* +3416: 22 bytes each (monster_types points here) */
+    struct LeverFlag lever_flags[64];          /* +5616: the switches of the level; bit 0 of the state is a flag call_by_kind tests */
+    int16_t teleport_gems[90];                 /* +6000: thirty entries of three words (the gem's x, and two words that say where it sends the player) */
+    uint16_t level_pickups[60];                /* +6180: twenty entries of three words (x, y, kind) of the level's pick-ups */
+    struct PathDescription path_descriptions[25]; /* +6300: the things that move along a path: where they start, their picture, their waypoints */
+    uint8_t hint_data[160];                    /* +7000: the text table of the hints: 40 words and, 80 bytes on, 40 more (the offsets of the texts; hint_list points here) */
+};
+_Static_assert(sizeof(struct LevelData) == 7160, "level data");
+_Static_assert(offsetof(struct LevelData, lever_flags) == 5616, "lever flags");
+_Static_assert(offsetof(struct LevelData, hint_data) == 7000, "hint data");
 
 /* The members of struct Gods are at the offsets of the original's addresses when MATCH_MEMORY_LAYOUT is defined (the Amiga build, where the struct is the memory at address 0, and
  * the SDL builds that read the original's RAM images and states).  Without it PAD() is nothing: the struct is just the variables, packed, and the variables that overlap in the
@@ -1219,19 +1232,8 @@ struct Gods {
     uint32_t marker_table[100];   /* $1A3FC */
     struct Rec6 record_table[200];   /* $1A58C */
     PAD(42)
-    union {   /* the variables that overlap */
-        struct { uint8_t unit_script_data[7322]; };   /* $1AA66 */
-        struct { PAD(804) uint8_t cell_entry_data[4812]; };   /* $1AD8A */
-        struct { PAD(1816) uint8_t creature_entry_data[3800]; };   /* $1B17E */
-        struct { PAD(3416) uint8_t monster_type_data[2200]; };   /* $1B7BE */
-        struct { PAD(5616) struct LeverFlag lever_flags[64]; };   /* $1C056 */
-        struct { PAD(6000) int16_t teleport_gems[90]; };   /* $1C1D6 */
-        struct { PAD(6180) uint16_t level_pickups[60]; };   /* $1C28A */
-        struct { PAD(6300) struct PathDescription path_descriptions[25]; };   /* $1C302 */
-        struct { PAD(7000) uint8_t hint_data[218]; };   /* $1C5BE */
-        uint8_t bytes_1aa66[7322];
-    };
-    PAD(740)
+    struct LevelData level_data;   /* $1AA66 */
+    PAD(902)
     uint16_t sine_table[640];   /* $1C9E4 */
     PAD(372)
     volatile uint16_t vbl_saturating;   /* $1D058 */
@@ -1731,15 +1733,7 @@ _Static_assert(offsetof(struct Gods, bolt_records) == 0x1a154, "bolt_records");
 _Static_assert(offsetof(struct Gods, crumble_table) == 0x1a30c, "crumble_table");
 _Static_assert(offsetof(struct Gods, marker_table) == 0x1a3fc, "marker_table");
 _Static_assert(offsetof(struct Gods, record_table) == 0x1a58c, "record_table");
-_Static_assert(offsetof(struct Gods, unit_script_data) == 0x1aa66, "unit_script_data");
-_Static_assert(offsetof(struct Gods, cell_entry_data) == 0x1ad8a, "cell_entry_data");
-_Static_assert(offsetof(struct Gods, creature_entry_data) == 0x1b17e, "creature_entry_data");
-_Static_assert(offsetof(struct Gods, monster_type_data) == 0x1b7be, "monster_type_data");
-_Static_assert(offsetof(struct Gods, lever_flags) == 0x1c056, "lever_flags");
-_Static_assert(offsetof(struct Gods, teleport_gems) == 0x1c1d6, "teleport_gems");
-_Static_assert(offsetof(struct Gods, level_pickups) == 0x1c28a, "level_pickups");
-_Static_assert(offsetof(struct Gods, path_descriptions) == 0x1c302, "path_descriptions");
-_Static_assert(offsetof(struct Gods, hint_data) == 0x1c5be, "hint_data");
+_Static_assert(offsetof(struct Gods, level_data) == 0x1aa66, "level_data");
 _Static_assert(offsetof(struct Gods, sine_table) == 0x1c9e4, "sine_table");
 _Static_assert(offsetof(struct Gods, vbl_saturating) == 0x1d058, "vbl_saturating");
 _Static_assert(offsetof(struct Gods, vbl_count) == 0x1d05a, "vbl_count");

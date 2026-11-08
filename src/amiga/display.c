@@ -61,7 +61,7 @@ void copy_other_screen(void)
 void screens_flip(void)
 {
     struct Rec6 state = guest.buffer_state[0];
-    uint8_t *list;
+    void *list;
     uint8_t *swap;
 
     guest.buffer_state[0] = guest.buffer_state[1];
@@ -69,7 +69,7 @@ void screens_flip(void)
     swap = guest.screen_buffer;
     guest.screen_buffer = guest.screen_other;
     guest.screen_other = swap;
-    list = guest.screen_other == guest.screen_1 ? COPPER_LIST_A : COPPER_LIST_B;
+    list = guest.screen_other == guest.screen_1 ? (void *)&guest.copper_list_a : (void *)&guest.copper_list_b;
     set_scroll(list, (uint8_t)guest.x_offset);
     display_show(list);
     guest.vbl_saturating = 0;
@@ -245,8 +245,9 @@ void fade_out(uint16_t delay, uint16_t arg)
 /* orig $004D3E: the fine scroll of a copper list for the pixel offset `x` (only the low byte counts): the scroll nibbles
  * for the two fields of BPLCON1, where the display fetch starts, and the modulos of the bitplane pointers.  x of 16 or more
  * uses the next word. */
-void set_scroll(uint8_t *copper_list, uint8_t x)
+void set_scroll(void *list, uint8_t x)
 {
+    uint8_t *copper_list = list;
     uint8_t fetch = 0x38;
     uint8_t words = 4;
     uint8_t extra = (x & 0x10) ? 2 : 0;
@@ -286,8 +287,9 @@ void blitter_wait(void)
 }
 
 /* tell the copper to run `list` (the copper list of the screen that is shown) */
-void display_show(const uint8_t *list)
+void display_show(const void *list_head)
 {
+    const uint8_t *list = list_head;
     custom->cop1lc = (uint32_t)(uintptr_t)list;
 }
 

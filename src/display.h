@@ -9,7 +9,7 @@
 #include "game.h"
 #include "sound.h"
 
-void set_scroll(uint8_t *copper_list, uint8_t x);              /* orig $004D3E */
+void set_scroll(void *copper_list, uint8_t x);              /* orig $004D3E */
 void wait_vblank(void);                                        /* orig $01D05C */
 void screens_flip(void);                                       /* orig $01D302 */
 void copper_fade_up(void);                                     /* orig $01D168 */
@@ -34,7 +34,7 @@ uint16_t shadow_get(uint16_t index);                                     /* orig
 void clear_both_screens(void);                                           /* orig $01CFC0 */
 void copy_other_screen(void);                                            /* orig $01CFCE */
 void blitter_wait(void);                                                 /* orig $01DFD8 */
-void display_show(const uint8_t *list);                             /* amiga/display_hw.c: the copper runs this list (sdl/display_hw_sdl.c) */
+void display_show(const void *list);                             /* amiga/display_hw.c: the copper runs this list (sdl/display_hw_sdl.c) */
 
 void blitter_grab_wait(void);               /* orig $01E372 */
 void blit_tile(int16_t src_step, int16_t dst_step, int16_t rows, const uint8_t *src, uint8_t *dst);   /* orig $017082 */

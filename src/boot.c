@@ -104,11 +104,11 @@ void hardware_setup(void)
 /* orig $01AA3C: five pointers into the data the loader brings */
 void data_pointers_init(void)
 {
-    guest.unit_scripts = guest.unit_script_data;
-    guest.cell_entry_table = (struct EntryRef *)guest.cell_entry_data;
-    guest.creature_entries = (struct CreatureEntry *)guest.creature_entry_data;
-    guest.monster_types = guest.monster_type_data;
-    guest.path_description_base = guest.path_descriptions;
+    guest.unit_scripts = guest.level_data.unit_scripts;
+    guest.cell_entry_table = guest.level_data.cell_entries;
+    guest.creature_entries = guest.level_data.creature_entries;
+    guest.monster_types = guest.level_data.monster_types;
+    guest.path_description_base = guest.level_data.path_descriptions;
 }
 
 /* orig $03A060: the memory map: each buffer of the program is a pointer into one block that begins at program_end, a buffer
@@ -174,7 +174,7 @@ void memory_map_init(void)
     p += 0x300;
     guest.message_text_block = p;
     data_pointers_init();
-    guest.hint_list = guest.hint_data;
+    guest.hint_list = guest.level_data.hint_data;
     guest.mask_buffer = (uint16_t *)(uintptr_t)0x39E50;   /* orig $03A180: the original stores the address of its own boot routine here ($39E50: the code is not needed after the start-up, the area is the mask buffer from now on; the SDL host gives it a buffer of its own) */
 }
 

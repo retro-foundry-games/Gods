@@ -152,7 +152,7 @@ void call_by_kind(int16_t kind, int16_t arg, int16_t *result)
     }
     case 11:
     case 12: {
-        int set = guest.lever_flags[(uint16_t)arg].state & 1;
+        int set = guest.level_data.lever_flags[(uint16_t)arg].state & 1;
 
         clear = kind == 11 ? !set : set;
         break;
@@ -5506,8 +5506,8 @@ static void teleport_gem(void)
         found = 1;
     }
     for (int i = 0; i < 30 && !found; i++) {
-        if (guest.teleport_gems[i * 3] == x) {
-            guest.exit_target = (uint16_t)(((int16_t)(guest.teleport_gems[i * 3 + 1] >> 5) << 8) | (uint16_t)(guest.teleport_gems[i * 3 + 2] >> 4));
+        if (guest.level_data.teleport_gems[i * 3] == x) {
+            guest.exit_target = (uint16_t)(((int16_t)(guest.level_data.teleport_gems[i * 3 + 1] >> 5) << 8) | (uint16_t)(guest.level_data.teleport_gems[i * 3 + 2] >> 4));
             found = 1;
         }
     }
@@ -10757,7 +10757,7 @@ static void use_lever(void)
         struct LeverFlag *entry = 0;
 
         for (int e = 0; e < 64; e++) {
-            struct LeverFlag *p = &guest.lever_flags[e];
+            struct LeverFlag *p = &guest.level_data.lever_flags[e];
 
             if ((((uint32_t)p->x << 16) | p->y) == place) {
                 entry = p;
@@ -12906,7 +12906,7 @@ void load_level_objects(const uint8_t *names)
  * (the kind toggled) */
 void place_pickups(void)
 {
-    const uint16_t *from = guest.level_pickups;
+    const uint16_t *from = guest.level_data.level_pickups;
     uint16_t *to = guest.pickup_entries;
 
     guest.pickups_placed = 1;
@@ -13175,8 +13175,8 @@ void make_circle_offsets(void)
 struct LeverFlag *find_flag_entry(int16_t x, int16_t y)
 {
     for (int i = 0; i < 64; i++)
-        if (guest.lever_flags[i].x == (uint16_t)x && guest.lever_flags[i].y == (uint16_t)y)
-            return &guest.lever_flags[i];
+        if (guest.level_data.lever_flags[i].x == (uint16_t)x && guest.level_data.lever_flags[i].y == (uint16_t)y)
+            return &guest.level_data.lever_flags[i];
     return 0;
 }
 
@@ -13881,7 +13881,7 @@ static void monster_types_from_disk(void)
     }
 }
 
-/* the tables of the level that the file calfils brings (7000 bytes from unit_script_data on, loaded from the disk): the entries of the cells (cell_entry_table, 253), the groups of creatures (creature_entries, 100)
+/* the tables of the level that the file calfils brings (7000 bytes from level_data on, loaded from the disk): the entries of the cells (cell_entry_table, 253), the groups of creatures (creature_entries, 100)
  * and the things on paths (path_descriptions, 25) have words, which are made the machine's own */
 static void level_tables_from_disk(void)
 {
@@ -13896,14 +13896,14 @@ static void level_tables_from_disk(void)
         file_words(&entry->template_index, 1);
     }
     for (int i = 0; i < 25; i++) {
-        struct PathDescription *description = &guest.path_descriptions[i];
+        struct PathDescription *description = &guest.level_data.path_descriptions[i];
 
         file_words(&description->x, 2);
         file_words(description->waypoint, 8);
     }
-    file_words(guest.lever_flags, 3 * 64);
-    file_words(guest.level_pickups, 60);   /* the pick-ups of the level */
-    file_words(guest.teleport_gems, 90);   /* the teleport gems */
+    file_words(guest.level_data.lever_flags, 3 * 64);
+    file_words(guest.level_data.level_pickups, 60);   /* the pick-ups of the level */
+    file_words(guest.level_data.teleport_gems, 90);   /* the teleport gems */
     for (int i = 0; i < 100; i++)   /* the scripts of the units (8 bytes each): the word that is the delay between the members */
         file_words(&((struct UnitScript *)guest.unit_scripts)[i].spacing, 1);
 }
@@ -13941,7 +13941,7 @@ void level_tables_quickload(void)
         file_words(&entry->template_index, 1);
     }
     for (int i = 0; i < 25; i++) {
-        struct PathDescription *description = &guest.path_descriptions[i];
+        struct PathDescription *description = &guest.level_data.path_descriptions[i];
 
         file_words(&description->x, 2);
         file_words(description->waypoint, 8);
@@ -13953,7 +13953,7 @@ void level_tables_quickload(void)
         file_longs(&record->state.loop, 1);
         file_words(&record->state.x, 7);
     }
-    file_words(guest.lever_flags, 3 * 64);
+    file_words(guest.level_data.lever_flags, 3 * 64);
     for (int i = 0; i < 100; i++)
         file_words(&((struct UnitScript *)guest.unit_scripts)[i].spacing, 1);
     file_words(guest.message_offsets, 40);
@@ -14056,9 +14056,9 @@ static void load_level_files(void)
     guest.level_files_read = -1;
     load_unpacked((const char *)names + NAME_ALFILS, guest.background);
     for (int i = 0; i < 7000; i++)
-        guest.unit_script_data[i] = guest.background[i];
+        ((uint8_t *)&guest.level_data)[i] = guest.background[i];
     level_tables_from_disk();
-    read_text_table_word_offsets((const uint16_t *)(guest.background + 7000), (uint16_t *)(guest.unit_script_data + 7000));
+    read_text_table_word_offsets((const uint16_t *)(guest.background + 7000), (uint16_t *)guest.level_data.hint_data);
     place_pickups();
     {
         uint32_t start = level_starts[(int16_t)(guest.param_index - 1)];

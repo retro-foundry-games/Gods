@@ -28,6 +28,7 @@ STRUCTS = {
     "Image": (8, [(0, 2), (2, 2), (4, 4)]),
     "Shot": (8, [(0, 2), (2, 2), (4, 2), (6, 2)]),
     "Voice": (148, []),
+    "LevelData": (7160, [(6000 + 2 * i, 2) for i in range(90)] + [(6180 + 2 * i, 2) for i in range(60)]),   # (the teleport gems and the pick-ups: words)
     "ShotList": (146, [(2 * i, 2) for i in range(73)]),   # (the number of the object and 18 shots of four words)
     "SoundState": (14, [(2, 4)]),   # (busy: the long the loader writes)
     "CopperListA": (84, [(6, 2)]),   # (the COLOR01 word)

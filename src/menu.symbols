@@ -30,7 +30,6 @@ marker_table      0x0001a3fc  uint32_t %s[100]   set to -1 by reset_marker_table
 record_table      0x0001a58c  struct Rec6 %s[200]   copied in by copy_record_table
 entry_table       0x0003a25e  struct Rec6 %s[50]   cleared by clear_entry_table
 table creature_templates 0x0001c698 struct CreatureTemplate 51   what a group is: its draw kind, move and step routines and its box (the pointers of table_1c678 point into it)
-path_descriptions 0x0001c302 struct PathDescription %s[25]   the things that move along a path: where they start, their picture, their waypoints (loaded from the disk with the level)
 table clip_rectangles 0x00000128 uint16_t 6   the clip rectangles of image_draw_clipped (x0, x1, y0, y1: the whole screen; a negative x0 ends the list)
 table param_table  0x000029da uint16_t 24   four rows of 12 bytes (two longs, two words) that select_params takes
 table offsets_4cba 0x00004cba uint8_t 132   signed bytes that build_thing_kinds puts in the table
@@ -145,15 +144,10 @@ voice             0x0002034c  struct Voice %s[4]   the four voices of the sound 
 voice_buffers     0x0002061c  uint8_t %s[]      a buffer of 128 bytes for each voice
 sound_lock        0x0002079c  uint8_t %s        $FF while the sound system is being set up
 creature_types      0x000199ac  uint8_t %s[]      records of 36 bytes whose first long is a pointer (these are 140 bytes apart)     records of 36 bytes whose first long is a pointer (set up at the start)
-unit_script_data        0x0001aa66  uint8_t %s[]
-cell_entry_data        0x0001ad8a  uint8_t %s[]
-creature_entry_data        0x0001b17e  uint8_t %s[]
-monster_type_data        0x0001b7be  uint8_t %s[]
 loading_text      0x0001d3f4  uint8_t %s[]      "loading game please wait"
 palette_words     0x00000134  uint16_t %s[16]   the sixteen colours of the picture assets_load read last
 first_asset_name  0x000196d6  char %s[]         "always": the name of the first asset set
 table keymap      0x0001e5ae uint8_t 128   the character a raw key code gives (0 when none)
-hint_data        0x0001c5be  uint8_t %s[]
 copper_save_second          0x00000e58  uint8_t *%s
 random_seed       0x0001d0aa  uint16_t %s       the seed of the program's random numbers (a word in the code)
 scroll_ease_phase         0x0000037c  uint16_t %s
@@ -489,7 +483,6 @@ orig_hint_message          0x00010976  void %s(void)  game_d: the pick-up handle
 pickup_glyph          0x0000026a  uint16_t %s    game_d: the glyph the pick-ups of pickup_spots are drawn with (sprite, two words wide)
 table mask_table    0x00017380 uint16_t 32   draw: the masks of the screen edges, two words for each shift (16 less the shift, times two): the first-word mask of a right edge, the first-word mask of a left edge
 bonus_score_bcd           0x00000346  uint16_t %s[4]  the number call_by_kind makes of five thousand times its argument, a BCD byte a word, the low digits first
-lever_flags       0x0001c056  struct LeverFlag %s[64]   the switches of the level (loaded data); bit 0 of the state is a flag call_by_kind tests
 last_drop         0x0000034e  int16_t %s[3]   x, y and number of the last thing dropped (then last_drop_frame is cleared)
 finish_mark_count          0x00000314  int16_t %s      how many marks kind 6 of finish_script_record has made
 level_creature_templates          0x00000b7e  uint8_t *%s
@@ -572,8 +565,6 @@ shard_records      0x0000737e  uint32_t %s[20]   ten records of two longs
 face_bolt_records      0x00007544  int16_t %s[210]   forty-two records of 10 bytes
 crumble_table       0x0001a30c  uint16_t %s[120]  forty records of 6 bytes
 bolt_records     0x0001a154  struct Bolt %s[20]   twenty records of 22 bytes
-teleport_gems       0x0001c1d6  int16_t %s[90]   thirty entries of three words (the gem's x, and two words that say where it sends the player) of the level (loaded data)
-level_pickups       0x0001c28a  uint16_t %s[60]   twenty entries of three words (x, y, kind) of the level's pick-ups
 pickup_entries       0x00019456  uint16_t %s[60]   ... copied by place_pickups
 circle_offsets        0x0000fbf2  uint8_t %s[64]    thirty-two pairs of bytes made by make_circle_offsets
 standing_pictures        0x00007a6e  uint16_t %s[4]
@@ -635,3 +626,4 @@ sound_sample_data 0x00021e5e  uint8_t %s[98290]   the 8 bit samples of the instr
 video_address_high 0x00ff8207 volatile uint8_t %s   the Atari ST's video address register (high byte): the game reads it as the seed of its random numbers; the Amiga has no such address
 video_address_low  0x00ff8209 volatile uint8_t %s   ... and the low byte
 copper_list_end    0x00005246 uint16_t %s[1]   where the search for COLOR01 in a copper list ends
+level_data        0x0001aa66  struct LevelData %s   the tables of the level (the file alfils): the scripts, the entries of the cells, the creatures, the monsters, the levers, the teleport gems, the pick-ups, the paths and the hints' text table
