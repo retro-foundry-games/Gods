@@ -24,7 +24,6 @@
 
 extern void menu_boot(void);    /* boot.c: the start-up (orig $039E50) */
 extern void menu_start(void);   /* menu.c: the menu (orig $006388) */
-#include "guest_vars.h"
 extern void sr_set(uint16_t value);
 extern void host_begin_quest(void);   /* shims.c: the menu's Begin Quest */
 void intro_render(uint32_t *pixels);   /* intro_view.c */
@@ -45,7 +44,7 @@ static void *menu_program(void *unused)
 {
     (void)unused;
     menu_boot();
-    mask_buffer = (uint8_t *)0x39e50;   /* the area of the original's boot code: a buffer now */
+    guest_set_mask_buffer();   /* the area of the original's boot code: a buffer now */
     for (;;)
         menu_start();   /* a menu line that starts the game comes back here when the game is not there */
     return 0;
@@ -77,7 +76,7 @@ static void start_phase(int phase)
     if (phase != PHASE_INTRO) {
         if (files_load_menu_image() != 0)
             exit(1);
-        heap_base = 0x80400;   /* the memory the program hands out (the boot block leaves it in the vector slot at $2C) */
+        guest_set_heap();   /* the memory the program hands out (the boot block leaves it in the vector slot at $2C) */
         entry = phase == PHASE_LEVEL ? level_program : menu_program;
     }
     pthread_create(&program_thread, 0, entry, 0);

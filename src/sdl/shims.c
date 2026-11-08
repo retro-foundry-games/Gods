@@ -16,25 +16,25 @@
 void message_draw(void)
 {
     static const uint8_t empty[1] = { 0 };
-    const uint8_t *text = message_text ? message_text : empty;
+    const uint8_t *text = guest.message_text ? guest.message_text : empty;
     int16_t length = 0;
 
     while (*text++ != 0)
         length++;
-    message_wide = -1;
+    guest.message_wide = -1;
 
     int16_t start = (40 - length) >> 1;
 
-    message_x = start - 8;
+    guest.message_x = start - 8;
     if (start < 0) {
         start = 0;
-        message_x = 0;
-        message_wide = 320;
+        guest.message_x = 0;
+        guest.message_wide = 320;
         length = 40;
     }
-    uint8_t *to = (uint8_t *)work_area + 40 + start;
+    uint8_t *to = (uint8_t *)guest.work_area + 40 + start;
 
-    text = message_text ? message_text : empty;
+    text = guest.message_text ? guest.message_text : empty;
     for (int i = 0; i < length; i++) {
         const uint8_t *glyph = font_8x8 + (*text++ << 3);
 
@@ -47,17 +47,17 @@ void message_draw(void)
         }
         to++;
     }
-    message_shown = 1;
-    message_words[8] = 0x0320;
-    message_words[9] = 0x0532;
-    message_words[10] = 0x0754;
-    message_words[11] = 0x0765;
-    message_words[0] = message_words[4];
-    message_words[1] = message_words[5];
-    message_words[2] = message_words[6];
-    message_words[3] = message_words[7];
-    message_state = -1;
-    message_timer = 10;
+    guest.message_shown = 1;
+    guest.message_words[8] = 0x0320;
+    guest.message_words[9] = 0x0532;
+    guest.message_words[10] = 0x0754;
+    guest.message_words[11] = 0x0765;
+    guest.message_words[0] = guest.message_words[4];
+    guest.message_words[1] = guest.message_words[5];
+    guest.message_words[2] = guest.message_words[6];
+    guest.message_words[3] = guest.message_words[7];
+    guest.message_state = -1;
+    guest.message_timer = 10;
 }
 
 /* the Amiga's game_loop is the original's loop at $2C20 sent to game_frame (begin_quest ends by entering it): on the host it is the
@@ -289,7 +289,7 @@ int16_t host_start_level(void)
 
 void host_iteration_mark(void)
 {
-    iteration_mark = vbl_count;
+    iteration_mark = guest.vbl_count;
 }
 
 /* the drawing and moving of a frame of the game takes the original's CPU about two video frames, so a frame that is not held back by the wait for the last flip (the first
@@ -321,7 +321,7 @@ void host_iteration_cpu(unsigned frames)
         frames = iteration_cpu_next;
         iteration_cpu_next = 0;
     }
-    while ((uint16_t)(vbl_count - iteration_mark) < frames)
+    while ((uint16_t)(guest.vbl_count - iteration_mark) < frames)
         wait_vblank();
 }
 
@@ -343,12 +343,12 @@ void host_missing_routine(uint32_t address)
  * it and asks for the message "LOADING" (message_request 5), held for the load by tick_hold_26c */
 void host_file_read_message(void)
 {
-    if (!tick_hold_38a)
+    if (!guest.tick_hold_38a)
         return;
-    tick_hold_38a = 0;
-    message_arg = 0;
-    message_shown = 0;
-    tick_hold_26c = 1;
-    message_next = (const uint8_t *)loading_text;
+    guest.tick_hold_38a = 0;
+    guest.message_arg = 0;
+    guest.message_shown = 0;
+    guest.tick_hold_26c = 1;
+    guest.message_next = (const uint8_t *)guest.loading_text;
     message_request(5);
 }

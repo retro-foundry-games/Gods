@@ -1,16 +1,12 @@
 /* Gods on the host (SDL port): what amiga/platform.h does on the Amiga.  The program's memory is at the Amiga's addresses (the
- * first 64 KiB are LOW_BASE higher: Linux does not map them), the custom chips and the CIAs are pages of plain memory at
- * their addresses, and the blitter runs when it is started. */
+ * block is struct Guest), the custom chips and the CIAs are objects of plain memory, and the blitter runs when it is started. */
 #ifndef GODS_SDL_PLATFORM_H
 #define GODS_SDL_PLATFORM_H
 
 #include <stdint.h>
 
-#define GODS_LOW_BASE 0x01000000u
-#define GODS_LOW_LIMIT 0x10000u
-
-/* an address of the program's memory as a pointer's value */
-#define GUEST(address) ((uintptr_t)(address) < GODS_LOW_LIMIT ? (uintptr_t)(address) + GODS_LOW_BASE : (uintptr_t)(address))
+/* an address of the program's memory (struct Guest, guest_struct.h: its variables at the offsets of their original addresses, and its heap) as a pointer's value */
+#define GUEST(address) ((uintptr_t)&guest + (uintptr_t)(address))
 
 void host_blitter_not_emulated(void);   /* display.c: the chip's blitter is not emulated: the program's routines that program its registers are replaced by C (said once on stderr if one is reached) */
 

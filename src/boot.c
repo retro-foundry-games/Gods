@@ -14,8 +14,8 @@ void jump_with_stack(void (*address)(void), uint8_t *stack);
 /* orig $039FA6: the two screens and the display registers: 320 x 192, four bitplanes */
 void display_setup(void)
 {
-    screen_buffer = screen_1;
-    screen_other = screen_2;
+    guest.screen_buffer = guest.screen_1;
+    guest.screen_other = guest.screen_2;
     custom->bplcon0 = 0x4200;
     custom->diwstrt = 0x3c81;
     custom->diwstop = 0x04c1;
@@ -27,10 +27,10 @@ void display_setup(void)
  * four audio channels are set to play a short silent buffer; then the sound DMA is off until a sound is played */
 void sound_init(void)
 {
-    uint32_t *state = (uint32_t *)voice;
+    uint32_t *state = (uint32_t *)guest.voice;
     uint8_t *silence = (uint8_t *)GUEST(0x21e5e);   /* the silent sample, in the data the loader brings */
 
-    sound_lock = 0xff;
+    guest.sound_lock = 0xff;
     CIAA_PRA |= 0x02;
     *(uint32_t *)GUEST(0x2079e) = 0;
     *(uint16_t *)GUEST(0x207a2) = 0;
@@ -43,29 +43,29 @@ void sound_init(void)
     for (int i = 0; i < 277; i++)   /* the voices and the state after them */
         state[i] = 0;
     for (int i = 0; i < 4; i++)
-        voice[i].number = i;
+        guest.voice[i].number = i;
     for (int i = 0; i < 4; i++) {
         custom->aud[i].vol = 0;
         custom->aud[i].len = 1;
         custom->aud[i].per = 1;
-        voice[i].sample_a = silence;
-        voice[i].sample_b = silence;
+        guest.voice[i].sample_a = silence;
+        guest.voice[i].sample_b = silence;
         custom->aud[i].lc = ADDR(silence);
-        voice[i].field_28 = 8;
+        guest.voice[i].field_28 = 8;
         custom->aud[i].len = 8;
-        voice[i].field_e = 2;
+        guest.voice[i].field_e = 2;
         custom->aud[i].per = 0x100;
     }
     custom->dmacon = 0x000f;
     for (int i = 0; i < 4; i++) {
-        voice[i].buffer = voice_buffers + 0x80 * i;
-        voice[i].channel = (struct AudioChannel *)&custom->aud[i];
-        voice[i].dma_bit = 1 << i;
-        voice[i].dma_on = 0x8000 | (1 << i);
-        voice[i].int_bit = 0x80 << i;
-        voice[i].int_on = 0x8000 | (0x80 << i);
+        guest.voice[i].buffer = guest.voice_buffers + 0x80 * i;
+        guest.voice[i].channel = (struct AudioChannel *)&custom->aud[i];
+        guest.voice[i].dma_bit = 1 << i;
+        guest.voice[i].dma_on = 0x8000 | (1 << i);
+        guest.voice[i].int_bit = 0x80 << i;
+        guest.voice[i].int_on = 0x8000 | (0x80 << i);
     }
-    *(uint16_t *)&sound_lock = 0;
+    *(uint16_t *)&guest.sound_lock = 0;
 }
 
 /* orig $039FDC: the colours are black, the interrupt vectors are set (keyboard, vertical blank, audio), the sound is set up,
@@ -88,8 +88,8 @@ void chips_setup(void)
     custom->adkcon = 0x9500;
     custom->intena = 0x3fd7;
     custom->intena = 0xc028;
-    *(volatile uint8_t *)GUEST(0xbfdd00) = 0x6f;   /* CIA B: the interrupts of the disk index and the others off, then the one on */
-    *(volatile uint8_t *)GUEST(0xbfdd00) = 0x90;
+    CIAB_ICR = 0x6f;   /* CIA B: the interrupts of the disk index and the others off, then the one on */
+    CIAB_ICR = 0x90;
     sr_set(0x2000);
 }
 
@@ -103,92 +103,92 @@ void hardware_setup(void)
 /* orig $01AA3C: five pointers into the data the loader brings */
 void data_pointers_init(void)
 {
-    ptr_0cb2 = data_1aa66;
-    ptr_0cbe = (struct EntryRef *)data_1ad8a;
-    ptr_0d0e = (struct CreatureEntry *)data_1b17e;
-    ptr_0ce6 = data_1b7be;
-    ptr_0c9a = path_descriptions;
+    guest.ptr_0cb2 = guest.data_1aa66;
+    guest.ptr_0cbe = (struct EntryRef *)guest.data_1ad8a;
+    guest.ptr_0d0e = (struct CreatureEntry *)guest.data_1b17e;
+    guest.ptr_0ce6 = guest.data_1b7be;
+    guest.ptr_0c9a = guest.path_descriptions;
 }
 
 /* orig $03A060: the memory map: each buffer of the program is a pointer into one block that begins at program_end, a buffer
  * after the other, and the pointers are kept in these variables */
 void memory_map_init(void)
 {
-    uint8_t *p = program_end + 0x300;
+    uint8_t *p = guest.program_end + 0x300;
 
-    stack_top = p;
+    guest.stack_top = p;
     p += 0x32;
-    asset_memory = p;
+    guest.asset_memory = p;
     p += 0x21d68;
-    ptr_0b5a = p;
-    line_text = p;
+    guest.ptr_0b5a = p;
+    guest.line_text = p;
     p += 0x640;
-    ptr_0b5e = p;
-    ptr_03ac = p;
+    guest.ptr_0b5e = p;
+    guest.ptr_03ac = p;
     p += 0x190;
-    asset_directory = p;
-    ptr_0b52 = p;
+    guest.asset_directory = p;
+    guest.ptr_0b52 = p;
     p += 0x960;
-    memory_base = p;
-    background = p;
+    guest.memory_base = p;
+    guest.background = p;
     p += 0x8500;
-    entry_list = (struct Entry8 *)p;
+    guest.entry_list = (struct Entry8 *)p;
     p += 0x1518;
-    ptr_0e4c = p;
-    copper_save = (uint16_t *)p;
+    guest.ptr_0e4c = p;
+    guest.copper_save = (uint16_t *)p;
     p += 0xc8;
-    ptr_0cee = p;
+    guest.ptr_0cee = p;
     p += 0x960;
-    *(uint32_t *)table_199ac = (uint32_t)(uintptr_t)p;
+    *(uint32_t *)guest.table_199ac = (uint32_t)(uintptr_t)p;
     p += 0x578;
-    ptr_0cc6 = p;
+    guest.ptr_0cc6 = p;
     p += 0x200;
-    image_table = (struct Image *)p;
+    guest.image_table = (struct Image *)p;
     p += 0x1450;
-    work_area = (uint32_t *)p;
+    guest.work_area = (uint32_t *)p;
     clear_work_area();
     *(uint16_t *)GUEST(0x5258) = (uint16_t)(uintptr_t)p;          /* the copper list's bitplane pointer for the message: the work area */
     *(uint16_t *)GUEST(0x5254) = (uint16_t)((uintptr_t)p >> 16);
     p += 0x140;
-    ptr_0b86 = p;
+    guest.ptr_0b86 = p;
     p += 0x4000;
-    ptr_0cc2 = p;
+    guest.ptr_0cc2 = p;
     p += 0x200;
-    ptr_0cda = p;
+    guest.ptr_0cda = p;
     p += 0xc0;
-    ptr_0cfa[0] = p;
+    guest.ptr_0cfa[0] = p;
     p += 0x3e8;
-    buffer_cb6 = (struct ScriptRecord *)p;
+    guest.buffer_cb6 = (struct ScriptRecord *)p;
     p += 0x960;
-    ptr_0cba = p;
+    guest.ptr_0cba = p;
     p += 0x50;
-    ptr_0bce = p;
+    guest.ptr_0bce = p;
     p += 0xa;
-    ptr_0cce = p;
+    guest.ptr_0cce = p;
     p += 0xa0;
-    ptr_0c9e = (struct PathRecord *)p;
+    guest.ptr_0c9e = (struct PathRecord *)p;
     p += 0x258;
-    ptr_0bb2 = p;
-    ptr_0e44 = p;
+    guest.ptr_0bb2 = p;
+    guest.ptr_0e44 = p;
     p += 0x300;
-    ptr_0e5c = p;
+    guest.ptr_0e5c = p;
     data_pointers_init();
-    ptr_0cf2 = data_1c5be;
-    restart_address = (uint8_t *)(uintptr_t)menu_boot;
+    guest.ptr_0cf2 = guest.data_1c5be;
+    guest.restart_address = (uint8_t *)(uintptr_t)menu_boot;
 }
 
 /* orig $01F5C4: the state of the two screens starts again: the first has the saved colours' buffer, the second the buffer e58 points to */
 void display_state_reset(void)
 {
-    uint32_t first = (uint32_t)(uintptr_t)copper_save;
-    uint32_t second = (uint32_t)(uintptr_t)ptr_0e58;
+    uint32_t first = (uint32_t)(uintptr_t)guest.copper_save;
+    uint32_t second = (uint32_t)(uintptr_t)guest.ptr_0e58;
 
-    buffer_state[0].w[2] = 0;
-    buffer_state[0].w[0] = first >> 16;
-    buffer_state[0].w[1] = (uint16_t)first;
-    buffer_state[1].w[2] = 0;
-    buffer_state[1].w[0] = second >> 16;
-    buffer_state[1].w[1] = (uint16_t)second;
+    guest.buffer_state[0].w[2] = 0;
+    guest.buffer_state[0].w[0] = first >> 16;
+    guest.buffer_state[0].w[1] = (uint16_t)first;
+    guest.buffer_state[1].w[2] = 0;
+    guest.buffer_state[1].w[0] = second >> 16;
+    guest.buffer_state[1].w[1] = (uint16_t)second;
 }
 
 /* orig $039E50: the start.  The chips, the memory map and the sound are set up (the original moves the stack to stack_top here;
@@ -198,54 +198,54 @@ void display_state_reset(void)
 void menu_boot(void)
 {
     custom->dmacon = 0x7fff;
-    message_shown = 0;
-    word_037c = 0;
-    message_arg = 0;
-    message_current = 0;
-    word_5418 = 0;
-    tick_count = 0;
-    word_0240 = 0;
-    sound_enabled = 0;
-    screen_prepared = 0;
-    frame_wait = 2;
-    asset_flag = -1;
-    word_0248 = 1;
+    guest.message_shown = 0;
+    guest.word_037c = 0;
+    guest.message_arg = 0;
+    guest.message_current = 0;
+    guest.word_5418 = 0;
+    guest.tick_count = 0;
+    guest.word_0240 = 0;
+    guest.sound_enabled = 0;
+    guest.screen_prepared = 0;
+    guest.frame_wait = 2;
+    guest.asset_flag = -1;
+    guest.word_0248 = 1;
     play_sound(0, 0);
     hardware_setup();
     memory_map_init();
     display_state_reset();
-    random_seed = 0x1234;
+    guest.random_seed = 0x1234;
     screens_flip();
     screens_flip();
-    message_next = loading_text;
-    tick_hold_26c = 1;
+    guest.message_next = guest.loading_text;
+    guest.tick_hold_26c = 1;
     message_request(20);
 
     for (int k = 1; k <= 4; k++)
-        ptr_0cfa[k] = ptr_0cfa[k - 1] + 0xc8;
+        guest.ptr_0cfa[k] = guest.ptr_0cfa[k - 1] + 0xc8;
     for (int k = 1; k <= 9; k++)
-        *(uint32_t *)(table_199ac + 0x24 * k) = *(uint32_t *)table_199ac + 0x8c * k;
-    param_index = 0;
-    word_025c = 0;
-    word_0266 = 0;
-    word_0384 = 0;
-    menu_active = 0;
-    has_continue = 0;
-    param_index = 1;
-    flags_0ddd |= 0x10;
-    asset_flag = -1;
-    assets_load(first_asset_name, palette_words, asset_memory, (struct AssetEntry *)image_table);
-    asset_end_28ec = asset_mem_end;
-    asset_table_28f0 = (uint8_t *)asset_table_end;
-    asset_end_0ca2 = asset_mem_end;
-    asset_table_0ca6 = (uint8_t *)asset_table_end;
-    word_28ea = 0;
+        *(uint32_t *)(guest.table_199ac + 0x24 * k) = *(uint32_t *)guest.table_199ac + 0x8c * k;
+    guest.param_index = 0;
+    guest.word_025c = 0;
+    guest.word_0266 = 0;
+    guest.word_0384 = 0;
+    guest.menu_active = 0;
+    guest.has_continue = 0;
+    guest.param_index = 1;
+    guest.flags_0ddd |= 0x10;
+    guest.asset_flag = -1;
+    assets_load(guest.first_asset_name, guest.palette_words, guest.asset_memory, (struct AssetEntry *)guest.image_table);
+    guest.asset_end_28ec = guest.asset_mem_end;
+    guest.asset_table_28f0 = (uint8_t *)guest.asset_table_end;
+    guest.asset_end_0ca2 = guest.asset_mem_end;
+    guest.asset_table_0ca6 = (uint8_t *)guest.asset_table_end;
+    guest.word_28ea = 0;
 
     /* the memory end is moved back to the start of the last sprite's data */
-    uint8_t *last = (uint8_t *)(uintptr_t)((uint32_t *)asset_table_end)[-1];
+    uint8_t *last = (uint8_t *)(uintptr_t)((uint32_t *)guest.asset_table_end)[-1];
 
-    asset_mem_end = last;
-    asset_end_28ec = asset_mem_end;
+    guest.asset_mem_end = last;
+    guest.asset_end_28ec = guest.asset_mem_end;
 }
 
 /* orig $000084: the entry of the menu program (the loader has put its image in memory and runs this): the start-up in C, then the
@@ -254,11 +254,11 @@ void menu_boot(void)
 void menu_entry(void)
 {
     menu_boot();
-    menu_start_code[0] = 0x4e;   /* jmp menu_start */
-    menu_start_code[1] = 0xf9;
-    menu_start_code[2] = (uint8_t)((uintptr_t)menu_start >> 24);
-    menu_start_code[3] = (uint8_t)((uintptr_t)menu_start >> 16);
-    menu_start_code[4] = (uint8_t)((uintptr_t)menu_start >> 8);
-    menu_start_code[5] = (uint8_t)(uintptr_t)menu_start;
-    jump_with_stack(original_start, stack_top);
+    guest.menu_start_code[0] = 0x4e;   /* jmp menu_start */
+    guest.menu_start_code[1] = 0xf9;
+    guest.menu_start_code[2] = (uint8_t)((uintptr_t)menu_start >> 24);
+    guest.menu_start_code[3] = (uint8_t)((uintptr_t)menu_start >> 16);
+    guest.menu_start_code[4] = (uint8_t)((uintptr_t)menu_start >> 8);
+    guest.menu_start_code[5] = (uint8_t)(uintptr_t)menu_start;
+    jump_with_stack(original_start, guest.stack_top);
 }

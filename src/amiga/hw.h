@@ -53,7 +53,13 @@ _Static_assert(offsetof(struct Custom, sprpt) == 0x120, "custom layout");
 _Static_assert(offsetof(struct Custom, spr) == 0x140, "custom layout");
 _Static_assert(offsetof(struct Custom, color) == 0x180, "custom layout");
 
+#ifdef GODS_SDL   /* the host builds: the chips' registers are objects (sdl/guest.c), not pages at the Amiga's addresses */
+extern volatile uint8_t host_custom_raw[0x1000];
+extern volatile uint8_t host_cia_raw[0x2000];   /* the CIAs: $BFD000 on */
+#define custom ((volatile struct Custom *)host_custom_raw)
+#else
 #define custom ((volatile struct Custom *)0xdff000)
+#endif
 #define ADDR(p) ((uint32_t)(uintptr_t)(p))   /* a pointer as the chip wants it: a 32-bit address */
 
 #define DMAF_SETCLR 0x8000
@@ -62,7 +68,13 @@ _Static_assert(offsetof(struct Custom, color) == 0x180, "custom layout");
 
 
 
+#ifdef GODS_SDL
+#define CIAA_PRA (host_cia_raw[0x1001])   /* $BFE001 */
+#define CIAB_ICR (host_cia_raw[0x0d00])   /* $BFDD00 */
+#else
 #define CIAA_PRA (*(volatile uint8_t *)0xbfe001)   /* bits 6 and 7: the two fire buttons, 0 when pressed */
+#define CIAB_ICR (*(volatile uint8_t *)0xbfdd00)   /* the interrupt control of CIA B */
+#endif
 
 #ifdef GODS_SDL
 #include "sdl_platform.h"   /* the SDL port (sdl/): the chips are emulated in C */

@@ -26,7 +26,7 @@ static int unpack_swaps;   /* the words of what unpack() makes are made native: 
 static uint32_t disk_size[2];
 static char scores_path[1100];   /* the port's own high score file: hiscores.bin in the working folder */
 
-#include "guest_vars.h"
+#include "menu_symbols.h"
 
 static uint8_t *slurp(const char *path, uint32_t *size)
 {
@@ -162,7 +162,7 @@ extern void host_file_read_message(void);
  * read clears it and asks for the message "LOADING" (the message is held for the load: tick_hold_26c) */
 int32_t file_read(const char *name, void *dest)
 {
-    int wanted = disk_digit == '2' ? 1 : 0;
+    int wanted = guest.disk_digit == '2' ? 1 : 0;
 
     host_file_read_message();   /* (shims.c: the game's side of the $01D58A part) */
 
@@ -176,7 +176,7 @@ void scores_save(void)
 
     if (scores_path[0] == 0)
         return;
-    memcpy(out, record_text, sizeof out);
+    memcpy(out, guest.record_text, sizeof out);
     for (uint32_t i = 0; i < 14; i++) {   /* the longs are native in the program's memory: back to the file's byte order (the swap of files_read) */
         uint8_t *p = out + (i < 10 ? 16 + 20 * i : 200 + 4 * (i - 10));
         uint8_t t = p[0];

@@ -4,11 +4,11 @@
 /* orig $016DF8: show the next message: it starts as the current one, and its colours begin to fade in (message_arg is kept) */
 void message_start(uint16_t arg)
 {
-    if (message_state <= 0)
-        message_state = 1;
-    message_current = message_next;
-    message_arg = arg;
-    message_timer = 10;
+    if (guest.message_state <= 0)
+        guest.message_state = 1;
+    guest.message_current = guest.message_next;
+    guest.message_arg = arg;
+    guest.message_timer = 10;
 }
 
 
@@ -16,25 +16,25 @@ void message_start(uint16_t arg)
 void message_draw(void)
 {
 
-    const uint8_t *text = message_text;
+    const uint8_t *text = guest.message_text;
     int16_t length = 0;
 
     while (*text++ != 0)
         length++;
-    message_wide = -1;
+    guest.message_wide = -1;
 
     int16_t start = (40 - length) >> 1;
 
-    message_x = start - 8;
+    guest.message_x = start - 8;
     if (start < 0) {
         start = 0;
-        message_x = 0;
-        message_wide = 320;
+        guest.message_x = 0;
+        guest.message_wide = 320;
         length = 40;
     }
-    uint8_t *to = (uint8_t *)work_area + 40 + start;
+    uint8_t *to = (uint8_t *)guest.work_area + 40 + start;
 
-    text = message_text;
+    text = guest.message_text;
     for (int i = 0; i < length; i++) {
         const uint8_t *glyph = font_8x8 + (*text++ << 3);
 
@@ -42,27 +42,27 @@ void message_draw(void)
             to[40 * row] = glyph[row];
         to++;
     }
-    message_shown = 1;
-    message_words[8] = 0x0320;
-    message_words[9] = 0x0532;
-    message_words[10] = 0x0754;
-    message_words[11] = 0x0765;
-    message_words[0] = message_words[4];
-    message_words[1] = message_words[5];
-    message_words[2] = message_words[6];
-    message_words[3] = message_words[7];
-    message_state = -1;
-    message_timer = 10;
+    guest.message_shown = 1;
+    guest.message_words[8] = 0x0320;
+    guest.message_words[9] = 0x0532;
+    guest.message_words[10] = 0x0754;
+    guest.message_words[11] = 0x0765;
+    guest.message_words[0] = guest.message_words[4];
+    guest.message_words[1] = guest.message_words[5];
+    guest.message_words[2] = guest.message_words[6];
+    guest.message_words[3] = guest.message_words[7];
+    guest.message_state = -1;
+    guest.message_timer = 10;
 }
 
 /* orig $016E42: one frame of the message.  Fading out (state 1) the four colours go down; when they are gone the text that was
  * waiting is drawn in the work area, 40 characters at most, centred, and the colours fade in again (state -1) */
 void message_tick(void)
 {
-    if (message_state == 0)
+    if (guest.message_state == 0)
         return;
 
-    if (message_state > 0) {
+    if (guest.message_state > 0) {
         int16_t floor_green = 32;
 
         for (int i = 0; i < 4; i++) {
@@ -84,16 +84,16 @@ void message_tick(void)
             *a = *b = blue | green | red;
             floor_green += 32;
         }
-        if (--message_timer >= 0)
+        if (--guest.message_timer >= 0)
             return;
 
-        message_state = 0;
-        message_shown = 0;
-        message_wide = 0;
+        guest.message_state = 0;
+        guest.message_shown = 0;
+        guest.message_wide = 0;
         clear_work_area();
         do_nothing();
-        message_text = message_current;
-        message_current = 0;
+        guest.message_text = guest.message_current;
+        guest.message_current = 0;
         message_draw();
         return;
     }
@@ -101,7 +101,7 @@ void message_tick(void)
     for (int i = 0; i < 4; i++) {
         uint16_t *a = (uint16_t *)(uintptr_t)message_pairs[2 * i] + 1;
         uint16_t *b = (uint16_t *)(uintptr_t)message_pairs[2 * i + 1] + 1;
-        uint16_t want = message_words[8 + i] << 1;
+        uint16_t want = guest.message_words[8 + i] << 1;
         int16_t blue = *a & 0x00f;
         int16_t green = *a & 0x0f0;
         int16_t red = *a & 0xf00;
@@ -116,9 +116,9 @@ void message_tick(void)
             red += 512;
         *a = *b = blue | green | red;
     }
-    if (--message_timer < 0) {   /* the colours are all the way in: the message stays for 50 frames of the game's tick */
-        message_state = 0;
-        message_hold = 50;
+    if (--guest.message_timer < 0) {   /* the colours are all the way in: the message stays for 50 frames of the game's tick */
+        guest.message_state = 0;
+        guest.message_hold = 50;
     }
 }
 
@@ -127,18 +127,18 @@ void message_tick(void)
  * 0 when nothing was done.  While tick_hold_38a is set (the shop, and the loading of a world) the shop's request is the one that runs */
 uint16_t message_request(int16_t priority)
 {
-    if (tick_hold_38a)
+    if (guest.tick_hold_38a)
         return shop_message_request(priority);
-    if (priority < (int16_t)message_arg)
+    if (priority < (int16_t)guest.message_arg)
         return 0;
-    if (message_shown) {
-        if (message_state != 0) {
+    if (guest.message_shown) {
+        if (guest.message_state != 0) {
             message_start(priority);
             return 1;
         }
         static const uint8_t no_text[1] = { 0 };   /* (no text on show: address 0, which on the Amiga is memory that reads as an empty string) */
-        const uint8_t *next = message_next;
-        const uint8_t *shown = message_text ? message_text : no_text;
+        const uint8_t *next = guest.message_next;
+        const uint8_t *shown = guest.message_text ? guest.message_text : no_text;
 
         for (;;) {
             uint8_t ch = *next++;
@@ -151,17 +151,17 @@ uint16_t message_request(int16_t priority)
         message_start(priority);
         return 1;
     }
-    message_arg = priority;
-    message_text = message_next;
-    message_wide = 0;
+    guest.message_arg = priority;
+    guest.message_text = guest.message_next;
+    guest.message_wide = 0;
     clear_work_area();
-    message_words[8] = 0x0320;
-    message_words[9] = 0x0532;
-    message_words[10] = 0x0754;
-    message_words[11] = 0x0765;
-    message_state = -1;
-    message_timer = 10;
-    message_shown = 1;
+    guest.message_words[8] = 0x0320;
+    guest.message_words[9] = 0x0532;
+    guest.message_words[10] = 0x0754;
+    guest.message_words[11] = 0x0765;
+    guest.message_state = -1;
+    guest.message_timer = 10;
+    guest.message_shown = 1;
     message_draw();
     return 1;
 }

@@ -6,19 +6,19 @@
  * the second.  The 16-bit additions are the original's: only the low word of the address takes the carry. */
 void alloc_init(void)
 {
-    uint32_t base = heap_base;
+    uint32_t base = guest.heap_base;
     uint32_t *second;
     int i;
 
-    mem_lists.a_tail = base;
-    mem_lists.a_head = base;
+    guest.mem_lists.a_tail = base;
+    guest.mem_lists.a_head = base;
     *(uint32_t *)base = 0;
     base = (base & 0xffff0000) | ((base + 0x800) & 0xffff);
-    mem_lists.b_tail = base;
-    mem_lists.b_head = base;
+    guest.mem_lists.b_tail = base;
+    guest.mem_lists.b_head = base;
     second = (uint32_t *)base;
     base = (base & 0xffff0000) | ((base + 0x800) & 0xffff);
-    mem_lists.end = base;
+    guest.mem_lists.end = base;
     for (i = 0; i < 0x200; i++)
         *second++ = 0;
 }

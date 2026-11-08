@@ -1,11 +1,9 @@
-/* Gods SDL port: the guest memory and the chips' register pages.
+/* Gods SDL port: the guest memory and the chips' registers.
  *
- * The program keeps its variables at the Amiga's addresses (the symbols of guest.ld, made by gen_guest.py).  Here that memory is
- * mapped at the same addresses (the first 64 KiB are GUEST_LOW_BASE higher: Linux does not let a program map them), the pages
- * of the custom chips and the CIAs are mapped, and the memory the loader brings is made: the tables of data.c are copied
- * in, and the menu program's image (the file bm.2 of disk 1, unpacked to address $84) is copied in except where a table is (those
- * are native C data; the image has the Amiga's big-endian bytes).  The few words and longs of the image that the program reads
- * as native ones (the copper lists, the message colours) are made native here. */
+ * The program's memory is one block, struct Guest (guest_struct.h): its variables are members at the offsets of the Amiga's addresses, and its end is the heap the program hands out.  The registers of the custom chips
+ * and of the CIAs are objects of their own.  Here the memory the loader brings is made: the tables of data.c are copied in at their offsets, and the menu program's image (the file bm.2 of disk 1, unpacked) is copied in
+ * except where a table is (those are native C data; the image has the Amiga's big-endian bytes).  The few words and longs of the image that the program reads as native ones (the copper lists, the message colours) are made
+ * native here, and the addresses in it (the pointers) are made the block's own. */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,34 +12,36 @@
 #include <sys/mman.h>
 #endif
 
+#include "menu_symbols.h"
 #include "guest.h"
 #include "guest_tables.h"
 #include "guest_fixups.h"
 
 #define IMAGE_BASE 0x84u
 
-#ifdef __EMSCRIPTEN__
-/* the browser build: the memory is one linear memory (the program is linked above the addresses of the original's memory, see Makefile.web): nothing is mapped */
-static void map_page(uintptr_t address, size_t size)
-{
-    (void)address;
-    (void)size;
-}
-#else
-static void map_page(uintptr_t address, size_t size)
-{
-    void *p = mmap((void *)address, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
-
-    if (p != (void *)address) {
-        fprintf(stderr, "gods-sdl: cannot map %#lx (%s)\n", (unsigned long)address, p == MAP_FAILED ? "failed" : "moved");
-        exit(1);
-    }
-}
-#endif
+struct Guest guest __attribute__((aligned(16)));
+volatile uint8_t host_custom_raw[0x1000] __attribute__((aligned(4)));
+volatile uint8_t host_cia_raw[0x2000];   /* from $BFD000 */
 
 uint8_t *guest_ptr(uint32_t address)
 {
-    return (uint8_t *)(uintptr_t)(address < GUEST_LOW_LIMIT ? address + GUEST_LOW_BASE : address);
+    return (uint8_t *)&guest + address;
+}
+
+void guest_set_heap(void)
+{
+    guest.heap_base = guest_address(0x80400);
+}
+
+void guest_set_mask_buffer(void)
+{
+    guest.mask_buffer = (uint16_t *)guest_ptr(0x39e50);
+}
+
+/* the memory's own address of an address of the original's (the pointers of the image): the pointers the image has are addresses of the original's memory */
+uint32_t guest_address(uint32_t address)
+{
+    return (uint32_t)(uintptr_t)guest_ptr(address);
 }
 
 static int in_table(uint32_t address)
@@ -71,22 +71,18 @@ static void swap32_range(uint32_t address, uint32_t bytes)
 
 void guest_init(void)
 {
-    map_page(0x10000, GUEST_END - 0x10000);
-    map_page(GUEST_LOW_BASE, GUEST_LOW_LIMIT);
-    map_page(0xbfd000, 0x2000);   /* the CIAs */
-    map_page(0xdff000, 0x1000);   /* the custom chips */
     guest_reset();
 }
 
 /* what the loader leaves when a program is loaded over the other: the memory and the chips' registers cleared, the tables in */
 void guest_reset(void)
 {
-    memset((void *)0x10000, 0, GUEST_END - 0x10000);
-    memset((void *)GUEST_LOW_BASE, 0, GUEST_LOW_LIMIT);
-    memset((void *)0xdff000, 0, 0x1000);
+    memset(&guest, 0, sizeof guest);
+    memset((void *)host_custom_raw, 0, sizeof host_custom_raw);
+    memset((void *)host_cia_raw, 0, sizeof host_cia_raw);
     for (unsigned i = 0; i < sizeof guest_tables / sizeof guest_tables[0]; i++)
         memcpy(guest_ptr(guest_tables[i].address), guest_tables[i].data, guest_tables[i].size);
-    *(volatile uint8_t *)0xbfe001 = 0xff;   /* CIA A port A: no fire button down */
+    host_cia_raw[0x1001] = 0xff;   /* CIA A port A: no fire button down */
 }
 
 /* the words and longs of the program's variables (guest_fixups.h, from menu.symbols' types) are made native: they are the image's, big endian, what the loader leaves in memory */
@@ -113,8 +109,8 @@ static void apply_fixups(long size)
                 uint32_t *p = (uint32_t *)guest_ptr(at);
 
                 swap32_range(at, 4);
-                if (guest_fixups[i].width == 5 && *p != 0 && *p < GUEST_LOW_LIMIT)
-                    *p += GUEST_LOW_BASE;
+                if (guest_fixups[i].width == 5 && *p != 0 && *p < GUEST_END)
+                    *p = guest_address(*p);
             }
         }
     }
@@ -146,8 +142,8 @@ void guest_load_image(const uint8_t *image, uint32_t size)
     mprotect((void *)((uintptr_t)pairs & ~0xfffu), 0x2000, PROT_READ | PROT_WRITE);
 #endif
     for (int i = 0; i < 8; i++)
-        if (pairs[i] < GUEST_LOW_LIMIT) {
-            pairs[i] += GUEST_LOW_BASE;
+        if (pairs[i] < GUEST_END) {
+            pairs[i] = guest_address(pairs[i]);
             *((uint16_t *)(uintptr_t)pairs[i] + 1) = 0;   /* the message starts dark (the copper list's colour of its line) */
         }
 }
@@ -157,11 +153,10 @@ void guest_load_image(const uint8_t *image, uint32_t size)
  * and longs of the program's variables (guest_fixups.h, from menu.symbols' types) are made native, and so are the pictures: the two
  * screens, the sprites of the image table, the background.  What the image has that the C reads in other ways (the level's map, ...) is
  * not known here and is left as it is. */
-#include "guest_vars.h"
 
 static void swap_image_table(void)
 {
-    uint8_t *p = image_table;
+    uint8_t *p = (uint8_t *)guest.image_table;
 
     for (unsigned i = 0; i < 0x1450 / 8; i++, p += 8) {
         swap16_range((uint32_t)(uintptr_t)p, 4);
@@ -239,15 +234,15 @@ static int load_ram_image_held(const char *path, int slots)
         swap16_range(0x6f800, 0x80000 - 0x6f800);        /* the two screens */
     swap_image_table();
     for (int i = 0; i < 16; i++)   /* the colours the chip has: the shadow table, as the original's interrupt keeps them */
-        REG16(0x180 + 2 * i) = shadow_table[i];
+        REG16(0x180 + 2 * i) = guest.shadow_table[i];
     {   /* the sprites' planes: as far as the level's assets go (the level 4's reach past the 0x21D68 bytes of the first levels) */
-        uint32_t first = (uint32_t)(uintptr_t)asset_memory;
+        uint32_t first = (uint32_t)(uintptr_t)guest.asset_memory;
         uint32_t end = *(uint32_t *)guest_ptr(0xd3e);   /* asset_mem_end */
         uint32_t bytes = end > first && end - first >= 0x21d68 && end - first < 0x40000 ? end - first : 0x21d68;
 
         swap16_range(first, bytes);
     }
-    swap16_range((uint32_t)(uintptr_t)memory_base, 0x8500);      /* the background */
+    swap16_range((uint32_t)(uintptr_t)guest.memory_base, 0x8500);      /* the background */
     swap16_range(0x4d8a, 0xa8);   /* the two copper lists (as guest_load_image does: the program changes their words, the display reads them as words) */
     swap16_range(0x4e3c, 0x530a - 0x4e3c);   /* (the first word, copper_colors, has its fixup) the colour bands of the level's copper list (copper_list_make) and the list at $5246 that the two lists go on at, up to its end ($FFFFFFFE) */
     if (slots) {

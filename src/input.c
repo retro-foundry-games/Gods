@@ -28,17 +28,17 @@ void input_poll(void)
     uint16_t stick;
     int16_t position;
 
-    button_bits[0] = 0;
-    button_bits[1] = 0;
+    guest.button_bits[0] = 0;
+    guest.button_bits[1] = 0;
     pra = CIAA_PRA;
     if (!(pra & 0x80)) {
         joy |= 0x80;
-        button_bits[0] |= 1;
-        button_presses |= 1;
+        guest.button_bits[0] |= 1;
+        guest.button_presses |= 1;
     }
     if (!(pra & 0x40)) {
-        button_bits[0] |= 2;
-        button_presses |= 4;
+        guest.button_bits[0] |= 2;
+        guest.button_presses |= 4;
     }
     stick = custom->joy1dat;
     if (stick & 0x0200) {   /* left */
@@ -55,35 +55,35 @@ void input_poll(void)
         joy |= 2;
     /* the keyboard as a second joystick: the cursor keys (raw key codes $4C up, $4D down, $4F left and $4E right) move the selection as the stick does and the space bar is fire;
      * this is not in the original program */
-    if (key_down[0x4c])
+    if (guest.key_down[0x4c])
         joy |= 1;
-    if (key_down[0x4d])
+    if (guest.key_down[0x4d])
         joy |= 2;
-    if (key_down[0x4f])
+    if (guest.key_down[0x4f])
         joy |= 4;
-    if (key_down[0x4e])
+    if (guest.key_down[0x4e])
         joy |= 8;
     /* the space bar is the first fire button (raw key code $40); not in the original */
-    if (key_down[0x40]) {
+    if (guest.key_down[0x40]) {
         joy |= 0x80;
-        button_bits[0] |= 1;
-        button_presses |= 1;
+        guest.button_bits[0] |= 1;
+        guest.button_presses |= 1;
     }
-    joystick = joy;
+    guest.joystick = joy;
 
-    mouse_counter = custom->joy0dat;
-    position = move_pointer(mouse_y, mouse_counter_old >> 8, mouse_counter >> 8, 0xc7);
-    mouse_y = position;
-    mouse_y_copy = position;
-    position = move_pointer(mouse_x, mouse_counter_old & 0xff, mouse_counter & 0xff, 0x200);
-    mouse_x = position;
-    mouse_x_copy = position;
-    mouse_counter_old = mouse_counter;
+    guest.mouse_counter = custom->joy0dat;
+    position = move_pointer(guest.mouse_y, guest.mouse_counter_old >> 8, guest.mouse_counter >> 8, 0xc7);
+    guest.mouse_y = position;
+    guest.mouse_y_copy = position;
+    position = move_pointer(guest.mouse_x, guest.mouse_counter_old & 0xff, guest.mouse_counter & 0xff, 0x200);
+    guest.mouse_x = position;
+    guest.mouse_x_copy = position;
+    guest.mouse_counter_old = guest.mouse_counter;
 
     if (custom->pot0dat & 0xfc00) {
-        button_bits[0] |= 1;
-        button_presses |= 4;
-        joystick |= 0x80;
+        guest.button_bits[0] |= 1;
+        guest.button_presses |= 4;
+        guest.joystick |= 0x80;
     }
     custom->potgo = 0xffff;
 }
@@ -96,16 +96,16 @@ uint16_t next_request(void)
     uint16_t request = (uint16_t)take_pending_request();
 
     if (request == 0) {
-        last_request = 0;
+        guest.last_request = 0;
         return 0;
     }
-    if (request != last_request) {
-        last_request = request;
-        repeat_delay = 10;
+    if (request != guest.last_request) {
+        guest.last_request = request;
+        guest.repeat_delay = 10;
         return request;
     }
-    if (repeat_delay >= 0)
+    if (guest.repeat_delay >= 0)
         return 0;
-    repeat_delay = 1;
-    return last_request;
+    guest.repeat_delay = 1;
+    return guest.last_request;
 }

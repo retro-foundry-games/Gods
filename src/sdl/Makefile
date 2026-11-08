@@ -37,7 +37,7 @@ OPT_GAME := -O1 -g
 OPT_HOST := -O2 -g
 endif
 GAME_CFLAGS := -m32 -fpack-struct=2 -std=gnu11 $(OPT_GAME) -fno-strict-aliasing -ffunction-sections -fdata-sections \
-               -DGODS_SDL $(if $(PIRATED),-DPIRATED) -I$(SRC) -I$(HERE) -Wall -Wno-unused-function
+               -DGODS_SDL -DGODS_HEAP_IN_GUEST $(if $(PIRATED),-DPIRATED) -I$(SRC) -I$(HERE) -Wall -Wno-unused-function
 HOST_CFLAGS := -m32 -std=gnu11 $(OPT_HOST) -Wall $(shell pkg-config --cflags sdl3)
 HOST_LIBS   := -m32 $(shell pkg-config --libs sdl3) -lpthread -lm
 
@@ -46,9 +46,8 @@ $(shell mkdir -p $(BUILD); echo '$(GAME_CFLAGS) | $(HOST_CFLAGS)' | cmp -s - $(F
 
 # the program's modules (as native/Makefile's MENU_MODULES) and the C that replaces the Amiga parts
 MENU_MODULES := menu disk alloc decrunch input draw message file boot game data
-GAME_OBJS := $(BUILD)/g_shims.o $(BUILD)/g_display.o $(BUILD)/g_sound.o $(MENU_MODULES:%=$(BUILD)/g_%.o) $(BUILD)/g_stubs.o
-HOST_OBJS := $(BUILD)/h_host.o $(BUILD)/h_guest.o $(BUILD)/h_files.o \
-             $(BUILD)/h_irq.o
+GAME_OBJS := $(BUILD)/g_shims.o $(BUILD)/g_display.o $(BUILD)/g_sound.o $(BUILD)/g_guest.o $(BUILD)/g_irq.o $(BUILD)/g_files.o $(MENU_MODULES:%=$(BUILD)/g_%.o) $(BUILD)/g_stubs.o
+HOST_OBJS := $(BUILD)/h_host.o
 
 .PHONY: all run clean
 all: $(BUILD)/gods-sdl $(BUILD)/gods-sdl-dev
@@ -56,8 +55,8 @@ all: $(BUILD)/gods-sdl $(BUILD)/gods-sdl-dev
 $(BUILD):
 	mkdir -p $@
 
-# the linker script and the stubs come from menu.symbols
-$(BUILD)/guest.ld $(BUILD)/g_stubs.c $(BUILD)/guest_tables.h: $(HERE)/gen_guest.py $(SRC)/menu.symbols $(SRC)/menu.ld | $(BUILD)
+# the stubs and the table list come from menu.symbols
+$(BUILD)/g_stubs.c $(BUILD)/guest_tables.h: $(HERE)/gen_guest.py $(SRC)/menu.symbols $(SRC)/menu.ld | $(BUILD)
 	$(PYTHON) $(HERE)/gen_guest.py $(SRC) $(BUILD)
 $(BUILD)/guest_fixups.h: $(HERE)/gen_fixups.py $(SRC)/menu.symbols | $(BUILD)
 	$(PYTHON) $(HERE)/gen_fixups.py $(SRC) $(BUILD)
@@ -71,6 +70,12 @@ $(BUILD)/g_shims.o: $(HERE)/shims.c $(FLAGS_STAMP) | $(BUILD)
 $(BUILD)/g_display.o: $(HERE)/display.c $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/g_sound.o: $(HERE)/sound.c $(FLAGS_STAMP) | $(BUILD)
+	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
+$(BUILD)/g_guest.o: $(HERE)/guest.c $(BUILD)/guest_tables.h $(BUILD)/guest_fixups.h $(FLAGS_STAMP) | $(BUILD)
+	$(CC) $(GAME_CFLAGS) -I$(BUILD) -MMD -MP -c $< -o $@
+$(BUILD)/g_irq.o: $(HERE)/irq.c $(FLAGS_STAMP) | $(BUILD)
+	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
+$(BUILD)/g_files.o: $(HERE)/files.c $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/g_draw.o: $(SRC)/draw.c $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -fno-inline -MMD -MP -c $< -o $@   # (blit_masked_image is replaced by display.c: no copy of it inside)
@@ -100,7 +105,7 @@ $(BUILD)/intro_program.o: $(INTRO_OBJS)
 
 # one program: the intro, the menu and the game, and the machine around them: gods-sdl is the game as it is played (main.c: no options), gods-sdl-dev has the options, the lockstep
 # with the original and the other tests (devmain.c, dev_game.c)
-COMMON_OBJS := $(HOST_OBJS) $(BUILD)/h_intro_view.o $(BUILD)/intro_program.o $(GAME_OBJS) $(BUILD)/guest.ld
+COMMON_OBJS := $(HOST_OBJS) $(BUILD)/h_intro_view.o $(BUILD)/intro_program.o $(GAME_OBJS)
 $(BUILD)/gods-sdl: $(BUILD)/h_main.o $(COMMON_OBJS)
 	$(CC) -m32 -no-pie -Wl,--allow-multiple-definition -o $@ $(BUILD)/h_main.o $(COMMON_OBJS) $(HOST_LIBS)
 $(BUILD)/gods-sdl-dev: $(BUILD)/h_devmain.o $(BUILD)/g_dev_game.o $(COMMON_OBJS)

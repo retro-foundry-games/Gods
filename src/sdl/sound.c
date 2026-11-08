@@ -21,7 +21,7 @@
 #define STACK 16
 
 /* an address of the program's memory as a pointer (the guest memory is mapped at the Amiga's addresses, the first 64 KiB apart: the tracks and samples are all above) */
-#define ADDRESS(a) ((const void *)(uintptr_t)(a))
+#define ADDRESS(a) ((const void *)GUEST(a))   /* (an address of the original's memory) */
 
 struct SoundVoice {
     int active;
@@ -198,8 +198,8 @@ static void run_track(struct SoundVoice *v)
 /* the original keeps, for each voice, the priority of the sound it plays at $207A0 (a byte each; 0: free), which the game waits on (stop_game_sounds): kept the same here, under the lock */
 static void sync_busy(void)
 {
-    volatile uint8_t *busy = (volatile uint8_t *)&sound_busy_207a0;
-    volatile uint8_t *ids = voice_ids_207a6;
+    volatile uint8_t *busy = (volatile uint8_t *)&guest.sound_busy_207a0;
+    volatile uint8_t *ids = guest.voice_ids_207a6;
 
     for (int i = 0; i < VOICES && i < 4; i++) {
         busy[i] = sound_voice[i].active ? (uint8_t)sound_voice[i].priority : 0;
@@ -261,9 +261,9 @@ static void take_variation_randoms(const struct SoundRecord *record)
         if (variant == 6) {
             unsigned choice = scale_random(r, 5) & 0xff;
 
-            if (choice == sound_last_variant)
+            if (choice == guest.sound_last_variant)
                 continue;
-            sound_last_variant = (uint8_t)choice;
+            guest.sound_last_variant = (uint8_t)choice;
             return;
         }
         if (variant == 9) {
@@ -348,12 +348,12 @@ done:
  * stops sounds by their track */
 void sound_restore_quick(void)
 {
-    uint32_t raw = sound_busy_207a0;   /* (a long to the loader: the first voice's byte is the top one) */
+    uint32_t raw = guest.sound_busy_207a0;   /* (a long to the loader: the first voice's byte is the top one) */
 
     pthread_mutex_lock(&lock);
     for (int i = 0; i < VOICES && i < 4; i++) {
         unsigned busy = (raw >> (24 - 8 * i)) & 0xff;
-        unsigned number = voice_ids_207a6[i];
+        unsigned number = guest.voice_ids_207a6[i];
 
         memset(&sound_voice[i], 0, sizeof sound_voice[i]);
         if (busy == 0)

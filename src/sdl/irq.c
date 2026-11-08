@@ -7,7 +7,7 @@
 
 extern void input_poll(void);
 extern void frame_tick(void);
-#include "guest_vars.h"
+#include "menu_symbols.h"
 extern const uint8_t keymap[128];
 
 static volatile int interrupts_on;
@@ -29,18 +29,18 @@ void jump_with_stack(void (*address)(void), uint8_t *stack)
 void vbl_irq(void)
 {
     input_poll();
-    if (palette_dirty) {
-        palette_dirty = 0;
+    if (guest.palette_dirty) {
+        guest.palette_dirty = 0;
         for (int i = 0; i < 16; i++)
-            REG16(0x180 + 2 * i) = shadow_table[i];
+            REG16(0x180 + 2 * i) = guest.shadow_table[i];
     }
     frame_tick();   /* the original jumps to the routine at $016C30 */
     /* the counts the program waits on come last: on the Amiga the interrupt is not interrupted by the program, here the program's thread
      * runs at the same time and must not see a frame whose work (tick_count, the sound, the message) is not done */
     __atomic_thread_fence(__ATOMIC_SEQ_CST);
-    vbl_count++;
-    if (vbl_saturating != 0x7fff)
-        vbl_saturating++;
+    guest.vbl_count++;
+    if (guest.vbl_saturating != 0x7fff)
+        guest.vbl_saturating++;
 }
 
 void irq_vbl(void)
@@ -102,25 +102,25 @@ static void key_apply(int raw, int down)
 
     /* the cursor keys are the port's joystick (see input_poll: not in the original): the stick, not typed characters; the space bar is a typed character again */
     if ((code >= 0x4c && code <= 0x4f) || (code == 0x40 && keys_space_is_fire)) {
-        key_down[code] = down ? 0xff : 0;
+        guest.key_down[code] = down ? 0xff : 0;
         return;
     }
     if (code != 0x60 && code != 0x61)
-        pending_request = (pending_request & 0xff00ffffu) | ((uint32_t)(code | (down ? 0 : 0x80)) << 16);
+        guest.pending_request = (guest.pending_request & 0xff00ffffu) | ((uint32_t)(code | (down ? 0 : 0x80)) << 16);
     if (down) {
         uint8_t character = keymap[code];
 
-        key_down[code] = 0xff;
-        if ((key_down[0x61] | key_down[0x60]) != 0 && character < 0x7b) {
+        guest.key_down[code] = 0xff;
+        if ((guest.key_down[0x61] | guest.key_down[0x60]) != 0 && character < 0x7b) {
             if (character >= 0x40)
                 character &= 0xdf;
             else if (character >= 0x20)
                 character &= 0xef;
         }
-        pending_request = (pending_request & 0xffffff00u) | character;
+        guest.pending_request = (guest.pending_request & 0xffffff00u) | character;
     } else {
-        pending_request = 0;
-        key_down[code] = 0;
+        guest.pending_request = 0;
+        guest.key_down[code] = 0;
     }
 }
 
@@ -128,7 +128,7 @@ static void key_apply(int raw, int down)
 uint16_t random_word(void)
 {
     uint16_t *index = (uint16_t *)(uintptr_t)(0x2e6 + 0x01000000u);
-    uint16_t value = *(uint16_t *)(ptr_0cc6 + *index);
+    uint16_t value = *(uint16_t *)(guest.ptr_0cc6 + *index);
 
     *index = (uint16_t)((*index + 2) & 0x1ff);
     return value;

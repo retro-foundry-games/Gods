@@ -43,27 +43,27 @@ const uint16_t *find_color01_move(const uint16_t *list)
 /* orig $01D2D8: set a word of the table */
 void shadow_set(uint16_t index, uint16_t value)
 {
-    shadow_table[(int16_t)(index * 2) / 2] = value;
+    guest.shadow_table[(int16_t)(index * 2) / 2] = value;
 }
 
 /* orig $01D2EA: a word of the table */
 uint16_t shadow_get(uint16_t index)
 {
-    return shadow_table[(int16_t)(index * 2) / 2];
+    return guest.shadow_table[(int16_t)(index * 2) / 2];
 }
 
 /* orig $01CFC0: clear both screens */
 void clear_both_screens(void)
 {
-    clear_screen_buffer((uint32_t *)screen_buffer);
-    clear_screen_buffer((uint32_t *)screen_other);
+    clear_screen_buffer((uint32_t *)guest.screen_buffer);
+    clear_screen_buffer((uint32_t *)guest.screen_other);
     host_cpu_frames(3);   /* the original clears the 2 x 33792 bytes with a loop of clr.l: about 3 frames */
 }
 
 /* orig $01CFCE: copy the other screen over the one that is drawn on */
 void copy_other_screen(void)
 {
-    copy_screen_buffer((const uint32_t *)screen_other, (uint32_t *)screen_buffer);
+    copy_screen_buffer((const uint32_t *)guest.screen_other, (uint32_t *)guest.screen_buffer);
 }
 
 static int flip_late;   /* the flips are shown a frame after the vertical blank that ends their wait (a flip that comes late in a frame of the original's work) */
@@ -91,21 +91,21 @@ extern void shop_flip_strip(void);
 
 void screens_flip(void)
 {
-    struct Rec6 state = buffer_state[0];
+    struct Rec6 state = guest.buffer_state[0];
     uint8_t *list;
     uint8_t *swap;
     extern void host_flip_wait(void);
 
     host_flip_wait();
 
-    buffer_state[0] = buffer_state[1];
-    buffer_state[1] = state;
-    swap = screen_buffer;
-    screen_buffer = screen_other;
-    screen_other = swap;
+    guest.buffer_state[0] = guest.buffer_state[1];
+    guest.buffer_state[1] = state;
+    swap = guest.screen_buffer;
+    guest.screen_buffer = guest.screen_other;
+    guest.screen_other = swap;
     shop_flip_strip();
-    list = screen_other == screen_1 ? copper_list_a : copper_list_b;
-    set_scroll(list, (uint8_t)x_offset);
+    list = guest.screen_other == guest.screen_1 ? guest.copper_list_a : guest.copper_list_b;
+    set_scroll(list, (uint8_t)guest.x_offset);
     int late = flip_late && host_flip_is_late();
 
     if (late)
@@ -114,7 +114,7 @@ void screens_flip(void)
         flip_pending = list;
     else
         display_show(list);
-    vbl_saturating = 0;
+    guest.vbl_saturating = 0;
     wait_vblank();
     if (late)
         wait_vblank();   /* (the screen that is shown is not drawn on before the blank that takes the new one) */
@@ -133,9 +133,9 @@ static uint16_t *next_color(const uint16_t *from)
  * three components that differs goes up by one */
 void copper_fade_up(void)
 {
-    const uint16_t *target = copper_save;
+    const uint16_t *target = guest.copper_save;
 
-    for (uint16_t *colour = next_color(copper_colors); colour; colour = next_color(colour)) {
+    for (uint16_t *colour = next_color(guest.copper_colors); colour; colour = next_color(colour)) {
         uint16_t want = *target++;
         uint16_t now = *colour;
 
@@ -151,7 +151,7 @@ void copper_fade_up(void)
 /* orig $01D1C2: every colour of the copper list a step towards black: each component that is not 0 goes down by one */
 void copper_fade_down(void)
 {
-    for (uint16_t *colour = next_color(copper_colors); colour; colour = next_color(colour)) {
+    for (uint16_t *colour = next_color(guest.copper_colors); colour; colour = next_color(colour)) {
         uint16_t now = *colour;
 
         if (now & 0x00f)
@@ -167,9 +167,9 @@ void copper_fade_down(void)
  * them black, $FFFF leaves them) */
 void copper_colors_save(uint16_t mask)
 {
-    uint16_t *to = copper_save;
+    uint16_t *to = guest.copper_save;
 
-    for (uint16_t *colour = next_color(copper_colors); colour; colour = next_color(colour)) {
+    for (uint16_t *colour = next_color(guest.copper_colors); colour; colour = next_color(colour)) {
         *to++ = *colour;
         *colour &= mask;
     }
@@ -178,9 +178,9 @@ void copper_colors_save(uint16_t mask)
 /* orig $01D216: put the colours back */
 void copper_colors_restore(void)
 {
-    const uint16_t *from = copper_save;
+    const uint16_t *from = guest.copper_save;
 
-    for (uint16_t *colour = next_color(copper_colors); colour; colour = next_color(colour))
+    for (uint16_t *colour = next_color(guest.copper_colors); colour; colour = next_color(colour))
         *colour = *from++;
 }
 
@@ -213,10 +213,10 @@ void fade_in(const uint16_t *target, uint16_t delay)
     host_fade_wait();   /* (the lockstep: a fade-in that was bound waits for the original's) */
     display_fresh = 1;
     copper_colors_save(0);
-    if (copper_setup_done == 0) {
+    if (guest.copper_setup_done == 0) {
         wait_vblank();
-        copper_move_a = 0x00840000;
-        copper_move_b = 0x00864e3a;
+        guest.copper_move_a = 0x00840000;
+        guest.copper_move_b = 0x00864e3a;
     }
     for (int step = 0; step < 15; step++) {
         for (int i = 15; i >= 0; i--) {
@@ -233,11 +233,11 @@ void fade_in(const uint16_t *target, uint16_t delay)
         }
         display_fade_step = step;
         copper_fade_up();
-        palette_dirty = 0xffff;
+        guest.palette_dirty = 0xffff;
         for (int frame = 0; frame <= delay; frame++)
             wait_vblank();
     }
-    palette_lit = 0xff;
+    guest.palette_lit = 0xff;
     display_fresh_tail = effective_lag() != 0;
     display_fresh = 0;
 }
@@ -248,29 +248,29 @@ void frame_tick(void)
 {
     uint16_t scroll = 0;
 
-    if (copper_setup_done)
-        scroll = scroll_value;
-    copper_a_scroll = scroll;
-    copper_b_scroll = scroll;
-    if (sound_enabled)
+    if (guest.copper_setup_done)
+        scroll = guest.scroll_value;
+    guest.copper_a_scroll = scroll;
+    guest.copper_b_scroll = scroll;
+    if (guest.sound_enabled)
         sound_tick();
-    tick_count++;
-    if (countdown_220)
-        countdown_220--;
-    if (!message_shown)
+    guest.tick_count++;
+    if (guest.countdown_220)
+        guest.countdown_220--;
+    if (!guest.message_shown)
         return;
-    if (tick_hold_38a) {
+    if (guest.tick_hold_38a) {
         shop_message_frame();   /* $16C9E */
         return;
     }
-    if (tick_hold_296 || (int16_t)message_state < 0 || tick_hold_26c)
+    if (guest.tick_hold_296 || (int16_t)guest.message_state < 0 || guest.tick_hold_26c)
         return;
-    if (message_hold <= 1) {   /* the message scrolls in the work area */
+    if (guest.message_hold <= 1) {   /* the message scrolls in the work area */
         work_area_shift_left();
         message_ticker();
     }
-    if (--message_hold < 0)
-        message_hold = 0;
+    if (--guest.message_hold < 0)
+        guest.message_hold = 0;
 }
 
 /* orig $01D23E: fade the colours out to black, 15 steps of `delay + 1` frames; the message (message.c) goes on while it does,
@@ -284,7 +284,7 @@ void fade_out(uint16_t delay, uint16_t arg)
     (void)delay;
     message_start(arg);
     delay = 1;   /* the original's d0, which is the delay, is the result of the routine that starts the message (orig $016DF8: 1): every step waits two frames */
-    message_current = 0;
+    guest.message_current = 0;
     copper_colors_save(0xffff);
     for (int step = 0; step < 15; step++) {
         for (int i = 15; i >= 0; i--) {
@@ -299,7 +299,7 @@ void fade_out(uint16_t delay, uint16_t arg)
             shadow_set(i, colour);
         }
         copper_fade_down();
-        palette_dirty = 0xffff;
+        guest.palette_dirty = 0xffff;
         for (int frame = 0; frame <= delay; frame++) {
             message_tick();
             wait_vblank();
@@ -308,10 +308,10 @@ void fade_out(uint16_t delay, uint16_t arg)
     if (!fade_keep_screens)
         clear_both_screens();
     wait_vblank();
-    copper_move_a = 0x00840000;
-    copper_move_b = 0x00865246;
+    guest.copper_move_a = 0x00840000;
+    guest.copper_move_b = 0x00865246;
     copper_colors_restore();
-    palette_lit = 0;
+    guest.palette_lit = 0;
     display_fresh_tail = effective_lag() != 0;
     display_fresh = 0;
     display_fade_out = 0;
@@ -325,7 +325,7 @@ uint8_t list_scroll[2];
 
 void set_scroll(uint8_t *copper_list, uint8_t x)
 {
-    list_scroll[copper_list == copper_list_a ? 0 : 1] = x;
+    list_scroll[copper_list == guest.copper_list_a ? 0 : 1] = x;
 }
 
 /* orig $01D05C: wait for the next vertical blank (the main thread raises it) */
@@ -335,18 +335,18 @@ static int blank_was_waiting;
 
 void wait_vblank(void)
 {
-    uint16_t seen = vbl_count;
+    uint16_t seen = guest.vbl_count;
 
     host_processed = seen;
     host_in_wait = 1;
-    while (vbl_count == seen)
+    while (guest.vbl_count == seen)
         sched_yield();
     host_in_wait = 0;
 }
 
 void host_spin(void)
 {
-    host_processed = vbl_count;
+    host_processed = guest.vbl_count;
     host_in_wait = 1;
 }
 
@@ -367,7 +367,7 @@ void host_blank_wait(void)
 {
     if (!blank_was_waiting)
         return;
-    for (int n = 0; n < 6000 && !(host_in_wait && host_processed == vbl_count); n++) {
+    for (int n = 0; n < 6000 && !(host_in_wait && host_processed == guest.vbl_count); n++) {
         struct timespec ts = { 0, 50000 };   /* 50 microseconds */
 
         nanosleep(&ts, 0);
@@ -403,8 +403,8 @@ extern volatile int gods_trace;
 
 void blit_tile(int16_t src_step, int16_t dst_step, int16_t rows, const uint8_t *src, uint8_t *dst)
 {
-    if (gods_trace && (long)(dst - screen_buffer) < 44 * 4)
-        fprintf(stderr, "trace blit_tile row %ld col %ld rows %d src %p\n", (long)(dst - screen_buffer) / 44, (long)(dst - screen_buffer) % 44, rows, (const void *)src);
+    if (gods_trace && (long)(dst - guest.screen_buffer) < 44 * 4)
+        fprintf(stderr, "trace blit_tile row %ld col %ld rows %d src %p\n", (long)(dst - guest.screen_buffer) / 44, (long)(dst - guest.screen_buffer) % 44, rows, (const void *)src);
     for (int pass = 0; pass < 4; pass++) {
         for (int row = 0; row <= rows; row++)
             memcpy(dst + row * 44, src + row * 4, 4);
@@ -434,8 +434,8 @@ void blit_masked(const uint8_t *source, uint8_t *dest, int16_t modulo_ab, uint16
 {
     unsigned source_row = words * 2u + (unsigned)(int)modulo_ab, dest_row = words * 2u + (unsigned)(int)modulo_cd;
 
-    if (gods_trace && (long)(dest - screen_buffer) < 44 * 6)
-        fprintf(stderr, "trace blit_masked row %ld col %ld words %u rows %u\n", (long)(dest - screen_buffer) / 44, (long)(dest - screen_buffer) % 44, words, rows);
+    if (gods_trace && (long)(dest - guest.screen_buffer) < 44 * 6)
+        fprintf(stderr, "trace blit_masked row %ld col %ld words %u rows %u\n", (long)(dest - guest.screen_buffer) / 44, (long)(dest - guest.screen_buffer) % 44, words, rows);
 
     for (unsigned plane = 0; plane < 4; plane++) {
         for (unsigned row = 0; row < rows; row++) {
@@ -468,12 +468,12 @@ static void blit_plain(const uint8_t *source, uint8_t *dest, int16_t modulo_ab, 
 static void blit_shifted(int16_t x, int16_t y, int16_t width, int16_t height, const uint8_t *source, const int16_t *clip)
 {
     unsigned bytes = ((uint16_t)width + 1u) >> 3;
-    uint32_t plane_size = long_dd8;
+    uint32_t plane_size = guest.long_dd8;
     const int16_t plane_stride = 8448;
 
     for (int r = 0; r <= height; r++) {
-        unsigned source_row = (unsigned)word_dd4 + (unsigned)r;
-        uint16_t *screen_row = (uint16_t *)(screen_buffer + (long)(int16_t)(y + r) * 44);
+        unsigned source_row = (unsigned)guest.word_dd4 + (unsigned)r;
+        uint16_t *screen_row = (uint16_t *)(guest.screen_buffer + (long)(int16_t)(y + r) * 44);
 
         for (int px = 0; px <= width; px++) {
             int16_t dx = (int16_t)(x + px);
@@ -527,16 +527,16 @@ void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uin
 
         int16_t skipped = (int16_t)(low - y);
 
-        if (flags_0ddd & 0x20)
+        if (guest.flags_0ddd & 0x20)
             skipped = (int16_t)-skipped;
-        word_dd4 = (uint16_t)(word_dd4 + skipped);
+        guest.word_dd4 = (uint16_t)(guest.word_dd4 + skipped);
         y = low;
     }
     if (y > high)
         return;
     if ((int16_t)(height + y) > high)
         height = (int16_t)(high - y);
-    if (word_d86 != 0) {
+    if (guest.word_d86 != 0) {
         blit_shifted(x, y, width, height, source, clip);
         return;
     }
@@ -550,40 +550,40 @@ void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uin
         offset = (int16_t)(((uint16_t)(low - x) & 0xFFF0) >> 3);
         source += offset;
         x = low;
-        word_d88 = 1;
+        guest.word_d88 = 1;
     }
     high = clip[1];
     if (x > high)
         return;
     if ((int16_t)(rest + x) > high) {
         rest = (int16_t)(high - x);
-        word_d88 = (uint16_t)(word_d88 + 2);
+        guest.word_d88 = (uint16_t)(guest.word_d88 + 2);
     }
     words = (uint16_t)rest >> 4;
     rest = (int16_t)(words << 3);   /* the original's d5 */
-    if (!(word_d82 & 0x8000))
+    if (!(guest.word_d82 & 0x8000))
         return;   /* goes on at $01F13A */
     width = (int16_t)(((uint16_t)width >> 1) & 0xFFF8);
-    product = (uint32_t)(uint16_t)(width + 8) * word_dd4;
+    product = (uint32_t)(uint16_t)(width + 8) * guest.word_dd4;
     source += (int16_t)((uint16_t)product >> 2);
-    if (flags_0ddd & 0x20)
+    if (guest.flags_0ddd & 0x20)
         return;   /* goes on at $01F186 */
     modulo_ab = (int16_t)(width - rest);
-    modulo_cd = (int16_t)(((uint16_t)(word_dd2 - 8 - rest)) >> 2);
+    modulo_cd = (int16_t)(((uint16_t)(guest.word_dd2 - 8 - rest)) >> 2);
     x = (int16_t)((uint16_t)x & 0xFFF0);
     x = (int16_t)((uint16_t)x >> 3);
     x = (int16_t)(x + (uint16_t)((uint16_t)y * 44));
-    if (word_d86 != 0)
+    if (guest.word_d86 != 0)
         return;   /* goes on at $01F1BE */
-    if (flags_0ddd & 4)
+    if (guest.flags_0ddd & 4)
         return;   /* goes on at the routine of the table at $0D9A that word_dde and bit 2 of flags_0ddd name (the entries of bit 2 are not written) */
-    if (word_dde == 0) {
-        blit_plain(source, screen_buffer + x, (int16_t)(modulo_ab >> 2), (uint16_t)(words + 1), modulo_cd, long_dd8, (uint16_t)(height + 1));
+    if (guest.word_dde == 0) {
+        blit_plain(source, guest.screen_buffer + x, (int16_t)(modulo_ab >> 2), (uint16_t)(words + 1), modulo_cd, guest.long_dd8, (uint16_t)(height + 1));
         return;
     }
-    if (word_dde != 1)
+    if (guest.word_dde != 1)
         return;
-    blit_masked(source, screen_buffer + x, (int16_t)(modulo_ab >> 2), (uint16_t)(words + 1), modulo_cd, long_dd8, (uint16_t)(height + 1));
+    blit_masked(source, guest.screen_buffer + x, (int16_t)(modulo_ab >> 2), (uint16_t)(words + 1), modulo_cd, guest.long_dd8, (uint16_t)(height + 1));
 }
 
 /* ================ the blits (was blitter.c) ================ */
@@ -626,13 +626,13 @@ void blit_masked_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_
     unsigned out_words = words + ((shift & 0xff) != 0 && (int16_t)extra_modulo >= 0 ? 1 : 0);
     unsigned count = rows;
     unsigned blit_shift = shift & 0xff;
-    int16_t plane_stride = (int16_t)blit_plane_stride;
+    int16_t plane_stride = (int16_t)guest.blit_plane_stride;
 
-    if (gods_trace && (long)(dst - screen_buffer) < 44 * 6)
-        fprintf(stderr, "trace blit_masked_image row %ld col %ld words %u rows %u shift %u src %p first %04x last %04x\n", (long)(dst - screen_buffer) / 44, (long)(dst - screen_buffer) % 44, words, rows, shift, (const void *)src, first_mask, last_mask);
+    if (gods_trace && (long)(dst - guest.screen_buffer) < 44 * 6)
+        fprintf(stderr, "trace blit_masked_image row %ld col %ld words %u rows %u shift %u src %p first %04x last %04x\n", (long)(dst - guest.screen_buffer) / 44, (long)(dst - guest.screen_buffer) % 44, words, rows, shift, (const void *)src, first_mask, last_mask);
     if (src == 0)
         return;   /* an image the table has no data for: on the Amiga the vectors at address 0 are drawn */
-    blit_extra_modulo = extra_modulo;
+    guest.blit_extra_modulo = extra_modulo;
     if (blit_shift == 0)
         last_mask = 0xffff;
     for (unsigned i = 0; i < 4; i++) {
@@ -726,7 +726,7 @@ void display_latch(void)
     }
     /* (the screen and its scroll are not latched: the original shows a flip in the frame the program's logic makes it, the program's thread having flipped just after the blank) */
     latched_cop1lc = REG32(0x080);
-    latched_x_offset = list_scroll[(uint8_t *)(uintptr_t)REG32(0x080) == copper_list_a ? 0 : 1];
+    latched_x_offset = list_scroll[(uint8_t *)(uintptr_t)REG32(0x080) == guest.copper_list_a ? 0 : 1];
     display_latch_colors();
     {
         uint32_t cop1lc = REG32(0x080);
@@ -866,7 +866,7 @@ static void line_palettes(uint16_t colors[][16], int lines)
     /* the list goes on where a MOVE to COPJMP2 sends it: the address that the moves to COP2LCH and COP2LCL made (the two lists of the program end
      * so: the gradient of the level's colours is jumped over when the moves name the list at $5246, as the menu's do).  The addresses are the
      * program's: the first list is at $4D8A (copper_list_a) or $4DDE.  The list the jump comes to may be the image's own (big-endian words) */
-    uint32_t base = (const uint8_t *)(uintptr_t)latched_list_head == copper_list_a ? 0x4d8a : 0x4dde, jump_to = 0;
+    uint32_t base = (const uint8_t *)(uintptr_t)latched_list_head == guest.copper_list_a ? 0x4d8a : 0x4dde, jump_to = 0;
     int steps = 0;
 
     for (int i = 0; count && i + 1 < 1024 && steps++ < 4096; i += 2) {
@@ -922,9 +922,9 @@ void display_render(uint32_t *pixels)
     static uint16_t colors_before[320][16];
     uint32_t palette[16];
     latched_cop1lc = REG32(0x080);   /* the screen and the scroll as they are now (see display_latch) */
-    latched_x_offset = list_scroll[(uint8_t *)(uintptr_t)latched_cop1lc == copper_list_a ? 0 : 1];
+    latched_x_offset = list_scroll[(uint8_t *)(uintptr_t)latched_cop1lc == guest.copper_list_a ? 0 : 1];
     const uint8_t *first_list = (const uint8_t *)(uintptr_t)latched_cop1lc;
-    const uint8_t *screen = first_list == copper_list_a ? screen_1 : screen_2;
+    const uint8_t *screen = first_list == guest.copper_list_a ? guest.screen_1 : guest.screen_2;
     int scroll = latched_x_offset & 31;
 
     line_palettes(colors, 320);
@@ -990,17 +990,17 @@ void display_render(uint32_t *pixels)
     }
 
     /* the message: seven lines, the colour of the text and of the background by line */
-    if (message_shown || !menu_active) {   /* (the band is there in the level also when no message is on show) */
+    if (guest.message_shown || !guest.menu_active) {   /* (the band is there in the level also when no message is on show) */
         static const uint16_t message_background[7] = { 0x030, 0x042, 0x060, 0x082, 0x060, 0x042, 0x030 };
         static const int band[7] = { 0, 2, 4, 6, 5, 3, 1 };   /* which of message_pairs colours the text of the line */
 
         for (int line = 0; line < 7; line++) {
             uint32_t *out = pixels + (MESSAGE_TOP - FIRST_LINE + line) * SCREEN_W;
             const uint16_t *text_color = (const uint16_t *)(uintptr_t)message_pairs[band[line]] + 1;
-            const uint16_t *bits = (const uint16_t *)((const uint8_t *)work_area + 40 * (line + 1));   /* words of the machine; the band shows the work area from its second row on (the text is drawn from there) */
+            const uint16_t *bits = (const uint16_t *)((const uint8_t *)guest.work_area + 40 * (line + 1));   /* words of the machine; the band shows the work area from its second row on (the text is drawn from there) */
 
             for (int x = 0; x < SCREEN_W; x++)
-                out[x] = (message_shown && (bits[x >> 4] >> (15 - (x & 15)) & 1)) ? argb(*text_color) : argb(message_background[line]);
+                out[x] = (guest.message_shown && (bits[x >> 4] >> (15 - (x & 15)) & 1)) ? argb(*text_color) : argb(message_background[line]);
         }
     }
 }

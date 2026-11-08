@@ -82,6 +82,7 @@ SECTIONS {
     .text 0xc0000 : { *(.text .text.*) *(.rodata .rodata.*) }
 }
 
+_guest = 0x0;   /* struct Guest (guest_struct.h): the variables, at their addresses */
 _work_area = 0xcaa;
 _shadow_table = 0xe10;
 _mouse_x = 0x1e4fc;

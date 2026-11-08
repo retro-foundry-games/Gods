@@ -144,7 +144,7 @@ static void dev_iteration(unsigned iteration)
     while (weapons_done != host_weapon_count) {
         int16_t item = host_weapon_items[weapons_done++ & 31];
 
-        word_2b2 = (uint16_t)item;
+        guest.word_2b2 = (uint16_t)item;
         pick_up_object(item);
     }
     if (test_save && iteration == test_save)
@@ -195,7 +195,7 @@ static void dev_iteration(unsigned iteration)
         keys_take(record_key, 0);
     }
     while (next_key < key_count && keys[next_key].iteration <= iteration) {
-        key_down[keys[next_key].code] = keys[next_key].value ? 0xff : 0x00;
+        guest.key_down[keys[next_key].code] = keys[next_key].value ? 0xff : 0x00;
         next_key++;
     }
     if (region_text && iteration == region_iteration) {

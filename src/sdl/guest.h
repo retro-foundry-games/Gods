@@ -4,9 +4,10 @@
 
 #include <stdint.h>
 
-#define GUEST_LOW_BASE_ 0x01000000u
-
-uint8_t *guest_ptr(uint32_t address);                        /* the host address of an address of the program's memory */
+uint8_t *guest_ptr(uint32_t address);
+void guest_set_heap(void);                                   /* heap_base: the heap of the block (the loader leaves it in a vector slot) */
+void guest_set_mask_buffer(void);                            /* mask_buffer: the area of the original's boot code */
+uint32_t guest_address(uint32_t address);                    /* the same as a pointer's value (32 bits) */                        /* the host address of an address of the program's memory */
 void guest_init(void);                                       /* map the memory and the chips' pages (once) */
 void guest_reset(void);                                      /* the memory as the loader leaves it for a program: cleared, the tables in */                                       /* map the chips' pages */
 int guest_load_level_image(const char *path);                  /* a RAM image of the original in level 1 (a test) */
@@ -20,10 +21,11 @@ uint8_t *files_unpack(const uint8_t *packed, uint32_t *size);      /* the progra
 int files_load_menu_image(void);                             /* bm.2 of disk 1 unpacked into the guest memory */
 
 /* the chips: custom registers and CIA as the program sees them */
-#define CUSTOM_BASE 0xdff000u
-#define REG16(offset) (*(volatile uint16_t *)(uintptr_t)(CUSTOM_BASE + (offset)))
-#define REG32(offset) (*(volatile uint32_t *)(uintptr_t)(CUSTOM_BASE + (offset)))
-#define CIAA_PRA_REG (*(volatile uint8_t *)(uintptr_t)0xbfe001)
+extern volatile uint8_t host_custom_raw[0x1000];
+extern volatile uint8_t host_cia_raw[0x2000];   /* from $BFD000 */
+#define REG16(offset) (*(volatile uint16_t *)(host_custom_raw + (offset)))
+#define REG32(offset) (*(volatile uint32_t *)(host_custom_raw + (offset)))
+#define CIAA_PRA_REG (host_cia_raw[0x1001])
 
 /* display.c */
 #define SCREEN_W 320

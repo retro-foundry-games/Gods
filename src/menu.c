@@ -5,7 +5,7 @@
 /* orig $00F518: clear the 80 longs the work area pointer points at */
 void clear_work_area(void)
 {
-    uint32_t *p = work_area;
+    uint32_t *p = guest.work_area;
     int i;
 
     for (i = 0; i < 80; i++)
@@ -15,10 +15,10 @@ void clear_work_area(void)
 /* orig $01CF26: the request that was waiting, or 0; it is taken, so it is gone afterwards */
 uint32_t take_pending_request(void)
 {
-    uint32_t request = pending_request;
+    uint32_t request = guest.pending_request;
 
     if (request != 0)
-        pending_request = 0;
+        guest.pending_request = 0;
     return request;
 }
 
@@ -33,7 +33,7 @@ void reset_marker_table(void)
     int i;
 
     for (i = 0; i < 100; i++)
-        marker_table[i] = 0xffffffff;
+        guest.marker_table[i] = 0xffffffff;
 }
 
 /* orig $00F474: copy 200 records of 6 bytes into the record table */
@@ -42,9 +42,9 @@ void copy_record_table(const struct Rec6 *from)
     int i;
 
     for (i = 0; i < 200; i++) {
-        record_table[i].w[0] = file_word(&from[i].w[0]);
-        record_table[i].w[1] = file_word(&from[i].w[1]);
-        record_table[i].w[2] = file_word(&from[i].w[2]);
+        guest.record_table[i].w[0] = file_word(&from[i].w[0]);
+        guest.record_table[i].w[1] = file_word(&from[i].w[1]);
+        guest.record_table[i].w[2] = file_word(&from[i].w[2]);
     }
 }
 
@@ -54,17 +54,17 @@ void clear_entry_table(void)
     int i;
 
     for (i = 0; i < 50; i++) {
-        entry_table[i].w[0] = 0;
-        entry_table[i].w[1] = 0;
-        entry_table[i].w[2] = 0;
+        guest.entry_table[i].w[0] = 0;
+        guest.entry_table[i].w[1] = 0;
+        guest.entry_table[i].w[2] = 0;
     }
 }
 
 /* orig $00F382: make bytes of 506 words: the low byte of each */
 void narrow_words_to_bytes(void)
 {
-    const uint16_t *from = words_source;
-    uint8_t *to = bytes_dest;
+    const uint16_t *from = guest.words_source;
+    uint8_t *to = guest.bytes_dest;
     int i;
 
     for (i = 0; i < 506; i++)
@@ -75,7 +75,7 @@ void narrow_words_to_bytes(void)
  * list on, each as far on as the size of the one before; the first with a negative first long ends the list */
 void assign_addresses(void)
 {
-    struct Entry8 *entry = entry_list;
+    struct Entry8 *entry = guest.entry_list;
     uint32_t next = (uint32_t)(uintptr_t)entry + 400;
 
     for (;;) {
@@ -93,30 +93,30 @@ void assign_addresses(void)
 /* orig $00F488: fill the 2400-byte buffer: first clear it, then copy the bytes in */
 void load_buffer_2400(const uint8_t *from)
 {
-    uint8_t *to = (uint8_t *)buffer_cb6;
+    uint8_t *to = (uint8_t *)guest.buffer_cb6;
     int i;
 
     for (i = 0; i < 2400; i++)
         *to++ = 0;
-    to = (uint8_t *)buffer_cb6;
+    to = (uint8_t *)guest.buffer_cb6;
     for (i = 0; i < 2400; i++)
         *to++ = *from++;
     for (i = 0; i < 100; i++)   /* (loaded from the disk: the words of the records are made the machine's own) */
-        file_words(&buffer_cb6[i], 12);
+        file_words(&guest.buffer_cb6[i], 12);
 }
 
 /* orig $0029B4: take the row of param_table that param_index names (the first is 1) into param_a to param_d */
 void select_params(void)
 {
-    int16_t row = (int16_t)(param_index - 1);
+    int16_t row = (int16_t)(guest.param_index - 1);
     const uint16_t *at = param_table;
 
     at += (int16_t)(row * 4) / 2;
     at += (int16_t)(row * 8) / 2;
-    param_a = ((uint32_t)at[0] << 16) | at[1];
-    param_b = ((uint32_t)at[2] << 16) | at[3];
-    param_c = at[4];
-    param_d = at[5];
+    guest.param_a = ((uint32_t)at[0] << 16) | at[1];
+    guest.param_b = ((uint32_t)at[2] << 16) | at[3];
+    guest.param_c = at[4];
+    guest.param_d = at[5];
 }
 
 /* orig $004C90: build the 132 entries of the table: the first word counts up from 170, the third is the signed byte from
@@ -127,8 +127,8 @@ void build_table_14cf8(void)
     int i;
 
     for (i = 0; i < 132; i++) {
-        table_14cf8[i].w[0] = count;
-        table_14cf8[i].w[2] = (uint16_t)(int16_t)(int8_t)offsets_4cba[i];
+        guest.table_14cf8[i].w[0] = count;
+        guest.table_14cf8[i].w[2] = (uint16_t)(int16_t)(int8_t)offsets_4cba[i];
         count++;
     }
 }
@@ -139,8 +139,8 @@ void save_slot_words(void)
     int i;
 
     for (i = 0; i < 11; i++) {
-        saved_slot_words[i * 2] = object_slots[i].value_c;
-        saved_slot_words[i * 2 + 1] = object_slots[i].value_1e;
+        guest.saved_slot_words[i * 2] = guest.object_slots[i].value_c;
+        guest.saved_slot_words[i * 2 + 1] = guest.object_slots[i].value_1e;
     }
 }
 
@@ -150,8 +150,8 @@ void restore_slot_words(void)
     int i;
 
     for (i = 0; i < 11; i++) {
-        object_slots[i].value_c = saved_slot_words[i * 2];
-        object_slots[i].value_1e = saved_slot_words[i * 2 + 1];
+        guest.object_slots[i].value_c = guest.saved_slot_words[i * 2];
+        guest.object_slots[i].value_1e = guest.saved_slot_words[i * 2 + 1];
     }
 }
 
@@ -160,25 +160,25 @@ void restore_slot_words(void)
  * disk drives are put to rest.  (The original has a path for a failed load too; load_file does not return then) */
 void load_background(void)
 {
-    if (background_loaded)
+    if (guest.background_loaded)
         return;
-    background = memory_base + 256;
-    load_unpacked((const char *)background_name, background);
+    guest.background = guest.memory_base + 256;
+    load_unpacked((const char *)background_name, guest.background);
     host_disk_wait();   /* (the original's read of the file from the disk and its unpacking take what its drive takes before the colours fade) */
     fade_out(1, 0xffff);
     display_reset();
-    background_loaded = 1;
+    guest.background_loaded = 1;
     drives_idle();
 }
 
 /* orig $006B06: the background image on the screen: 192 rows of 20 words of each of the four planes */
 void background_draw(void)
 {
-    background = memory_base + 256;
+    guest.background = guest.memory_base + 256;
     load_background();
 
-    const uint16_t *src = (const uint16_t *)(background + 34);
-    uint16_t *dst = (uint16_t *)screen_buffer;
+    const uint16_t *src = (const uint16_t *)(guest.background + 34);
+    uint16_t *dst = (uint16_t *)guest.screen_buffer;
 
     for (int row = 0; row < 192; row++) {
         for (int col = 0; col < 20; col++) {
@@ -197,34 +197,34 @@ void background_draw(void)
  * (each long that is not 0 is exclusive-or'ed with a constant) to password_slots; then the colours fade out */
 void password_screen_setup(void)
 {
-    if (screen_prepared)
+    if (guest.screen_prepared)
         return;
     background_draw();
     screens_flip();
-    copper_setup_done = 1;
-    fade_in((const uint16_t *)(background + 2), 0);
-    drives_present &= ~0x40;
-    screen_prepared = 1;
+    guest.copper_setup_done = 1;
+    fade_in((const uint16_t *)(guest.background + 2), 0);
+    guest.drives_present &= ~0x40;
+    guest.screen_prepared = 1;
 
-    uint8_t *buffer = screen_buffer + 18048;
+    uint8_t *buffer = guest.screen_buffer + 18048;
 
-    disk_digit = '2';
+    guest.disk_digit = '2';
     file_read((const char *)(screen_texts + 51), buffer);
     for (int i = 0; i < 216; i++)
-        record_text[i] = buffer[i];
+        guest.record_text[i] = buffer[i];
 
-    const uint32_t *coded = (const uint32_t *)(record_text + 200);
+    const uint32_t *coded = (const uint32_t *)(guest.record_text + 200);
     static const uint32_t key[4] = { 0x4d616769, 0x63506f63, 0x6b657473, 0x436f6b65 };
     uint32_t value;
 
     value = coded[0];
-    password_slots[0] = value ? value ^ key[0] : 0;
+    guest.password_slots[0] = value ? value ^ key[0] : 0;
     value = coded[1];
-    password_slots[0] = value ? value ^ key[1] : 0;   /* the same place again: the original stores both there */
+    guest.password_slots[0] = value ? value ^ key[1] : 0;   /* the same place again: the original stores both there */
     value = coded[2];
-    password_slots[1] = value ? value ^ key[2] : 0;
+    guest.password_slots[1] = value ? value ^ key[2] : 0;
     value = coded[3];
-    password_slots[2] = value ? value ^ key[3] : 0;
+    guest.password_slots[2] = value ? value ^ key[3] : 0;
     fade_out(0, 0xffff);
 }
 
@@ -232,22 +232,22 @@ void password_screen_setup(void)
  * the image table, and the asset set smallfnt is read to the memory the first set ended at */
 void leave_load_screen(void)
 {
-    if (menu_state_25a == 3)
+    if (guest.menu_state_25a == 3)
         return;
     play_sound(0, 0);
-    glyph_base = (uint16_t)(((uint32_t)asset_table_0ca6 - (uint32_t)image_table) >> 3);
-    asset_flag = -1;
-    flags_0ddd |= 0x10;
-    assets_load((const char *)small_font_name, palette_words, asset_end_0ca2, (struct AssetEntry *)asset_table_0ca6);
-    palette_words[0] = 0;
-    menu_state_25a = 3;
+    guest.glyph_base = (uint16_t)(((uint32_t)guest.asset_table_0ca6 - (uint32_t)guest.image_table) >> 3);
+    guest.asset_flag = -1;
+    guest.flags_0ddd |= 0x10;
+    assets_load((const char *)small_font_name, guest.palette_words, guest.asset_end_0ca2, (struct AssetEntry *)guest.asset_table_0ca6);
+    guest.palette_words[0] = 0;
+    guest.menu_state_25a = 3;
     drives_idle();
 }
 
 /* orig $006DEA: sixteen characters of line_text in the large font at the bottom, 16 pixels apart */
 void draw_line_text(void)
 {
-    const uint8_t *text = line_text;
+    const uint8_t *text = guest.line_text;
     int16_t x = 32;
 
     for (int i = 0; i < 16; i++) {
@@ -263,19 +263,19 @@ void draw_line_text(void)
 /* orig $006E1C: the cursor of the grid: a glyph of four frames at the cell cursor_pos names, then the next frame */
 void cursor_draw(void)
 {
-    int16_t x = ((cursor_pos & 7) << 5) + 40;
-    int16_t row = (int16_t)cursor_pos >> 3;
+    int16_t x = ((guest.cursor_pos & 7) << 5) + 40;
+    int16_t row = (int16_t)guest.cursor_pos >> 3;
     int16_t y = row * 24 + 40;
 
-    glyph_draw(x, y, cursor_frame + 87);
-    cursor_frame = (cursor_frame + 1) & 3;
+    glyph_draw(x, y, guest.cursor_frame + 87);
+    guest.cursor_frame = (guest.cursor_frame + 1) & 3;
 }
 
 /* orig $006E5E: the password screen's background, its title and the grid of 5 rows of 8 glyphs (numbered on from row to row) */
 void password_grid_draw(void)
 {
     background_draw();
-    text_draw_at(title_text, title_x, title_y);
+    text_draw_at(guest.title_text, guest.title_x, guest.title_y);
     for (int row = 0; row < 5; row++)
         for (int col = 0; col < 8; col++)
             glyph_draw(40 + 32 * col, 40 + 24 * row, 128 + 8 * row + col);
@@ -288,15 +288,15 @@ void password_slots_draw(void)
     int16_t x = 10;
 
     for (int i = 0; i < 3; i++) {
-        uint32_t slot = password_slots[i];
+        uint32_t slot = guest.password_slots[i];
 
-        password_line[5] = '2' + i;
+        guest.password_line[5] = '2' + i;
         if ((slot >> 24) != 0) {
-            password_line[8] = (uint8_t)(slot >> 24) + 96;
-            password_line[9] = (uint8_t)(slot >> 16) + 96;
-            password_line[10] = (uint8_t)(slot >> 8) + 96;
-            password_line[11] = (uint8_t)slot;
-            draw_string_small((const char *)password_line, x, 182);
+            guest.password_line[8] = (uint8_t)(slot >> 24) + 96;
+            guest.password_line[9] = (uint8_t)(slot >> 16) + 96;
+            guest.password_line[10] = (uint8_t)(slot >> 8) + 96;
+            guest.password_line[11] = (uint8_t)slot;
+            draw_string_small((const char *)guest.password_line, x, 182);
         }
         x += 100;
     }
@@ -305,7 +305,7 @@ void password_slots_draw(void)
 /* orig $006974: ten records, one a line 13 pixels below the one before: sixteen characters and the four bytes in hexadecimal */
 void record_list_draw(void)
 {
-    const uint8_t *record = record_text;
+    const uint8_t *record = guest.record_text;
     int16_t y = 40;
 
     for (int i = 0; i < 10; i++) {
@@ -334,8 +334,8 @@ void wait_request(int16_t frames)
         }
         if ((uint16_t)take_pending_request() != 0)
             return;
-        if (button_bits[0] != 0) {
-            while (button_bits[0] != 0)
+        if (guest.button_bits[0] != 0) {
+            while (guest.button_bits[0] != 0)
                 ;
             return;
         }
@@ -345,7 +345,7 @@ void wait_request(int16_t frames)
 /* orig $006754: the title row: six sprites 32 pixels apart and a glyph after them */
 void title_draw(void)
 {
-    uint16_t index = 123 + glyph_base;
+    uint16_t index = 123 + guest.glyph_base;
 
     for (int i = 0; i < 6; i++)
         sprite_draw(64 + 32 * i, 5, index + i);
@@ -355,11 +355,11 @@ void title_draw(void)
 /* orig $012D5C: the text centred on the other screen (the one that is shown) */
 void text_draw_centered_other(const char *text)
 {
-    uint8_t *saved = screen_buffer;
+    uint8_t *saved = guest.screen_buffer;
 
-    screen_buffer = screen_other;
+    guest.screen_buffer = guest.screen_other;
     text_draw_centered(text);
-    screen_buffer = saved;
+    guest.screen_buffer = saved;
 }
 
 /* orig $01CF64: wait up to frames - 1 frames, or until the first button is down (1 then, 0 when the time ran out) */
@@ -369,7 +369,7 @@ int wait_frames_or_button(uint16_t frames)
         if (--frames == 0)
             return 0;
         wait_vblank();
-        if (button_bits[0] & 1)
+        if (guest.button_bits[0] & 1)
             return 1;
     }
 }
@@ -384,19 +384,19 @@ void menu_screen_draw(void)
 {
     background_draw();
     title_draw();
-    text_y = 82;
+    guest.text_y = 82;
     text_draw_centered((const char *)menu_texts);
-    text_y = 114;
+    guest.text_y = 114;
     text_draw_centered((const char *)menu_texts + 12);
-    menu_item_count = 1;
-    text_y = 146;
-    if (has_continue) {
-        menu_item_count++;
+    guest.menu_item_count = 1;
+    guest.text_y = 146;
+    if (guest.has_continue) {
+        guest.menu_item_count++;
         text_draw_centered((const char *)menu_texts + 27);
-        text_y = 178;
+        guest.text_y = 178;
     }
 
-    int16_t y = 82 + (int16_t)(cursor_pos << 5);
+    int16_t y = 82 + (int16_t)(guest.cursor_pos << 5);
 
     glyph_draw(24, y, 168);
     glyph_draw(280, y, 166);
@@ -415,14 +415,14 @@ void top_ten_screen(void)
     text_draw_at((const char *)(screen_texts + 38), 64, 8);
     record_list_draw();
     password_slots_draw();
-    copper_setup_done = 1;
+    guest.copper_setup_done = 1;
     do_nothing();
     wait_vblank();
     screens_flip();
     copy_other_screen();
     host_cpu_frames(top_ten_delay);   /* (the lockstep: the original's drawing of the lists takes about 9 frames more, after the menu's time ran out) */
     top_ten_delay = 0;
-    fade_in((const uint16_t *)(background + 2), 1);
+    fade_in((const uint16_t *)(guest.background + 2), 1);
     wait_request(750);
     fade_out(1, 0);
     do_nothing();
@@ -433,13 +433,13 @@ void top_ten_screen(void)
  * the backspace, 39 is the end); the keyboard picks by key.  It returns when the end is picked or Return is pressed */
 void password_screen(void)
 {
-    uint8_t *line = (uint8_t *)line_text;
+    uint8_t *line = (uint8_t *)guest.line_text;
     int16_t length;
 
     for (int i = 0; i < 20; i++)
         line[i] = 0;
     fade_out(0, 0);
-    copper_setup_done = 1;
+    guest.copper_setup_done = 1;
     do_nothing();
     wait_vblank();
     screens_flip();
@@ -447,11 +447,11 @@ void password_screen(void)
     password_grid_draw();
     draw_line_text();
     screens_flip();
-    cursor_pos = 0;
-    key_held = 0;
+    guest.cursor_pos = 0;
+    guest.key_held = 0;
     host_flip_late(1);
     host_cpu_frames(5);   /* (the original's copy of the screen and the drawing of the grid and the line take about 5 frames before the colours fade in) */
-    fade_in((const uint16_t *)(background + 2), 1);
+    fade_in((const uint16_t *)(guest.background + 2), 1);
     length = 0;
 
     for (;;) {
@@ -468,7 +468,7 @@ void password_screen(void)
             for (int i = 0; key_table[i] < 0x80; i++) {
                 if (key_table[i] == (uint8_t)key) {
                     play_sound(22, 1);
-                    cursor_pos = i;
+                    guest.cursor_pos = i;
                     break;
                 }
             }
@@ -488,12 +488,12 @@ void password_screen(void)
             } else if (key == 32) {
                 pick = 28;
             }
-        } else if (button_bits[0] & 1) {
-            if (!key_held) {
-                key_held = 1;
+        } else if (guest.button_bits[0] & 1) {
+            if (!guest.key_held) {
+                guest.key_held = 1;
                 play_sound(33, 2);
 
-                int16_t cell = cursor_pos;
+                int16_t cell = guest.cursor_pos;
 
                 if (cell == 38) {
                     if (length != 0) {
@@ -507,28 +507,28 @@ void password_screen(void)
                 }
             }
         } else {
-            key_held = 0;
-            if (joystick != 0) {
-                if (joystick & 8) {
-                    cursor_pos++;
+            guest.key_held = 0;
+            if (guest.joystick != 0) {
+                if (guest.joystick & 8) {
+                    guest.cursor_pos++;
                     play_sound(22, 1);
                 }
-                if (joystick & 4) {
-                    cursor_pos--;
+                if (guest.joystick & 4) {
+                    guest.cursor_pos--;
                     play_sound(22, 1);
                 }
-                if ((joystick & 1) && (int16_t)cursor_pos >= 8) {
-                    cursor_pos -= 8;
+                if ((guest.joystick & 1) && (int16_t)guest.cursor_pos >= 8) {
+                    guest.cursor_pos -= 8;
                     play_sound(22, 1);
                 }
-                if ((joystick & 2) && (int16_t)cursor_pos < 32) {
-                    cursor_pos += 8;
+                if ((guest.joystick & 2) && (int16_t)guest.cursor_pos < 32) {
+                    guest.cursor_pos += 8;
                     play_sound(22, 1);
                 }
-                if ((int16_t)cursor_pos > 39)
-                    cursor_pos = 39;
-                if ((int16_t)cursor_pos < 0)
-                    cursor_pos = 0;
+                if ((int16_t)guest.cursor_pos > 39)
+                    guest.cursor_pos = 39;
+                if ((int16_t)guest.cursor_pos < 0)
+                    guest.cursor_pos = 0;
             }
         }
         if (pick >= 0 && length != 16) {
@@ -543,7 +543,7 @@ done:
     play_sound(33, 2);
     fade_out(1, 0);
     do_nothing();
-    copper_setup_done = 0;
+    guest.copper_setup_done = 0;
 }
 
 /* orig $0067FA: the three saved codes are scrambled again (each long that is not 0 is exclusive-or'ed with the constant; the first slot is
@@ -551,8 +551,8 @@ done:
 static void scores_store(void)
 {
     static const uint32_t key[4] = { 0x4d616769, 0x63506f63, 0x6b657473, 0x436f6b65 };
-    uint32_t *coded = (uint32_t *)(record_text + 200);
-    uint32_t slot[4] = { password_slots[0], password_slots[0], password_slots[1], password_slots[2] };
+    uint32_t *coded = (uint32_t *)(guest.record_text + 200);
+    uint32_t slot[4] = { guest.password_slots[0], guest.password_slots[0], guest.password_slots[1], guest.password_slots[2] };
 
     for (int i = 0; i < 4; i++)
         coded[i] = slot[i] ? slot[i] ^ key[i] : 0;
@@ -565,33 +565,33 @@ static void scores_store(void)
  * score is in none of them) */
 void high_score_entry(void)
 {
-    uint32_t score = ((uint32_t)score_words[3] << 24) | ((uint32_t)score_words[2] << 16) | ((uint32_t)score_words[1] << 8) | score_words[0];
+    uint32_t score = ((uint32_t)guest.score_words[3] << 24) | ((uint32_t)guest.score_words[2] << 16) | ((uint32_t)guest.score_words[1] << 8) | guest.score_words[0];
 
-    if (has_continue)
+    if (guest.has_continue)
         return;
     for (int i = 0; i < 10; i++) {
-        uint32_t *value = (uint32_t *)(record_text + 20 * i + 16);
+        uint32_t *value = (uint32_t *)(guest.record_text + 20 * i + 16);
 
         if ((int32_t)score > (int32_t)*value) {
-            uint8_t *record = record_text + 20 * i;
+            uint8_t *record = guest.record_text + 20 * i;
 
-            for (uint8_t *to = record_text + 180; to != record; to -= 20)
+            for (uint8_t *to = guest.record_text + 180; to != record; to -= 20)
                 for (int b = 0; b < 20; b++)
                     to[b] = to[b - 20];
             *value = score;
             load_background();
-            title_text = (const char *)(screen_texts + 17);
-            title_x = 0;
-            title_y = 8;
+            guest.title_text = (const char *)(screen_texts + 17);
+            guest.title_x = 0;
+            guest.title_y = 8;
             password_screen();
             for (int b = 0; b < 16; b++)
-                record[b] = ((const uint8_t *)line_text)[b];
-            scores_changed = 1;
+                record[b] = ((const uint8_t *)guest.line_text)[b];
+            guest.scores_changed = 1;
             scores_store();
             return;
         }
     }
-    scores_changed = 1;
+    guest.scores_changed = 1;
     scores_store();
 }
 
@@ -599,10 +599,10 @@ void high_score_entry(void)
  * the main menu */
 void menu_start(void)
 {
-    background = memory_base;
-    sound_enabled = 1;
-    menu_active = 1;
-    message_shown = 0;
+    guest.background = guest.memory_base;
+    guest.sound_enabled = 1;
+    guest.menu_active = 1;
+    guest.message_shown = 0;
     leave_load_screen();
     menu_main();
 }
@@ -613,25 +613,25 @@ void menu_start(void)
 void menu_main(void)
 {
     for (;;) {
-        has_continue = 0;
-        message_shown = 0;
+        guest.has_continue = 0;
+        guest.message_shown = 0;
         clear_work_area();
         do_nothing();
-        cursor_pos = has_continue * 2;
+        guest.cursor_pos = guest.has_continue * 2;
         password_screen_setup();
         menu_screen_draw();
-        copper_setup_done = 1;
-        disk_digit = '2';
-        fade_in((const uint16_t *)(background + 2), 1);
-        tick_count = 0;
+        guest.copper_setup_done = 1;
+        guest.disk_digit = '2';
+        fade_in((const uint16_t *)(guest.background + 2), 1);
+        guest.tick_count = 0;
 
         for (;;) {
-            message_shown = 0;
+            guest.message_shown = 0;
             clear_work_area();
             menu_draw_delay = 3;
             menu_screen_draw();
             menu_draw_delay = 0;
-            if ((int32_t)tick_count >= 750) {
+            if ((int32_t)guest.tick_count >= 750) {
                 fade_out(1, 0);
                 do_nothing();
                 top_ten_delay = 9;
@@ -639,39 +639,39 @@ void menu_main(void)
                 break;
             }
             host_read_wait();   /* (the lockstep: the original's read of the button and the stick, $6422, is done) */
-            if (button_bits[0] & 1) {
+            if (guest.button_bits[0] & 1) {
                 play_sound(33, 2);
-                if ((int16_t)cursor_pos < 1) {
+                if ((int16_t)guest.cursor_pos < 1) {
                     game_loop_install();
                     begin_quest();
                     return;
                 }
-                if ((int16_t)cursor_pos > 1) {
+                if ((int16_t)guest.cursor_pos > 1) {
                     game_loop_install();
                     original_continue();
                     return;
                 }
-                title_text = (const char *)screen_texts;
-                title_x = 32;
-                title_y = 8;
+                guest.title_text = (const char *)screen_texts;
+                guest.title_x = 32;
+                guest.title_y = 8;
                 password_screen();
                 game_loop_install();
                 password_entered();
                 return;
             }
-            if (joystick & 1) {
-                tick_count = 0;
-                cursor_pos--;
-                if ((int16_t)cursor_pos < 0) {
-                    cursor_pos = 0;
+            if (guest.joystick & 1) {
+                guest.tick_count = 0;
+                guest.cursor_pos--;
+                if ((int16_t)guest.cursor_pos < 0) {
+                    guest.cursor_pos = 0;
                     continue;
                 }
                 play_sound(22, 1);
-            } else if (joystick & 2) {
-                cursor_pos++;
-                tick_count = 0;
-                if (menu_item_count < (int16_t)cursor_pos) {
-                    cursor_pos--;
+            } else if (guest.joystick & 2) {
+                guest.cursor_pos++;
+                guest.tick_count = 0;
+                if (guest.menu_item_count < (int16_t)guest.cursor_pos) {
+                    guest.cursor_pos--;
                     continue;
                 }
                 play_sound(22, 1);
