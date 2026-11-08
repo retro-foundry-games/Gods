@@ -24,7 +24,7 @@
 --   blitlog=F=PATH the original's custom register writes (with the pc) of the emulator frame F are written to PATH
 --   mask=X,Y,W,H[;..] image regions (in the 320x256 picture) left out of the comparison
 --   autosave=SECONDS the original's state is saved every SECONDS seconds (default 30; noautosave: off; not with replay=) to captures/quicksave/auto/auto-K.state/.ram, 5 slots going round (latest.txt)
---   afterend      with break=: only once a level end record was used (ptr_0bc6 past the first), so break=374a stops at the teleport after "WORLD ONE COMPLETED"
+--   afterend      with break=: only once a level end record was used (level_end_record past the first), so break=374a stops at the teleport after "WORLD ONE COMPLETED"
 --   nosync        the port models the original's CPU time itself (host_iteration_cpu); by default the port's flips that end an iteration wait for the original's own (flipsync: `flips N` to the port)
 --   flipoff=N / nolag  tuning of that sync (the port's flip k goes with the original's k+N; nolag: the count of the same step, not the step before)
 --   watch         (with continue=all) the first frame at which each of a few game variables differs between the two sides is logged (read from the port with `mem`)
@@ -82,26 +82,26 @@ local memcmp_hit = false
 -- the tables compared (address, record count and size in bytes, unit 2 words or 1 bytes, skip: the bytes of a record that hold pointers)
 MEMCMP_REGIONS = {
     { name = "monster_records (monster groups)", addr = 0x1354, count = 10, size = 428, unit = 2, skip = { 2, 6 }, bytes = { 16, 20 } },
-    { name = "records_12a0 (walker groups)", addr = 0x12a0, count = 10, size = 18, unit = 2, skip = { 2, 6 }, bytes = { 16, 18 } },
-    { name = "table_ed0 (world 2: things the archers threw)", addr = 0xed0, count = 16, size = 16, unit = 2 },
-    { name = "records_113c", addr = 0x113c, count = 10, size = 12, unit = 2 },
+    { name = "walker_groups (walker groups)", addr = 0x12a0, count = 10, size = 18, unit = 2, skip = { 2, 6 }, bytes = { 16, 18 } },
+    { name = "level_entry_table (world 2: things the archers threw)", addr = 0xed0, count = 16, size = 16, unit = 2 },
+    { name = "stone_records", addr = 0x113c, count = 10, size = 12, unit = 2 },
     { name = "pod_records", addr = 0xfd0, count = 10, size = 10, unit = 2 },
     { name = "falling_things (archers)", addr = 0x11b4, count = 10, size = 10, unit = 2 },
     { name = "spore_records", addr = 0x1036, count = 120, size = 1, unit = 1 },
-    { name = "records_19334 (pick-ups)", addr = 0x19334, count = 20, size = 8, unit = 2 },
-    { name = "records_19b14 (things)", addr = 0x19b14, count = 200, size = 8, unit = 2 },
-    { name = "records_721e (shards)", addr = 0x721e, count = 10, size = 6, unit = 2 },
-    { name = "records_3a0a6", addr = 0x3a0a6, count = 20, size = 12, unit = 2 },
-    { name = "records_316", addr = 0x316, count = 4, size = 6, unit = 2 },
+    { name = "pickup_spots (pick-ups)", addr = 0x19334, count = 20, size = 8, unit = 2 },
+    { name = "thing_records (things)", addr = 0x19b14, count = 200, size = 8, unit = 2 },
+    { name = "puff_records (shards)", addr = 0x721e, count = 10, size = 6, unit = 2 },
+    { name = "debris_records", addr = 0x3a0a6, count = 20, size = 12, unit = 2 },
+    { name = "burst_marks", addr = 0x316, count = 4, size = 6, unit = 2 },
     { name = "particle_records (particles)", addr = 0x86c, count = 80, size = 6, unit = 2 },
     { name = "slots_30c", addr = 0x30c, count = 1, size = 8, unit = 2 },
     { name = "records_7544", addr = 0x7544, count = 42, size = 10, unit = 2 },
     { name = "bolt_records (bolts)", addr = 0x1a154, count = 20, size = 22, unit = 2, skip = { 0, 4 } },
     { name = "player x,y", addr = 0x1e0, count = 1, size = 4, unit = 2 },
     { name = "energy", addr = 0xc96, count = 1, size = 2, unit = 2 },
-    { name = "counter_204", addr = 0x204, count = 1, size = 2, unit = 2 },
-    { name = "counter_20c", addr = 0x20c, count = 1, size = 2, unit = 2 },
-    { name = "counter_262", addr = 0x262, count = 1, size = 2, unit = 2 },
+    { name = "bat_flap_phase", addr = 0x204, count = 1, size = 2, unit = 2 },
+    { name = "anim_cycle_4", addr = 0x20c, count = 1, size = 2, unit = 2 },
+    { name = "anim_cycle_6", addr = 0x262, count = 1, size = 2, unit = 2 },
     { name = "glyph_frame", addr = 0x2b4, count = 1, size = 2, unit = 2 },
 }
 local hashlog = args:match("hashlog=(%d+)-(%d+)") and { tonumber(args:match("hashlog=(%d+)")), tonumber(args:match("hashlog=%d+-(%d+)")) } or nil
@@ -164,7 +164,7 @@ local break_hit = nil
 for hex in (args:match("break=([%x,]+)") or ""):gmatch("%x+") do
     local at = tonumber(hex, 16)
     ami.hook(at, function()
-        if not break_hit and (not args:find("afterend") or ami.peek32(0xbc6) > 0x143d8) then   -- afterend: only once a level end record has been used (ptr_0bc6 past the first), e.g. the teleport that follows world one
+        if not break_hit and (not args:find("afterend") or ami.peek32(0xbc6) > 0x143d8) then   -- afterend: only once a level end record has been used (level_end_record past the first), e.g. the teleport that follows world one
             break_hit = at
             ami.log(("break at %x, frame %d: player %d,%d"):format(at, ami.frame(), ami.peek16(0x1e0), ami.peek16(0x1e2)))
         end
@@ -495,8 +495,8 @@ local trace = args:find("%f[%w]trace%f[%W]")
 local dump = args:match("dump=(%S+)")
 local watching = args:find("%f[%w]watch%f[%W]")
 local pause_at = tonumber(args:match("pause=(%d+)"))
-local WATCH = { frame_toggle = 0x196, frame_phase = 0x1e4, player_x = 0x1e0, player_y = 0x1e2, player_state = 0x19c, player_frame = 0x19a, counter_204 = 0x204, counter_260 = 0x260, scroll_x = 0x358, scroll_y = 0x35a, hit_box_extra_height = 0x39e,
-                onscreen_count = 0x2b8, flag_23a = 0x23a, timer_306 = 0x306, energy_shown = 0x216, level_ended = 0x230, word_3b0 = 0x3b0, player_energy = 0xc96, hit = 0x3a6, word_2ba = 0x2ba, tick_hold = 0x26c, word_226 = 0x226, word_228 = 0x228, item_count = 0x20a }
+local WATCH = { frame_toggle = 0x196, frame_phase = 0x1e4, player_x = 0x1e0, player_y = 0x1e2, player_state = 0x19c, player_frame = 0x19a, bat_flap_phase = 0x204, anim_cycle_8 = 0x260, scroll_x = 0x358, scroll_y = 0x35a, hit_box_extra_height = 0x39e,
+                onscreen_count = 0x2b8, boss_mode = 0x23a, freeze_timer = 0x306, energy_shown = 0x216, level_ended = 0x230, word_3b0 = 0x3b0, player_energy = 0xc96, hit = 0x3a6, lever_step = 0x2ba, tick_hold = 0x26c, game_stick_word = 0x226, game_buttons_word = 0x228, item_count = 0x20a }
 local watch_found = {}
 -- track=ADDR (hex): the long at ADDR on both sides is logged whenever either changes (to find where two states part)
 local track_at = tonumber(args:match("track=(%x+)") or "", 16)

@@ -17,8 +17,8 @@ from pathlib import Path
 PROJECT = Path(__file__).resolve().parents[1]
 SRC = PROJECT / "native" / "src"
 SIZES = {"char": 1, "uint8_t": 1, "uint16_t": 2, "uint32_t": 4, "int8_t": 1, "int16_t": 2, "int32_t": 4}
-# how far an unsized array goes where the code uses a block that holds other variables of the original's (the level's tables are read to data_1aa66, 7000 bytes and a text table after them)
-EXTENT = {"data_1aa66": 0x1c700, "shadow_table": 0xe50, "copper_list_a": 0x4e3a, "copper_list_b": 0x4e3a}
+# how far an unsized array goes where the code uses a block that holds other variables of the original's (the level's tables are read to unit_script_data, 7000 bytes and a text table after them)
+EXTENT = {"unit_script_data": 0x1c700, "shadow_table": 0xe50, "copper_list_a": 0x4e3a, "copper_list_b": 0x4e3a}
 HEAP = 0x80400   # where the program's heap begins (host.c: heap_base)
 GUEST_END = 0x200000
 

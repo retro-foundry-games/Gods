@@ -25,7 +25,7 @@ import compare_iter as C  # noqa: E402
 
 N = C.N
 # (pointers are the host's own addresses; password_slots is what the disk image has; the message line is timed by frames)
-TIME_ONLY = {"shift_source", "restart_address", "password_slots", "message_next", "message_hold", "message_wide", "message_arg", "message_x", "message_shown", "message_text", "message_current", "message_state", "message_timer", "flag_236",
+TIME_ONLY = {"shift_source", "restart_address", "password_slots", "message_next", "message_hold", "message_wide", "message_arg", "message_x", "message_shown", "message_text", "message_current", "message_state", "message_timer", "hint_scrolling",
              "random_index"}
 
 
