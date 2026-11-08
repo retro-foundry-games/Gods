@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rename variables and functions: python3 scripts/rename_symbols.py OLD=NEW ...   (or a file of OLD=NEW lines with @FILE)
 
-Whole-word replacement in the sources (native/src, host scripts, README), then menu_symbols.h, menu.ld, data.c and struct Gods are generated again, so menu.symbols is the
+Whole-word replacement in the sources (native/src, host scripts, README), then game.h, menu.ld, data.c and struct Gods are generated again, so menu.symbols is the
 one place a variable's name is changed.  Skips (and says so) a new name that already exists or an old one that is not there."""
 import re
 import subprocess
@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 FILES = [p for pattern in ("native/src/**/*.c", "native/src/**/*.h", "native/src/**/*.asm", "native/src/**/*.py", "native/src/menu.symbols", "host/*.lua", "scripts/*.py", "README.md")
-         for p in ROOT.glob(pattern) if "build" not in p.parts and p.name not in ("menu_symbols.h", "menu.ld", "data.c")]
+         for p in ROOT.glob(pattern) if "build" not in p.parts and p.name not in ("menu.ld", "data.c")]
 
 
 def main() -> None:
