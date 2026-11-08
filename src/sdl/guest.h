@@ -3,11 +3,15 @@
 #define GODS_SDL_GUEST_H
 
 #include <stdint.h>
+#include <stdio.h>
 
 uint8_t *guest_ptr(uint32_t address);
+int guest_state_write(FILE *f);                              /* the port's own save state: the block of the program and the chips' registers (0 when done) */
+int guest_state_read(FILE *f);
 void guest_set_heap(void);                                   /* heap_base: the heap of the block (the loader leaves it in a vector slot) */
 void guest_set_mask_buffer(void);                            /* mask_buffer: the area of the original's boot code */
-uint32_t guest_address(uint32_t address);                    /* the same as a pointer's value (32 bits) */                        /* the host address of an address of the program's memory */
+uint32_t guest_address(uint32_t address);
+uint32_t guest_offset(const void *p);                        /* the offset in the block: what an address of the original's memory is */                    /* the same as a pointer's value (32 bits) */                        /* the host address of an address of the program's memory */
 void guest_init(void);                                       /* map the memory and the chips' pages (once) */
 void guest_reset(void);                                      /* the memory as the loader leaves it for a program: cleared, the tables in */                                       /* map the chips' pages */
 int guest_load_level_image(const char *path);                  /* a RAM image of the original in level 1 (a test) */

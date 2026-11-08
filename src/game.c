@@ -13999,7 +13999,7 @@ void level_tables_quickload(void)
             continue;
         for (int i = 0; i < 10; i++, member++) {
             file_words(&member->x, 4);
-            file_longs(&member->path, 1);
+            file_pointers(&member->path, 1);
             file_words(&member->hp, 4);
         }
     }
@@ -14007,7 +14007,7 @@ void level_tables_quickload(void)
     struct CreatureType *type = (struct CreatureType *)guest.table_199ac;
 
     for (int i = 0; i < 10; i++, type++) {   /* (table_199ac is declared as bytes: the fields of each record are swapped here) */
-        file_longs(&type->creatures, 1);
+        file_pointers(&type->creatures, 1);
         file_words(&type->count, 4);
         file_words(&type->delay_step, 1);
         file_words(&type->draw_kind, 1);

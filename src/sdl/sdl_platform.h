@@ -5,6 +5,9 @@
 
 #include <stdint.h>
 
+struct Guest;
+extern struct Guest guest;   /* guest_struct.h */
+
 /* an address of the program's memory (struct Guest, guest_struct.h: its variables at the offsets of their original addresses, and its heap) as a pointer's value */
 #define GUEST(address) ((uintptr_t)&guest + (uintptr_t)(address))
 
@@ -79,6 +82,19 @@ static inline void file_longs(void *p, uint32_t count)
         b[1] = b[2];
         b[2] = t;
     }
+}
+
+/* `count` longs of a loaded RAM image of the original that are addresses of its data (it is memory of the original's: the block's own now) */
+#define GODS_GUEST_END 0x200000u
+
+static inline void file_pointers(void *p, uint32_t count)
+{
+    uint32_t *w = p;
+
+    file_longs(p, count);
+    for (uint32_t i = 0; i < count; i++)
+        if (w[i] != 0 && w[i] < GODS_GUEST_END)
+            w[i] = (uint32_t)GUEST(w[i]);
 }
 
 #endif

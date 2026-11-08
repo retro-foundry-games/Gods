@@ -28,6 +28,11 @@ uint8_t *guest_ptr(uint32_t address)
     return (uint8_t *)&guest + address;
 }
 
+uint32_t guest_offset(const void *p)
+{
+    return (uint32_t)((const uint8_t *)p - (const uint8_t *)&guest);
+}
+
 void guest_set_heap(void)
 {
     guest.heap_base = guest_address(0x80400);
@@ -148,6 +153,51 @@ void guest_load_image(const uint8_t *image, uint32_t size)
         }
 }
 
+/* ---- the port's own save state: struct Guest as it is (and the registers of the custom chips) ----------------------------------------------------------------------------------------------------
+ * The file is the memory of the program, which is one block: a header (the magic, the block's size and the address it was at), the block and the chips' registers.  The pointers in it are the block's own
+ * addresses: when the block is at another address now (another build) every long that was a pointer into it is moved by the difference (the longs of the block are at even offsets). */
+#define STATE_MAGIC 0x32535147u   /* "GQS2" */
+
+int guest_state_write(FILE *f)
+{
+    uint32_t header[3] = { STATE_MAGIC, (uint32_t)sizeof guest, (uint32_t)(uintptr_t)&guest };
+
+    return fwrite(header, 4, 3, f) == 3 && fwrite(&guest, 1, sizeof guest, f) == sizeof guest && fwrite((const void *)host_custom_raw, 1, sizeof host_custom_raw, f) == sizeof host_custom_raw ? 0 : -1;
+}
+
+int guest_state_read(FILE *f)
+{
+    uint32_t header[3];
+
+    if (fread(header, 4, 3, f) != 3 || header[0] != STATE_MAGIC || header[1] != sizeof guest)
+        return -1;
+
+    uint8_t *block = malloc(sizeof guest);
+    uint8_t *chips = malloc(sizeof host_custom_raw);
+    int ok = block && chips && fread(block, 1, sizeof guest, f) == sizeof guest && fread(chips, 1, sizeof host_custom_raw, f) == sizeof host_custom_raw;
+
+    if (ok) {
+        uint32_t was = header[2], now = (uint32_t)(uintptr_t)&guest, delta = now - was;
+
+        if (delta != 0)
+            for (uint32_t i = 0; i + 4 <= sizeof guest; i += 2) {
+                uint32_t v;
+
+                memcpy(&v, block + i, 4);
+                if (v >= was && v < was + sizeof guest) {
+                    v += delta;
+                    memcpy(block + i, &v, 4);
+                    i += 2;
+                }
+            }
+        memcpy(&guest, block, sizeof guest);
+        memcpy((void *)host_custom_raw, chips, sizeof host_custom_raw);
+    }
+    free(block);
+    free(chips);
+    return ok ? 0 : -1;
+}
+
 /* ---- a RAM image of the original in level 1 (a test of the level on the host: --level1-image) ---------------------------------------
  * The image is the original's chip RAM (big endian); the tables of data.c stay as they are, the rest is copied in and then the words
  * and longs of the program's variables (guest_fixups.h, from menu.symbols' types) are made native, and so are the pictures: the two
@@ -156,11 +206,16 @@ void guest_load_image(const uint8_t *image, uint32_t size)
 
 static void swap_image_table(void)
 {
-    uint8_t *p = (uint8_t *)guest.image_table;
+    uint8_t *p = (uint8_t *)guest.image_table;   /* (a pointer of the block now: the fixups moved it) */
+    uint32_t at = guest_offset(p);
 
-    for (unsigned i = 0; i < 0x1450 / 8; i++, p += 8) {
-        swap16_range((uint32_t)(uintptr_t)p, 4);
-        swap32_range((uint32_t)(uintptr_t)p + 4, 4);
+    for (unsigned i = 0; i < 0x1450 / 8; i++, at += 8) {
+        swap16_range(at, 4);
+        swap32_range(at + 4, 4);
+        uint32_t *data = (uint32_t *)guest_ptr(at + 4);   /* the image's data: an address of the original's memory */
+
+        if (*data != 0 && *data < GUEST_END)
+            *data = guest_address(*data);
     }
 }
 
@@ -169,15 +224,18 @@ static void swap_image_table(void)
  * rest of a path is bytes */
 static void swap_entry_list(void)
 {
-    uint32_t list = *(uint32_t *)guest_ptr(0xcae);   /* (entry_list, made native by the fixups) */
+    uint32_t *list = (uint32_t *)guest.entry_list;   /* (a pointer of the block now) */
 
-    if (list < 0x10000 || list >= 0x200000)
+    if (list == 0)
         return;
-    swap32_range(list, 100 * 4);
-    for (const uint32_t *entry = (const uint32_t *)guest_ptr(list); (int32_t)entry[0] >= 0 && entry < (const uint32_t *)guest_ptr(list) + 100; entry += 2) {
-        uint32_t path = entry[0];
+    swap32_range(guest_offset(list), 100 * 4);
+    for (uint32_t *entry = list; (int32_t)entry[0] >= 0 && entry < list + 100; entry += 2) {
+        uint32_t path = entry[0];   /* an address of the original's memory */
 
-        if (entry[1] < 6 || path < 0x10000 || path >= 0x200000)
+        if (path >= GUEST_END)
+            continue;
+        entry[0] = guest_address(path);   /* (the address of the data now) */
+        if (entry[1] < 6)
             continue;
         swap16_range(path, 4);   /* (two words: swap16_range counts bytes) */
         if (*(uint16_t *)guest_ptr(path) == 0x2345)
@@ -236,13 +294,13 @@ static int load_ram_image_held(const char *path, int slots)
     for (int i = 0; i < 16; i++)   /* the colours the chip has: the shadow table, as the original's interrupt keeps them */
         REG16(0x180 + 2 * i) = guest.shadow_table[i];
     {   /* the sprites' planes: as far as the level's assets go (the level 4's reach past the 0x21D68 bytes of the first levels) */
-        uint32_t first = (uint32_t)(uintptr_t)guest.asset_memory;
-        uint32_t end = *(uint32_t *)guest_ptr(0xd3e);   /* asset_mem_end */
+        uint32_t first = guest_offset(guest.asset_memory);
+        uint32_t end = guest_offset(guest.asset_mem_end);   /* (a pointer of the block now) */
         uint32_t bytes = end > first && end - first >= 0x21d68 && end - first < 0x40000 ? end - first : 0x21d68;
 
         swap16_range(first, bytes);
     }
-    swap16_range((uint32_t)(uintptr_t)guest.memory_base, 0x8500);      /* the background */
+    swap16_range(guest_offset(guest.memory_base), 0x8500);      /* the background */
     swap16_range(0x4d8a, 0xa8);   /* the two copper lists (as guest_load_image does: the program changes their words, the display reads them as words) */
     swap16_range(0x4e3c, 0x530a - 0x4e3c);   /* (the first word, copper_colors, has its fixup) the colour bands of the level's copper list (copper_list_make) and the list at $5246 that the two lists go on at, up to its end ($FFFFFFFE) */
     if (slots) {
@@ -271,7 +329,7 @@ int guest_load_quick(const char *path)
     uint32_t magic = 0;
 
     if (f) {   /* "GQS1": the port's own quicksave (F5, the lockstep's F5): its memory as it was, not the original's RAM */
-        int own = fread(&magic, 4, 1, f) == 1 && magic == 0x31535147u;
+        int own = fread(&magic, 4, 1, f) == 1 && magic == 0x32535147u;
 
         fclose(f);
         if (own && host_quick_state_load)

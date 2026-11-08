@@ -40,50 +40,31 @@ static int record_key(int raw, int down, void *arg)
 }
 
 /* the quicksave (F5) and the quickload (F9): the window asks (host_quick_request), the program's thread does it at the top of an iteration of the loop, where nothing of the game
- * is half done on its stack: the memory the program has (the main memory, the low 64 KiB, the chips' registers) is written to a file or read back from it, as the host has it (native
+ * is half done on its stack: the memory the program has (struct Guest, the chips' registers) is written to a file or read back from it, as the host has it (native
  * words).  The state is what the memory holds; what the host keeps outside it (the sound mixer's voices, the window) is not. */
 volatile int host_quick_request;   /* devmain.c: 1 F5, 2 F9 */
 const char *host_quicksave_file = "gods-quicksave.bin";
-#define QUICK_MAGIC 0x31535147u   /* "GQS1" */
-#define QUICK_END 0x200000u   /* (GUEST_END of guest.c) */
-#define QUICK_LOW 0x10000u   /* (GUEST_LOW_LIMIT) */
-#define QUICK_MAIN_SIZE (QUICK_END - 0x10000)
+#define QUICK_MAGIC 0x32535147u   /* "GQS2" */
 
 /* the memory of a quicksave (F5, or the lockstep's F5: f5-K.port) read back from the file PATH: 0 when it was read (the interrupt held off while the memory is replaced) */
 int host_quick_state_load(const char *path)
 {
     FILE *f = fopen(path, "rb");
-    uint32_t found = 0;
     extern volatile int host_irq_hold;
-    int ok;
+    int result;
 
     if (!f)
         return -1;
-    ok = fread(&found, 4, 1, f) == 1 && found == QUICK_MAGIC;
-    if (ok) {   /* (the file is read to the end before the memory is touched) */
-        uint8_t *main_memory = malloc(QUICK_MAIN_SIZE), *low = malloc(QUICK_LOW), *chips = malloc(0x1000);
-
-        ok = main_memory && low && chips && fread(main_memory, 1, QUICK_MAIN_SIZE, f) == QUICK_MAIN_SIZE && fread(low, 1, QUICK_LOW, f) == QUICK_LOW
-             && fread(chips, 1, 0x1000, f) == 0x1000;
-        if (ok) {
-            host_irq_hold = 1;   /* (the interrupt must not run on half of the memory) */
-            memcpy((void *)(uintptr_t)0x10000, main_memory, QUICK_MAIN_SIZE);
-            memcpy(guest_ptr(0), low, QUICK_LOW);
-            memcpy((void *)(uintptr_t)0xdff000, chips, 0x1000);
-            host_irq_hold = 0;
-        }
-        free(main_memory);
-        free(low);
-        free(chips);
-    }
+    host_irq_hold = 1;   /* (the interrupt must not run on half of the memory) */
+    result = guest_state_read(f);
+    host_irq_hold = 0;
     fclose(f);
-    return ok ? 0 : -1;
+    return result;
 }
 
 static void quick_do(int request)
 {
     FILE *f = fopen(host_quicksave_file, request == 1 ? "wb" : "rb");
-    uint32_t magic = QUICK_MAGIC;
     int ok = f != 0;
     extern volatile int host_irq_hold;
 
@@ -92,28 +73,11 @@ static void quick_do(int request)
         return;
     }
     if (request == 1) {
-        ok = fwrite(&magic, 4, 1, f) == 1 && fwrite((const void *)(uintptr_t)0x10000, 1, QUICK_MAIN_SIZE, f) == QUICK_MAIN_SIZE
-             && fwrite(guest_ptr(0), 1, QUICK_LOW, f) == QUICK_LOW && fwrite((const void *)(uintptr_t)0xdff000, 1, 0x1000, f) == 0x1000;
+        ok = guest_state_write(f) == 0;
     } else {
-        uint32_t found = 0;
-
-        ok = fread(&found, 4, 1, f) == 1 && found == QUICK_MAGIC;
-        if (ok) {   /* (the file is read to the end before the memory is touched) */
-            uint8_t *main_memory = malloc(QUICK_MAIN_SIZE), *low = malloc(QUICK_LOW), *chips = malloc(0x1000);
-
-            ok = main_memory && low && chips && fread(main_memory, 1, QUICK_MAIN_SIZE, f) == QUICK_MAIN_SIZE && fread(low, 1, QUICK_LOW, f) == QUICK_LOW
-                 && fread(chips, 1, 0x1000, f) == 0x1000;
-            if (ok) {
-                host_irq_hold = 1;   /* (the interrupt must not run on half of the memory) */
-                memcpy((void *)(uintptr_t)0x10000, main_memory, QUICK_MAIN_SIZE);
-                memcpy(guest_ptr(0), low, QUICK_LOW);
-                memcpy((void *)(uintptr_t)0xdff000, chips, 0x1000);
-                host_irq_hold = 0;
-            }
-            free(main_memory);
-            free(low);
-            free(chips);
-        }
+        host_irq_hold = 1;
+        ok = guest_state_read(f) == 0;
+        host_irq_hold = 0;
     }
     fclose(f);
     fprintf(stderr, "gods-sdl: quick%s %s (%s)\n", request == 1 ? "save" : "load", ok ? "done" : "failed", host_quicksave_file);

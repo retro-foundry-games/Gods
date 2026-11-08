@@ -29,6 +29,13 @@ static inline void file_words(void *p, uint32_t count)
     (void)count;
 }
 
+/* (the addresses of the program's data are the Amiga's own) */
+static inline void file_pointers(void *p, uint32_t count)
+{
+    (void)p;
+    (void)count;
+}
+
 static inline void file_longs(void *p, uint32_t count)
 {
     (void)p;
