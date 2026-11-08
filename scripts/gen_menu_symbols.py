@@ -16,7 +16,8 @@ from pathlib import Path
 PROJECT = Path(__file__).resolve().parents[1]
 SRC = PROJECT / "native" / "src"
 RAM = PROJECT / "native" / "build" / "menu-ram.bin"
-WIDTH = {"char": 1, "uint8_t": 1, "uint16_t": 2, "uint32_t": 4}
+WIDTH = {"char": 1, "uint8_t": 1, "uint16_t": 2, "uint32_t": 4, "ByteP": 4}
+POINTER_FIELDS = {"SoundInstrument": [3]}   # the fields of a struct table that are pointers into the memory (see pointer_to)
 # the structs of menu_types.h that a table can have: the fields in order, (width in bytes, signed) (big endian in the original's memory)
 STRUCT_FIELDS = {
     "CreatureEntry": [(2, 1), (2, 1), (1, 1), (1, 0), (2, 1), (1, 0), (1, 0), (2, 0), (1, 0), (1, 0), (1, 0), (1, 0)],
@@ -37,7 +38,7 @@ def parse() -> tuple[list, list]:
     for line in (SRC / "menu.symbols").read_text().split("\n"):
         if not line.strip() or line.startswith("#"):
             continue
-        t = re.match(r"table\s+(\w+)\s+(0x[0-9a-fA-F]+)\s+(uint\d+_t|char|struct \w+)\s+(\d+)(?:\s{2,}(.*))?$", line)
+        t = re.match(r"table\s+(\w+)\s+(0x[0-9a-fA-F]+)\s+(uint\d+_t|char|ByteP|struct \w+)\s+(\d+)(?:\s{2,}(.*))?$", line)
         if t:
             tables.append((t.group(1), int(t.group(2), 16), t.group(3), int(t.group(4)), (t.group(5) or "").strip()))
             continue
@@ -46,6 +47,24 @@ def parse() -> tuple[list, list]:
             raise SystemExit(f"menu.symbols: cannot read {line!r}")
         variables.append((m.group(1), int(m.group(2), 16), m.group(3).strip(), (m.group(4) or "").strip()))
     return variables, tables
+
+
+def pointer_to(addr: int, variables: list, tables: list) -> str:
+    """The C expression of the original's address `addr` in a table of pointers: a pointer to what covers it (a table, or a byte array that is a
+    member of struct Guest), so that the data holds objects of this program and not addresses."""
+    if addr == 0:
+        return "0"
+    for name, at, ctype, count, _ in tables:
+        if ctype == "ByteP":
+            continue
+        size = sum(f[0] for f in STRUCT_FIELDS[ctype.split()[1]]) if ctype.startswith("struct ") else WIDTH[ctype]
+        if at <= addr < at + size * count:
+            return f"(ByteP)((const uint8_t *){name} + {addr - at})"
+    for name, at, decl, _ in variables:
+        m = re.fullmatch(r"(?:volatile )?uint8_t %s\[(\d+)\]", decl)
+        if m and at <= addr < at + int(m.group(1)):
+            return f"&guest.{name}[{addr - at}]"
+    raise SystemExit(f"menu.symbols: nothing covers the address {addr:#x} that a table points to")
 
 
 def main(code_base: int = 0xC0000) -> None:
@@ -87,8 +106,9 @@ def main(code_base: int = 0xC0000) -> None:
                 c.append(f"const {ctype} {name}[{count}] __attribute__((aligned(1))) = {{")
                 for i in range(count):
                     at, items = addr + i * size, []
-                    for width, signed in fields:
-                        items.append(str(int.from_bytes(ram[at:at + width], "big", signed=bool(signed))))
+                    for k, (width, signed) in enumerate(fields):
+                        value = int.from_bytes(ram[at:at + width], "big", signed=bool(signed))
+                        items.append(pointer_to(value, variables, tables) if k in POINTER_FIELDS.get(ctype.split()[1], []) else str(value))
                         at += width
                     c.append("    { " + ", ".join(items) + " },")
                 c += ["};", ""]
@@ -102,6 +122,12 @@ def main(code_base: int = 0xC0000) -> None:
                 c.append("")
                 continue
             vals = [int.from_bytes(ram[addr + i * w:addr + (i + 1) * w], "big") for i in range(count)]
+            if ctype == "ByteP":
+                c.append(f"/* ${addr:05X}" + (f"  {comment}" if comment else "") + " */")
+                c.append(f"const ByteP {name}[{count}] = {{")
+                c += [f"    {pointer_to(v, variables, tables)}," for v in vals]
+                c += ["};", ""]
+                continue
             per = 16 // w if w > 1 else 16
             c.append(f"/* ${addr:05X}" + (f"  {comment}" if comment else "") + " */")
             c.append(f"const {ctype} {name}[{count}]" + (" __attribute__((aligned(1)))" if ctype == "uint8_t" else "") + " = {")
