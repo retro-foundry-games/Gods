@@ -108,7 +108,7 @@ static void dev_iteration(unsigned iteration)
     while (weapons_done != host_weapon_count) {
         int16_t item = host_weapon_items[weapons_done++ & 31];
 
-        guest.word_2b2 = (uint16_t)item;
+        guest.touched_thing_id = (uint16_t)item;
         pick_up_object(item);
     }
     if (test_save && iteration == test_save)

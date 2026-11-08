@@ -142,7 +142,7 @@ struct CreatureTemplate {
 _Static_assert(sizeof(struct CreatureTemplate) == 16, "creature template");
 
 
-/* the waves of enemies (the original's "units": five records of 24 bytes at $18740, take_record_to_18740 makes one from a record of the level's script of 8 bytes, UnitScript, and a
+/* the waves of enemies (the original's "units": five records of 24 bytes at $18740, take_unit_record makes one from a record of the level's script of 8 bytes, UnitScript, and a
  * template of the creature templates; the members of a unit, UnitMember, follow a path of the level's pattern file) */
 struct UnitScript {
     uint8_t count;        /* +0 how many members */
@@ -380,7 +380,7 @@ struct EntryRef {
     uint16_t number;
 };
 
-/* the level's script (24 bytes, 100 of them: buffer_cb6, loaded from the disk): up to three conditions (a kind and an argument, call_by_kind), and what happens when they all hold */
+/* the level's script (24 bytes, 100 of them: script_records, loaded from the disk): up to three conditions (a kind and an argument, call_by_kind), and what happens when they all hold */
 struct ScriptRecord {
     struct {
         int16_t kind;
@@ -390,14 +390,14 @@ struct ScriptRecord {
     int16_t y;                /* +14 */
     uint16_t effect;          /* +16 which routine of dispatch_18ba4 does its part (the top bit: another way) */
     int16_t effect_argument;  /* +18 */
-    uint16_t message;         /* +20 the number of a message (the offset is in ptr_0cba), when it has one */
+    uint16_t message;         /* +20 the number of a message (the offset is in message_offsets), when it has one */
     int16_t unused_22;
 };
 _Static_assert(sizeof(struct ScriptRecord) == 24, "script record");
 
 
 /* the monsters of a level: ten records of 428 bytes (struct Monster, at $1354) each run a group of up to ten monsters (struct MonsterPart, 40 bytes, in a block of 400 bytes of its own at
- * ptr_0cee) whose kind is a struct MonsterType of the level's file (22 bytes, at ptr_0ce6).  The group's monsters fly to a target (the player, an object lying about or a zone of the
+ * ptr_0cee) whose kind is a struct MonsterType of the level's file (22 bytes, at monster_types).  The group's monsters fly to a target (the player, an object lying about or a zone of the
  * screen), the first of a chain is followed by the others along the places it has been (history), and they shoot and carry the objects they pick up. */
 struct MonsterType {
     int8_t count;         /* +0 how many monsters */

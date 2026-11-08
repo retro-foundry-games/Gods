@@ -127,8 +127,8 @@ static void key_apply(int raw, int down)
 /* orig $00633E: the next word of a table, round and round */
 uint16_t random_word(void)
 {
-    uint16_t *index = &guest.word_2e6;
-    uint16_t value = *(uint16_t *)(guest.ptr_0cc6 + *index);
+    uint16_t *index = &guest.random_index;
+    uint16_t value = *(uint16_t *)(guest.random_words + *index);
 
     *index = (uint16_t)((*index + 2) & 0x1ff);
     return value;

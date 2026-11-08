@@ -93,16 +93,16 @@ void assign_addresses(void)
 /* orig $00F488: fill the 2400-byte buffer: first clear it, then copy the bytes in */
 void load_buffer_2400(const uint8_t *from)
 {
-    uint8_t *to = (uint8_t *)guest.buffer_cb6;
+    uint8_t *to = (uint8_t *)guest.script_records;
     int i;
 
     for (i = 0; i < 2400; i++)
         *to++ = 0;
-    to = (uint8_t *)guest.buffer_cb6;
+    to = (uint8_t *)guest.script_records;
     for (i = 0; i < 2400; i++)
         *to++ = *from++;
     for (i = 0; i < 100; i++)   /* (loaded from the disk: the words of the records are made the machine's own) */
-        file_words(&guest.buffer_cb6[i], 12);
+        file_words(&guest.script_records[i], 12);
 }
 
 /* orig $0029B4: take the row of param_table that param_index names (the first is 1) into param_a to param_d */

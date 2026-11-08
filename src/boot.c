@@ -103,10 +103,10 @@ void hardware_setup(void)
 /* orig $01AA3C: five pointers into the data the loader brings */
 void data_pointers_init(void)
 {
-    guest.ptr_0cb2 = guest.data_1aa66;
+    guest.unit_scripts = guest.data_1aa66;
     guest.ptr_0cbe = (struct EntryRef *)guest.data_1ad8a;
-    guest.ptr_0d0e = (struct CreatureEntry *)guest.data_1b17e;
-    guest.ptr_0ce6 = guest.data_1b7be;
+    guest.creature_entries = (struct CreatureEntry *)guest.data_1b17e;
+    guest.monster_types = guest.data_1b7be;
     guest.ptr_0c9a = guest.path_descriptions;
 }
 
@@ -141,7 +141,7 @@ void memory_map_init(void)
     p += 0x960;
     *(uint32_t *)guest.table_199ac = (uint32_t)(uintptr_t)p;
     p += 0x578;
-    guest.ptr_0cc6 = p;
+    guest.random_words = p;
     p += 0x200;
     guest.image_table = (struct Image *)p;
     p += 0x1450;
@@ -154,13 +154,13 @@ void memory_map_init(void)
     p += 0x4000;
     guest.ptr_0cc2 = p;
     p += 0x200;
-    guest.ptr_0cda = p;
+    guest.copper_colours = p;
     p += 0xc0;
     guest.ptr_0cfa[0] = p;
     p += 0x3e8;
-    guest.buffer_cb6 = (struct ScriptRecord *)p;
+    guest.script_records = (struct ScriptRecord *)p;
     p += 0x960;
-    guest.ptr_0cba = p;
+    guest.message_offsets = p;
     p += 0x50;
     guest.ptr_0bce = p;
     p += 0xa;

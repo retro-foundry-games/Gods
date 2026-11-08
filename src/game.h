@@ -30,7 +30,7 @@ struct Gods {
     PAD(74)
     uint16_t palette_words[16];   /* $00134 */
     PAD(20)
-    uint8_t *ptr_0168;   /* $00168 */
+    uint8_t *next_tile_block;   /* $00168 */
     PAD(22)
     uint8_t *background;   /* $00182 */
     PAD(16)
@@ -50,17 +50,17 @@ struct Gods {
     PAD(6)
     uint16_t param_index;   /* $001D4 */
     PAD(4)
-    int16_t word_1da;   /* $001DA */
+    int16_t creature_x;   /* $001DA */
     uint16_t frame_wait;   /* $001DC */
     uint16_t word_1de;   /* $001DE */
     int16_t player_x;   /* $001E0 */
     int16_t player_y;   /* $001E2 */
     uint16_t frame_phase;   /* $001E4 */
-    int16_t word_1e6;   /* $001E6 */
+    int16_t landing_frames;   /* $001E6 */
     int16_t fall_distance;   /* $001E8 */
     uint16_t index_1ea;   /* $001EA */
-    uint16_t word_1ec;   /* $001EC */
-    uint16_t word_1ee;   /* $001EE */
+    uint16_t copper_colour_count;   /* $001EC */
+    uint16_t color_line_spacing;   /* $001EE */
     uint16_t flag_1f0;   /* $001F0 */
     uint16_t word_1f2;   /* $001F2 */
     int16_t shot_prev_x;   /* $001F4 */
@@ -97,9 +97,9 @@ struct Gods {
         uint8_t bytes_00228[2];
     };
     int16_t demo_mode;   /* $0022A */
-    uint16_t word_22c;   /* $0022C */
+    uint16_t text_index;   /* $0022C */
     uint16_t word_22e;   /* $0022E */
-    uint16_t flag_230;   /* $00230 */
+    uint16_t level_ended;   /* $00230 */
     uint16_t word_232;   /* $00232 */
     uint16_t word_234;   /* $00234 */
     uint16_t flag_236;   /* $00236 */
@@ -108,9 +108,9 @@ struct Gods {
     int16_t asset_flag;   /* $0023C */
     int16_t shift_count;   /* $0023E */
     uint16_t word_0240;   /* $00240 */
-    int16_t count_242;   /* $00242 */
+    int16_t free_monster_count;   /* $00242 */
     int16_t flag_244;   /* $00244 */
-    int16_t index_246;   /* $00246 */
+    int16_t monster_index;   /* $00246 */
     uint16_t word_0248;   /* $00248 */
     uint16_t counter_24a;   /* $0024A */
     uint32_t param_a;   /* $0024C */
@@ -130,12 +130,12 @@ struct Gods {
         struct { uint16_t word_268; };   /* $00268 */
         uint8_t bytes_00268[2];
     };
-    uint16_t word_26a;   /* $0026A */
+    uint16_t pickup_glyph;   /* $0026A */
     uint16_t tick_hold_26c;   /* $0026C */
     uint16_t flag_26e;   /* $0026E */
     uint16_t glyph_base;   /* $00270 */
     int16_t word_272;   /* $00272 */
-    uint16_t word_274;   /* $00274 */
+    uint16_t slot_value_sum;   /* $00274 */
     union {   /* the variables that overlap */
         struct { uint16_t background_loaded; };   /* $00276 */
         struct { uint16_t word_276; };   /* $00276 */
@@ -151,51 +151,51 @@ struct Gods {
         uint8_t bytes_00280[2];
     };
     union {   /* the variables that overlap */
-        struct { uint32_t seed_282; };   /* $00282 */
-        struct { PAD(2) int16_t word_284; };   /* $00284 */
+        struct { uint32_t copylock_seed; };   /* $00282 */
+        struct { PAD(2) int16_t armour_level; };   /* $00284 */
         uint8_t bytes_00282[4];
     };
-    int16_t flag_286;   /* $00286 */
-    int16_t word_288;   /* $00288 */
-    int16_t word_28a;   /* $0028A */
+    int16_t level_files_read;   /* $00286 */
+    int16_t shop_door_x;   /* $00288 */
+    int16_t shop_door_y;   /* $0028A */
     uint16_t word_28c;   /* $0028C */
     uint16_t word_28e;   /* $0028E */
     int16_t flag_290;   /* $00290 */
     uint16_t word_292;   /* $00292 */
-    uint16_t word_294;   /* $00294 */
+    uint16_t shop_door_index;   /* $00294 */
     uint16_t tick_hold_296;   /* $00296 */
     PAD(2)
     int16_t scroll_x_a;   /* $0029A */
     int16_t scroll_y_a;   /* $0029C */
     int16_t scroll_x_b;   /* $0029E */
     int16_t scroll_y_b;   /* $002A0 */
-    int16_t words_2a2[2];   /* $002A2 */
+    int16_t previous_player_pos[2];   /* $002A2 */
     int16_t word_2a6;   /* $002A6 */
-    uint16_t flag_2a8;   /* $002A8 */
-    int16_t word_2aa;   /* $002AA */
-    uint16_t flag_2ac;   /* $002AC */
+    uint16_t records_3a0a6_in_use;   /* $002A8 */
+    int16_t records_scroll_y;   /* $002AA */
+    uint16_t effect_alive;   /* $002AC */
     uint16_t word_2ae;   /* $002AE */
     uint16_t flag_2b0;   /* $002B0 */
-    uint16_t word_2b2;   /* $002B2 */
-    uint16_t counter_2b4;   /* $002B4 */
+    uint16_t touched_thing_id;   /* $002B2 */
+    uint16_t glyph_frame;   /* $002B4 */
     uint8_t byte_2b6;   /* $002B6 */
     PAD(1)
     uint16_t onscreen_count;   /* $002B8 */
     int16_t word_2ba;   /* $002BA */
     uint16_t word_2bc;   /* $002BC */
-    int16_t word_2be;   /* $002BE */
-    int16_t word_2c0;   /* $002C0 */
+    int16_t shutter_direction;   /* $002BE */
+    int16_t shutter_row;   /* $002C0 */
     PAD(10)
     uint16_t item_shown;   /* $002CC */
     uint16_t item_chosen;   /* $002CE */
-    uint16_t flag_2d0;   /* $002D0 */
+    uint16_t score_redraw;   /* $002D0 */
     uint16_t score_words[4];   /* $002D2 */
     PAD(4)
     uint16_t word_2de;   /* $002DE */
     uint16_t flag_2e0;   /* $002E0 */
     PAD(2)
     int16_t shot_speed;   /* $002E4 */
-    uint16_t word_2e6;   /* $002E6 */
+    uint16_t random_index;   /* $002E6 */
     PAD(2)
     union {   /* the variables that overlap */
         struct { int16_t entry_id_2ea[3]; };   /* $002EA */
@@ -209,7 +209,7 @@ struct Gods {
     uint16_t message_shown;   /* $002F4 */
     uint16_t sound_enabled;   /* $002F6 */
     uint16_t message_arg;   /* $002F8 */
-    uint16_t word_2fa;   /* $002FA */
+    uint16_t tile_block_count;   /* $002FA */
     uint16_t word_2fc;   /* $002FC */
     uint16_t word_2fe;   /* $002FE */
     int16_t words_300[3];   /* $00300 */
@@ -221,12 +221,12 @@ struct Gods {
         struct { int16_t slots_30c[4]; };   /* $0030C */
         uint8_t bytes_0030c[8];
     };
-    int16_t word_314;   /* $00314 */
+    int16_t finish_mark_count;   /* $00314 */
     int16_t records_316[12];   /* $00316 */
     PAD(24)
     uint16_t bcd_346[4];   /* $00346 */
-    int16_t words_34e[3];   /* $0034E */
-    int16_t word_354;   /* $00354 */
+    int16_t last_drop[3];   /* $0034E */
+    int16_t last_drop_frame;   /* $00354 */
     uint16_t word_356;   /* $00356 */
     int16_t scroll_x;   /* $00358 */
     int16_t scroll_y;   /* $0035A */
@@ -240,13 +240,13 @@ struct Gods {
     int16_t jump_step;   /* $0036C */
     int16_t word_36e;   /* $0036E */
     int16_t word_370;   /* $00370 */
-    int16_t word_372;   /* $00372 */
-    int16_t word_374;   /* $00374 */
+    int16_t ladder_shot_start_y;   /* $00372 */
+    int16_t ladder_shot_frame;   /* $00374 */
     int16_t word_376;   /* $00376 */
     int16_t word_378;   /* $00378 */
     int16_t word_37a;   /* $0037A */
     uint16_t word_037c;   /* $0037C */
-    int16_t word_37e;   /* $0037E */
+    int16_t scroll_ease_x;   /* $0037E */
     int16_t word_380;   /* $00380 */
     PAD(2)
     uint16_t word_0384;   /* $00384 */
@@ -262,9 +262,9 @@ struct Gods {
     PAD(2)
     int16_t hit_box_extra_width;   /* $0039C */
     int16_t hit_box_extra_height;   /* $0039E */
-    int16_t word_3a0;   /* $003A0 */
-    int16_t word_3a2;   /* $003A2 */
-    int16_t word_3a4;   /* $003A4 */
+    int16_t uncut_hit_box_width;   /* $003A0 */
+    int16_t uncut_hit_box_height;   /* $003A2 */
+    int16_t hit_cell_strength;   /* $003A4 */
     uint16_t word_3a6;   /* $003A6 */
     const uint8_t *line_text;   /* $003A8 */
     uint8_t *ptr_03ac;   /* $003AC */
@@ -280,16 +280,16 @@ struct Gods {
     PAD(2)
     int16_t repeat_delay;   /* $0049C */
     uint16_t last_request;   /* $0049E */
-    uint16_t word_4a0;   /* $004A0 */
+    uint16_t crumbling_cell_count;   /* $004A0 */
     uint16_t word_4a2;   /* $004A2 */
     PAD(8)
-    int16_t x_4ac;   /* $004AC */
+    int16_t monster_old_x;   /* $004AC */
     PAD(4)
-    int16_t vx_4b2;   /* $004B2 */
-    int16_t vy_4b4;   /* $004B4 */
+    int16_t monster_old_vx;   /* $004B2 */
+    int16_t monster_old_vy;   /* $004B4 */
     uint8_t zone_counts[8];   /* $004B6 */
     struct Planner planner;   /* $004BE */
-    void (*callback_4e0)(void);   /* $004E0 */
+    void (*boss_frame)(void);   /* $004E0 */
     void (*callback_4e4)(void);   /* $004E4 */
     union {   /* the variables that overlap */
         struct { uint8_t boss_area[390]; };   /* $004E8 */
@@ -305,11 +305,11 @@ struct Gods {
         struct { PAD(292) int16_t slot_ref_7da; };   /* $007DA */
         uint8_t bytes_006b6[438];
     };
-    int16_t records_86c[240];   /* $0086C */
+    int16_t particle_records[240];   /* $0086C */
     int16_t flag_a4c;   /* $00A4C */
-    int16_t word_a4e;   /* $00A4E */
+    int16_t particle_glyph_step;   /* $00A4E */
     int16_t word_a50;   /* $00A50 */
-    int16_t word_a52;   /* $00A52 */
+    int16_t particle_burst_counter;   /* $00A52 */
     int16_t word_a54;   /* $00A54 */
     PAD(18)
     int16_t word_a68;   /* $00A68 */
@@ -331,22 +331,22 @@ struct Gods {
     const uint8_t *message_next;   /* $00B32 */
     int16_t message_x;   /* $00B36 */
     int16_t message_wide;   /* $00B38 */
-    int16_t points_b3a[12];   /* $00B3A */
+    int16_t visited_spots[12];   /* $00B3A */
     uint8_t *ptr_0b52;   /* $00B52 */
     uint8_t *memory_base;   /* $00B56 */
     uint8_t *ptr_0b5a;   /* $00B5A */
     uint8_t *ptr_0b5e;   /* $00B5E */
-    uint8_t *ptr_0b62;   /* $00B62 */
-    uint8_t *ptr_0b66;   /* $00B66 */
+    uint8_t *text_pool_end;   /* $00B62 */
+    uint8_t *message_base;   /* $00B66 */
     uint32_t shop_score_shown;   /* $00B6A */
     uint32_t shop_bought;   /* $00B6E */
     uint8_t *shop_text;   /* $00B72 */
     const uint8_t *ptr_0b76;   /* $00B76 */
     PAD(4)
-    uint8_t *ptr_0b7e;   /* $00B7E */
+    uint8_t *level_creature_templates;   /* $00B7E */
     uint8_t *ptr_0b82;   /* $00B82 */
     uint8_t *ptr_0b86;   /* $00B86 */
-    uint8_t *ptr_0b8a;   /* $00B8A */
+    uint8_t *map_file_name;   /* $00B8A */
     PAD(4)
     union {   /* the variables that overlap */
         struct { uint16_t *entry_b92[3]; };   /* $00B92 */
@@ -357,7 +357,7 @@ struct Gods {
     };
     PAD(4)
     uint16_t *ptr_0ba2;   /* $00BA2 */
-    struct Slot8 *ptr_0ba6;   /* $00BA6 */
+    struct Slot8 *viewed_record;   /* $00BA6 */
     int32_t high_score_baa;   /* $00BAA */
     int32_t high_score_bae;   /* $00BAE */
     uint8_t *ptr_0bb2;   /* $00BB2 */
@@ -371,7 +371,7 @@ struct Gods {
     uint8_t *game_record_ptr;   /* $00BD2 */
     int16_t hit_list[75];   /* $00BD6 */
     uint32_t value_c6c;   /* $00C6C */
-    uint8_t *ptr_0c70;   /* $00C70 */
+    uint8_t *background_tile_graphics;   /* $00C70 */
     const uint8_t *unit_path_end[5];   /* $00C74 */
     PAD(4)
     int16_t unit_count[5];   /* $00C8C */
@@ -383,9 +383,9 @@ struct Gods {
     uint8_t *asset_table_0ca6;   /* $00CA6 */
     uint32_t *work_area;   /* $00CAA */
     struct Entry8 *entry_list;   /* $00CAE */
-    uint8_t *ptr_0cb2;   /* $00CB2 */
-    struct ScriptRecord *buffer_cb6;   /* $00CB6 */
-    uint8_t *ptr_0cba;   /* $00CBA */
+    uint8_t *unit_scripts;   /* $00CB2 */
+    struct ScriptRecord *script_records;   /* $00CB6 */
+    uint8_t *message_offsets;   /* $00CBA */
     union {   /* the variables that overlap */
         struct { struct EntryRef *ptr_0cbe; };   /* $00CBE */
         struct { const uint16_t *words_source; };   /* $00CBE */
@@ -396,20 +396,20 @@ struct Gods {
         struct { uint8_t *ptr_0cc2; };   /* $00CC2 */
         uint8_t bytes_00cc2[4];
     };
-    uint8_t *ptr_0cc6;   /* $00CC6 */
+    uint8_t *random_words;   /* $00CC6 */
     PAD(4)
     uint8_t *ptr_0cce;   /* $00CCE */
     PAD(8)
-    uint8_t *ptr_0cda;   /* $00CDA */
+    uint8_t *copper_colours;   /* $00CDA */
     PAD(4)
     volatile uint32_t tick_count;   /* $00CE2 */
-    uint8_t *ptr_0ce6;   /* $00CE6 */
+    uint8_t *monster_types;   /* $00CE6 */
     uint8_t *asset_directory;   /* $00CEA */
     uint8_t *ptr_0cee;   /* $00CEE */
     uint8_t *ptr_0cf2;   /* $00CF2 */
     uint8_t *text_pool;   /* $00CF6 */
     uint8_t *ptr_0cfa[5];   /* $00CFA */
-    struct CreatureEntry *ptr_0d0e;   /* $00D0E */
+    struct CreatureEntry *creature_entries;   /* $00D0E */
     uint32_t password_slots[3];   /* $00D12 */
     char asset_name[16];   /* $00D1E */
     PAD(12)
@@ -417,22 +417,22 @@ struct Gods {
     uint8_t *asset_mem_end;   /* $00D3E */
     uint16_t picture_header;   /* $00D42 */
     PAD(62)
-    uint16_t word_d82;   /* $00D82 */
+    uint16_t image_mirrored;   /* $00D82 */
     PAD(2)
-    uint16_t word_d86;   /* $00D86 */
-    uint16_t word_d88;   /* $00D88 */
+    uint16_t image_x_shift;   /* $00D86 */
+    uint16_t image_clip_flags;   /* $00D88 */
     PAD(72)
-    uint16_t word_dd2;   /* $00DD2 */
+    uint16_t screen_row_bytes;   /* $00DD2 */
     uint16_t word_dd4;   /* $00DD4 */
     uint16_t word_dd6;   /* $00DD6 */
-    uint32_t long_dd8;   /* $00DD8 */
+    uint32_t image_plane_bytes;   /* $00DD8 */
     union {   /* the variables that overlap */
         struct { uint16_t word_ddc; };   /* $00DDC */
         struct { PAD(1) uint8_t flags_0ddd; };   /* $00DDD */
         uint8_t bytes_00ddc[2];
     };
-    uint16_t word_dde;   /* $00DDE */
-    const int16_t *ptr_0de0;   /* $00DE0 */
+    uint16_t draw_routine_index;   /* $00DDE */
+    const int16_t *clip_rect_list;   /* $00DE0 */
     struct Rec6 buffer_state[2];   /* $00DE4 */
     PAD(30)
     uint16_t palette_dirty;   /* $00E0E */
@@ -457,15 +457,15 @@ struct Gods {
     PAD(4)
     int16_t ball_pieces[50];   /* $00E6C */
     int16_t table_ed0[128];   /* $00ED0 */
-    int16_t slots_fd0[50];   /* $00FD0 */
-    uint16_t word_1034;   /* $01034 */
-    uint8_t records_1036[120];   /* $01036 */
+    int16_t pod_records[50];   /* $00FD0 */
+    uint16_t thrown_things_count;   /* $01034 */
+    uint8_t spore_records[120];   /* $01036 */
     uint16_t word_10ae;   /* $010AE */
     uint8_t bytes_10b0[140];   /* $010B0 */
     struct Slot12 records_113c[10];   /* $0113C */
-    int16_t slots_11b4[50];   /* $011B4 */
-    uint16_t word_1218;   /* $01218 */
-    uint16_t count_121a;   /* $0121A */
+    int16_t falling_things[50];   /* $011B4 */
+    uint16_t falling_things_count;   /* $01218 */
+    uint16_t bat_count;   /* $0121A */
     union {   /* the variables that overlap */
         struct { int16_t list_121c[66]; };   /* $0121C */
         struct { PAD(120) uint16_t list_count_1294; };   /* $01294 */
@@ -473,7 +473,7 @@ struct Gods {
         uint8_t bytes_0121c[132];
     };
     struct WalkGroup records_12a0[10];   /* $012A0 */
-    struct Monster records_1354[10];   /* $01354 */
+    struct Monster monster_records[10];   /* $01354 */
     PAD(722)
     uint8_t *ptr_26de;   /* $026DE */
     PAD(308)
@@ -485,7 +485,7 @@ struct Gods {
     PAD(4)
     uint8_t level_text[16];   /* $028F8 */
     PAD(792)
-    uint8_t code_2c20[6];   /* $02C20 */
+    uint8_t game_loop_jump[6];   /* $02C20 */
     PAD(2064)
     union {   /* the variables that overlap */
         struct { uint16_t code_3436; };   /* $03436 */
@@ -519,8 +519,8 @@ struct Gods {
     PAD(1664)
     uint8_t password_line[722];   /* $06A0E */
     PAD(476)
-    int16_t word_6ebc;   /* $06EBC */
-    int16_t word_6ebe;   /* $06EBE */
+    int16_t creature_records_left;   /* $06EBC */
+    int16_t dying_count;   /* $06EBE */
     PAD(16)
     uint16_t code_6ed0;   /* $06ED0 */
     PAD(842)
@@ -538,33 +538,33 @@ struct Gods {
     PAD(358)
     uint16_t table_7a6e[4];   /* $07A6E */
     PAD(474)
-    uint16_t word_7c50;   /* $07C50 */
+    uint16_t walker_picture_base;   /* $07C50 */
     PAD(650)
-    int16_t word_7edc;   /* $07EDC */
-    int16_t word_7ede;   /* $07EDE */
+    int16_t unit_shot_rate;   /* $07EDC */
+    int16_t shot_aim;   /* $07EDE */
     PAD(148)
-    int16_t word_7f74;   /* $07F74 */
-    int16_t word_7f76;   /* $07F76 */
+    int16_t last_death_x;   /* $07F74 */
+    int16_t last_death_y;   /* $07F76 */
     int16_t fall_x;   /* $07F78 */
     int16_t fall_y;   /* $07F7A */
     int16_t fall_speed;   /* $07F7C */
     int16_t fall_kind;   /* $07F7E */
     PAD(1262)
-    int16_t word_846e;   /* $0846E */
-    int16_t word_8470;   /* $08470 */
-    int16_t word_8472;   /* $08472 */
+    int16_t falcon_screen_x;   /* $0846E */
+    int16_t falcon_screen_y;   /* $08470 */
+    int16_t wing_glyph;   /* $08472 */
     PAD(1038)
     int16_t word_8882;   /* $08882 */
     int16_t word_8884;   /* $08884 */
-    int16_t word_8886;   /* $08886 */
-    int16_t word_8888;   /* $08888 */
-    int16_t word_888a;   /* $0888A */
-    int16_t word_888c;   /* $0888C */
-    int16_t word_888e;   /* $0888E */
+    int16_t falcon_speed_x;   /* $08886 */
+    int16_t falcon_speed_y;   /* $08888 */
+    int16_t falcon_facing;   /* $0888A */
+    int16_t wing_step;   /* $0888C */
+    int16_t falcon_choice;   /* $0888E */
     int16_t falcon_energy;   /* $08890 */
     int16_t word_8892;   /* $08892 */
     int16_t word_8894;   /* $08894 */
-    int16_t word_8896;   /* $08896 */
+    int16_t falcon_previous_facing;   /* $08896 */
     PAD(444)
     uint16_t code_8a54;   /* $08A54 */
     PAD(3974)
@@ -619,7 +619,7 @@ struct Gods {
     PAD(1302)
     uint8_t lists_1078a[96];   /* $1078A */
     PAD(566)
-    uint32_t ptrs_10a20[5];   /* $10A20 */
+    uint32_t level_texts[5];   /* $10A20 */
     PAD(8626)
     uint8_t message_slots[264];   /* $12BE6 */
     PAD(108)
@@ -655,12 +655,12 @@ struct Gods {
     PAD(520)
     char first_asset_name[8];   /* $196D6 */
     PAD(44)
-    uint8_t bits_1970a[18];   /* $1970A */
+    uint8_t item_message_shown[18];   /* $1970A */
     struct PlanItem plan_queue[32];   /* $1971C */
     struct PlanItem plan_list[50];   /* $1981C */
     uint8_t table_199ac[360];   /* $199AC */
     struct Slot8 records_19b14[200];   /* $19B14 */
-    struct Bolt records_1a154[20];   /* $1A154 */
+    struct Bolt bolt_records[20];   /* $1A154 */
     uint16_t table_1a30c[120];   /* $1A30C */
     uint32_t marker_table[100];   /* $1A3FC */
     struct Rec6 record_table[200];   /* $1A58C */
@@ -670,15 +670,15 @@ struct Gods {
         struct { PAD(804) uint8_t data_1ad8a[4812]; };   /* $1AD8A */
         struct { PAD(1816) uint8_t data_1b17e[3800]; };   /* $1B17E */
         struct { PAD(3416) uint8_t data_1b7be[2200]; };   /* $1B7BE */
-        struct { PAD(5616) struct LeverFlag flags_1c056[64]; };   /* $1C056 */
+        struct { PAD(5616) struct LeverFlag lever_flags[64]; };   /* $1C056 */
         struct { PAD(6000) int16_t table_1c1d6[90]; };   /* $1C1D6 */
-        struct { PAD(6180) uint16_t table_1c28a[60]; };   /* $1C28A */
+        struct { PAD(6180) uint16_t level_pickups[60]; };   /* $1C28A */
         struct { PAD(6300) struct PathDescription path_descriptions[25]; };   /* $1C302 */
         struct { PAD(7000) uint8_t data_1c5be[218]; };   /* $1C5BE */
         uint8_t bytes_1aa66[7322];
     };
     PAD(740)
-    uint16_t table_1c9e4[640];   /* $1C9E4 */
+    uint16_t sine_table[640];   /* $1C9E4 */
     PAD(372)
     volatile uint16_t vbl_saturating;   /* $1D058 */
     volatile uint16_t vbl_count;   /* $1D05A */
@@ -735,7 +735,7 @@ struct Gods {
         struct { PAD(65920) uint8_t picture_buffer[32768]; };   /* $31FDE */
         uint8_t bytes_21e5e[98688];
     };
-    uint8_t flags_39fde[200];   /* $39FDE */
+    uint8_t near_flags[200];   /* $39FDE */
     int16_t records_3a0a6[120];   /* $3A0A6 */
     union {   /* the variables that overlap */
         struct { int16_t effects[100]; };   /* $3A196 */
@@ -761,7 +761,7 @@ _Static_assert(offsetof(struct Gods, heap_base) == 0x2c, "heap_base");
 _Static_assert(offsetof(struct Gods, irq_vectors) == 0x68, "irq_vectors");
 _Static_assert(offsetof(struct Gods, death_particles) == 0xb2, "death_particles");
 _Static_assert(offsetof(struct Gods, palette_words) == 0x134, "palette_words");
-_Static_assert(offsetof(struct Gods, ptr_0168) == 0x168, "ptr_0168");
+_Static_assert(offsetof(struct Gods, next_tile_block) == 0x168, "next_tile_block");
 _Static_assert(offsetof(struct Gods, background) == 0x182, "background");
 _Static_assert(offsetof(struct Gods, frame_toggle) == 0x196, "frame_toggle");
 _Static_assert(offsetof(struct Gods, word_19a) == 0x19a, "word_19a");
@@ -771,17 +771,17 @@ _Static_assert(offsetof(struct Gods, word_19e) == 0x19e, "word_19e");
 _Static_assert(offsetof(struct Gods, word_1ba) == 0x1ba, "word_1ba");
 _Static_assert(offsetof(struct Gods, hit_damage_1cc) == 0x1cc, "hit_damage_1cc");
 _Static_assert(offsetof(struct Gods, param_index) == 0x1d4, "param_index");
-_Static_assert(offsetof(struct Gods, word_1da) == 0x1da, "word_1da");
+_Static_assert(offsetof(struct Gods, creature_x) == 0x1da, "creature_x");
 _Static_assert(offsetof(struct Gods, frame_wait) == 0x1dc, "frame_wait");
 _Static_assert(offsetof(struct Gods, word_1de) == 0x1de, "word_1de");
 _Static_assert(offsetof(struct Gods, player_x) == 0x1e0, "player_x");
 _Static_assert(offsetof(struct Gods, player_y) == 0x1e2, "player_y");
 _Static_assert(offsetof(struct Gods, frame_phase) == 0x1e4, "frame_phase");
-_Static_assert(offsetof(struct Gods, word_1e6) == 0x1e6, "word_1e6");
+_Static_assert(offsetof(struct Gods, landing_frames) == 0x1e6, "landing_frames");
 _Static_assert(offsetof(struct Gods, fall_distance) == 0x1e8, "fall_distance");
 _Static_assert(offsetof(struct Gods, index_1ea) == 0x1ea, "index_1ea");
-_Static_assert(offsetof(struct Gods, word_1ec) == 0x1ec, "word_1ec");
-_Static_assert(offsetof(struct Gods, word_1ee) == 0x1ee, "word_1ee");
+_Static_assert(offsetof(struct Gods, copper_colour_count) == 0x1ec, "copper_colour_count");
+_Static_assert(offsetof(struct Gods, color_line_spacing) == 0x1ee, "color_line_spacing");
 _Static_assert(offsetof(struct Gods, flag_1f0) == 0x1f0, "flag_1f0");
 _Static_assert(offsetof(struct Gods, word_1f2) == 0x1f2, "word_1f2");
 _Static_assert(offsetof(struct Gods, shot_prev_x) == 0x1f4, "shot_prev_x");
@@ -811,9 +811,9 @@ _Static_assert(offsetof(struct Gods, game_buttons) == 0x228, "game_buttons");
 _Static_assert(offsetof(struct Gods, key_held) == 0x228, "key_held");
 _Static_assert(offsetof(struct Gods, word_228) == 0x228, "word_228");
 _Static_assert(offsetof(struct Gods, demo_mode) == 0x22a, "demo_mode");
-_Static_assert(offsetof(struct Gods, word_22c) == 0x22c, "word_22c");
+_Static_assert(offsetof(struct Gods, text_index) == 0x22c, "text_index");
 _Static_assert(offsetof(struct Gods, word_22e) == 0x22e, "word_22e");
-_Static_assert(offsetof(struct Gods, flag_230) == 0x230, "flag_230");
+_Static_assert(offsetof(struct Gods, level_ended) == 0x230, "level_ended");
 _Static_assert(offsetof(struct Gods, word_232) == 0x232, "word_232");
 _Static_assert(offsetof(struct Gods, word_234) == 0x234, "word_234");
 _Static_assert(offsetof(struct Gods, flag_236) == 0x236, "flag_236");
@@ -822,9 +822,9 @@ _Static_assert(offsetof(struct Gods, flag_23a) == 0x23a, "flag_23a");
 _Static_assert(offsetof(struct Gods, asset_flag) == 0x23c, "asset_flag");
 _Static_assert(offsetof(struct Gods, shift_count) == 0x23e, "shift_count");
 _Static_assert(offsetof(struct Gods, word_0240) == 0x240, "word_0240");
-_Static_assert(offsetof(struct Gods, count_242) == 0x242, "count_242");
+_Static_assert(offsetof(struct Gods, free_monster_count) == 0x242, "free_monster_count");
 _Static_assert(offsetof(struct Gods, flag_244) == 0x244, "flag_244");
-_Static_assert(offsetof(struct Gods, index_246) == 0x246, "index_246");
+_Static_assert(offsetof(struct Gods, monster_index) == 0x246, "monster_index");
 _Static_assert(offsetof(struct Gods, word_0248) == 0x248, "word_0248");
 _Static_assert(offsetof(struct Gods, counter_24a) == 0x24a, "counter_24a");
 _Static_assert(offsetof(struct Gods, param_a) == 0x24c, "param_a");
@@ -841,12 +841,12 @@ _Static_assert(offsetof(struct Gods, message_hold) == 0x264, "message_hold");
 _Static_assert(offsetof(struct Gods, word_0266) == 0x266, "word_0266");
 _Static_assert(offsetof(struct Gods, flag_268) == 0x268, "flag_268");
 _Static_assert(offsetof(struct Gods, word_268) == 0x268, "word_268");
-_Static_assert(offsetof(struct Gods, word_26a) == 0x26a, "word_26a");
+_Static_assert(offsetof(struct Gods, pickup_glyph) == 0x26a, "pickup_glyph");
 _Static_assert(offsetof(struct Gods, tick_hold_26c) == 0x26c, "tick_hold_26c");
 _Static_assert(offsetof(struct Gods, flag_26e) == 0x26e, "flag_26e");
 _Static_assert(offsetof(struct Gods, glyph_base) == 0x270, "glyph_base");
 _Static_assert(offsetof(struct Gods, word_272) == 0x272, "word_272");
-_Static_assert(offsetof(struct Gods, word_274) == 0x274, "word_274");
+_Static_assert(offsetof(struct Gods, slot_value_sum) == 0x274, "slot_value_sum");
 _Static_assert(offsetof(struct Gods, background_loaded) == 0x276, "background_loaded");
 _Static_assert(offsetof(struct Gods, word_276) == 0x276, "word_276");
 _Static_assert(offsetof(struct Gods, menu_active) == 0x278, "menu_active");
@@ -855,44 +855,44 @@ _Static_assert(offsetof(struct Gods, word_27c) == 0x27c, "word_27c");
 _Static_assert(offsetof(struct Gods, word_27e) == 0x27e, "word_27e");
 _Static_assert(offsetof(struct Gods, glyph_plane_size) == 0x280, "glyph_plane_size");
 _Static_assert(offsetof(struct Gods, word_280) == 0x280, "word_280");
-_Static_assert(offsetof(struct Gods, seed_282) == 0x282, "seed_282");
-_Static_assert(offsetof(struct Gods, word_284) == 0x284, "word_284");
-_Static_assert(offsetof(struct Gods, flag_286) == 0x286, "flag_286");
-_Static_assert(offsetof(struct Gods, word_288) == 0x288, "word_288");
-_Static_assert(offsetof(struct Gods, word_28a) == 0x28a, "word_28a");
+_Static_assert(offsetof(struct Gods, copylock_seed) == 0x282, "copylock_seed");
+_Static_assert(offsetof(struct Gods, armour_level) == 0x284, "armour_level");
+_Static_assert(offsetof(struct Gods, level_files_read) == 0x286, "level_files_read");
+_Static_assert(offsetof(struct Gods, shop_door_x) == 0x288, "shop_door_x");
+_Static_assert(offsetof(struct Gods, shop_door_y) == 0x28a, "shop_door_y");
 _Static_assert(offsetof(struct Gods, word_28c) == 0x28c, "word_28c");
 _Static_assert(offsetof(struct Gods, word_28e) == 0x28e, "word_28e");
 _Static_assert(offsetof(struct Gods, flag_290) == 0x290, "flag_290");
 _Static_assert(offsetof(struct Gods, word_292) == 0x292, "word_292");
-_Static_assert(offsetof(struct Gods, word_294) == 0x294, "word_294");
+_Static_assert(offsetof(struct Gods, shop_door_index) == 0x294, "shop_door_index");
 _Static_assert(offsetof(struct Gods, tick_hold_296) == 0x296, "tick_hold_296");
 _Static_assert(offsetof(struct Gods, scroll_x_a) == 0x29a, "scroll_x_a");
 _Static_assert(offsetof(struct Gods, scroll_y_a) == 0x29c, "scroll_y_a");
 _Static_assert(offsetof(struct Gods, scroll_x_b) == 0x29e, "scroll_x_b");
 _Static_assert(offsetof(struct Gods, scroll_y_b) == 0x2a0, "scroll_y_b");
-_Static_assert(offsetof(struct Gods, words_2a2) == 0x2a2, "words_2a2");
+_Static_assert(offsetof(struct Gods, previous_player_pos) == 0x2a2, "previous_player_pos");
 _Static_assert(offsetof(struct Gods, word_2a6) == 0x2a6, "word_2a6");
-_Static_assert(offsetof(struct Gods, flag_2a8) == 0x2a8, "flag_2a8");
-_Static_assert(offsetof(struct Gods, word_2aa) == 0x2aa, "word_2aa");
-_Static_assert(offsetof(struct Gods, flag_2ac) == 0x2ac, "flag_2ac");
+_Static_assert(offsetof(struct Gods, records_3a0a6_in_use) == 0x2a8, "records_3a0a6_in_use");
+_Static_assert(offsetof(struct Gods, records_scroll_y) == 0x2aa, "records_scroll_y");
+_Static_assert(offsetof(struct Gods, effect_alive) == 0x2ac, "effect_alive");
 _Static_assert(offsetof(struct Gods, word_2ae) == 0x2ae, "word_2ae");
 _Static_assert(offsetof(struct Gods, flag_2b0) == 0x2b0, "flag_2b0");
-_Static_assert(offsetof(struct Gods, word_2b2) == 0x2b2, "word_2b2");
-_Static_assert(offsetof(struct Gods, counter_2b4) == 0x2b4, "counter_2b4");
+_Static_assert(offsetof(struct Gods, touched_thing_id) == 0x2b2, "touched_thing_id");
+_Static_assert(offsetof(struct Gods, glyph_frame) == 0x2b4, "glyph_frame");
 _Static_assert(offsetof(struct Gods, byte_2b6) == 0x2b6, "byte_2b6");
 _Static_assert(offsetof(struct Gods, onscreen_count) == 0x2b8, "onscreen_count");
 _Static_assert(offsetof(struct Gods, word_2ba) == 0x2ba, "word_2ba");
 _Static_assert(offsetof(struct Gods, word_2bc) == 0x2bc, "word_2bc");
-_Static_assert(offsetof(struct Gods, word_2be) == 0x2be, "word_2be");
-_Static_assert(offsetof(struct Gods, word_2c0) == 0x2c0, "word_2c0");
+_Static_assert(offsetof(struct Gods, shutter_direction) == 0x2be, "shutter_direction");
+_Static_assert(offsetof(struct Gods, shutter_row) == 0x2c0, "shutter_row");
 _Static_assert(offsetof(struct Gods, item_shown) == 0x2cc, "item_shown");
 _Static_assert(offsetof(struct Gods, item_chosen) == 0x2ce, "item_chosen");
-_Static_assert(offsetof(struct Gods, flag_2d0) == 0x2d0, "flag_2d0");
+_Static_assert(offsetof(struct Gods, score_redraw) == 0x2d0, "score_redraw");
 _Static_assert(offsetof(struct Gods, score_words) == 0x2d2, "score_words");
 _Static_assert(offsetof(struct Gods, word_2de) == 0x2de, "word_2de");
 _Static_assert(offsetof(struct Gods, flag_2e0) == 0x2e0, "flag_2e0");
 _Static_assert(offsetof(struct Gods, shot_speed) == 0x2e4, "shot_speed");
-_Static_assert(offsetof(struct Gods, word_2e6) == 0x2e6, "word_2e6");
+_Static_assert(offsetof(struct Gods, random_index) == 0x2e6, "random_index");
 _Static_assert(offsetof(struct Gods, entry_id_2ea) == 0x2ea, "entry_id_2ea");
 _Static_assert(offsetof(struct Gods, word_2ea) == 0x2ea, "word_2ea");
 _Static_assert(offsetof(struct Gods, word_2ec) == 0x2ec, "word_2ec");
@@ -902,7 +902,7 @@ _Static_assert(offsetof(struct Gods, copper_setup_done) == 0x2f2, "copper_setup_
 _Static_assert(offsetof(struct Gods, message_shown) == 0x2f4, "message_shown");
 _Static_assert(offsetof(struct Gods, sound_enabled) == 0x2f6, "sound_enabled");
 _Static_assert(offsetof(struct Gods, message_arg) == 0x2f8, "message_arg");
-_Static_assert(offsetof(struct Gods, word_2fa) == 0x2fa, "word_2fa");
+_Static_assert(offsetof(struct Gods, tile_block_count) == 0x2fa, "tile_block_count");
 _Static_assert(offsetof(struct Gods, word_2fc) == 0x2fc, "word_2fc");
 _Static_assert(offsetof(struct Gods, word_2fe) == 0x2fe, "word_2fe");
 _Static_assert(offsetof(struct Gods, words_300) == 0x300, "words_300");
@@ -910,11 +910,11 @@ _Static_assert(offsetof(struct Gods, timer_306) == 0x306, "timer_306");
 _Static_assert(offsetof(struct Gods, shop_scroll) == 0x308, "shop_scroll");
 _Static_assert(offsetof(struct Gods, item_slots) == 0x30c, "item_slots");
 _Static_assert(offsetof(struct Gods, slots_30c) == 0x30c, "slots_30c");
-_Static_assert(offsetof(struct Gods, word_314) == 0x314, "word_314");
+_Static_assert(offsetof(struct Gods, finish_mark_count) == 0x314, "finish_mark_count");
 _Static_assert(offsetof(struct Gods, records_316) == 0x316, "records_316");
 _Static_assert(offsetof(struct Gods, bcd_346) == 0x346, "bcd_346");
-_Static_assert(offsetof(struct Gods, words_34e) == 0x34e, "words_34e");
-_Static_assert(offsetof(struct Gods, word_354) == 0x354, "word_354");
+_Static_assert(offsetof(struct Gods, last_drop) == 0x34e, "last_drop");
+_Static_assert(offsetof(struct Gods, last_drop_frame) == 0x354, "last_drop_frame");
 _Static_assert(offsetof(struct Gods, word_356) == 0x356, "word_356");
 _Static_assert(offsetof(struct Gods, scroll_x) == 0x358, "scroll_x");
 _Static_assert(offsetof(struct Gods, scroll_y) == 0x35a, "scroll_y");
@@ -928,13 +928,13 @@ _Static_assert(offsetof(struct Gods, fall_rows_36a) == 0x36a, "fall_rows_36a");
 _Static_assert(offsetof(struct Gods, jump_step) == 0x36c, "jump_step");
 _Static_assert(offsetof(struct Gods, word_36e) == 0x36e, "word_36e");
 _Static_assert(offsetof(struct Gods, word_370) == 0x370, "word_370");
-_Static_assert(offsetof(struct Gods, word_372) == 0x372, "word_372");
-_Static_assert(offsetof(struct Gods, word_374) == 0x374, "word_374");
+_Static_assert(offsetof(struct Gods, ladder_shot_start_y) == 0x372, "ladder_shot_start_y");
+_Static_assert(offsetof(struct Gods, ladder_shot_frame) == 0x374, "ladder_shot_frame");
 _Static_assert(offsetof(struct Gods, word_376) == 0x376, "word_376");
 _Static_assert(offsetof(struct Gods, word_378) == 0x378, "word_378");
 _Static_assert(offsetof(struct Gods, word_37a) == 0x37a, "word_37a");
 _Static_assert(offsetof(struct Gods, word_037c) == 0x37c, "word_037c");
-_Static_assert(offsetof(struct Gods, word_37e) == 0x37e, "word_37e");
+_Static_assert(offsetof(struct Gods, scroll_ease_x) == 0x37e, "scroll_ease_x");
 _Static_assert(offsetof(struct Gods, word_380) == 0x380, "word_380");
 _Static_assert(offsetof(struct Gods, word_0384) == 0x384, "word_0384");
 _Static_assert(offsetof(struct Gods, shop_repeat) == 0x386, "shop_repeat");
@@ -947,9 +947,9 @@ _Static_assert(offsetof(struct Gods, shop_count) == 0x392, "shop_count");
 _Static_assert(offsetof(struct Gods, screen_prepared) == 0x398, "screen_prepared");
 _Static_assert(offsetof(struct Gods, hit_box_extra_width) == 0x39c, "hit_box_extra_width");
 _Static_assert(offsetof(struct Gods, hit_box_extra_height) == 0x39e, "hit_box_extra_height");
-_Static_assert(offsetof(struct Gods, word_3a0) == 0x3a0, "word_3a0");
-_Static_assert(offsetof(struct Gods, word_3a2) == 0x3a2, "word_3a2");
-_Static_assert(offsetof(struct Gods, word_3a4) == 0x3a4, "word_3a4");
+_Static_assert(offsetof(struct Gods, uncut_hit_box_width) == 0x3a0, "uncut_hit_box_width");
+_Static_assert(offsetof(struct Gods, uncut_hit_box_height) == 0x3a2, "uncut_hit_box_height");
+_Static_assert(offsetof(struct Gods, hit_cell_strength) == 0x3a4, "hit_cell_strength");
 _Static_assert(offsetof(struct Gods, word_3a6) == 0x3a6, "word_3a6");
 _Static_assert(offsetof(struct Gods, line_text) == 0x3a8, "line_text");
 _Static_assert(offsetof(struct Gods, ptr_03ac) == 0x3ac, "ptr_03ac");
@@ -963,14 +963,14 @@ _Static_assert(offsetof(struct Gods, title_text) == 0x3be, "title_text");
 _Static_assert(offsetof(struct Gods, record_text) == 0x3c2, "record_text");
 _Static_assert(offsetof(struct Gods, repeat_delay) == 0x49c, "repeat_delay");
 _Static_assert(offsetof(struct Gods, last_request) == 0x49e, "last_request");
-_Static_assert(offsetof(struct Gods, word_4a0) == 0x4a0, "word_4a0");
+_Static_assert(offsetof(struct Gods, crumbling_cell_count) == 0x4a0, "crumbling_cell_count");
 _Static_assert(offsetof(struct Gods, word_4a2) == 0x4a2, "word_4a2");
-_Static_assert(offsetof(struct Gods, x_4ac) == 0x4ac, "x_4ac");
-_Static_assert(offsetof(struct Gods, vx_4b2) == 0x4b2, "vx_4b2");
-_Static_assert(offsetof(struct Gods, vy_4b4) == 0x4b4, "vy_4b4");
+_Static_assert(offsetof(struct Gods, monster_old_x) == 0x4ac, "monster_old_x");
+_Static_assert(offsetof(struct Gods, monster_old_vx) == 0x4b2, "monster_old_vx");
+_Static_assert(offsetof(struct Gods, monster_old_vy) == 0x4b4, "monster_old_vy");
 _Static_assert(offsetof(struct Gods, zone_counts) == 0x4b6, "zone_counts");
 _Static_assert(offsetof(struct Gods, planner) == 0x4be, "planner");
-_Static_assert(offsetof(struct Gods, callback_4e0) == 0x4e0, "callback_4e0");
+_Static_assert(offsetof(struct Gods, boss_frame) == 0x4e0, "boss_frame");
 _Static_assert(offsetof(struct Gods, callback_4e4) == 0x4e4, "callback_4e4");
 _Static_assert(offsetof(struct Gods, boss_area) == 0x4e8, "boss_area");
 _Static_assert(offsetof(struct Gods, callback_514) == 0x514, "callback_514");
@@ -980,11 +980,11 @@ _Static_assert(offsetof(struct Gods, shot_lists_raw) == 0x6b6, "shot_lists_raw")
 _Static_assert(offsetof(struct Gods, slot_ref_6b6) == 0x6b6, "slot_ref_6b6");
 _Static_assert(offsetof(struct Gods, slot_ref_748) == 0x748, "slot_ref_748");
 _Static_assert(offsetof(struct Gods, slot_ref_7da) == 0x7da, "slot_ref_7da");
-_Static_assert(offsetof(struct Gods, records_86c) == 0x86c, "records_86c");
+_Static_assert(offsetof(struct Gods, particle_records) == 0x86c, "particle_records");
 _Static_assert(offsetof(struct Gods, flag_a4c) == 0xa4c, "flag_a4c");
-_Static_assert(offsetof(struct Gods, word_a4e) == 0xa4e, "word_a4e");
+_Static_assert(offsetof(struct Gods, particle_glyph_step) == 0xa4e, "particle_glyph_step");
 _Static_assert(offsetof(struct Gods, word_a50) == 0xa50, "word_a50");
-_Static_assert(offsetof(struct Gods, word_a52) == 0xa52, "word_a52");
+_Static_assert(offsetof(struct Gods, particle_burst_counter) == 0xa52, "particle_burst_counter");
 _Static_assert(offsetof(struct Gods, word_a54) == 0xa54, "word_a54");
 _Static_assert(offsetof(struct Gods, word_a68) == 0xa68, "word_a68");
 _Static_assert(offsetof(struct Gods, ball_pillars) == 0xa6e, "ball_pillars");
@@ -1003,27 +1003,27 @@ _Static_assert(offsetof(struct Gods, message_text) == 0xb2e, "message_text");
 _Static_assert(offsetof(struct Gods, message_next) == 0xb32, "message_next");
 _Static_assert(offsetof(struct Gods, message_x) == 0xb36, "message_x");
 _Static_assert(offsetof(struct Gods, message_wide) == 0xb38, "message_wide");
-_Static_assert(offsetof(struct Gods, points_b3a) == 0xb3a, "points_b3a");
+_Static_assert(offsetof(struct Gods, visited_spots) == 0xb3a, "visited_spots");
 _Static_assert(offsetof(struct Gods, ptr_0b52) == 0xb52, "ptr_0b52");
 _Static_assert(offsetof(struct Gods, memory_base) == 0xb56, "memory_base");
 _Static_assert(offsetof(struct Gods, ptr_0b5a) == 0xb5a, "ptr_0b5a");
 _Static_assert(offsetof(struct Gods, ptr_0b5e) == 0xb5e, "ptr_0b5e");
-_Static_assert(offsetof(struct Gods, ptr_0b62) == 0xb62, "ptr_0b62");
-_Static_assert(offsetof(struct Gods, ptr_0b66) == 0xb66, "ptr_0b66");
+_Static_assert(offsetof(struct Gods, text_pool_end) == 0xb62, "text_pool_end");
+_Static_assert(offsetof(struct Gods, message_base) == 0xb66, "message_base");
 _Static_assert(offsetof(struct Gods, shop_score_shown) == 0xb6a, "shop_score_shown");
 _Static_assert(offsetof(struct Gods, shop_bought) == 0xb6e, "shop_bought");
 _Static_assert(offsetof(struct Gods, shop_text) == 0xb72, "shop_text");
 _Static_assert(offsetof(struct Gods, ptr_0b76) == 0xb76, "ptr_0b76");
-_Static_assert(offsetof(struct Gods, ptr_0b7e) == 0xb7e, "ptr_0b7e");
+_Static_assert(offsetof(struct Gods, level_creature_templates) == 0xb7e, "level_creature_templates");
 _Static_assert(offsetof(struct Gods, ptr_0b82) == 0xb82, "ptr_0b82");
 _Static_assert(offsetof(struct Gods, ptr_0b86) == 0xb86, "ptr_0b86");
-_Static_assert(offsetof(struct Gods, ptr_0b8a) == 0xb8a, "ptr_0b8a");
+_Static_assert(offsetof(struct Gods, map_file_name) == 0xb8a, "map_file_name");
 _Static_assert(offsetof(struct Gods, entry_b92) == 0xb92, "entry_b92");
 _Static_assert(offsetof(struct Gods, shot_slot_b92) == 0xb92, "shot_slot_b92");
 _Static_assert(offsetof(struct Gods, shot_slot_b96) == 0xb96, "shot_slot_b96");
 _Static_assert(offsetof(struct Gods, shot_slot_b9a) == 0xb9a, "shot_slot_b9a");
 _Static_assert(offsetof(struct Gods, ptr_0ba2) == 0xba2, "ptr_0ba2");
-_Static_assert(offsetof(struct Gods, ptr_0ba6) == 0xba6, "ptr_0ba6");
+_Static_assert(offsetof(struct Gods, viewed_record) == 0xba6, "viewed_record");
 _Static_assert(offsetof(struct Gods, high_score_baa) == 0xbaa, "high_score_baa");
 _Static_assert(offsetof(struct Gods, high_score_bae) == 0xbae, "high_score_bae");
 _Static_assert(offsetof(struct Gods, ptr_0bb2) == 0xbb2, "ptr_0bb2");
@@ -1035,7 +1035,7 @@ _Static_assert(offsetof(struct Gods, ptr_0bce) == 0xbce, "ptr_0bce");
 _Static_assert(offsetof(struct Gods, game_record_ptr) == 0xbd2, "game_record_ptr");
 _Static_assert(offsetof(struct Gods, hit_list) == 0xbd6, "hit_list");
 _Static_assert(offsetof(struct Gods, value_c6c) == 0xc6c, "value_c6c");
-_Static_assert(offsetof(struct Gods, ptr_0c70) == 0xc70, "ptr_0c70");
+_Static_assert(offsetof(struct Gods, background_tile_graphics) == 0xc70, "background_tile_graphics");
 _Static_assert(offsetof(struct Gods, unit_path_end) == 0xc74, "unit_path_end");
 _Static_assert(offsetof(struct Gods, unit_count) == 0xc8c, "unit_count");
 _Static_assert(offsetof(struct Gods, player_energy) == 0xc96, "player_energy");
@@ -1046,40 +1046,40 @@ _Static_assert(offsetof(struct Gods, asset_end_0ca2) == 0xca2, "asset_end_0ca2")
 _Static_assert(offsetof(struct Gods, asset_table_0ca6) == 0xca6, "asset_table_0ca6");
 _Static_assert(offsetof(struct Gods, work_area) == 0xcaa, "work_area");
 _Static_assert(offsetof(struct Gods, entry_list) == 0xcae, "entry_list");
-_Static_assert(offsetof(struct Gods, ptr_0cb2) == 0xcb2, "ptr_0cb2");
-_Static_assert(offsetof(struct Gods, buffer_cb6) == 0xcb6, "buffer_cb6");
-_Static_assert(offsetof(struct Gods, ptr_0cba) == 0xcba, "ptr_0cba");
+_Static_assert(offsetof(struct Gods, unit_scripts) == 0xcb2, "unit_scripts");
+_Static_assert(offsetof(struct Gods, script_records) == 0xcb6, "script_records");
+_Static_assert(offsetof(struct Gods, message_offsets) == 0xcba, "message_offsets");
 _Static_assert(offsetof(struct Gods, ptr_0cbe) == 0xcbe, "ptr_0cbe");
 _Static_assert(offsetof(struct Gods, words_source) == 0xcbe, "words_source");
 _Static_assert(offsetof(struct Gods, bytes_dest) == 0xcc2, "bytes_dest");
 _Static_assert(offsetof(struct Gods, ptr_0cc2) == 0xcc2, "ptr_0cc2");
-_Static_assert(offsetof(struct Gods, ptr_0cc6) == 0xcc6, "ptr_0cc6");
+_Static_assert(offsetof(struct Gods, random_words) == 0xcc6, "random_words");
 _Static_assert(offsetof(struct Gods, ptr_0cce) == 0xcce, "ptr_0cce");
-_Static_assert(offsetof(struct Gods, ptr_0cda) == 0xcda, "ptr_0cda");
+_Static_assert(offsetof(struct Gods, copper_colours) == 0xcda, "copper_colours");
 _Static_assert(offsetof(struct Gods, tick_count) == 0xce2, "tick_count");
-_Static_assert(offsetof(struct Gods, ptr_0ce6) == 0xce6, "ptr_0ce6");
+_Static_assert(offsetof(struct Gods, monster_types) == 0xce6, "monster_types");
 _Static_assert(offsetof(struct Gods, asset_directory) == 0xcea, "asset_directory");
 _Static_assert(offsetof(struct Gods, ptr_0cee) == 0xcee, "ptr_0cee");
 _Static_assert(offsetof(struct Gods, ptr_0cf2) == 0xcf2, "ptr_0cf2");
 _Static_assert(offsetof(struct Gods, text_pool) == 0xcf6, "text_pool");
 _Static_assert(offsetof(struct Gods, ptr_0cfa) == 0xcfa, "ptr_0cfa");
-_Static_assert(offsetof(struct Gods, ptr_0d0e) == 0xd0e, "ptr_0d0e");
+_Static_assert(offsetof(struct Gods, creature_entries) == 0xd0e, "creature_entries");
 _Static_assert(offsetof(struct Gods, password_slots) == 0xd12, "password_slots");
 _Static_assert(offsetof(struct Gods, asset_name) == 0xd1e, "asset_name");
 _Static_assert(offsetof(struct Gods, asset_table_end) == 0xd3a, "asset_table_end");
 _Static_assert(offsetof(struct Gods, asset_mem_end) == 0xd3e, "asset_mem_end");
 _Static_assert(offsetof(struct Gods, picture_header) == 0xd42, "picture_header");
-_Static_assert(offsetof(struct Gods, word_d82) == 0xd82, "word_d82");
-_Static_assert(offsetof(struct Gods, word_d86) == 0xd86, "word_d86");
-_Static_assert(offsetof(struct Gods, word_d88) == 0xd88, "word_d88");
-_Static_assert(offsetof(struct Gods, word_dd2) == 0xdd2, "word_dd2");
+_Static_assert(offsetof(struct Gods, image_mirrored) == 0xd82, "image_mirrored");
+_Static_assert(offsetof(struct Gods, image_x_shift) == 0xd86, "image_x_shift");
+_Static_assert(offsetof(struct Gods, image_clip_flags) == 0xd88, "image_clip_flags");
+_Static_assert(offsetof(struct Gods, screen_row_bytes) == 0xdd2, "screen_row_bytes");
 _Static_assert(offsetof(struct Gods, word_dd4) == 0xdd4, "word_dd4");
 _Static_assert(offsetof(struct Gods, word_dd6) == 0xdd6, "word_dd6");
-_Static_assert(offsetof(struct Gods, long_dd8) == 0xdd8, "long_dd8");
+_Static_assert(offsetof(struct Gods, image_plane_bytes) == 0xdd8, "image_plane_bytes");
 _Static_assert(offsetof(struct Gods, word_ddc) == 0xddc, "word_ddc");
 _Static_assert(offsetof(struct Gods, flags_0ddd) == 0xddd, "flags_0ddd");
-_Static_assert(offsetof(struct Gods, word_dde) == 0xdde, "word_dde");
-_Static_assert(offsetof(struct Gods, ptr_0de0) == 0xde0, "ptr_0de0");
+_Static_assert(offsetof(struct Gods, draw_routine_index) == 0xdde, "draw_routine_index");
+_Static_assert(offsetof(struct Gods, clip_rect_list) == 0xde0, "clip_rect_list");
 _Static_assert(offsetof(struct Gods, buffer_state) == 0xde4, "buffer_state");
 _Static_assert(offsetof(struct Gods, palette_dirty) == 0xe0e, "palette_dirty");
 _Static_assert(offsetof(struct Gods, shadow_table) == 0xe10, "shadow_table");
@@ -1098,27 +1098,27 @@ _Static_assert(offsetof(struct Gods, screen_buffer) == 0xe60, "screen_buffer");
 _Static_assert(offsetof(struct Gods, screen_other) == 0xe64, "screen_other");
 _Static_assert(offsetof(struct Gods, ball_pieces) == 0xe6c, "ball_pieces");
 _Static_assert(offsetof(struct Gods, table_ed0) == 0xed0, "table_ed0");
-_Static_assert(offsetof(struct Gods, slots_fd0) == 0xfd0, "slots_fd0");
-_Static_assert(offsetof(struct Gods, word_1034) == 0x1034, "word_1034");
-_Static_assert(offsetof(struct Gods, records_1036) == 0x1036, "records_1036");
+_Static_assert(offsetof(struct Gods, pod_records) == 0xfd0, "pod_records");
+_Static_assert(offsetof(struct Gods, thrown_things_count) == 0x1034, "thrown_things_count");
+_Static_assert(offsetof(struct Gods, spore_records) == 0x1036, "spore_records");
 _Static_assert(offsetof(struct Gods, word_10ae) == 0x10ae, "word_10ae");
 _Static_assert(offsetof(struct Gods, bytes_10b0) == 0x10b0, "bytes_10b0");
 _Static_assert(offsetof(struct Gods, records_113c) == 0x113c, "records_113c");
-_Static_assert(offsetof(struct Gods, slots_11b4) == 0x11b4, "slots_11b4");
-_Static_assert(offsetof(struct Gods, word_1218) == 0x1218, "word_1218");
-_Static_assert(offsetof(struct Gods, count_121a) == 0x121a, "count_121a");
+_Static_assert(offsetof(struct Gods, falling_things) == 0x11b4, "falling_things");
+_Static_assert(offsetof(struct Gods, falling_things_count) == 0x1218, "falling_things_count");
+_Static_assert(offsetof(struct Gods, bat_count) == 0x121a, "bat_count");
 _Static_assert(offsetof(struct Gods, list_121c) == 0x121c, "list_121c");
 _Static_assert(offsetof(struct Gods, list_count_1294) == 0x1294, "list_count_1294");
 _Static_assert(offsetof(struct Gods, value_1296) == 0x1296, "value_1296");
 _Static_assert(offsetof(struct Gods, records_12a0) == 0x12a0, "records_12a0");
-_Static_assert(offsetof(struct Gods, records_1354) == 0x1354, "records_1354");
+_Static_assert(offsetof(struct Gods, monster_records) == 0x1354, "monster_records");
 _Static_assert(offsetof(struct Gods, ptr_26de) == 0x26de, "ptr_26de");
 _Static_assert(offsetof(struct Gods, level_names) == 0x2816, "level_names");
 _Static_assert(offsetof(struct Gods, word_28ea) == 0x28ea, "word_28ea");
 _Static_assert(offsetof(struct Gods, asset_end_28ec) == 0x28ec, "asset_end_28ec");
 _Static_assert(offsetof(struct Gods, asset_table_28f0) == 0x28f0, "asset_table_28f0");
 _Static_assert(offsetof(struct Gods, level_text) == 0x28f8, "level_text");
-_Static_assert(offsetof(struct Gods, code_2c20) == 0x2c20, "code_2c20");
+_Static_assert(offsetof(struct Gods, game_loop_jump) == 0x2c20, "game_loop_jump");
 _Static_assert(offsetof(struct Gods, code_3436) == 0x3436, "code_3436");
 _Static_assert(offsetof(struct Gods, word_3436) == 0x3436, "word_3436");
 _Static_assert(offsetof(struct Gods, copper_list_a) == 0x4d8a, "copper_list_a");
@@ -1136,8 +1136,8 @@ _Static_assert(offsetof(struct Gods, digit_font) == 0x58f0, "digit_font");
 _Static_assert(offsetof(struct Gods, menu_item_count) == 0x6384, "menu_item_count");
 _Static_assert(offsetof(struct Gods, menu_start_code) == 0x6388, "menu_start_code");
 _Static_assert(offsetof(struct Gods, password_line) == 0x6a0e, "password_line");
-_Static_assert(offsetof(struct Gods, word_6ebc) == 0x6ebc, "word_6ebc");
-_Static_assert(offsetof(struct Gods, word_6ebe) == 0x6ebe, "word_6ebe");
+_Static_assert(offsetof(struct Gods, creature_records_left) == 0x6ebc, "creature_records_left");
+_Static_assert(offsetof(struct Gods, dying_count) == 0x6ebe, "dying_count");
 _Static_assert(offsetof(struct Gods, code_6ed0) == 0x6ed0, "code_6ed0");
 _Static_assert(offsetof(struct Gods, flag_721c) == 0x721c, "flag_721c");
 _Static_assert(offsetof(struct Gods, records_721e) == 0x721e, "records_721e");
@@ -1147,29 +1147,29 @@ _Static_assert(offsetof(struct Gods, records_7544) == 0x7544, "records_7544");
 _Static_assert(offsetof(struct Gods, code_77e6) == 0x77e6, "code_77e6");
 _Static_assert(offsetof(struct Gods, code_7906) == 0x7906, "code_7906");
 _Static_assert(offsetof(struct Gods, table_7a6e) == 0x7a6e, "table_7a6e");
-_Static_assert(offsetof(struct Gods, word_7c50) == 0x7c50, "word_7c50");
-_Static_assert(offsetof(struct Gods, word_7edc) == 0x7edc, "word_7edc");
-_Static_assert(offsetof(struct Gods, word_7ede) == 0x7ede, "word_7ede");
-_Static_assert(offsetof(struct Gods, word_7f74) == 0x7f74, "word_7f74");
-_Static_assert(offsetof(struct Gods, word_7f76) == 0x7f76, "word_7f76");
+_Static_assert(offsetof(struct Gods, walker_picture_base) == 0x7c50, "walker_picture_base");
+_Static_assert(offsetof(struct Gods, unit_shot_rate) == 0x7edc, "unit_shot_rate");
+_Static_assert(offsetof(struct Gods, shot_aim) == 0x7ede, "shot_aim");
+_Static_assert(offsetof(struct Gods, last_death_x) == 0x7f74, "last_death_x");
+_Static_assert(offsetof(struct Gods, last_death_y) == 0x7f76, "last_death_y");
 _Static_assert(offsetof(struct Gods, fall_x) == 0x7f78, "fall_x");
 _Static_assert(offsetof(struct Gods, fall_y) == 0x7f7a, "fall_y");
 _Static_assert(offsetof(struct Gods, fall_speed) == 0x7f7c, "fall_speed");
 _Static_assert(offsetof(struct Gods, fall_kind) == 0x7f7e, "fall_kind");
-_Static_assert(offsetof(struct Gods, word_846e) == 0x846e, "word_846e");
-_Static_assert(offsetof(struct Gods, word_8470) == 0x8470, "word_8470");
-_Static_assert(offsetof(struct Gods, word_8472) == 0x8472, "word_8472");
+_Static_assert(offsetof(struct Gods, falcon_screen_x) == 0x846e, "falcon_screen_x");
+_Static_assert(offsetof(struct Gods, falcon_screen_y) == 0x8470, "falcon_screen_y");
+_Static_assert(offsetof(struct Gods, wing_glyph) == 0x8472, "wing_glyph");
 _Static_assert(offsetof(struct Gods, word_8882) == 0x8882, "word_8882");
 _Static_assert(offsetof(struct Gods, word_8884) == 0x8884, "word_8884");
-_Static_assert(offsetof(struct Gods, word_8886) == 0x8886, "word_8886");
-_Static_assert(offsetof(struct Gods, word_8888) == 0x8888, "word_8888");
-_Static_assert(offsetof(struct Gods, word_888a) == 0x888a, "word_888a");
-_Static_assert(offsetof(struct Gods, word_888c) == 0x888c, "word_888c");
-_Static_assert(offsetof(struct Gods, word_888e) == 0x888e, "word_888e");
+_Static_assert(offsetof(struct Gods, falcon_speed_x) == 0x8886, "falcon_speed_x");
+_Static_assert(offsetof(struct Gods, falcon_speed_y) == 0x8888, "falcon_speed_y");
+_Static_assert(offsetof(struct Gods, falcon_facing) == 0x888a, "falcon_facing");
+_Static_assert(offsetof(struct Gods, wing_step) == 0x888c, "wing_step");
+_Static_assert(offsetof(struct Gods, falcon_choice) == 0x888e, "falcon_choice");
 _Static_assert(offsetof(struct Gods, falcon_energy) == 0x8890, "falcon_energy");
 _Static_assert(offsetof(struct Gods, word_8892) == 0x8892, "word_8892");
 _Static_assert(offsetof(struct Gods, word_8894) == 0x8894, "word_8894");
-_Static_assert(offsetof(struct Gods, word_8896) == 0x8896, "word_8896");
+_Static_assert(offsetof(struct Gods, falcon_previous_facing) == 0x8896, "falcon_previous_facing");
 _Static_assert(offsetof(struct Gods, code_8a54) == 0x8a54, "code_8a54");
 _Static_assert(offsetof(struct Gods, walk_modes_99dc) == 0x99dc, "walk_modes_99dc");
 _Static_assert(offsetof(struct Gods, code_9ae6) == 0x9ae6, "code_9ae6");
@@ -1197,7 +1197,7 @@ _Static_assert(offsetof(struct Gods, digits_started) == 0x10062, "digits_started
 _Static_assert(offsetof(struct Gods, level_end_step) == 0x1026c, "level_end_step");
 _Static_assert(offsetof(struct Gods, level_end_unit) == 0x10270, "level_end_unit");
 _Static_assert(offsetof(struct Gods, lists_1078a) == 0x1078a, "lists_1078a");
-_Static_assert(offsetof(struct Gods, ptrs_10a20) == 0x10a20, "ptrs_10a20");
+_Static_assert(offsetof(struct Gods, level_texts) == 0x10a20, "level_texts");
 _Static_assert(offsetof(struct Gods, message_slots) == 0x12be6, "message_slots");
 _Static_assert(offsetof(struct Gods, text_y) == 0x12d5a, "text_y");
 _Static_assert(offsetof(struct Gods, level_end_counter) == 0x13182, "level_end_counter");
@@ -1215,12 +1215,12 @@ _Static_assert(offsetof(struct Gods, dispatch_18be0) == 0x18be0, "dispatch_18be0
 _Static_assert(offsetof(struct Gods, records_19334) == 0x19334, "records_19334");
 _Static_assert(offsetof(struct Gods, table_19456) == 0x19456, "table_19456");
 _Static_assert(offsetof(struct Gods, first_asset_name) == 0x196d6, "first_asset_name");
-_Static_assert(offsetof(struct Gods, bits_1970a) == 0x1970a, "bits_1970a");
+_Static_assert(offsetof(struct Gods, item_message_shown) == 0x1970a, "item_message_shown");
 _Static_assert(offsetof(struct Gods, plan_queue) == 0x1971c, "plan_queue");
 _Static_assert(offsetof(struct Gods, plan_list) == 0x1981c, "plan_list");
 _Static_assert(offsetof(struct Gods, table_199ac) == 0x199ac, "table_199ac");
 _Static_assert(offsetof(struct Gods, records_19b14) == 0x19b14, "records_19b14");
-_Static_assert(offsetof(struct Gods, records_1a154) == 0x1a154, "records_1a154");
+_Static_assert(offsetof(struct Gods, bolt_records) == 0x1a154, "bolt_records");
 _Static_assert(offsetof(struct Gods, table_1a30c) == 0x1a30c, "table_1a30c");
 _Static_assert(offsetof(struct Gods, marker_table) == 0x1a3fc, "marker_table");
 _Static_assert(offsetof(struct Gods, record_table) == 0x1a58c, "record_table");
@@ -1228,12 +1228,12 @@ _Static_assert(offsetof(struct Gods, data_1aa66) == 0x1aa66, "data_1aa66");
 _Static_assert(offsetof(struct Gods, data_1ad8a) == 0x1ad8a, "data_1ad8a");
 _Static_assert(offsetof(struct Gods, data_1b17e) == 0x1b17e, "data_1b17e");
 _Static_assert(offsetof(struct Gods, data_1b7be) == 0x1b7be, "data_1b7be");
-_Static_assert(offsetof(struct Gods, flags_1c056) == 0x1c056, "flags_1c056");
+_Static_assert(offsetof(struct Gods, lever_flags) == 0x1c056, "lever_flags");
 _Static_assert(offsetof(struct Gods, table_1c1d6) == 0x1c1d6, "table_1c1d6");
-_Static_assert(offsetof(struct Gods, table_1c28a) == 0x1c28a, "table_1c28a");
+_Static_assert(offsetof(struct Gods, level_pickups) == 0x1c28a, "level_pickups");
 _Static_assert(offsetof(struct Gods, path_descriptions) == 0x1c302, "path_descriptions");
 _Static_assert(offsetof(struct Gods, data_1c5be) == 0x1c5be, "data_1c5be");
-_Static_assert(offsetof(struct Gods, table_1c9e4) == 0x1c9e4, "table_1c9e4");
+_Static_assert(offsetof(struct Gods, sine_table) == 0x1c9e4, "sine_table");
 _Static_assert(offsetof(struct Gods, vbl_saturating) == 0x1d058, "vbl_saturating");
 _Static_assert(offsetof(struct Gods, vbl_count) == 0x1d05a, "vbl_count");
 _Static_assert(offsetof(struct Gods, random_seed) == 0x1d0aa, "random_seed");
@@ -1266,7 +1266,7 @@ _Static_assert(offsetof(struct Gods, sound_track_data) == 0x20f74, "sound_track_
 _Static_assert(offsetof(struct Gods, sound_sample_data) == 0x21e5e, "sound_sample_data");
 _Static_assert(offsetof(struct Gods, sound_silence) == 0x21e5e, "sound_silence");
 _Static_assert(offsetof(struct Gods, picture_buffer) == 0x31fde, "picture_buffer");
-_Static_assert(offsetof(struct Gods, flags_39fde) == 0x39fde, "flags_39fde");
+_Static_assert(offsetof(struct Gods, near_flags) == 0x39fde, "near_flags");
 _Static_assert(offsetof(struct Gods, records_3a0a6) == 0x3a0a6, "records_3a0a6");
 _Static_assert(offsetof(struct Gods, effects) == 0x3a196, "effects");
 _Static_assert(offsetof(struct Gods, word_3a1fa) == 0x3a1fa, "word_3a1fa");
@@ -1310,12 +1310,12 @@ void draw_item_row(void);                                  /* orig $003806 */
 void work_area_shift_left(void);                           /* orig $01700C */
 void message_ticker(void);                                 /* orig $016CA4 */
 
-void update_records_12a0(void);                           /* orig $009AE6 */
+void update_walker_groups(void);                           /* orig $009AE6 */
 uint8_t *walk_member_cell(const struct WalkMember *member);   /* orig $009F50 */
 int16_t walk_cell_wall(const struct WalkMember *member, const uint8_t *cell);         /* orig $00A264 */
 int16_t walk_cell_wall_below(const struct WalkMember *member, const uint8_t *cell);   /* orig $00A242 */
 void mark_target_cells(int16_t x, int16_t y);              /* orig $00A6EA */
-void update_records_1354(void);                           /* orig $008A54 */
+void update_monsters(void);                           /* orig $008A54 */
 void next_table_entry(void);                              /* orig $00D47E */
 void mark_player_cells(void);                             /* orig $003C56 */
 
@@ -1332,18 +1332,18 @@ void update_score_display(void);                           /* orig $005842 */
 
 
 
-void auto_walk_33d4(void);                                  /* orig $0033D4 */
+void world_end_auto_walk(void);                                  /* orig $0033D4 */
 void shop_message_frame(void);                              /* orig $013E3A (the frame tick, while the shop is on) */
 uint16_t shop_message_request(int16_t priority);            /* orig $013DF2 (message_request, while the shop is on) */
 void game_nothing(void);                                   /* orig $003436, $0077E6 and $007906 */
-void game_step_4070(void);                                 /* orig $004070 */
+void chest_pieces_move(void);                                 /* orig $004070 */
 void draw_shutter(void);                               /* orig $0054C4 */
 void game_step_5496(void);                                 /* orig $005496 */
-void boss3_fall_bc1c(void);                                  /* orig $00BC1A */
-void boss4_death_ba34(void);                                 /* orig $00BA34 */
-void bolts_77e6(void);                                       /* orig $0077E6 */
-void bolts_7906(void);                                       /* orig $007906 */
-void game_step_73d2(void);                                 /* orig $0073D2 */
+void boss3_death_fall(void);                                  /* orig $00BC1A */
+void boss4_death_wait(void);                                 /* orig $00BA34 */
+void face_bolts_move(void);                                       /* orig $0077E6 */
+void face_bolt_pieces_move(void);                                       /* orig $007906 */
+void move_shards(void);                                 /* orig $0073D2 */
 void update_item_panel(void);                               /* orig $005608 */
 void panel_blank(uint8_t *to);                             /* orig $0057E0 */
 void panel_slot_plain(uint8_t *to, int16_t item);          /* orig $0056BE */
@@ -1369,18 +1369,18 @@ void creature_step_717e(const uint8_t *type, int16_t *object);   /* orig $00717E
 
 
 void do_nothing_b(void);                    /* orig $00BA34 (and eleven more) */
-void step_836c(void);                       /* orig $00836C */
-void draw_sprite_8472(void);                /* orig $008452 */
-void update_choice_888e(void);              /* orig $008742 */
-void step_d898(void);                       /* orig $00D898 */
+void falcon_seek_target(void);                       /* orig $00836C */
+void falcon_draw(void);                /* orig $008452 */
+void falcon_choose_weapon(void);              /* orig $008742 */
+void spores_update(void);                       /* orig $00D898 */
 void unit0_update(void);                    /* orig $00E486 */
 void unit1_update(void);                    /* orig $00E76C */
 void unit2_update(void);                    /* orig $00EA52 */
 void unit3_update(void);                    /* orig $00ED38 */
 void unit4_update(void);                    /* orig $00F01E */
 void step_16aee(void);                      /* orig $016AEE */
-void step_1843e(void);                      /* orig $01843E */
-void step_190f2(void);                      /* orig $0190F2 */
+void bolts_update(void);                      /* orig $01843E */
+void dropped_sparkle_update(void);                      /* orig $0190F2 */
 int16_t damage_player_at(int16_t x, int16_t y, int16_t strength);   /* orig $00D270 */
 uint16_t *clear_72_words(uint16_t *p);      /* orig $00FB20 */
 void reset_object_slot(int16_t index, int16_t other);   /* orig $00FB2E */
@@ -1391,15 +1391,15 @@ void draw_background(void);                 /* orig $0178C6 */
 void step_18072(struct PathRecord *a1, const struct PathDescription *a2);   /* orig $018072 */
 void draw_record_image(int16_t x, int16_t y, const struct PathDescription *a2);   /* orig $017FA0 */
 struct SavedByte *mark_record_cells(int16_t x, int16_t y, const struct PathDescription *a2, struct SavedByte *list);   /* orig $018014 */
-void take_record_to_18740(struct EntryRef *a0);       /* orig $018900 */
+void take_unit_record(struct EntryRef *a0);       /* orig $018900 */
 void take_record_to_199ac(struct EntryRef *a0);    /* orig $018890 */
-void take_record_to_1354(struct EntryRef *a0);      /* orig $0088DC */
-void take_record_to_12a0(struct EntryRef *a0);      /* orig $008898 */
+void take_monster_record(struct EntryRef *a0);      /* orig $0088DC */
+void take_walker_group_record(struct EntryRef *a0);      /* orig $008898 */
 void stop_sound(uint16_t id);               /* orig $01FA8C */
 void mark_shot_cells(int16_t x, int16_t y, const int16_t *flag);                /* orig $016A08 */
 void spawn_debris_at_cell(int16_t x, int16_t y, const uint8_t *record, int16_t *flag);   /* orig $01695E */
 void redraw_record_images(void);            /* orig $017E9C */
-void end_flag_8890(void);                   /* orig $008822 */
+void falcon_end(void);                   /* orig $008822 */
 
 int16_t check_hit_and_walls(int16_t x, int16_t y, int16_t strength);   /* orig $00D00A and $00D114 */
 void finish_record_1895a(struct EntryRef *a0);        /* orig $01895A */
@@ -1433,7 +1433,7 @@ void update_records(void);                                                 /* or
 int16_t player_touch_record(int16_t x, int16_t y, struct Slot8 *record, int16_t counter);   /* orig $0044D2 */
 int16_t record_check_walls(int16_t x, int16_t y, int16_t *record);         /* orig $007EAE */
 void draw_score_panel(void);                                               /* orig $0057FC */
-void draw_records_19334(void);                                             /* orig $01924C (all of it; find_record_19334 is its first part) */
+void draw_pickups(void);                                             /* orig $01924C (all of it; find_record_19334 is its first part) */
 
 /* The routines of game_e.c this module needs, with the registers they take in the original.  game_d.c has weak versions that do
  * nothing: the strong ones of game_e.c (or whatever names the lead gives them) replace them when the symbols are the same. */
@@ -1489,7 +1489,7 @@ void begin_quest(void);                 /* orig $00651E, which jumps to $002452:
 void draw_start_frame(void);            /* orig $00FC32: a game frame without the checks of the loop (the set-up draws two before the first fade-in) */
 void level_state_init(void);            /* orig $00F526 */
 void hud_digits_load(void);             /* orig $005E50 */
-void image_draw_clipped(int16_t x, int16_t y, uint16_t image);   /* orig $01EFCC (the clipped, masked draw of image `image` at (x, y) with the clip list of ptr_0de0) */
+void image_draw_clipped(int16_t x, int16_t y, uint16_t image);   /* orig $01EFCC (the clipped, masked draw of image `image` at (x, y) with the clip list of clip_rect_list) */
 
 void start_record_path(struct EntryRef *entry, int16_t variant);   /* orig $017E0A, $017E0E, $017E12 and $017E16 (the variant 0 to 3), which go on at $017E18 */
 void path_continue(struct PathRecord *record, const struct PathDescription *description);       /* orig $01808E: the record's line is walked on */
@@ -1498,8 +1498,8 @@ void player_tile_scan(void);             /* orig $012710 */
 
 /* the routines Begin Quest is made of (each says its original address in game_h.c) */
 void fill_cce_ones(void);
-void clear_records_12a0(void);
-void clear_records_1354(void);
+void clear_walk_groups(void);
+void clear_monsters(void);
 void clear_records_113c(void);
 void clear_records_1036(void);
 void reset_slots_10(int16_t *base);
@@ -1513,7 +1513,7 @@ void clear_effects(void);
 void clear_records_737e(void);
 void fill_table_1a30c(void);
 void clear_markers(void);
-void clear_records_1a154(void);
+void clear_bolts(void);
 void clear_records_721e(void);
 void reset_records_7544(void);
 void clear_creature_state(void);
@@ -1522,15 +1522,15 @@ void stop_game_sounds(void);
 void copy_block_16bb4(void);
 void clear_cell_records(void);
 void widen_bytes_to_words(void);
-void sort_records_19b14(void);
+void sort_records_by_kind(void);
 uint16_t random_next(void);
 void random_table_make(void);
-void scan_cells_d5ee(void);
+void scan_password_cells(void);
 void records_113c_reset(void);
 void load_pattern_data(const uint8_t *names);
 void check_flag_286(void);
-void read_text_table_14852(const uint16_t *table, uint16_t *to);
-const uint8_t *read_text_table_14814(const uint8_t *table);
+void read_text_table_word_offsets(const uint16_t *table, uint16_t *to);
+const uint8_t *read_text_table_long_offsets(const uint8_t *table);
 void load_objects_file(const uint8_t *names);
 void load_weapons_file(const uint8_t *names);
 void load_level_objects(const uint8_t *names);

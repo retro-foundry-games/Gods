@@ -431,7 +431,7 @@ const uint8_t fall_steps_f2[52] __attribute__((aligned(1))) = {
     0x73, 0x68, 0x6f, 0x70,
 };
 
-/* $044B4  game_d: the four glyphs of the sprite 280, by counter_2b4 */
+/* $044B4  game_d: the four glyphs of the sprite 280, by glyph_frame */
 const uint16_t frames_44b4[4] = {
     0x0118, 0x0190, 0x0191, 0x0192,
 };
@@ -625,7 +625,7 @@ const uint16_t table_17a6e[8] = {
     0x006e, 0x007e, 0x0085, 0x0076, 0x007c, 0x006e, 0x0076, 0x007b,
 };
 
-/* $0FA5C  the glyph of the pick-ups of each level (word_26a) */
+/* $0FA5C  the glyph of the pick-ups of each level (pickup_glyph) */
 const uint16_t table_fa5c[4] = {
     0x0218, 0x0214, 0x0219, 0x0229,
 };
@@ -666,7 +666,7 @@ const uint32_t table_5bb2[4] = {
     0x00100000, 0x00250000, 0x00400000, 0x00600000,
 };
 
-/* $1C678  for each level two pointers (ptr_0b7e, ptr_0b82) */
+/* $1C678  for each level two pointers (level_creature_templates, ptr_0b82) */
 const ByteP table_1c678[8] = {
     (ByteP)((const uint8_t *)creature_templates + 0),
     (ByteP)((const uint8_t *)creature_templates + 64),

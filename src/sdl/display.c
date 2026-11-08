@@ -452,7 +452,7 @@ void blit_masked(const uint8_t *source, uint8_t *dest, int16_t modulo_ab, uint16
     }
 }
 
-/* orig $01F43C (the entry 0 of the table at $0D9A: word_dde 0): the same without the mask, the image's four planes are copied (D = B) */
+/* orig $01F43C (the entry 0 of the table at $0D9A: draw_routine_index 0): the same without the mask, the image's four planes are copied (D = B) */
 static void blit_plain(const uint8_t *source, uint8_t *dest, int16_t modulo_ab, uint16_t words, int16_t modulo_cd, uint32_t plane_size, uint16_t rows)
 {
     unsigned source_row = words * 2u + (unsigned)(int)modulo_ab, dest_row = words * 2u + (unsigned)(int)modulo_cd;
@@ -463,12 +463,12 @@ static void blit_plain(const uint8_t *source, uint8_t *dest, int16_t modulo_ab, 
                 *(uint16_t *)(dest + plane * 8448u + row * dest_row + 2 * word) = *(const uint16_t *)(source + plane * plane_size + row * source_row + 2 * word);
 }
 
-/* the clipped draw of an image whose x is not on a word's line (word_d86 not 0: flags_0ddd bit 1): the original shifts the image into a work area ($1F1E6) and blits it with the shift; the host draws it pixel by pixel:
+/* the clipped draw of an image whose x is not on a word's line (image_x_shift not 0: flags_0ddd bit 1): the original shifts the image into a work area ($1F1E6) and blits it with the shift; the host draws it pixel by pixel:
  * the pixels x to x + width (the clip's x0 to x1 only), rows `height` + 1 from the row word_dd4 of the source, a pixel where the mask (the four planes or'ed) is set takes the image's bits on the screen's four planes */
 static void blit_shifted(int16_t x, int16_t y, int16_t width, int16_t height, const uint8_t *source, const int16_t *clip)
 {
     unsigned bytes = ((uint16_t)width + 1u) >> 3;
-    uint32_t plane_size = guest.long_dd8;
+    uint32_t plane_size = guest.image_plane_bytes;
     const int16_t plane_stride = 8448;
 
     for (int r = 0; r <= height; r++) {
@@ -504,7 +504,7 @@ static void blit_shifted(int16_t x, int16_t y, int16_t width, int16_t height, co
 
 /* orig $01F0AA: the image (x, y, `width` pixels, `height` + 1 rows, at `source`: the first of its four planes) is clipped by the
  * rectangle `clip` (x0, x1, y0, y1) and drawn on the screen buffer.  Only the way that ran is written: an image that is mirrored
- * (word_d82 negative), the shift in the bits of x (word_d86) and the other draw routines of the table at $0D9A are not */
+ * (image_mirrored negative), the shift in the bits of x (image_x_shift) and the other draw routines of the table at $0D9A are not */
 void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uint8_t *source, const int16_t *clip)
 {
     int16_t low = clip[2];
@@ -536,7 +536,7 @@ void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uin
         return;
     if ((int16_t)(height + y) > high)
         height = (int16_t)(high - y);
-    if (guest.word_d86 != 0) {
+    if (guest.image_x_shift != 0) {
         blit_shifted(x, y, width, height, source, clip);
         return;
     }
@@ -550,18 +550,18 @@ void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uin
         offset = (int16_t)(((uint16_t)(low - x) & 0xFFF0) >> 3);
         source += offset;
         x = low;
-        guest.word_d88 = 1;
+        guest.image_clip_flags = 1;
     }
     high = clip[1];
     if (x > high)
         return;
     if ((int16_t)(rest + x) > high) {
         rest = (int16_t)(high - x);
-        guest.word_d88 = (uint16_t)(guest.word_d88 + 2);
+        guest.image_clip_flags = (uint16_t)(guest.image_clip_flags + 2);
     }
     words = (uint16_t)rest >> 4;
     rest = (int16_t)(words << 3);   /* the original's d5 */
-    if (!(guest.word_d82 & 0x8000))
+    if (!(guest.image_mirrored & 0x8000))
         return;   /* goes on at $01F13A */
     width = (int16_t)(((uint16_t)width >> 1) & 0xFFF8);
     product = (uint32_t)(uint16_t)(width + 8) * guest.word_dd4;
@@ -569,21 +569,21 @@ void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uin
     if (guest.flags_0ddd & 0x20)
         return;   /* goes on at $01F186 */
     modulo_ab = (int16_t)(width - rest);
-    modulo_cd = (int16_t)(((uint16_t)(guest.word_dd2 - 8 - rest)) >> 2);
+    modulo_cd = (int16_t)(((uint16_t)(guest.screen_row_bytes - 8 - rest)) >> 2);
     x = (int16_t)((uint16_t)x & 0xFFF0);
     x = (int16_t)((uint16_t)x >> 3);
     x = (int16_t)(x + (uint16_t)((uint16_t)y * 44));
-    if (guest.word_d86 != 0)
+    if (guest.image_x_shift != 0)
         return;   /* goes on at $01F1BE */
     if (guest.flags_0ddd & 4)
-        return;   /* goes on at the routine of the table at $0D9A that word_dde and bit 2 of flags_0ddd name (the entries of bit 2 are not written) */
-    if (guest.word_dde == 0) {
-        blit_plain(source, guest.screen_buffer + x, (int16_t)(modulo_ab >> 2), (uint16_t)(words + 1), modulo_cd, guest.long_dd8, (uint16_t)(height + 1));
+        return;   /* goes on at the routine of the table at $0D9A that draw_routine_index and bit 2 of flags_0ddd name (the entries of bit 2 are not written) */
+    if (guest.draw_routine_index == 0) {
+        blit_plain(source, guest.screen_buffer + x, (int16_t)(modulo_ab >> 2), (uint16_t)(words + 1), modulo_cd, guest.image_plane_bytes, (uint16_t)(height + 1));
         return;
     }
-    if (guest.word_dde != 1)
+    if (guest.draw_routine_index != 1)
         return;
-    blit_masked(source, guest.screen_buffer + x, (int16_t)(modulo_ab >> 2), (uint16_t)(words + 1), modulo_cd, guest.long_dd8, (uint16_t)(height + 1));
+    blit_masked(source, guest.screen_buffer + x, (int16_t)(modulo_ab >> 2), (uint16_t)(words + 1), modulo_cd, guest.image_plane_bytes, (uint16_t)(height + 1));
 }
 
 /* ================ the blits (was blitter.c) ================ */

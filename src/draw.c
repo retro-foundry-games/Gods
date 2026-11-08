@@ -238,7 +238,7 @@ static const uint8_t *sprite_planes_as_words(const uint8_t *data, unsigned bytes
 {
     static uint8_t copy[4096];
     uintptr_t first = (uintptr_t)guest.memory_base;
-    uintptr_t last = (uintptr_t)guest.ptr_0c70 > first && (uintptr_t)guest.ptr_0c70 < first + 0x8500 ? (uintptr_t)guest.ptr_0c70 : first + 0x8500;   /* (the tiles, from ptr_0c70 on, are words of the port's too) */
+    uintptr_t last = (uintptr_t)guest.background_tile_graphics > first && (uintptr_t)guest.background_tile_graphics < first + 0x8500 ? (uintptr_t)guest.background_tile_graphics : first + 0x8500;   /* (the tiles, from background_tile_graphics on, are words of the port's too) */
     uintptr_t from = (uintptr_t)data;
     uintptr_t to = from + bytes;
 
