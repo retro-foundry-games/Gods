@@ -8,13 +8,13 @@ PROJECT = Path(__file__).resolve().parents[1]
 SRC = PROJECT / "native" / "src"
 names = set()
 for line in (SRC / "menu.symbols").read_text().split("\n"):
-    if not line.strip() or line.startswith("#") or line.startswith("table"):
+    if not line.strip() or line.startswith("#") or line.split()[0] == "table":
         continue
     decl = line.split(None, 2)[2]
     if re.match(r".*?\s*%s\(void\)", decl) and "(*" not in decl:
         continue
     names.add(line.split()[0])
-TOKEN = re.compile(r'/\*.*?\*/|//[^\n]*|"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\'|[A-Za-z_]\w*|\.\.\.|->|\.|\n|[^\sA-Za-z_]', re.S)
+TOKEN = re.compile(r'/\*.*?\*/|//[^\n]*|"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\'|[A-Za-z_]\w*|\.\.\.|->|\.|\s+|[^\sA-Za-z_]', re.S)
 
 
 def rewrite(text: str) -> tuple[str, int]:

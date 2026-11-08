@@ -17,6 +17,8 @@ from pathlib import Path
 PROJECT = Path(__file__).resolve().parents[1]
 SRC = PROJECT / "native" / "src"
 SIZES = {"char": 1, "uint8_t": 1, "uint16_t": 2, "uint32_t": 4, "int8_t": 1, "int16_t": 2, "int32_t": 4}
+# how far an unsized array goes where the code uses a block that holds other variables of the original's (the level's tables are read to data_1aa66, 7000 bytes and a text table after them)
+EXTENT = {"data_1aa66": 0x1c700, "shadow_table": 0xe50, "copper_list_a": 0x4e3a, "copper_list_b": 0x4e3a}
 HEAP = 0x80400   # where the program's heap begins (host.c: heap_base)
 GUEST_END = 0x200000
 
@@ -24,7 +26,7 @@ GUEST_END = 0x200000
 def parse():
     variables = []
     for line in (SRC / "menu.symbols").read_text().split("\n"):
-        if not line.strip() or line.startswith("#") or line.startswith("table"):
+        if not line.strip() or line.startswith("#") or line.split()[0] == "table":
             continue
         m = re.match(r"(\w+)\s+(0x[0-9a-fA-F]+)\s+(.*?%s.*?)(?:\s{2,}(.*))?$", line)
         decl = m.group(3).strip()
@@ -65,11 +67,14 @@ def main() -> None:
     variables = sorted(parse(), key=lambda v: (v[1], v[0]))
     size = sizes(variables)
     # the unsized arrays go on to the next variable or table (or 4 KiB at the most is not enough for the screens: the next object)
-    starts = sorted({v[1] for v in variables} | {a for _, a in tables()})
+    # (the unsized arrays of one region are used as one block: the next one does not end the first, a variable of known size or a table does)
+    starts = sorted({v[1] for v in variables if size[v[0]] != 0} | {a for _, a in tables()})
     for i, (name, addr, decl) in enumerate(variables):
         if size[name] == 0:
             following = [s for s in starts if s > addr]
             size[name] = (following[0] if following else HEAP) - addr
+            if name in EXTENT:
+                size[name] = EXTENT[name] - addr
     # clusters of overlapping variables
     clusters = []
     for v in variables:
@@ -107,7 +112,7 @@ def main() -> None:
                 if addr == c["start"]:
                     out.append(f"        struct {{ {declare(decl, name)} }};   /* ${addr:05X} */")
                 else:
-                    out.append(f"        struct {{ uint8_t pad_{addr:05x}[{addr - c['start']}]; {declare(decl, name)} }};   /* ${addr:05X} */")
+                    out.append(f"        struct {{ uint8_t pad_in_{addr:05x}_{len(checks)}[{addr - c['start']}]; {declare(decl, name)} }};   /* ${addr:05X} */")
                 checks.append((name, addr))
             out.append(f"        uint8_t bytes_{c['start']:05x}[{c['end'] - c['start']}];")
             out.append("    };")
