@@ -117,9 +117,9 @@ void assets_load(const char *keyword, uint16_t *palette, uint8_t *memory, struct
         do {
             *name++ = *ext++;
         } while (ext[-1] != 0);
-        load_unpacked(guest.asset_name, guest.picture_buffer);
+        load_unpacked(guest.asset_name, guest.file_buffer);
 
-        const uint16_t *picture = (const uint16_t *)guest.picture_buffer;
+        const uint16_t *picture = (const uint16_t *)guest.file_buffer;
 
         guest.picture_header = *picture++;
         for (int i = 0; i < 16; i++)
@@ -132,7 +132,7 @@ void assets_load(const char *keyword, uint16_t *palette, uint8_t *memory, struct
         } while (ext[-1] != 0);
         load_file(guest.asset_name, guest.asset_directory + 20);
 
-        picture = (const uint16_t *)(guest.picture_buffer + 34);
+        picture = (const uint16_t *)(guest.file_buffer + 34);
         for (int i = 0; i < 16000; i++)
             ((uint16_t *)guest.screen_buffer)[i] = *picture++;
 

@@ -108,7 +108,7 @@ shift_source      0x00000bbe  const uint32_t *%s
 shift_count       0x0000023e  int16_t %s        bits left in shift_bits
 asset_mem_end     0x00000d3e  uint8_t *%s       where assets_load stopped writing sprite data
 asset_table_end   0x00000d3a  struct AssetEntry *%s   ... and where its table of entries ended
-picture_buffer    0x00031fde  uint8_t %s[]      where a picture file is read to
+file_buffer       0x00031fde  uint8_t %s[32768]    the buffer files are read to: the pictures, the sound files (whose samples the instruments point into), and the text buffers of a level
 table asset_extensions 0x00000d2e uint8_t 11   the endings of a picture file name (.pi1) and of its table (.dat, 6 bytes on)
 table asset_names 0x0001ecec uint8_t 84   the names assets_load knows (each ended by 0, ended by $FF)
 table asset_list_pointers 0x0001ed42 ByteP 12   for each name of asset_names the list of its file names
@@ -622,7 +622,6 @@ sound_state       0x0002079e  struct SoundState %s   the sound system's variable
 teleport_lists       0x0001078a  uint8_t %s[96]   the lists table_1077a points to
 sound_track_data  0x00020f74  uint8_t %s[3270]   the sequencer's tracks of the sounds (sound_tracks points into it)
 sound_sample_data 0x00021e5e  uint8_t %s[65920]   the 8 bit samples of the instruments (sound_instruments points into it); the first 16 bytes are the silent sample
-sound_sample_tail 0x00031fde  uint8_t %s[32370]   the rest of the samples: the sound file is read over picture_buffer (and again after a picture has been read there)
 video_address_high 0x00ff8207 volatile uint8_t %s   the Atari ST's video address register (high byte): the game reads it as the seed of its random numbers; the Amiga has no such address
 video_address_low  0x00ff8209 volatile uint8_t %s   ... and the low byte
 copper_list_end    0x00005246 uint16_t %s[1]   where the search for COLOR01 in a copper list ends

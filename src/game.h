@@ -1304,11 +1304,7 @@ struct Gods {
     uint8_t sound_track_data[3270];   /* $20F74 */
     PAD(548)
     uint8_t sound_sample_data[65920];   /* $21E5E */
-    union {   /* the variables that overlap */
-        struct { uint8_t picture_buffer[32768]; };   /* $31FDE */
-        struct { uint8_t sound_sample_tail[32370]; };   /* $31FDE */
-        uint8_t bytes_31fde[32768];
-    };
+    uint8_t file_buffer[32768];   /* $31FDE */
     uint8_t near_flags[200];   /* $39FDE */
     int16_t debris_records[120];   /* $3A0A6 */
     int16_t effects[100];   /* $3A196 */
@@ -1788,8 +1784,7 @@ LAYOUT_ASSERT(offsetof(struct Gods, sound_lock) == 0x2079c, "sound_lock");
 LAYOUT_ASSERT(offsetof(struct Gods, sound_state) == 0x2079e, "sound_state");
 LAYOUT_ASSERT(offsetof(struct Gods, sound_track_data) == 0x20f74, "sound_track_data");
 LAYOUT_ASSERT(offsetof(struct Gods, sound_sample_data) == 0x21e5e, "sound_sample_data");
-LAYOUT_ASSERT(offsetof(struct Gods, picture_buffer) == 0x31fde, "picture_buffer");
-LAYOUT_ASSERT(offsetof(struct Gods, sound_sample_tail) == 0x31fde, "sound_sample_tail");
+LAYOUT_ASSERT(offsetof(struct Gods, file_buffer) == 0x31fde, "file_buffer");
 LAYOUT_ASSERT(offsetof(struct Gods, near_flags) == 0x39fde, "near_flags");
 LAYOUT_ASSERT(offsetof(struct Gods, debris_records) == 0x3a0a6, "debris_records");
 LAYOUT_ASSERT(offsetof(struct Gods, effects) == 0x3a196, "effects");

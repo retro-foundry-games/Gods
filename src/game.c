@@ -12831,8 +12831,8 @@ void load_objects_file(const uint8_t *names)
     uint8_t *out;
 
     guest.message_base = guest.message_text_block;
-    load_unpacked((const char *)names + NAME_OBJECTS, guest.picture_buffer);
-    from = guest.picture_buffer;
+    load_unpacked((const char *)names + NAME_OBJECTS, guest.file_buffer);
+    from = guest.file_buffer;
     out = guest.message_base;
     to_start = (uint8_t *)guest.thing_kinds;
     for (int i = 0; i < 132; i++) {
@@ -13026,14 +13026,14 @@ void copper_list_make(void)
     guest.color_line_spacing = spacing;
 }
 
-/* orig $017A7E: the picture file `name` is read to picture_buffer (32034 bytes) and copied to 34 bytes before the screen buffer */
+/* orig $017A7E: the picture file `name` is read to file_buffer (32034 bytes) and copied to 34 bytes before the screen buffer */
 void load_picture_to_screen(const uint8_t *name)
 {
     const uint16_t *from;
     uint16_t *to = (uint16_t *)(guest.screen_buffer - 34);
 
-    load_unpacked((const char *)name, guest.picture_buffer);
-    from = (const uint16_t *)guest.picture_buffer;
+    load_unpacked((const char *)name, guest.file_buffer);
+    from = (const uint16_t *)guest.file_buffer;
     for (int i = 0; i < 16017; i++)
         *to++ = *from++;
 }
@@ -14086,8 +14086,8 @@ static void load_level_files(void)
         guest.target_map = guest.target_map_default;
         guest.asset_directory = guest.asset_directory_default;
         if (guest.param_index == 4) {
-            guest.line_text = guest.picture_buffer + (0x373BC - 0x31FDE);   /* (the text buffers lie in the picture buffer) */
-            guest.target_map = guest.picture_buffer + (0x379FC - 0x31FDE);
+            guest.line_text = guest.file_buffer + (0x373BC - 0x31FDE);   /* (the text buffers lie in the picture buffer) */
+            guest.target_map = guest.file_buffer + (0x379FC - 0x31FDE);
             guest.asset_directory = (uint8_t *)guest.entry_list + 2820;
         }
         guest.asset_mem_end = guest.asset_end_28ec;
@@ -14182,7 +14182,7 @@ static void level_begin(void)
         }
         guest.menu_active = 0;
     }
-    file_read((const char *)sound1_name, guest.picture_buffer);
+    file_read((const char *)sound1_name, guest.file_buffer);
     if (level_next_wait)
         host_disk_wait();   /* (the original's start of the level fades out when it has done its work) */
     level_next_fade = level_next_wait;
@@ -14289,7 +14289,7 @@ static void level_load_world(void)
     guest.shop_door_index--;
     guest.score_redraw = 0xFFFF;
     guest.world_loading = 0;
-    file_read((const char *)sound1_name, guest.picture_buffer);
+    file_read((const char *)sound1_name, guest.file_buffer);
     drives_idle();
     host_world_load_wait();   /* (the original's drive takes about 600 frames for the files of the world and its sprites) */
     guest.tick_count = saved_ticks;
@@ -15977,15 +15977,15 @@ static void game_won_screen(void)
 
     guest.event_flags &= (uint8_t)~0x40;
     fade_out(1, 0xFFFF);
-    load_unpacked("payoff.pi1", guest.picture_buffer);
+    load_unpacked("payoff.pi1", guest.file_buffer);
 
-    const uint16_t *file = (const uint16_t *)(guest.picture_buffer + 2);
+    const uint16_t *file = (const uint16_t *)(guest.file_buffer + 2);
     uint16_t *palette = (uint16_t *)guest.monster_part_blocks;
 
     for (int i = 0; i < 16; i++)   /* (the unpacked file's words are the port's own) */
         palette[i] = file[i];
 
-    const uint16_t *picture = (const uint16_t *)(guest.picture_buffer + 0x22);
+    const uint16_t *picture = (const uint16_t *)(guest.file_buffer + 0x22);
     uint8_t *to = guest.screen_buffer;
 
     for (int row = 0; row < 192; row++) {
@@ -16011,7 +16011,7 @@ static void game_won_screen(void)
 
     guest.screen_buffer = other;   /* (the sound file is read with the screens as they are swapped) */
     guest.screen_other = shown;
-    file_read((const char *)sound1_name, guest.picture_buffer);
+    file_read((const char *)sound1_name, guest.file_buffer);
     host_disk_wait();
     guest.screen_buffer = shown;
     guest.screen_other = other;
@@ -16271,8 +16271,8 @@ static void load_guardian_assets(void)
         return;   /* goes on at $2C20: they are there */
     draw_loading_screen();
     if (guest.param_index == 3) {   /* $30EC: the level 3 changes two pointers of the text */
-        guest.line_text = guest.picture_buffer + (0x373BC - 0x31FDE);
-        guest.target_map = guest.picture_buffer + (0x379FC - 0x31FDE);
+        guest.line_text = guest.file_buffer + (0x373BC - 0x31FDE);
+        guest.target_map = guest.file_buffer + (0x379FC - 0x31FDE);
     }
     play_sound(0, 0);
     uint8_t *saved_directory = guest.asset_directory;
@@ -16289,7 +16289,7 @@ static void load_guardian_assets(void)
         boss2_bezier_load();   /* $316A: the level 2 reads bezier.dat */
     drives_idle();   /* $16E3E */
     guest.menu_state_25a = 2;
-    file_read((const char *)sound1_name, guest.picture_buffer);   /* (the original reads sound1.bin, sound2.bin and, in the odd levels, sound3.bin) */
+    file_read((const char *)sound1_name, guest.file_buffer);   /* (the original reads sound1.bin, sound2.bin and, in the odd levels, sound3.bin) */
     host_disk_wait();   /* (the original's reads take what its drive takes, the loading screen on show) */
     drives_idle();
     if (guest.player_invulnerable != 0)
@@ -16898,10 +16898,10 @@ static void shop_run(void)
 
     guest.event_flags &= (uint8_t)~4;
     guest.boss_phase_flags &= (uint8_t)~4;
-    load_unpacked(shop_pi1_name, guest.picture_buffer - 0x22);
+    load_unpacked(shop_pi1_name, guest.file_buffer - 0x22);
     host_disk_wait();   /* (the original's read of the picture takes what its drive takes before it fades out again) */
 
-    const uint16_t *picture = (const uint16_t *)guest.picture_buffer;
+    const uint16_t *picture = (const uint16_t *)guest.file_buffer;
     uint8_t *to = guest.screen_buffer;
 
     for (int row = 0; row < 192; row++) {
@@ -16933,7 +16933,7 @@ static void shop_run(void)
 
     guest.screen_buffer = other;   /* (the sound file is read with the screens as they are swapped) */
     guest.screen_other = shown;
-    file_read(sound1_name, guest.picture_buffer);
+    file_read(sound1_name, guest.file_buffer);
     host_disk_wait();
     guest.screen_buffer = shown;
     guest.screen_other = other;
@@ -17061,7 +17061,7 @@ static void shop_run(void)
     wait_vblank();
     reload_sprites();
     wait_vblank();
-    file_read(sound1_name, guest.picture_buffer);
+    file_read(sound1_name, guest.file_buffer);
     host_disk_wait();   /* (the original's reads of the sprites and the sound take what its drive takes before it fades out) */
     host_fade_lag(1);
     fade_out(1, 0);

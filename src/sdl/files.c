@@ -127,7 +127,7 @@ int files_read(const char *name, int prefer, uint8_t *dest)
     }
     if (!dest)
         return 0;
-    /* (the name may be in the place the file goes to: the level 3 guardian leaves the text buffer inside picture_buffer, which the level 4 loads its pictures to; the kind of the file is looked at first) */
+    /* (the name may be in the place the file goes to: the level 3 guardian leaves the text buffer inside file_buffer, which the level 4 loads its pictures to; the kind of the file is looked at first) */
     int is_picture = ends_with(name, ".pi1");
     int is_scores = ends_with(name, "hiscores.bin");
     int is_data = ends_with(name, ".dat");
