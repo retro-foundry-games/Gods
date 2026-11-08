@@ -1287,8 +1287,8 @@ struct Gods {
     PAD(742)
     uint8_t program_end[217488];   /* $3A670 */
     uint8_t screen_1[33792];   /* $6F800 */
-    uint8_t screen_2[34816];   /* $77C00 */
-    PAD(0)
+    uint8_t screen_2[33792];   /* $77C00 */
+    PAD(1024)
 #ifdef GODS_HEAP_IN_GUEST   /* the host's builds: the program's heap is the end of the block */
     uint8_t heap[1571840];   /* $80400 */
 #endif
