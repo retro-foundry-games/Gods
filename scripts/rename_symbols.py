@@ -2,7 +2,7 @@
 """Rename variables and functions: python3 scripts/rename_symbols.py OLD=NEW ...   (or a file of OLD=NEW lines with @FILE)
 
 Whole-word replacement in the sources (native/src, host scripts, README), then menu_symbols.h, menu.ld, data.c and struct Gods are generated again, so menu.symbols is the
-one place a variable's name is changed.  Refuses a new name that already exists."""
+one place a variable's name is changed.  Skips (and says so) a new name that already exists or an old one that is not there."""
 import re
 import subprocess
 import sys
@@ -21,9 +21,11 @@ def main() -> None:
     texts = {p: p.read_text() for p in FILES}
     for old, new in pairs:
         if not any(re.search(rf"\b{old}\b", t) for t in texts.values()):
-            raise SystemExit(f"{old}: not found")
+            print(f"skipped {old}={new}: not found")
+            continue
         if any(re.search(rf"\b{new}\b", t) for t in texts.values()):
-            raise SystemExit(f"{new}: exists already")
+            print(f"skipped {old}={new}: the name exists already")
+            continue
         for p in texts:
             texts[p] = re.sub(rf"\b{old}\b", new, texts[p])
     for p, t in texts.items():

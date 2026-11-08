@@ -11,7 +11,7 @@ Steps: the frame-timed recording is played on the original and each key event is
 (menu_takeover.lua mode=orig replay= iterlog=); then the original and the C loop (mode=game) are both given the keys by iteration (the key table is set at
 once: the keyboard interrupt is asynchronous and loses one of two close events by the original's own timing) and the variables $100-$FFF are written at the top of
 every iteration (itervars=1); compare_iter.py lists the first iteration at which a variable differs.  The ones that only count time (message_*, $CE4/$CE5,
-word_2e6, flag_236) are left out.  A difference in a game variable is a difference of the C: the report names the variable and the iteration; itershot= gives
+random_index, flag_236) are left out.  A difference in a game variable is a difference of the C: the report names the variable and the iteration; itershot= gives
 screenshots at chosen iterations (menu_takeover.lua).
 """
 import re
@@ -25,7 +25,7 @@ HOST = ROOT / "tools" / "engine9000" / "ami9000_host"
 SCRIPT = PROJECT / "host" / "menu_takeover.lua"
 BUILD = PROJECT / "native" / "build"
 TIME_ONLY = {"message_hold", "message_wide", "message_arg", "message_x", "message_shown", "message_text", "message_current", "message_state",
-             "message_timer", "flag_236", "word_2e6", "?0xce4", "?0xce5"}
+             "message_timer", "flag_236", "random_index", "?0xce4", "?0xce5"}
 
 
 def run(mode: str, state: str, extra: str, frames: int, out: Path) -> None:
