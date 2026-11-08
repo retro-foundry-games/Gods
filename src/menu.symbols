@@ -667,3 +667,6 @@ sound_state_2079e 0x0002079e  uint8_t %s[14]  the sound system's words the start
 lists_1078a       0x0001078a  uint8_t %s[96]   the lists table_1077a points to
 sound_track_data  0x00020f74  uint8_t %s[3270]   the sequencer's tracks of the sounds (sound_tracks points into it)
 sound_sample_data 0x00021e5e  uint8_t %s[98290]   the 8 bit samples of the instruments (sound_instruments points into it)
+video_address_high 0x00ff8207 volatile uint8_t %s   the Atari ST's video address register (high byte): the game reads it as the seed of its random numbers; the Amiga has no such address
+video_address_low  0x00ff8209 volatile uint8_t %s   ... and the low byte
+copper_list_end    0x00005246 uint16_t %s[1]   where the search for COLOR01 in a copper list ends

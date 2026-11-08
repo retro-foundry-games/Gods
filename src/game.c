@@ -12697,16 +12697,8 @@ uint16_t random_next(void)
 #undef ROXR
 }
 
-/* the two bytes the original reads from $FF8207 and $FF8209 as the seed of its random numbers: the video address registers of the Atari ST
- * the game came from, an address the Amiga does not have (the emulated machine gives $64 and $FF; a port without such an address uses
- * these) */
-#ifdef GODS_SDL
-#define SEED_HIGH 0x64
-#define SEED_LOW 0xFF
-#else
-#define SEED_HIGH (*(volatile uint8_t *)0xFF8207)
-#define SEED_LOW (*(volatile uint8_t *)0xFF8209)
-#endif
+/* the seed of the random numbers is made of two bytes the original reads from $FF8207 and $FF8209 (video_address_high, video_address_low): the video address
+ * registers of the Atari ST the game came from, an address the Amiga does not have (the emulated machine gives $64 and $FF; the SDL port defines them so) */
 
 /* orig $0062E6: the table of 256 random words at ptr_0cc6 is made (the seed comes from two bytes of the address space that the
  * program reads: they were the video address of the Atari ST the game came from); one word at an even offset up to 254 and
@@ -12717,7 +12709,7 @@ void random_table_make(void)
     uint16_t or_all;
 
     do {
-        guest.random_seed = (uint16_t)((SEED_HIGH << 8) | SEED_LOW);
+        guest.random_seed = (uint16_t)((video_address_high << 8) | video_address_low);
         or_all = 0;
         for (int i = 0; i < 256; i++) {
             uint16_t r = random_next();

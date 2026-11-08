@@ -672,3 +672,6 @@ _sound_state_2079e = 0x2079e;
 _lists_1078a = 0x1078a;
 _sound_track_data = 0x20f74;
 _sound_sample_data = 0x21e5e;
+_video_address_high = 0xff8207;
+_video_address_low = 0xff8209;
+_copper_list_end = 0x5246;

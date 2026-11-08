@@ -12,6 +12,9 @@
 #include "guest_tables.h"
 
 struct Guest guest __attribute__((aligned(16)));
+/* the Atari ST's video address registers that the program reads as the seed of its random numbers: what the emulated Amiga gives */
+volatile uint8_t video_address_high = 0x64;
+volatile uint8_t video_address_low = 0xFF;
 volatile uint8_t host_custom_raw[0x1000] __attribute__((aligned(4)));
 volatile uint8_t host_cia_raw[0x2000];   /* from $BFD000 */
 

@@ -79,6 +79,8 @@ extern void fn_5608(void);   /* $05608 */
 extern void fn_5d76(void);   /* $05D76 */
 extern void fn_7faa(void);   /* $07FAA */
 extern void fn_10976(void);   /* $10976  game_d: the pick-up handler 18 of the table at $1067A (game_e writes it in C) */
+extern volatile uint8_t video_address_high;   /* $FF8207  the Atari ST's video address register (high byte): the game reads it as the seed of its random numbers; the Amiga has no such address */
+extern volatile uint8_t video_address_low;   /* $FF8209  ... and the low byte */
 extern const struct CreatureTemplate creature_templates[51];   /* $1C698  what a group is: its draw kind, move and step routines and its box (the pointers of table_1c678 point into it) */
 extern const uint16_t clip_rectangles[6];   /* $00128  the clip rectangles of image_draw_clipped (x0, x1, y0, y1: the whole screen; a negative x0 ends the list) */
 extern const uint16_t param_table[24];   /* $029DA  four rows of 12 bytes (two longs, two words) that select_params takes */
