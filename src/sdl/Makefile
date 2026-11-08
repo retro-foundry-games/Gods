@@ -10,6 +10,7 @@
 # folder.  Outside the flake's shell every target is run again inside it.
 #
 #   DEBUG=1      -O0 -ggdb everywhere (the objects are made again when the flags change)
+#   MATCH_MEMORY_LAYOUT=0   struct Gods without its padding (PAD() is nothing): its members are not at the original's addresses
 #   GODS_DISKS   (make run) the folder with gods-disk1.adf and gods-disk2.adf (default: ../../../local); gods-sdl itself takes --disks DIR, default the working folder
 
 HERE   := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
@@ -41,7 +42,7 @@ OPT_GAME := -O1 -g
 OPT_HOST := -O2 -g
 endif
 GAME_CFLAGS := -m32 -fpack-struct=2 -std=gnu11 $(OPT_GAME) -fno-strict-aliasing -ffunction-sections -fdata-sections \
-               -DGODS_SDL -DGODS_HEAP_IN_GUEST -DMATCH_MEMORY_LAYOUT $(if $(PIRATED),-DPIRATED) -I$(SRC) -I$(HERE) -Wall -Wno-unused-function
+               -DGODS_SDL -DGODS_HEAP_IN_GUEST $(if $(filter 0,$(MATCH_MEMORY_LAYOUT)),,-DMATCH_MEMORY_LAYOUT) $(if $(PIRATED),-DPIRATED) -I$(SRC) -I$(HERE) -Wall -Wno-unused-function
 HOST_CFLAGS := -m32 -std=gnu11 $(OPT_HOST) -Wall $(shell pkg-config --cflags sdl3)
 HOST_LIBS   := -m32 $(shell pkg-config --libs sdl3) -lpthread -lm
 
