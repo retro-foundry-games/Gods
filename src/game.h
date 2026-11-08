@@ -988,18 +988,18 @@ struct Gods {
     struct Rec6 buffer_state[2];   /* $00DE4 */
     PAD(30)
     uint16_t palette_dirty;   /* $00E0E */
+    uint16_t shadow_table[16];   /* $00E10 */
+    PAD(8)
+    uint8_t *stack_top;   /* $00E38 */
+    struct Image *image_table;   /* $00E3C */
+    uint8_t *asset_memory;   /* $00E40 */
+    uint8_t *scratch_buffer;   /* $00E44 */
     union {   /* the variables that overlap */
-        struct { uint16_t shadow_table[32]; };   /* $00E10 */
-        struct { PAD(2) uint16_t scroll_value; };   /* $00E12 */
-        struct { PAD(40) uint8_t *stack_top; };   /* $00E38 */
-        struct { PAD(44) struct Image *image_table; };   /* $00E3C */
-        struct { PAD(48) uint8_t *asset_memory; };   /* $00E40 */
-        struct { PAD(52) uint8_t *scratch_buffer; };   /* $00E44 */
-        struct { PAD(56) uint16_t *mask_buffer; };   /* $00E48 */
-        struct { PAD(56) uint8_t *restart_address; };   /* $00E48 */
-        struct { PAD(60) uint8_t *copper_save_first; };   /* $00E4C */
-        uint8_t bytes_00e10[64];
+        struct { uint16_t *mask_buffer; };   /* $00E48 */
+        struct { uint8_t *restart_address; };   /* $00E48 */
+        uint8_t bytes_00e48[4];
     };
+    uint8_t *copper_save_first;   /* $00E4C */
     uint16_t *copper_save;   /* $00E50 */
     PAD(4)
     uint8_t *copper_save_second;   /* $00E58 */
@@ -1043,9 +1043,9 @@ struct Gods {
     PAD(6482)
     union {   /* the variables that overlap */
         struct { uint8_t copper_list_a[176]; };   /* $04D8A */
-        struct { PAD(6) uint16_t copper_a_scroll; };   /* $04D90 */
+        struct { PAD(6) uint16_t copper_a_color01; };   /* $04D90 */
         struct { PAD(84) uint8_t copper_list_b[92]; };   /* $04DDE */
-        struct { PAD(90) uint16_t copper_b_scroll; };   /* $04DE4 */
+        struct { PAD(90) uint16_t copper_b_color01; };   /* $04DE4 */
         struct { PAD(164) uint32_t copper_move_a; };   /* $04E2E */
         struct { PAD(168) uint32_t copper_move_b; };   /* $04E32 */
         uint8_t bytes_04d8a[176];
@@ -1607,7 +1607,6 @@ _Static_assert(offsetof(struct Gods, clip_rect_list) == 0xde0, "clip_rect_list")
 _Static_assert(offsetof(struct Gods, buffer_state) == 0xde4, "buffer_state");
 _Static_assert(offsetof(struct Gods, palette_dirty) == 0xe0e, "palette_dirty");
 _Static_assert(offsetof(struct Gods, shadow_table) == 0xe10, "shadow_table");
-_Static_assert(offsetof(struct Gods, scroll_value) == 0xe12, "scroll_value");
 _Static_assert(offsetof(struct Gods, stack_top) == 0xe38, "stack_top");
 _Static_assert(offsetof(struct Gods, image_table) == 0xe3c, "image_table");
 _Static_assert(offsetof(struct Gods, asset_memory) == 0xe40, "asset_memory");
@@ -1645,9 +1644,9 @@ _Static_assert(offsetof(struct Gods, level_text) == 0x28f8, "level_text");
 _Static_assert(offsetof(struct Gods, game_loop_jump) == 0x2c20, "game_loop_jump");
 _Static_assert(offsetof(struct Gods, game_nothing_opcode) == 0x3436, "game_nothing_opcode");
 _Static_assert(offsetof(struct Gods, copper_list_a) == 0x4d8a, "copper_list_a");
-_Static_assert(offsetof(struct Gods, copper_a_scroll) == 0x4d90, "copper_a_scroll");
+_Static_assert(offsetof(struct Gods, copper_a_color01) == 0x4d90, "copper_a_color01");
 _Static_assert(offsetof(struct Gods, copper_list_b) == 0x4dde, "copper_list_b");
-_Static_assert(offsetof(struct Gods, copper_b_scroll) == 0x4de4, "copper_b_scroll");
+_Static_assert(offsetof(struct Gods, copper_b_color01) == 0x4de4, "copper_b_color01");
 _Static_assert(offsetof(struct Gods, copper_move_a) == 0x4e2e, "copper_move_a");
 _Static_assert(offsetof(struct Gods, copper_move_b) == 0x4e32, "copper_move_b");
 _Static_assert(offsetof(struct Gods, copper_colors) == 0x4e3a, "copper_colors");

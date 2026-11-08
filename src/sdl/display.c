@@ -249,9 +249,9 @@ void frame_tick(void)
     uint16_t scroll = 0;
 
     if (guest.copper_setup_done)
-        scroll = guest.scroll_value;
-    guest.copper_a_scroll = scroll;
-    guest.copper_b_scroll = scroll;
+        scroll = guest.shadow_table[1];
+    guest.copper_a_color01 = scroll;
+    guest.copper_b_color01 = scroll;
     if (guest.sound_enabled)
         sound_tick();
     guest.tick_count++;
