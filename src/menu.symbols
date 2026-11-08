@@ -627,7 +627,6 @@ crumbles_switch        0x00017cc0  uint16_t %s     the first word of the routine
 table death_steps  0x00000096 uint16_t 14  the seven pieces of the player's death: the steps (x, y) each starts with
 death_particles   0x000000b2  int16_t %s[28]  ... and where each is (x, y) and its steps (dx, dy), on the screen
 orbit_positions         0x00000a9e  uint16_t %s[4]   the first four words of the list of message lines ($16AC8 sets them to 0, 16, 32, 48)
-boss_restore      0x00000514  void (*%s)(void)
 table respawn_search 0x00003864 uint16_t 45  fifteen records of three words: where, from the cell the player was last at, the cell that is looked for (an offset into the collision map, then the step of x and y)
 planner           0x000004be  struct Planner %s   the path planner of the walkers (orig $A492)
 plan_queue        0x0001971c  struct PlanItem %s[32]   the places the planner has still to look at (x and y 0: free)

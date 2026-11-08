@@ -263,7 +263,7 @@ static void player_respawn(void)
     messages_reset();
     guest.orbit_timer = (int16_t)(guest.orbit_timer - 0xAA);
     if (guest.boss_mode != 0)
-        guest.boss_restore();
+        boss_restore_run();
 
     int16_t x = (int16_t)((guest.previous_player_pos[0] + 0x10) & -32);
     int16_t y = (int16_t)((guest.previous_player_pos[1] + 8) & -16);
@@ -5374,7 +5374,7 @@ struct BossState {
     uint16_t unused_50e;
     uint16_t path_high;               /* $510 */
     uint16_t path_low;                /* $512 */
-    uint16_t routine_514[2];          /* $514: boss_restore */
+    void (*restore)(void);            /* $514: the routine that makes the guardian's state again (boss_restore_run) */
     struct BossShot shots[15];        /* $518 */
 };
 
@@ -5387,6 +5387,12 @@ static uint8_t *boss_at(uint16_t address)
 static struct BossState *boss_state(void)
 {
     return (struct BossState *)guest.boss_area;
+}
+
+/* orig $000514 (the long in the guardians' variables): the routine of the level's guardian that makes its state again when a level is started with the flag on */
+void boss_restore_run(void)
+{
+    boss_state()->restore();
 }
 
 
@@ -14700,7 +14706,7 @@ static void boss1_frame(void)
         boss_die();
 }
 
-/* orig $00B060 (boss_restore: the boss's state is made again when a level is started with the flag on): the place of the level 1 boss and its path */
+/* orig $00B060 (restore: the boss's state is made again when a level is started with the flag on): the place of the level 1 boss and its path */
 static void boss1_514(void)
 {
     struct BossState *boss = boss_state();
@@ -15888,7 +15894,7 @@ static void boss4_frame(void)
     check_hit_and_walls(0xB90, BOSS4_Y, (int16_t)boss->energy_low);
 }
 
-/* orig $00B1EC (boss_restore): the fire is none, the timer 120, the head's energy 750, the head's table from its start and the pieces wait 170 frames (and two more each) */
+/* orig $00B1EC (restore): the fire is none, the timer 120, the head's energy 750, the head's table from its start and the pieces wait 170 frames (and two more each) */
 static void boss4_514(void)
 {
     BOSS4_FIRE_PICTURE = -1;
@@ -16027,7 +16033,7 @@ static void boss4_start(void)
 
     BOSS4_Y = 0x180;
     guest.boss_frame = boss4_frame;
-    guest.boss_restore = boss4_514;
+    boss_state()->restore = boss4_514;
     guest.boss_load_request = 1;
     boss->energy_high = 0;
     boss->energy_low = 0x1770;
@@ -16053,7 +16059,7 @@ static void boss4_quickload(void)
     file_words(boss_at(0x65A), 8);
     guest.boss_frame = boss4_frame;
     guest.boss_callback = guest.boss4_throne_switch == 0x4E71 ? boss4_throne_rise : boss_rts;
-    guest.boss_restore = boss4_514;
+    boss_state()->restore = boss4_514;
 }
 
 /* orig $002F12 (the player has all ten gifts of the guardian of the level 4: bit 6 of event_flags): the picture "payoff.pi1" (the palette 32 bytes after a word, then the 192 rows of the picture) fades in, two messages are
@@ -16218,7 +16224,7 @@ void password_entered(void)
     level_begin();
 }
 
-/* orig $00B17E (boss_restore): the place of the level 3 guardian and its path */
+/* orig $00B17E (restore): the place of the level 3 guardian and its path */
 static void boss3_514(void)
 {
     struct BossState *boss = boss_state();
@@ -16245,7 +16251,7 @@ static void boss_start(struct EntryRef *entry)
         struct Boss2 *boss = boss2_state();
 
         guest.boss_frame = boss2_frame;
-        guest.boss_restore = boss2_514;
+        boss_state()->restore = boss2_514;
         guest.boss_load_request = 1;
         boss->neck = 0x7D0;
         boss->body = 0x960;
@@ -16261,7 +16267,7 @@ static void boss_start(struct EntryRef *entry)
 
         guest.boss_frame = boss3_frame;
         guest.boss_load_request = 1;
-        guest.boss_restore = boss3_514;
+        boss_state()->restore = boss3_514;
         boss->energy_high = 0;
         boss->energy_low = 0x8CA;
         guest.boss_callback = boss_rts;
@@ -16276,14 +16282,14 @@ static void boss_start(struct EntryRef *entry)
         host_missing_routine(0xB014 + 4 * (uint32_t)(guest.param_index - 1));   /* (no other level has a guardian) */
         guest.boss_frame = boss_rts;
         guest.boss_callback = boss_rts;
-        guest.boss_restore = boss_rts;
+        boss_state()->restore = boss_rts;
         guest.boss_load_request = 1;
         return;
     }
     /* $B024 */
     guest.boss_frame = boss1_frame;
     guest.boss_load_request = 1;
-    guest.boss_restore = boss1_514;
+    boss_state()->restore = boss1_514;
     guest.boss_sparks_switch = 0x4E71;
     guest.boss_shots_switch = 0x4E71;
     boss_state()->energy_high = 0;   /* its energy: the original has the copylock's value here when the lock passes (1500); the bclr.b #7, $50A takes the top byte's bit 7 off */
@@ -16308,7 +16314,7 @@ static void boss_quickload(void)
         file_words(boss_at(0x668), 1);
         guest.boss_frame = boss2_frame;
         guest.boss_callback = boss_rts;
-        guest.boss_restore = boss2_514;
+        boss_state()->restore = boss2_514;
         boss2_bezier_load();
         return;
     }
@@ -16322,7 +16328,7 @@ static void boss_quickload(void)
         file_words(boss_at(0x5B8), 1);
         guest.boss_frame = boss3_frame;
         guest.boss_callback = boss_rts;
-        guest.boss_restore = boss3_514;
+        boss_state()->restore = boss3_514;
         return;
     }
     if (guest.param_index == 4 && (guest.boss_mode != 0 || guest.boss4_death_wait_switch == 0x4E71)) {
@@ -16332,7 +16338,7 @@ static void boss_quickload(void)
     if (guest.boss_mode != 0 && guest.param_index != 1) {   /* the other levels' guardians are not ported: their callbacks are the original's addresses */
         guest.boss_frame = boss_rts;
         guest.boss_callback = boss_rts;
-        guest.boss_restore = boss_rts;
+        boss_state()->restore = boss_rts;
         return;
     }
     if (guest.boss_mode == 0 || guest.menu_state_25a != 2 || guest.param_index != 1)
@@ -16347,7 +16353,7 @@ static void boss_quickload(void)
     file_words(boss_at(0x668), 1);
     guest.boss_frame = boss1_frame;
     guest.boss_callback = boss_rts;
-    guest.boss_restore = boss1_514;
+    boss_state()->restore = boss1_514;
 }
 
 /* orig $0030DA (the frame ends there when boss_load_request is on, which the guardian's start sets): the guardian's sprites (the set `guard1` of the level's names) and the sound files are read behind the

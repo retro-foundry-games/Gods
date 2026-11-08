@@ -633,7 +633,6 @@ _thrown_things_count = 0x1034;
 _crumbles_switch = 0x17cc0;
 _death_particles = 0xb2;
 _orbit_positions = 0xa9e;
-_boss_restore = 0x514;
 _planner = 0x4be;
 _plan_queue = 0x1971c;
 _plan_list = 0x1981c;

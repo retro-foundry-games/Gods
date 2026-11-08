@@ -255,11 +255,7 @@ struct Gods {
     struct Planner planner;   /* $004BE */
     void (*boss_frame)(void);   /* $004E0 */
     void (*boss_callback)(void);   /* $004E4 */
-    union {   /* the variables that overlap */
-        struct { uint8_t boss_area[390]; };   /* $004E8 */
-        struct { PAD(44) void (*boss_restore)(void); };   /* $00514 */
-        uint8_t bytes_004e8[390];
-    };
+    uint8_t boss_area[390];   /* $004E8 */
     int16_t axe_steps[27];   /* $0066E */
     int16_t shot_offsets_6a4[9];   /* $006A4 */
     union {   /* the variables that overlap */
@@ -904,7 +900,6 @@ _Static_assert(offsetof(struct Gods, planner) == 0x4be, "planner");
 _Static_assert(offsetof(struct Gods, boss_frame) == 0x4e0, "boss_frame");
 _Static_assert(offsetof(struct Gods, boss_callback) == 0x4e4, "boss_callback");
 _Static_assert(offsetof(struct Gods, boss_area) == 0x4e8, "boss_area");
-_Static_assert(offsetof(struct Gods, boss_restore) == 0x514, "boss_restore");
 _Static_assert(offsetof(struct Gods, axe_steps) == 0x66e, "axe_steps");
 _Static_assert(offsetof(struct Gods, shot_offsets_6a4) == 0x6a4, "shot_offsets_6a4");
 _Static_assert(offsetof(struct Gods, shot_lists_raw) == 0x6b6, "shot_lists_raw");
@@ -1218,6 +1213,7 @@ struct SavedByte *restore_saved_bytes(struct SavedByte *list, int16_t count);   
 void call_by_kind(int16_t kind, int16_t arg, int16_t *result);                          /* orig $018A10 */
 uint8_t *next_message_slot(void);                          /* orig $012A80 */
 
+void boss_restore_run(void);                               /* game.c: the guardian's restore routine ($514 of the guardians' variables) */
 void game_loop(void);                                      /* amiga.asm: the original's loop at $2C20 is sent here by game_loop_install */
 void game_loop_install(void);                              /* the original's game loop at $2C20 gets a jump to game_loop: its body is game_frame */
 void game_frame(void);                                     /* orig $002C20 */

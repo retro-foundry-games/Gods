@@ -63,28 +63,24 @@ void display_reset(void)
  * asset_names as far as the table's name goes; the number of the name found picks the list.  0 when none matches */
 static const uint8_t *asset_list(const uint8_t *name)
 {
+    /* (the last name's end, its 0, and the $FF after it are not in the table: it ends at its last character, which is the end of asset_names) */
+    const uint8_t *end = asset_names + sizeof asset_names;
     const uint8_t *k = asset_names;
-    uint32_t index = 0;
 
-    for (;;) {
+    for (unsigned index = 0; index < sizeof asset_list_pointers / sizeof asset_list_pointers[0]; index++) {
         const uint8_t *n = name;
 
-        while (*k != 0 && (int8_t)*k >= 0) {
+        while (k < end && *k != 0) {
             if (*n++ != *k++)
                 goto mismatch;
         }
         return asset_list_pointers[index];
 mismatch:
-        for (;;) {
-            uint8_t c = *k++;
-
-            if ((int8_t)c < 0)
-                return 0;
-            if (c == 0)
-                break;
-        }
-        index++;
+        while (k < end && *k != 0)
+            k++;
+        k++;   /* (the 0 that ends the name) */
     }
+    return 0;
 }
 
 /* orig $01ECA2 and $01EE3C: load the pictures of an asset set.  `keyword` names the set (asset_names); each
