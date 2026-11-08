@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #include "amiga/hw.h"
-#include "menu_symbols.h"
+#include "game.h"
 
 void alloc_init(void);                                                   /* orig $01D48E */
 

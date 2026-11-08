@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "menu_symbols.h"
+#include "game.h"
 #include "guest.h"
 #include "guest_tables.h"
 

@@ -5,7 +5,7 @@
 
 #include <stdint.h>
 
-#include "menu_symbols.h"
+#include "game.h"
 
 /* amiga.asm, orig $01D536: read the file `name` to `dest`; -1 when it could not be read, otherwise 0 */
 int32_t file_read(const char *name, void *dest);

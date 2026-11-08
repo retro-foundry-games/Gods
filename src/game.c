@@ -5353,46 +5353,11 @@ void spawn_player_shots(void)
 /* ======== from game_d.c ======== */
 /* Gods, the game: the routines at $417C and $44D2 and what they call.  Each function says where the original has it (`orig $ADDR`). */
 
-/* a shot of a guardian (ten bytes, fifteen of them at $518): its place, the fall speed (up by one each frame), the picture 0 to 3 (-1: the record is free) and the sideways speed */
-struct BossShot {
-    int16_t x;
-    int16_t y;
-    int16_t speed_y;
-    int16_t frame;
-    int16_t speed_x;
-};
-
-/* the variables of a guardian, in the original's places ($4E8 to $518): its place, the picture it is in, its energy (a long: negative when it is dead; kept as the two words of the guest
- * memory), where it is on its path (the address of a row of two signed bytes, a picture and a step in x, ended by a negative byte) and its shots */
-struct BossState {
-    uint16_t x;                       /* $4E8 */
-    uint16_t y;                       /* $4EA */
-    uint8_t other[0x508 - 0x4EC];
-    uint16_t picture;                 /* $508 */
-    uint16_t energy_high;             /* $50A */
-    uint16_t energy_low;              /* $50C */
-    uint16_t unused_50e;
-    uint16_t path_high;               /* $510 */
-    uint16_t path_low;                /* $512 */
-    void (*restore)(void);            /* $514: the routine that makes the guardian's state again (boss_restore_run) */
-    struct BossShot shots[15];        /* $518 */
-};
-
-/* a place of the guardians' variables by the address the original keeps it at ($4E8 to $66E: boss_area) */
-static uint8_t *boss_at(uint16_t address)
-{
-    return guest.guardian.area + (address - 0x4E8);
-}
-
-static struct BossState *boss_state(void)
-{
-    return (struct BossState *)guest.guardian.area;
-}
 
 /* orig $000514 (the long in the guardians' variables): the routine of the level's guardian that makes its state again when a level is started with the flag on */
 void boss_restore_run(void)
 {
-    boss_state()->restore();
+    guest.guardian.restore();
 }
 
 
@@ -5407,7 +5372,7 @@ static void draw_guardian_bar(void)
     const uint8_t *src = (const uint8_t *)guest.image_table[bar_table[idx * 2] + 4].data;
     uint8_t *dst = guest.screen_buffer + 7074 + ((guest.x_offset & -16) >> 3);
     int16_t shift = guest.x_offset & 15;
-    int32_t scaled = (int32_t)(int16_t)boss_state()->energy_low * 24;
+    int32_t scaled = (int32_t)(int16_t)guest.guardian.energy_low * 24;
     int32_t acc = 0;
     int16_t w = 0;   /* scaled over the divisor, by subtraction (the Amiga build has no 32-bit division) */
 
@@ -14425,10 +14390,10 @@ static void world_end_countdown(void)
 /* orig $00B09E: the fifteen records of ten bytes at $518 are free (the word at +6 is -1) */
 static void boss_free_records(void)
 {
-    struct BossState *boss = boss_state();
+    struct Guardian *boss = &guest.guardian;
 
     for (int i = 0; i < 15; i++)
-        boss->shots[i].frame = -1;
+        boss->tail.boss1.shots[i].frame = -1;
 }
 
 /* orig $00B082 and $00B09E: the 500 bytes at the start of scratch_buffer are cleared, the records of the boss are free */
@@ -14454,7 +14419,7 @@ static const int8_t boss1_path[71][2] = {
  * With no free one the original goes on past the fifteenth record (a2 is left after them): the writes are done there too */
 static struct BossShot *boss_bounce_shot_new(const struct BossShot *shot, int16_t x, int16_t y)
 {
-    struct BossShot *record = boss_state()->shots;
+    struct BossShot *record = guest.guardian.tail.boss1.shots;
     int i;
 
     for (i = 0; i < 15; i++, record++)
@@ -14473,11 +14438,11 @@ static struct BossShot *boss_bounce_shot_new(const struct BossShot *shot, int16_
 /* orig $00C38A: a shot starts at the guardian (the sound 38, priority 75): the first free record gets its x, 22 below its y, the fall speed 8, the picture 0 and the sideways speed -6 */
 static void boss1_shot_start(void)
 {
-    struct BossState *boss = boss_state();
+    struct Guardian *boss = &guest.guardian;
 
     play_sound(0x26, 0x4B);
     for (int i = 0; i < 15; i++) {
-        struct BossShot *shot = &boss->shots[i];
+        struct BossShot *shot = &boss->tail.boss1.shots[i];
 
         if (shot->frame >= 0)
             continue;
@@ -14494,7 +14459,7 @@ static void boss1_shot_start(void)
  * sideways speed 4 to -11 and the other -8 to 7 */
 static void boss1_mouth_sparks_start(void)
 {
-    struct BossState *boss = boss_state();
+    struct Guardian *boss = &guest.guardian;
     int16_t *record = (int16_t *)guest.scratch_buffer;
     int16_t started = 0;
 
@@ -14568,10 +14533,10 @@ static void boss_shots_move(void)
     if (guest.boss_shots_switch != 0x4E71)
         return;
 
-    struct BossState *boss = boss_state();
+    struct Guardian *boss = &guest.guardian;
 
     for (int i = 0; i < 15; i++) {
-        struct BossShot *shot = &boss->shots[i];
+        struct BossShot *shot = &boss->tail.boss1.shots[i];
 
         if (shot->frame < 0)
             continue;
@@ -14625,7 +14590,7 @@ static void boss_death_score(void)
         return;
     score_add_packed(0x10);
 
-    uint16_t *count = (uint16_t *)boss_at(0x668);
+    uint16_t *count = &guest.guardian.tail.boss1.path_count;
 
     (*count)--;
     if (*count != 0)
@@ -14637,7 +14602,7 @@ static void boss_death_score(void)
  * the twentieth word of words_3fde on) and the score is paid out */
 static void boss_die(void)
 {
-    struct BossState *boss = boss_state();
+    struct Guardian *boss = &guest.guardian;
 
     guest.particle_burst_active = 0;
     for (int n = 0; n < 7; n++) {
@@ -14649,7 +14614,7 @@ static void boss_die(void)
     guest.burst_respawn_delay = -4;
     guest.boss_mode = 0;
     chest_burst_at((int16_t)(boss->x + 0x18), (int16_t)(boss->y + 0x28), words_3fde + 20);
-    *(uint16_t *)boss_at(0x668) = (uint16_t)(guest.param_index * 10);
+    *&guest.guardian.tail.boss1.path_count = (uint16_t)(guest.param_index * 10);
     guest.boss_death_score_switch = 0x4E71;
 }
 
@@ -14658,7 +14623,7 @@ static void boss_die(void)
  * shots are looked at against a box of 48 by 96 (check_hit_and_walls) and the energy is what is left; when it is below 0 the guardian dies (boss_die) */
 static void boss1_frame(void)
 {
-    struct BossState *boss = boss_state();
+    struct Guardian *boss = &guest.guardian;
 
     if ((int16_t)boss->energy_high < 0)
         return;
@@ -14709,7 +14674,7 @@ static void boss1_frame(void)
 /* orig $00B060 (restore: the boss's state is made again when a level is started with the flag on): the place of the level 1 boss and its path */
 static void boss1_514(void)
 {
-    struct BossState *boss = boss_state();
+    struct Guardian *boss = &guest.guardian;
 
     boss->x = 0xF20;
     boss->y = 0x230;
@@ -14723,58 +14688,7 @@ static void boss1_514(void)
  * halved when read) that is drawn from the head's three joints, and a head at its end that sometimes shoots at the player ======== */
 
 /* the variables of the level 2 guardian in the original's places ($4E8 to $632) */
-struct Boss2Box {
-    int16_t x;   /* the screen place the piece was drawn at (the hit boxes of $C6F2) */
-    int16_t y;
-    int16_t w;
-    int16_t h;
-};
 
-struct Boss2 {
-    int16_t x;                        /* $4E8 */
-    int16_t y;                        /* $4EA */
-    int16_t jaw;                      /* $4EC */
-    int16_t neck;                     /* $4EE: the strength of the neck and head (-2: it is gone) */
-    int16_t unused_4f0;
-    int16_t body;                     /* $4F2: the strength of the body */
-    int16_t offset_x;                 /* $4F4: where the body piece goes on its moves from the place */
-    int16_t offset_y;                 /* $4F6 */
-    int16_t step;                     /* $4F8: the move (a row of three bytes of boss2_moves) it is in, as a byte offset */
-    int16_t angle_a;                  /* $4FA: the angles of the neck's three joints (offsets in sine_table, $100 to $258) */
-    int16_t angle_b;                  /* $4FC */
-    int16_t angle_c;                  /* $4FE */
-    int16_t speed_b;                  /* $500 */
-    int16_t speed_c;                  /* $502 */
-    int16_t speed_a;                  /* $504 */
-    int16_t shots_made;               /* $506: shots started in this move (-1: not shooting) */
-    uint16_t picture;                 /* $508 */
-    uint16_t energy_high;             /* $50A */
-    uint16_t energy_low;              /* $50C */
-    uint16_t unused_50e[5];           /* $50E */
-    struct BossShot shots[8];         /* $518: x, y, count (the +4 word: speed_y), frame (-1: free) */
-    uint16_t pad_568[9];
-    int16_t cycle;                    /* $57A: 0 to 2, the shots' picture offset */
-    uint16_t pad_57c[25];
-    int16_t tail_x;                   /* $5AE */
-    int16_t tail_y;                   /* $5B0 */
-    int16_t target_x;                 /* $5B2 */
-    int16_t target_y;                 /* $5B4 */
-    int16_t unused_5b6[2];
-    struct Boss2Box boxes[7];         /* $5BA: the jaw 1.. see boss2_draw */
-    uint16_t pad_5f2[12];
-    int16_t points[10][2];            /* $60A: the places of the neck's pieces (screen) */
-};
-
-_Static_assert(offsetof(struct Boss2, shots) == 0x518 - 0x4E8, "shots");
-_Static_assert(offsetof(struct Boss2, cycle) == 0x57A - 0x4E8, "cycle");
-_Static_assert(offsetof(struct Boss2, tail_x) == 0x5AE - 0x4E8, "tail");
-_Static_assert(offsetof(struct Boss2, boxes) == 0x5BA - 0x4E8, "boxes");
-_Static_assert(offsetof(struct Boss2, points) == 0x60A - 0x4E8, "points");
-
-static struct Boss2 *boss2_state(void)
-{
-    return (struct Boss2 *)guest.guardian.area;
-}
 
 /* orig $00CDE4: the moves of the body (the step in x and y and what it is: 0 nothing, 1 and 2 other pictures, 2 it shoots; a negative one ends the table) */
 static const int8_t boss2_moves[25][3] = {
@@ -14804,42 +14718,42 @@ static void boss2_bezier_load(void)
 /* orig $00B09E and the rest of $00B0EE: the eight shots are free, the body is at its start place, the neck's joints are at their angles */
 static void boss2_514(void)
 {
-    struct Boss2 *boss = boss2_state();
+    struct Guardian *boss = &guest.guardian;
 
     guest.energy_pickup_active = 1;
     boss->x = 0x280;
     boss->y = 0x370;
-    boss->offset_x = -28;
-    boss->offset_y = -30;
-    boss->step = 0;
-    boss->shots_made = -1;
-    boss->angle_a = 0x100;
-    boss->angle_c = 0x150;
-    boss->angle_b = 0x130;
-    boss->speed_a = 0x18;
-    boss->speed_b = 0x18;
-    boss->speed_c = 0x18;
-    boss->target_x = 0x280;
-    boss->target_y = 0x370;
-    boss->unused_5b6[0] = 0;
-    boss->unused_5b6[1] = 0;
+    boss->own.boss2.offset_x = -28;
+    boss->own.boss2.offset_y = -30;
+    boss->own.boss2.step = 0;
+    boss->own.boss2.shots_made = -1;
+    boss->own.boss2.angle_a = 0x100;
+    boss->own.boss2.angle_c = 0x150;
+    boss->own.boss2.angle_b = 0x130;
+    boss->own.boss2.speed_a = 0x18;
+    boss->own.boss2.speed_b = 0x18;
+    boss->own.boss2.speed_c = 0x18;
+    boss->tail.boss2.target_x = 0x280;
+    boss->tail.boss2.target_y = 0x370;
+    boss->tail.boss2.unused_5b6[0] = 0;
+    boss->tail.boss2.unused_5b6[1] = 0;
     boss_free_records();
-    boss->cycle = 0;
+    boss->tail.boss2.cycle = 0;
 }
 
 /* orig $00C7BA: the body goes to the point it aims at (a quarter of the way, at most 12 in x); when it is there, or while it shoots, a new point is taken: 112 right and 60 above the player or
  * (while the player is in front of a thing of the kind 109 in the list of this frame) of that thing, further right the further the player is right of 128, and a spread of 16 either way */
 static void boss2_body_seek_target(void)
 {
-    struct Boss2 *boss = boss2_state();
-    int pick = boss->shots_made >= 0;
+    struct Guardian *boss = &guest.guardian;
+    int pick = boss->own.boss2.shots_made >= 0;
 
     if (!pick) {
-        if (boss->x == boss->target_x && boss->y == boss->target_y) {
+        if (boss->x == boss->tail.boss2.target_x && boss->y == boss->tail.boss2.target_y) {
             pick = 1;
         } else {
-            int16_t dx = (int16_t)((boss->x - boss->target_x) >> 2);
-            int16_t dy = (int16_t)((boss->y - boss->target_y) >> 2);
+            int16_t dx = (int16_t)((boss->x - boss->tail.boss2.target_x) >> 2);
+            int16_t dy = (int16_t)((boss->y - boss->tail.boss2.target_y) >> 2);
 
             if (dx > 12)
                 dx = 12;
@@ -14886,9 +14800,9 @@ static void boss2_body_seek_target(void)
         }
         tx = (int16_t)(tx + (int16_t)((random_word() & 0x1F) - 0x10));
         ty = (int16_t)(ty + (int16_t)((random_word() & 0x1F) - 0x10));
-        boss->target_x = tx;
-        boss->target_y = ty;
-        if (boss->shots_made >= 0)
+        boss->tail.boss2.target_x = tx;
+        boss->tail.boss2.target_y = ty;
+        if (boss->own.boss2.shots_made >= 0)
             return;
         /* $C852 */
         if (boss->x == tx && boss->y == ty)
@@ -14907,22 +14821,22 @@ static void boss2_body_seek_target(void)
 /* orig $00CA8E: a shot is started at the body (the sound 65 with the first of a row): the first free record gets the place (6 right and 16 below the body's piece), the count 7 and the frame 0 */
 static void boss2_shot_start(void)
 {
-    struct Boss2 *boss = boss2_state();
+    struct Guardian *boss = &guest.guardian;
 
-    if (boss->shots_made == 7)
+    if (boss->own.boss2.shots_made == 7)
         return;
-    if (boss->shots_made == 0)
+    if (boss->own.boss2.shots_made == 0)
         play_sound(0x41, 0x3C);
     for (int i = 0; i < 8; i++) {
-        struct BossShot *shot = &boss->shots[i];
+        struct BossShot *shot = &boss->tail.boss2.shots[i];
 
         if (shot->frame >= 0)
             continue;
-        shot->x = (int16_t)(boss->x + boss->offset_x + 6);
-        shot->y = (int16_t)(boss->y + boss->offset_y + 0x10);
+        shot->x = (int16_t)(boss->x + boss->own.boss2.offset_x + 6);
+        shot->y = (int16_t)(boss->y + boss->own.boss2.offset_y + 0x10);
         shot->speed_y = 7;
         shot->frame = 0;
-        boss->shots_made++;
+        boss->own.boss2.shots_made++;
         return;
     }
 }
@@ -14930,9 +14844,9 @@ static void boss2_shot_start(void)
 /* orig $00CCDE: the neck's three joints are put at their angles from the anchor (the sine and cosine of sine_table less 9, 11 and 10 bits), and the angles go on by their speeds (back at $100 and $258) */
 static void boss2_joints_move(void)
 {
-    struct Boss2 *boss = boss2_state();
-    int16_t *angles[3] = {&boss->angle_a, &boss->angle_b, &boss->angle_c};
-    int16_t *speeds[3] = {&boss->speed_a, &boss->speed_b, &boss->speed_c};
+    struct Guardian *boss = &guest.guardian;
+    int16_t *angles[3] = {&boss->own.boss2.angle_a, &boss->own.boss2.angle_b, &boss->own.boss2.angle_c};
+    int16_t *speeds[3] = {&boss->own.boss2.speed_a, &boss->own.boss2.speed_b, &boss->own.boss2.speed_c};
     int16_t *joints[3] = {boss2_joint_a, boss2_joint_b, boss2_joint_c};
     static const int bits[3] = {9, 11, 10};
 
@@ -14984,49 +14898,49 @@ static void boss2_neck_point(int16_t index)
  * with the speed they moved at, and the neck is gone (-2) */
 static void boss2_neck_draw(void)
 {
-    struct Boss2 *boss = boss2_state();
+    struct Guardian *boss = &guest.guardian;
 
-    if (boss->neck < -1)
+    if (boss->own.boss2.neck < -1)
         return;
     int k = 0;
 
     for (int16_t index = 0; index < 0xC8; index += 0x14, k++) {
-        boss->tail_x = boss2_point[0];
-        boss->tail_y = boss2_point[1];
+        boss->tail.boss2.tail_x = boss2_point[0];
+        boss->tail.boss2.tail_y = boss2_point[1];
         boss2_neck_point(index);
 
         int16_t x = (int16_t)(boss2_point[0] - guest.scroll_x);
         int16_t y = (int16_t)(boss2_point[1] - guest.scroll_y);
 
-        if (boss->neck < 0) {
-            start_debris_moving((int16_t)(x - 2), (int16_t)(y - 2), (int16_t)(x - boss->points[k][0]), (int16_t)(y - boss->points[k][1]));
+        if (boss->own.boss2.neck < 0) {
+            start_debris_moving((int16_t)(x - 2), (int16_t)(y - 2), (int16_t)(x - boss->tail.boss2.points[k][0]), (int16_t)(y - boss->tail.boss2.points[k][1]));
             x = (int16_t)(x - 2);   /* (the original's d0 and d1 are 2 less from there on: the piece is drawn so) */
             y = (int16_t)(y - 2);
         } else {
-            boss->points[k][0] = x;
-            boss->points[k][1] = y;
+            boss->tail.boss2.points[k][0] = x;
+            boss->tail.boss2.points[k][1] = y;
         }
         glyph_draw(x, y, 0x1C3);
     }
-    if (boss->neck < 0)
-        boss->neck = -2;
+    if (boss->own.boss2.neck < 0)
+        boss->own.boss2.neck = -2;
 }
 
 /* orig $00CBCA: the head at the end of the neck: its picture by the first joint's angle (boss2_head_by_angle); the picture 1 shoots at the player from the end of the neck (aimed_shot, the player's place
  * moved a little at random for it) in the frames of frame_toggle */
 static void boss2_head_run(void)
 {
-    struct Boss2 *boss = boss2_state();
+    struct Guardian *boss = &guest.guardian;
 
-    if (boss->neck <= -2)
+    if (boss->own.boss2.neck <= -2)
         return;
 
-    int16_t angle = (int16_t)(boss->angle_a - 0x100);
+    int16_t angle = (int16_t)(boss->own.boss2.angle_a - 0x100);
 
     if (angle < 0)
         angle = 0;
 
-    const int8_t *table = boss2_head_by_angle + (boss->speed_a < 0 ? 20 : 0);
+    const int8_t *table = boss2_head_by_angle + (boss->own.boss2.speed_a < 0 ? 20 : 0);
     int16_t kind = table[(uint16_t)angle / 0x18];
 
     if (kind == 1 && guest.frame_toggle != 0) {
@@ -15043,30 +14957,30 @@ static void boss2_head_run(void)
     int16_t x = (int16_t)(boss2_point[0] + boss2_head[kind][0] - guest.scroll_x);
     int16_t y = (int16_t)(boss2_point[1] + boss2_head[kind][1] - guest.scroll_y);
 
-    boss->boxes[6].x = x;
-    boss->boxes[6].y = y;
-    boss->boxes[6].w = 0x10;
-    boss->boxes[6].h = 0x10;
+    boss->tail.boss2.boxes[6].x = x;
+    boss->tail.boss2.boxes[6].y = y;
+    boss->tail.boss2.boxes[6].w = 0x10;
+    boss->tail.boss2.boxes[6].h = 0x10;
     glyph_draw(x, y, (uint16_t)(0x1E2 + kind));
 }
 
 /* orig $00C886: the body, its jaw, the neck and the head are drawn; every other frame the body goes on in its moves (boss2_moves); the pieces' places are kept as the boxes the hits are made against */
 static void boss2_draw_all(void)
 {
-    struct Boss2 *boss = boss2_state();
-    int16_t x = (int16_t)(boss->x - guest.scroll_x + boss->offset_x);
-    int16_t y = (int16_t)(boss->y - guest.scroll_y + boss->offset_y);
-    int16_t step = boss->step;
+    struct Guardian *boss = &guest.guardian;
+    int16_t x = (int16_t)(boss->x - guest.scroll_x + boss->own.boss2.offset_x);
+    int16_t y = (int16_t)(boss->y - guest.scroll_y + boss->own.boss2.offset_y);
+    int16_t step = boss->own.boss2.step;
 
     if (guest.frame_phase == 0) {
         step = (int16_t)(step + 3);
         if (boss2_moves[step / 3][2] < 0)
             step = 0;
-        boss->step = step;
+        boss->own.boss2.step = step;
         x = (int16_t)(x + boss2_moves[step / 3][0]);
-        boss->offset_x = (int16_t)(boss->offset_x + boss2_moves[step / 3][0]);
+        boss->own.boss2.offset_x = (int16_t)(boss->own.boss2.offset_x + boss2_moves[step / 3][0]);
         y = (int16_t)(y + boss2_moves[step / 3][1]);
-        boss->offset_y = (int16_t)(boss->offset_y + boss2_moves[step / 3][1]);
+        boss->own.boss2.offset_y = (int16_t)(boss->own.boss2.offset_y + boss2_moves[step / 3][1]);
     }
 
     int16_t kind = boss2_moves[step / 3][2];
@@ -15074,19 +14988,19 @@ static void boss2_draw_all(void)
     if (kind == 2)
         boss2_shot_start();
     else
-        boss->shots_made = -1;
+        boss->own.boss2.shots_made = -1;
     kind = (int16_t)(kind + 0x1C7);
 
-    boss->boxes[0] = (struct Boss2Box){x, y, 0x20, 0x20};
+    boss->tail.boss2.boxes[0] = (struct Boss2Box){x, y, 0x20, 0x20};
 
     int16_t bx = (int16_t)(boss->x - guest.scroll_x);
     int16_t by = (int16_t)(boss->y - guest.scroll_y);
-    int16_t x4 = (int16_t)(bx + 0x1E + boss->offset_x);
-    int16_t y4 = (int16_t)(by + 5 + boss->offset_y);
+    int16_t x4 = (int16_t)(bx + 0x1E + boss->own.boss2.offset_x);
+    int16_t y4 = (int16_t)(by + 5 + boss->own.boss2.offset_y);
     int16_t x2 = (int16_t)(bx + 0x10);
     int16_t y2 = (int16_t)(by - 0xB);
 
-    boss->boxes[1] = (struct Boss2Box){x2, y2, 0x10, 0x10};
+    boss->tail.boss2.boxes[1] = (struct Boss2Box){x2, y2, 0x10, 0x10};
     glyph_draw(x2, y2, 0x1C2);
 
     int16_t half_x = (int16_t)((x2 - x4) >> 1);
@@ -15094,22 +15008,22 @@ static void boss2_draw_all(void)
     int16_t x3 = (int16_t)(x2 - half_x + 1);
     int16_t y3 = (int16_t)(y2 - half_y);
 
-    boss->boxes[2] = (struct Boss2Box){x3, y3, 0x10, 0x10};
+    boss->tail.boss2.boxes[2] = (struct Boss2Box){x3, y3, 0x10, 0x10};
     glyph_draw(x3, y3, 0x1C2);
-    boss->boxes[3] = (struct Boss2Box){x4, y4, 0x10, 0x10};
+    boss->tail.boss2.boxes[3] = (struct Boss2Box){x4, y4, 0x10, 0x10};
     glyph_draw(x4, y4, 0x1C2);
     sprite_draw(x, y, (uint16_t)kind);
 
     x = (int16_t)(bx + 0x24);
     y = (int16_t)(by - 0x1A);
     if (guest.frame_phase == 0) {
-        boss->jaw = (int16_t)((boss->jaw + 1) & 3);
-        if (boss->jaw == 0)
+        boss->own.boss2.jaw = (int16_t)((boss->own.boss2.jaw + 1) & 3);
+        if (boss->own.boss2.jaw == 0)
             play_sound(0x27, 0x0B);
     }
-    y = (int16_t)(y + boss2_jaw[boss->jaw][1]);
-    boss->boxes[4] = (struct Boss2Box){x, y, 0x10, 0x10};
-    sprite_draw(x, y, (uint16_t)(0x1C0 + boss2_jaw[boss->jaw][0]));
+    y = (int16_t)(y + boss2_jaw[boss->own.boss2.jaw][1]);
+    boss->tail.boss2.boxes[4] = (struct Boss2Box){x, y, 0x10, 0x10};
+    sprite_draw(x, y, (uint16_t)(0x1C0 + boss2_jaw[boss->own.boss2.jaw][0]));
 
     boss2_anchor_x = (int16_t)(boss->x + 0x3C);
     boss2_anchor_y = (int16_t)(boss->y + 0x1F);
@@ -15119,7 +15033,7 @@ static void boss2_draw_all(void)
 
     x = bx;
     y = by;
-    boss->boxes[5] = (struct Boss2Box){x, y, 0x40, 0x40};
+    boss->tail.boss2.boxes[5] = (struct Boss2Box){x, y, 0x40, 0x40};
     sprite_draw(x, y, 0x1C0);
     sprite_draw((int16_t)(x + 0x20), y, 0x1C1);
 }
@@ -15128,26 +15042,26 @@ static void boss2_draw_all(void)
  * strength is shared (half of what it has more than the body's goes to the body), the energy is the two together and when it is below 0 the guardian dies (the thing 31 is dropped at (352, 896)) */
 static void boss2_hit_by_shots(void)
 {
-    struct Boss2 *boss = boss2_state();
+    struct Guardian *boss = &guest.guardian;
 
     for (int i = 0; i < 6; i++) {
-        guest.hit_box_extra_width = boss->boxes[i].w;
-        guest.hit_box_extra_height = boss->boxes[i].h;
-        boss->body = check_hit_and_walls((int16_t)(boss->boxes[i].x + guest.scroll_x), (int16_t)(boss->boxes[i].y + guest.scroll_y), boss->body);
+        guest.hit_box_extra_width = boss->tail.boss2.boxes[i].w;
+        guest.hit_box_extra_height = boss->tail.boss2.boxes[i].h;
+        boss->own.boss2.body = check_hit_and_walls((int16_t)(boss->tail.boss2.boxes[i].x + guest.scroll_x), (int16_t)(boss->tail.boss2.boxes[i].y + guest.scroll_y), boss->own.boss2.body);
     }
-    if (boss->neck >= 0) {
-        guest.hit_box_extra_width = boss->boxes[6].w;
-        guest.hit_box_extra_height = boss->boxes[6].h;
-        boss->neck = check_hit_and_walls((int16_t)(boss->boxes[6].x + guest.scroll_x), (int16_t)(boss->boxes[6].y + guest.scroll_y), boss->neck);
+    if (boss->own.boss2.neck >= 0) {
+        guest.hit_box_extra_width = boss->tail.boss2.boxes[6].w;
+        guest.hit_box_extra_height = boss->tail.boss2.boxes[6].h;
+        boss->own.boss2.neck = check_hit_and_walls((int16_t)(boss->tail.boss2.boxes[6].x + guest.scroll_x), (int16_t)(boss->tail.boss2.boxes[6].y + guest.scroll_y), boss->own.boss2.neck);
         for (int i = 0; i < 10; i++) {
             guest.hit_box_extra_width = 8;
             guest.hit_box_extra_height = 8;
-            boss->neck = check_hit_and_walls((int16_t)(boss->points[i][0] + guest.scroll_x), (int16_t)(boss->points[i][1] + guest.scroll_y), boss->neck);
+            boss->own.boss2.neck = check_hit_and_walls((int16_t)(boss->tail.boss2.points[i][0] + guest.scroll_x), (int16_t)(boss->tail.boss2.points[i][1] + guest.scroll_y), boss->own.boss2.neck);
         }
     }
 
-    int16_t neck = boss->neck;
-    int16_t total = (int16_t)((neck < 0 ? 0 : neck) + boss->body);
+    int16_t neck = boss->own.boss2.neck;
+    int16_t total = (int16_t)((neck < 0 ? 0 : neck) + boss->own.boss2.body);
 
     boss->energy_low = (uint16_t)total;
     boss->energy_high = total < 0 ? 0xFFFF : 0;
@@ -15156,10 +15070,10 @@ static void boss2_hit_by_shots(void)
         boss_die();
         return;
     }
-    if (neck >= 0 && neck >= boss->body) {
+    if (neck >= 0 && neck >= boss->own.boss2.body) {
         neck = (int16_t)(neck >> 1);
-        boss->neck = (int16_t)(boss->neck - neck);
-        boss->body = (int16_t)(boss->body + neck);
+        boss->own.boss2.neck = (int16_t)(boss->own.boss2.neck - neck);
+        boss->own.boss2.body = (int16_t)(boss->own.boss2.body + neck);
     }
 }
 
@@ -15182,11 +15096,11 @@ static void boss2_shots_move(void)
     if (guest.boss2_shots_switch != 0x4E71)
         return;
 
-    struct Boss2 *boss = boss2_state();
-    int16_t cycle = boss->cycle;
+    struct Guardian *boss = &guest.guardian;
+    int16_t cycle = boss->tail.boss2.cycle;
 
     for (int i = 0; i < 8; i++) {
-        struct BossShot *shot = &boss->shots[i];
+        struct BossShot *shot = &boss->tail.boss2.shots[i];
 
         if (shot->frame >= 0) {
             shot->x = (int16_t)(shot->x - 7);
@@ -15215,9 +15129,9 @@ static void boss2_shots_move(void)
         if (cycle >= 3)
             cycle = 0;
     }
-    boss->cycle++;
-    if (boss->cycle >= 3)
-        boss->cycle = 0;
+    boss->tail.boss2.cycle++;
+    if (boss->tail.boss2.cycle >= 3)
+        boss->tail.boss2.cycle = 0;
 }
 
 /* ======== the level 3 guardian (orig $00B158, $00B17E and $00BBF8 to $00BF3A, the path at $BF3C): a big creature that walks along a path of three bytes (a picture, a step in x, a step in y; the picture 29 and 39 shoot a
@@ -15260,17 +15174,9 @@ static const int8_t boss3_path[][3] = {
     {14, -4, 0}, {14, 0, 0}, {-1, 0, 0}
 };
 
-/* a ball of the guardian (the records at $518: ten bytes, 15 of them): its place, the sideways speed, the picture (0 to 3, -1: free) and the fall speed (it goes up by one each frame) */
-struct Boss3Shot {
-    int16_t x;
-    int16_t y;
-    int16_t speed_x;
-    int16_t frame;
-    int16_t speed_y;
-};
 
-#define BOSS3_CAN_SHOOT (*(uint16_t *)boss_at(0x5B2))
-#define BOSS3_FALL (*(uint16_t *)boss_at(0x5B8))
+#define BOSS3_CAN_SHOOT guest.guardian.tail.boss3.can_shoot
+#define BOSS3_FALL guest.guardian.tail.boss3.fall
 
 /* orig $00BD6E: a spark of blood (debris) at the place (x, y) of the screen: moved by up to 8 in each direction, with speeds -4 to 3 */
 static void boss3_blood_spark(int16_t x, int16_t y)
@@ -15290,7 +15196,7 @@ static void boss3_blood_spark(int16_t x, int16_t y)
  * hit the player (aimed_bolt_hits_player 12 pixels in): a hit takes 2 more of the energy and two bursts of blood */
 static void boss3_balls_move(void)
 {
-    struct Boss3Shot *shot = (struct Boss3Shot *)boss_state()->shots;
+    struct Boss3Shot *shot = guest.guardian.tail.boss3.shots;
 
     for (int i = 0; i < 15; i++, shot++) {
         if (shot->frame < 0)
@@ -15326,8 +15232,8 @@ static void boss3_balls_move(void)
  * the picture 2, the fall speed -1 or 1 by chance) */
 static void boss3_balls_start(int16_t picture)
 {
-    struct Boss3Shot *shot = (struct Boss3Shot *)boss_state()->shots;
-    struct BossState *boss = boss_state();
+    struct Boss3Shot *shot = guest.guardian.tail.boss3.shots;
+    struct Guardian *boss = &guest.guardian;
     int right;
 
     if (BOSS3_CAN_SHOOT == 0)
@@ -15365,7 +15271,7 @@ static void boss3_draw_halves(int16_t x, int16_t y, int16_t picture)
  * a row with a picture of 0 or more moves it (x in 96 to 704) and is the one of the frame, ending the path restarts it.  `*x`, `*y` and `*picture` are the place and the picture at the end */
 static void boss3_follow_path(int16_t *x_out, int16_t *y_out, int16_t *picture_out)
 {
-    struct BossState *boss = boss_state();
+    struct Guardian *boss = &guest.guardian;
     int16_t x = (int16_t)boss->x;
     int16_t y = (int16_t)boss->y;
     int16_t picture = (int16_t)boss->picture;
@@ -15427,7 +15333,7 @@ static void boss3_drop_item(void)
  * the thing it leaves is dropped and armour_level (the armour) goes up */
 static void boss3_hit_by_shots(void)
 {
-    struct BossState *boss = boss_state();
+    struct Guardian *boss = &guest.guardian;
 
     guest.hit_box_extra_width = 0x28;
     guest.hit_box_extra_height = 0x58;
@@ -15448,7 +15354,7 @@ static void boss3_hit_by_shots(void)
 /* orig $00BBF8 (the level 3 guardian, per frame: boss_frame): the path, the balls, a new ball, the drawing and the hit; a dead guardian (energy below 0) is left to the death fall at $BC1C */
 static void boss3_frame(void)
 {
-    struct BossState *boss = boss_state();
+    struct Guardian *boss = &guest.guardian;
     int16_t x, y, picture;
 
     if ((int16_t)boss->energy_high < 0)
@@ -15467,7 +15373,7 @@ void boss3_death_fall(void)
     if (guest.boss3_death_fall_switch != 0x4E71)
         return;
 
-    struct BossState *boss = boss_state();
+    struct Guardian *boss = &guest.guardian;
     int16_t picture = (int16_t)boss->picture >= 0x20 ? 0x2B : 0x29;
     int16_t y = (int16_t)(boss->y + BOSS3_FALL);
 
@@ -15487,20 +15393,19 @@ void boss3_death_fall(void)
  * path of the level (the last entry of entry_list: a step of two signed nibbles each) two steps a frame, the second is the head; the head is hit (energy $50E) and when it is gone the pieces burst, the
  * guardian's own energy ($50A, a long) goes down by 1000 and they start again; it breathes a ball of fire at the player; the throne rises from below the screen when the fight begins (boss_callback) ======== */
 
-#define B4_WORD(address) (*(int16_t *)boss_at(address))
-#define BOSS4_Y B4_WORD(0x65A)            /* the throne's y (the guardian sits on it): $180 and it rises to $B0 */
-#define BOSS4_DONE B4_WORD(0x65C)         /* the count of the pieces that are at the end of their path (+1) or burst (-1) */
-#define BOSS4_HEAD_ENERGY B4_WORD(0x50E)  /* the head's energy: 750, then 1000 (negative: the pieces burst) */
-#define BOSS4_FIRE_TIMER B4_WORD(0x4FA)   /* the frames until the fire: it breathes while it is negative */
-#define BOSS4_THRONE_Y B4_WORD(0x4EC)     /* the throne's y of the last frame of its rise */
-#define BOSS4_LAST_X B4_WORD(0x5AE)       /* the place of the piece that was run last */
-#define BOSS4_LAST_Y B4_WORD(0x5B0)
-#define BOSS4_FIRE_X B4_WORD(0x518)       /* the ball of fire: x, y, its picture (-1: none) and the frames of its life (-1: it has hit) */
-#define BOSS4_FIRE_Y B4_WORD(0x51A)
-#define BOSS4_FIRE_PICTURE B4_WORD(0x51C)
-#define BOSS4_FIRE_LIFE B4_WORD(0x51E)
-#define BOSS4_HEAD_TABLE_HIGH B4_WORD(0x664)   /* where the head's table is (the long at $664: an address of the original's $B574 on) */
-#define BOSS4_HEAD_TABLE_LOW B4_WORD(0x666)
+#define BOSS4_Y guest.guardian.tail.boss4.y            /* the throne's y (the guardian sits on it): $180 and it rises to $B0 */
+#define BOSS4_DONE guest.guardian.tail.boss4.done         /* the count of the pieces that are at the end of their path (+1) or burst (-1) */
+#define BOSS4_HEAD_ENERGY guest.guardian.head_energy  /* the head's energy: 750, then 1000 (negative: the pieces burst) */
+#define BOSS4_FIRE_TIMER guest.guardian.own.boss4.fire_timer   /* the frames until the fire: it breathes while it is negative */
+#define BOSS4_THRONE_Y guest.guardian.own.boss4.throne_y_last     /* the throne's y of the last frame of its rise */
+#define BOSS4_LAST_X guest.guardian.tail.boss4.last_x       /* the place of the piece that was run last */
+#define BOSS4_LAST_Y guest.guardian.tail.boss4.last_y
+#define BOSS4_FIRE_X guest.guardian.tail.boss4.fire_x       /* the ball of fire: x, y, its picture (-1: none) and the frames of its life (-1: it has hit) */
+#define BOSS4_FIRE_Y guest.guardian.tail.boss4.fire_y
+#define BOSS4_FIRE_PICTURE guest.guardian.tail.boss4.fire_picture
+#define BOSS4_FIRE_LIFE guest.guardian.tail.boss4.fire_life
+#define BOSS4_HEAD_TABLE_HIGH guest.guardian.tail.boss4.head_table_high   /* where the head's table is (the long at $664: an address of the original's $B574 on) */
+#define BOSS4_HEAD_TABLE_LOW guest.guardian.tail.boss4.head_table_low
 #define BOSS4_HEAD_TABLE_BASE 0xB574u
 
 /* a piece of the guardian's body (14 bytes at $10B0, eight of them): the place, the frames to wait (they count down to -1; then it moves), the place in the path and the end of the path (longs, kept as two words each); a
@@ -15592,20 +15497,20 @@ static void boss4_pieces_place(int16_t wait)
 /* orig $00B674: unless the guardian is dead the pieces start again (they wait 70 frames and two more each), and the head's table from its start */
 static void boss4_pieces_restart(void)
 {
-    if ((int16_t)boss_state()->energy_high < 0)
+    if ((int16_t)guest.guardian.energy_high < 0)
         return;
-    B4_WORD(0x660) = 6;
-    B4_WORD(0x65E) = 6;
+    guest.guardian.tail.boss4.word_660 = 6;
+    guest.guardian.tail.boss4.word_65e = 6;
     BOSS4_HEAD_TABLE_HIGH = 0;
     BOSS4_HEAD_TABLE_LOW = (int16_t)BOSS4_HEAD_TABLE_BASE;
     boss4_pieces_place(0x46);
-    B4_WORD(0x504) = 3;
+    guest.guardian.own.boss4.word_504 = 3;
 }
 
 /* orig $00B528: the next byte of the head's table: d6 (its low three bits) and d5 (all of it) of the original.  A negative word at $662 would make the original work the byte out and write it (not run) */
 static uint8_t boss4_head_next_byte(void)
 {
-    if (B4_WORD(0x662) < 0)
+    if (guest.guardian.tail.boss4.word_662 < 0)
         host_missing_routine(0xB540);
 
     uint32_t at = ((uint32_t)(uint16_t)BOSS4_HEAD_TABLE_HIGH << 16) | (uint16_t)BOSS4_HEAD_TABLE_LOW;
@@ -15674,7 +15579,7 @@ static void boss4_piece_burst_start(struct Boss4Piece *piece)
  * sequence of its end begins: tick_count from 0), otherwise the head is whole again with 1000 and the pieces start again */
 static void boss4_all_burst(void)
 {
-    struct BossState *boss = boss_state();
+    struct Guardian *boss = &guest.guardian;
     int32_t energy = (int32_t)(((uint32_t)boss->energy_high << 16) | boss->energy_low) - 0x3E8;
 
     boss->energy_high = (uint16_t)((uint32_t)energy >> 16);
@@ -15878,7 +15783,7 @@ static void boss4_frame(void)
         guest.boss_phase_flags |= 2;
         play_sound(0x34, 5);
     }
-    struct BossState *boss = boss_state();
+    struct Guardian *boss = &guest.guardian;
 
     if ((int16_t)boss->energy_high < 0) {
         boss4_pieces_run();
@@ -16029,11 +15934,11 @@ void boss4_death_wait(void)
 /* orig $00B198 (the start): the throne is at 384, the routines are the guardian's, its energy 6000 (the long at $50A) and the head's 750; the throne rises (boss_callback) and the flags of its end are off */
 static void boss4_start(void)
 {
-    struct BossState *boss = boss_state();
+    struct Guardian *boss = &guest.guardian;
 
     BOSS4_Y = 0x180;
     guest.guardian.frame = boss4_frame;
-    boss_state()->restore = boss4_514;
+    guest.guardian.restore = boss4_514;
     guest.boss_load_request = 1;
     boss->energy_high = 0;
     boss->energy_low = 0x1770;
@@ -16050,16 +15955,17 @@ static void boss4_start(void)
 /* the quickload of the fight (or of the end after it): the words of the guardian's state are the file's (big endian), the routines are the port's */
 static void boss4_quickload(void)
 {
-    file_words(boss_at(0x4E8), 3);
-    file_words(boss_at(0x4FA), 1);
-    file_words(boss_at(0x504), 1);
-    file_words(boss_at(0x50A), 3);
-    file_words(boss_at(0x518), 4);
-    file_words(boss_at(0x5AE), 2);
-    file_words(boss_at(0x65A), 8);
+    file_words(&guest.guardian.x, 2);
+    file_words(&guest.guardian.own.boss4.throne_y_last, 1);
+    file_words(&guest.guardian.own.boss4.fire_timer, 1);
+    file_words(&guest.guardian.own.boss4.word_504, 1);
+    file_words(&guest.guardian.energy_high, 3);
+    file_words(&guest.guardian.tail.boss4.fire_x, 4);
+    file_words(&guest.guardian.tail.boss4.last_x, 2);
+    file_words(&guest.guardian.tail.boss4.y, 8);
     guest.guardian.frame = boss4_frame;
     guest.guardian.callback = guest.boss4_throne_switch == 0x4E71 ? boss4_throne_rise : boss_rts;
-    boss_state()->restore = boss4_514;
+    guest.guardian.restore = boss4_514;
 }
 
 /* orig $002F12 (the player has all ten gifts of the guardian of the level 4: bit 6 of event_flags): the picture "payoff.pi1" (the palette 32 bytes after a word, then the 192 rows of the picture) fades in, two messages are
@@ -16227,7 +16133,7 @@ void password_entered(void)
 /* orig $00B17E (restore): the place of the level 3 guardian and its path */
 static void boss3_514(void)
 {
-    struct BossState *boss = boss_state();
+    struct Guardian *boss = &guest.guardian;
 
     boss->x = 0x2C0;
     boss->y = 0x70;
@@ -16248,13 +16154,13 @@ static void boss_start(struct EntryRef *entry)
     guest.creatures_switch = 0x4E75;
     boss_free_records();
     if (guest.param_index == 2) {   /* $B0B4 */
-        struct Boss2 *boss = boss2_state();
+        struct Guardian *boss = &guest.guardian;
 
         guest.guardian.frame = boss2_frame;
-        boss_state()->restore = boss2_514;
+        guest.guardian.restore = boss2_514;
         guest.boss_load_request = 1;
-        boss->neck = 0x7D0;
-        boss->body = 0x960;
+        boss->own.boss2.neck = 0x7D0;
+        boss->own.boss2.body = 0x960;
         boss->energy_high = 0;
         boss->energy_low = 0x1130;
         guest.boss2_shots_switch = 0x4E71;
@@ -16263,11 +16169,11 @@ static void boss_start(struct EntryRef *entry)
         return;
     }
     if (guest.param_index == 3) {   /* $B158 */
-        struct BossState *boss = boss_state();
+        struct Guardian *boss = &guest.guardian;
 
         guest.guardian.frame = boss3_frame;
         guest.boss_load_request = 1;
-        boss_state()->restore = boss3_514;
+        guest.guardian.restore = boss3_514;
         boss->energy_high = 0;
         boss->energy_low = 0x8CA;
         guest.guardian.callback = boss_rts;
@@ -16282,18 +16188,18 @@ static void boss_start(struct EntryRef *entry)
         host_missing_routine(0xB014 + 4 * (uint32_t)(guest.param_index - 1));   /* (no other level has a guardian) */
         guest.guardian.frame = boss_rts;
         guest.guardian.callback = boss_rts;
-        boss_state()->restore = boss_rts;
+        guest.guardian.restore = boss_rts;
         guest.boss_load_request = 1;
         return;
     }
     /* $B024 */
     guest.guardian.frame = boss1_frame;
     guest.boss_load_request = 1;
-    boss_state()->restore = boss1_514;
+    guest.guardian.restore = boss1_514;
     guest.boss_sparks_switch = 0x4E71;
     guest.boss_shots_switch = 0x4E71;
-    boss_state()->energy_high = 0;   /* its energy: the original has the copylock's value here when the lock passes (1500); the bclr.b #7, $50A takes the top byte's bit 7 off */
-    boss_state()->energy_low = 0x5DC;
+    guest.guardian.energy_high = 0;   /* its energy: the original has the copylock's value here when the lock passes (1500); the bclr.b #7, $50A takes the top byte's bit 7 off */
+    guest.guardian.energy_low = 0x5DC;
     guest.guardian.callback = boss_rts;
     boss1_514();
 }
@@ -16308,27 +16214,27 @@ static void boss_rts(void)
 static void boss_quickload(void)
 {
     if (guest.boss_mode != 0 && guest.menu_state_25a == 2 && guest.param_index == 2) {
-        struct Boss2 *boss = boss2_state();
+        struct Guardian *boss = &guest.guardian;
 
         file_words(boss, (0x632 - 0x4E8) / 2);
-        file_words(boss_at(0x668), 1);
+        file_words(&guest.guardian.tail.boss1.path_count, 1);
         guest.guardian.frame = boss2_frame;
         guest.guardian.callback = boss_rts;
-        boss_state()->restore = boss2_514;
+        guest.guardian.restore = boss2_514;
         boss2_bezier_load();
         return;
     }
     if (guest.boss_mode != 0 && guest.menu_state_25a == 2 && guest.param_index == 3) {
-        struct BossState *boss = boss_state();
+        struct Guardian *boss = &guest.guardian;
 
         file_words(boss, 2);
         file_words(&boss->picture, 6);
-        file_words(boss->shots, 75);
-        file_words(boss_at(0x5B2), 1);
-        file_words(boss_at(0x5B8), 1);
+        file_words(boss->tail.boss3.shots, 75);
+        file_words(&boss->tail.boss3.can_shoot, 1);
+        file_words(&boss->tail.boss3.fall, 1);
         guest.guardian.frame = boss3_frame;
         guest.guardian.callback = boss_rts;
-        boss_state()->restore = boss3_514;
+        guest.guardian.restore = boss3_514;
         return;
     }
     if (guest.param_index == 4 && (guest.boss_mode != 0 || guest.boss4_death_wait_switch == 0x4E71)) {
@@ -16338,22 +16244,22 @@ static void boss_quickload(void)
     if (guest.boss_mode != 0 && guest.param_index != 1) {   /* the other levels' guardians are not ported: their callbacks are the original's addresses */
         guest.guardian.frame = boss_rts;
         guest.guardian.callback = boss_rts;
-        boss_state()->restore = boss_rts;
+        guest.guardian.restore = boss_rts;
         return;
     }
     if (guest.boss_mode == 0 || guest.menu_state_25a != 2 || guest.param_index != 1)
         return;
 
-    struct BossState *boss = boss_state();
+    struct Guardian *boss = &guest.guardian;
 
     file_words(boss, 2);
     file_words(&boss->picture, 6);
-    file_words(boss->shots, 75);
+    file_words(boss->tail.boss1.shots, 75);
     file_words(guest.scratch_buffer, 250);
-    file_words(boss_at(0x668), 1);
+    file_words(&boss->tail.boss1.path_count, 1);
     guest.guardian.frame = boss1_frame;
     guest.guardian.callback = boss_rts;
-    boss_state()->restore = boss1_514;
+    guest.guardian.restore = boss1_514;
 }
 
 /* orig $0030DA (the frame ends there when boss_load_request is on, which the guardian's start sets): the guardian's sprites (the set `guard1` of the level's names) and the sound files are read behind the

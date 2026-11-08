@@ -4,7 +4,7 @@
 
 #include <stdint.h>
 
-#include "menu_symbols.h"
+#include "game.h"
 
 void message_start(uint16_t arg);       /* orig $016DF8 */
 void message_tick(void);                /* orig $016E42 */

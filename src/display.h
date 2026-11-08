@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #include "amiga/hw.h"
-#include "menu_symbols.h"
+#include "game.h"
 #include "sound.h"
 
 void set_scroll(uint8_t *copper_list, uint8_t x);              /* orig $004D3E */

@@ -7,7 +7,7 @@
 
 extern void input_poll(void);
 extern void frame_tick(void);
-#include "menu_symbols.h"
+#include "game.h"
 extern const uint8_t keymap[128];
 
 static volatile int interrupts_on;

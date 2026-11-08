@@ -4,7 +4,7 @@ longs of each variable are to be swapped to the host's byte order.
 
     gen_fixups.py SRC_DIR OUT_DIR
 
-The types are the declarations of menu.symbols; the structs are the ones of menu_types.h as (offset, width) of every field wider than a byte.
+The types are the declarations of menu.symbols; the structs are the ones of game.h as (offset, width) of every field wider than a byte.
 Variables of unknown length (`name[]`) are left alone.
 """
 from __future__ import annotations

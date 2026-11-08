@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #include "amiga/hw.h"
-#include "menu_symbols.h"
+#include "game.h"
 
 uint8_t *unpack(uint8_t *to, const uint8_t *from);                       /* orig $01E260 */
 

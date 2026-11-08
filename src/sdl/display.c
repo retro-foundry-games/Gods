@@ -9,7 +9,7 @@
 
 #include "menu.h"
 #include "guest.h"
-#include "menu_symbols.h"
+#include "game.h"
 
 /* orig $01CFAC: clear a screen buffer, 8448 longs */
 void clear_screen_buffer(uint32_t *buffer)

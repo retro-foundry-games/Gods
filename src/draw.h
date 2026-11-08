@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #include "amiga/hw.h"
-#include "menu_symbols.h"
+#include "game.h"
 
 /* amiga.asm: the original's masked blit (orig $0171E4 and $0171F6): draw an image of `rows` rows, one word (two words)
  * wide, with its planes `plane` bytes apart at `src`, to the screen at `dst`, `shift` pixels to the right */

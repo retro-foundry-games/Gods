@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #include "amiga/hw.h"
-#include "menu_symbols.h"
+#include "game.h"
 
 void clear_track_slots(uint8_t *track);                                  /* orig $01DE42 */
 uint32_t mfm_decode_long(const uint32_t *odd_even);                      /* orig $01DE76 */

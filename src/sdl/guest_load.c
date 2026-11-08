@@ -8,7 +8,7 @@
 #include <sys/mman.h>
 #endif
 
-#include "menu_symbols.h"
+#include "game.h"
 #include "guest.h"
 #include "guest_tables.h"
 #include "guest_fixups.h"
