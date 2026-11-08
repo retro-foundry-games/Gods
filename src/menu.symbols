@@ -618,11 +618,11 @@ bat_count        0x0000121a  uint16_t %s
 game_loop_jump         0x00002c20  uint8_t %s[6]   the original's code at $2C20: the jump that game_loop_install puts there
 irq_vectors       0x00000068  uint32_t %s[3]  the interrupt vectors the start-up sets (the keyboard's, the blank's, the audio's)
 copper_message_5254 0x00005254 uint16_t %s[3]  the copper list's bitplane pointer for the message (the high word, ?, the low word)
-sound_silence     0x00021e5e  uint8_t %s[16]  the silent sample
 sound_state       0x0002079e  struct SoundState %s   the sound system's variables: the start-up clears them
 teleport_lists       0x0001078a  uint8_t %s[96]   the lists table_1077a points to
 sound_track_data  0x00020f74  uint8_t %s[3270]   the sequencer's tracks of the sounds (sound_tracks points into it)
-sound_sample_data 0x00021e5e  uint8_t %s[98290]   the 8 bit samples of the instruments (sound_instruments points into it)
+sound_sample_data 0x00021e5e  uint8_t %s[65920]   the 8 bit samples of the instruments (sound_instruments points into it); the first 16 bytes are the silent sample
+sound_sample_tail 0x00031fde  uint8_t %s[32370]   the rest of the samples: the sound file is read over picture_buffer (and again after a picture has been read there)
 video_address_high 0x00ff8207 volatile uint8_t %s   the Atari ST's video address register (high byte): the game reads it as the seed of its random numbers; the Amiga has no such address
 video_address_low  0x00ff8209 volatile uint8_t %s   ... and the low byte
 copper_list_end    0x00005246 uint16_t %s[1]   where the search for COLOR01 in a copper list ends

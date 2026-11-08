@@ -28,7 +28,7 @@ void display_setup(void)
 void sound_init(void)
 {
     uint32_t *state = (uint32_t *)guest.voice;
-    uint8_t *silence = guest.sound_silence;   /* the silent sample, in the data the loader brings */
+    uint8_t *silence = guest.sound_sample_data;   /* the silent sample, in the data the loader brings */
 
     guest.sound_lock = 0xff;
     CIAA_PRA |= 0x02;
