@@ -170,7 +170,7 @@ static int load_ram_image_held(const char *path, int slots)
     fclose(f);
     for (uint32_t i = IMAGE_BASE; i < (uint32_t)size; i++)
         *guest_ptr(i) = image[i];
-    if (slots && size >= 0x16bb4 + 24) {   /* block_16bb4: the words of how the shots move, which the power-ups change (a table of the host's own, so the loop above skipped it): the original's, as words of the host */
+    if (slots && size >= 0x16bb4 + 24) {   /* shot_block: the words of how the shots move, which the power-ups change (a table of the host's own, so the loop above skipped it): the original's, as words of the host */
         uint16_t *block = (uint16_t *)guest_ptr(0x16bb4);
 
         for (int i = 0; i < 12; i++)

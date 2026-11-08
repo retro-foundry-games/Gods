@@ -89,7 +89,7 @@ struct SavedByte *restore_saved_bytes(struct SavedByte *list, int16_t count)
     return list;
 }
 
-/* orig $018A10 (d5 the kind, d6 the argument, a3 the result word `result`; the routines of dispatch_18be0, $18C24 to $1906C, are
+/* orig $018A10 (d5 the kind, d6 the argument, a3 the result word `result`; the routines of record_kind_dispatch, $18C24 to $1906C, are
  * written in here): a condition of a record is looked at: when it does not hold, *result is cleared (it is left alone when it
  * holds).  Kind 0 is no condition; 1 and 2: the argument is not / is an item of the four slots (item_slots); 3 and 4: it is not /
  * is one of the three slot_refs; 5 and 6: the entry (4 bytes) of the table at cell_entry_table numbered argument - 1 has a state that is
@@ -296,10 +296,10 @@ static void player_respawn(void)
         guest.scroll_y = sy;
     }
     guest.player_state = 4;
-    guest.word_19a = 0;
+    guest.player_frame = 0;
     guest.fall_distance = 0;
     guest.ladder_side = 0;
-    guest.word_1f2 = 3;
+    guest.unused_1f2 = 3;
     activate_records_now();
     host_iteration_mark();
     host_cpu_frames(2);   /* (the original's drawing of that frame: its sounds are started two frames in; the flip comes then or a frame later, by what is on the screen: in the lockstep it waits for the original's) */
@@ -475,7 +475,7 @@ static void teleport_player(void)
     guest.scroll_y = sy;
     clear_monsters();
     activate_records_now();
-    guest.word_19a = 0;
+    guest.player_frame = 0;
     guest.door_entered = 0;
     guest.player_state = 4;
     guest.records_scroll_y = guest.scroll_y;
@@ -505,7 +505,7 @@ static void level_begin(void);
 static int level_next_wait;
 static void game_won_screen(void);
 static void password_start_level(void);
-static int shop_from_password;   /* the shop is entered at $136C8 (a level's password): no first fade-out, the saved tick count is 0 and the saved word_025c 1 (what the caller pushed) */
+static int shop_from_password;   /* the shop is entered at $136C8 (a level's password): no first fade-out, the saved tick count is 0 and the saved unused_25c 1 (what the caller pushed) */
 static int level_next_fade;   /* (the fade-in of the next level's start is bound to the original's) */
 /* orig $002D54 on: what ends a frame of the game, after the player has been run (or, when he is dead, after the frame of his death: $3A6C): the units and the other things
  * that are run, the panels, the energy, the keys of the pause and the like, and the wait for the next frame */
@@ -559,7 +559,7 @@ static void game_frame_tail(void)
     update_energy_display();
     draw_energy_bar();
     draw_item_row();
-    if (guest.flag_268) {
+    if (guest.energy_pickup_active) {
         int16_t d = (int16_t)guest.energy_old;
 
         if (d >= (int16_t)guest.player_energy) {
@@ -594,7 +594,7 @@ static void game_frame_tail(void)
         guest.tick_hold_26c = 0;
         guest.tick_count = saved_ticks;
     }
-    if (guest.flag_2b0 == 18)
+    if (guest.unused_2b0 == 18)
         request = 98;
     if (request == 70)
         return;   /* goes on at $39F6 */
@@ -693,7 +693,7 @@ void game_frame(void)
 }
 
 /* orig $006002: the 1600 bytes line_text points at are filled with a pattern of 56 bytes (fourteen longs): the words of fill_words
- * made longs, or the longs of fill_longs when world_end_steps is not negative (then flag_210 is cleared as well) */
+ * made longs, or the longs of fill_longs when world_end_steps is not negative (then unused_210 is cleared as well) */
 void fill_buffer(void)
 {
     uint32_t pattern[14];
@@ -703,7 +703,7 @@ void fill_buffer(void)
     if ((int16_t)guest.world_end_steps >= 0) {
         for (int i = 0; i < 14; i++)
             pattern[i] = fill_longs[i];
-        guest.flag_210 = 0;
+        guest.unused_210 = 0;
     }
 
     uint32_t *end = (uint32_t *)((uint8_t *)guest.line_text + 1600);
@@ -1387,11 +1387,11 @@ int16_t damage_player_at(int16_t x, int16_t y, int16_t strength);
 static const int16_t bolt_speeds_76e8[10] = { 4, 4, -4, 4, -1, -6, 0, -7, 1, -6 };
 
 /* orig $00773E (with $0074CA, $007752 to $00777C): `count` records (five words: x, y, picture step, speed x, speed y) are put at the first free ones (step negative) of the `records` records from `first` on (the list at
- * records_7544: 12 of the bolts, then 30 of the pieces), at (x + 3, y + 11), the speeds from the table */
+ * face_bolt_records: 12 of the bolts, then 30 of the pieces), at (x + 3, y + 11), the speeds from the table */
 static void bolt_records_put(int first, int records, int count, int16_t x, int16_t y, const int16_t *speeds)
 {
     for (int i = first; i < first + records && count > 0; i++) {
-        int16_t *r = &guest.records_7544[i * 5];
+        int16_t *r = &guest.face_bolt_records[i * 5];
 
         if (r[2] >= 0)
             continue;
@@ -1428,7 +1428,7 @@ void face_bolts_move(void)
     int alive = 0;
 
     for (int i = 0; i < 12; i++) {
-        int16_t *r = &guest.records_7544[i * 5];
+        int16_t *r = &guest.face_bolt_records[i * 5];
 
         if (r[2] < 0)
             continue;
@@ -1482,7 +1482,7 @@ void face_bolt_pieces_move(void)
     int alive = 0;
 
     for (int i = 12; i < 42; i++) {
-        int16_t *r = &guest.records_7544[i * 5];
+        int16_t *r = &guest.face_bolt_records[i * 5];
 
         if (r[2] < 0)
             continue;
@@ -2098,7 +2098,7 @@ static void level_end_effects(const struct LevelEnd *record)
             guest.param_index = (uint16_t)(guest.param_index + 1);
             if ((int16_t)guest.param_index >= 5)
                 guest.param_index = 1;
-            guest.word_0266 = 0;
+            guest.world_b_files = 0;
             guest.menu_active = 0;
             fade_out(1, 1);
             guest.score_redraw = 0xFFFF;
@@ -2143,7 +2143,7 @@ static void level_end_screen(void)
         level_end_effects(record);
         return;
     }
-    guest.flag_268 = 0;
+    guest.energy_pickup_active = 0;
     level_end_quiet();
     if (level_end_wait_rule(record))
         host_cpu_frames(1);   /* (the voices of the game's sounds are free a frame later on the Amiga than the host's note it) */
@@ -2152,7 +2152,7 @@ static void level_end_screen(void)
     text_draw_at((const char *)record->text, 0, 0x12);
     text_draw_at("COMPLETED", 0x58, 0x26);
     text_draw_at("BONUS", 0x30, 0x88);
-    ((volatile uint8_t *)&guest.word_ddc)[0] = 0;
+    ((volatile uint8_t *)&guest.unused_ddc)[0] = 0;
     guest.draw_routine_index = 1;
     guest.image_draw_flags |= 2;
     guest.image_draw_flags |= 8;
@@ -2625,7 +2625,7 @@ void falcon_seek_target(void)
     int16_t limit = (int16_t)(guest.player_x - guest.scroll_x - 8);
 
     if (!(sx < limit) && !(sx > (int16_t)(limit + 0x10))) {
-        int8_t turn = facing[guest.word_19c & 31];
+        int8_t turn = facing[guest.player_state & 31];
 
         guest.falcon_facing = turn == 0 ? guest.falcon_previous_facing : (int16_t)turn;
     }
@@ -3085,7 +3085,7 @@ static void aimed_bolt_hits_player(uint32_t *record, int16_t x, int16_t y)
     int16_t hit_y = (int16_t)(y + 4 + guest.scroll_y);
     int16_t top = guest.player_y;
 
-    if (guest.word_19c >= 0x12 && guest.word_19c <= 0x13)
+    if (guest.player_state >= 0x12 && guest.player_state <= 0x13)
         top = (int16_t)(top + 0x18);
     if (hit_y < top || hit_x < guest.player_x)
         return;
@@ -3174,7 +3174,7 @@ int16_t damage_player_at(int16_t x, int16_t y, int16_t strength)
     int16_t left = guest.player_x + 10, right = guest.player_x + 22;
     int16_t top = guest.player_y + 8, bottom = guest.player_y + 38;
 
-    if (guest.word_19c >= 18 && guest.word_19c <= 19)
+    if (guest.player_state >= 18 && guest.player_state <= 19)
         top += 20;
     int16_t half = guest.hit_box_extra_width >> 1;
 
@@ -3963,7 +3963,7 @@ static struct Slot8 *first_free_slot8(struct Slot8 *list, int count)
     return 0;
 }
 
-/* orig $018E38 (kind 0 of dispatch_18ba4; a1 the record): a free record of thing_records gets the position (words +12, +14) and the
+/* orig $018E38 (kind 0 of finished_record_dispatch; a1 the record): a free record of thing_records gets the position (words +12, +14) and the
  * number in the record's word +18 and the state 1; its byte in near_flags is set.  For the numbers 64 to 68 that is all; 83 sets
  * bit 2 of event_flags; the position and number are kept in last_drop (last_drop_frame cleared) and the sound 48 is played (priority 30)
  * unless offsets_4cba says 4 for the number */
@@ -4178,7 +4178,7 @@ static void kind_free_slot_ref(const struct ScriptRecord *a1)
  * argument: its three pairs of words; the result of each into condition_results); when all three results (condition_results) are still -1 the
  * record a0 is finished: its first word becomes -1, a message of the record's word +20 is requested when it has one (priority
  * 50), the slots its items are in are emptied (empty_slots_of_record, empty_slots_of_flagged_record) and the routine its kind
- * (word +16 without the top bit) names in dispatch_18ba4 does its part (written in here: 0 to 6, 10 to 15; 11 to 13 and 15 do
+ * (word +16 without the top bit) names in finished_record_dispatch does its part (written in here: 0 to 6, 10 to 15; 11 to 13 and 15 do
  * nothing, 14 clears tick_count, 9 closes a block of tiles; 7 and 8 ($19618, $19658) did not run and are left out).  Nothing is done while
  * level_ended */
 void finish_script_record(struct EntryRef *a0)
@@ -4506,12 +4506,12 @@ void shot_hit_tile(const struct Object *object, struct Shot *shot, int16_t x, in
     shot->active = 0;   /* the original's $16A04 (no free record) */
 }
 
-/* how a shot of a direction moves: the first twelve words of the table are what the power-ups change (block_16bb4, the same memory as the table on the Amiga; on the host the table
+/* how a shot of a direction moves: the first twelve words of the table are what the power-ups change (shot_block, the same memory as the table on the Amiga; on the host the table
  * the C reads is a copy, so the words the program changes are read from the memory it changes) */
 static int16_t shot_delta(int index)
 {
     if (index < 12)
-        return (int16_t)((const uint16_t *)guest.block_16bb4)[index];
+        return (int16_t)((const uint16_t *)guest.shot_block)[index];
     return (int16_t)shot_deltas[index];
 }
 
@@ -5454,11 +5454,11 @@ int16_t record_check_walls(int16_t x, int16_t y, int16_t *record)
  * number of zero bytes in offsets_4cba before the thing's id).  Those that ran are written; they leave the original's d3 (0 here). ---- */
 
 /* orig $01263A as the pick-up handler 11 (a copy of player_end/player_after of game_c.c, whose functions are static): the animation
- * frame word_19a becomes `frame` (the original has the loop counter of $417C in d7 there), the tiles around the player are looked at,
+ * frame player_frame becomes `frame` (the original has the loop counter of $417C in d7 there), the tiles around the player are looked at,
  * the scroll follows the player and his sprite is drawn */
 static void pickup_player_end(int16_t frame)
 {
-    guest.word_19a = frame;
+    guest.player_frame = frame;
     player_tile_scan();
 
     int16_t x = guest.player_x - guest.scroll_x;
@@ -5532,7 +5532,7 @@ static void teleport_gem(void)
     int16_t x = guest.viewed_record->w[0];
     int found = 0;
 
-    if (guest.param_index == 2 && guest.word_0266 == 0 && x >= 0x5c0 && x <= 0x640) {
+    if (guest.param_index == 2 && guest.world_b_files == 0 && x >= 0x5c0 && x <= 0x640) {
         guest.exit_target = 0x202e;
         found = 1;
     }
@@ -5576,7 +5576,7 @@ static void raise_unit_counts(void)
 static void set_shot_block(const uint16_t *words)
 {
     for (int i = 0; i < 12; i++)
-        ((uint16_t *)guest.block_16bb4)[i] = words[i];
+        ((uint16_t *)guest.shot_block)[i] = words[i];
 }
 
 /* the handlers of the table at $1067A, called with the index of the thing's kind (the number of zero bytes of offsets_4cba before its id)
@@ -5592,7 +5592,7 @@ static int16_t pickup_handler(int16_t index, int16_t counter)
         energy_pickup(24, 30);   /* orig $0108C4 */
         return 1;
     case 5:
-        guest.flag_268 = 1;            /* orig $01082A */
+        guest.energy_pickup_active = 1;            /* orig $01082A */
         return 1;
     case 11:
         pickup_player_end(counter);   /* orig $01263A */
@@ -10240,12 +10240,12 @@ void object_message(const struct Object *object)
 }
 
 /* orig $012CFC: the level is over (level_ended set) when visited_spots_count is the count in the first word of level_end_record; otherwise, when
- * param_index is 3, word_0266 is 0 and the player is at x 1104 or more and y 768 to 784, visited_spots_count is cleared and the level is over.
+ * param_index is 3, world_b_files is 0 and the player is at x 1104 or more and y 768 to 784, visited_spots_count is cleared and the level is over.
  * (The original loses the caller's a6 here: it leaves level_end_record in it and the saved a6 in a0) */
 static void level_over_check(void)
 {
     if (guest.level_end_record->spots != guest.visited_spots_count) {
-        if (guest.param_index != 3 || guest.word_0266 != 0 || guest.player_x < 0x450 || guest.player_y > 0x310 || guest.player_y < 0x300)
+        if (guest.param_index != 3 || guest.world_b_files != 0 || guest.player_x < 0x450 || guest.player_y > 0x310 || guest.player_y < 0x300)
             return;
         guest.visited_spots_count = 0;
     }
@@ -10469,7 +10469,7 @@ static void player_check_floor(int16_t d7);
 /* orig $01263A */
 static void player_end(int16_t d7)
 {
-    guest.word_19a = d7;
+    guest.player_frame = d7;
     player_after(d7);
 }
 
@@ -10719,8 +10719,8 @@ static void spawn_player_shots_left(void)
 static void panel_redraw(void)
 {
     for (int i = 0; i < 4; i++)
-        panel_slot_plain(SLOT_IMAGE(i), guest.slots_30c[i]);
-    panel_slot_cut(SLOT_IMAGE((int16_t)guest.item_shown), guest.slots_30c[(int16_t)guest.item_shown]);
+        panel_slot_plain(SLOT_IMAGE(i), guest.item_slots[i]);
+    panel_slot_cut(SLOT_IMAGE((int16_t)guest.item_shown), guest.item_slots[(int16_t)guest.item_shown]);
 }
 
 /* orig $005444: the slots' pictures are made again; a shutter that is shut at once (shutter_row negative) is opened (sound 17), otherwise one
@@ -11629,11 +11629,11 @@ static void drop_chosen_item(void)
 {
     panel_shutter_refresh();
 
-    int16_t kind = (int16_t)(guest.slots_30c[guest.item_shown] + 11);
+    int16_t kind = (int16_t)(guest.item_slots[guest.item_shown] + 11);
 
     if (kind < 0)
         return;
-    guest.slots_30c[guest.item_shown] = -1;
+    guest.item_slots[guest.item_shown] = -1;
     drop_thing(guest.player_x + 8, guest.player_y + 32, kind);
 }
 
@@ -11659,7 +11659,7 @@ static void item_button_step(int16_t d7)
     guest.pickup_button_held = 1;
     guest.pickup_active = 1;
 
-    int16_t item = guest.slots_30c[guest.item_chosen];
+    int16_t item = guest.item_slots[guest.item_chosen];
 
     if (item >= 0)
         item_message(item);
@@ -11678,10 +11678,10 @@ static void pickup_take_record(struct Slot8 *record, int16_t kind, int16_t d7)
         return;
     }
     guest.pickup_button_held = 1;
-    guest.slots_30c[guest.item_shown] = kind;
+    guest.item_slots[guest.item_shown] = kind;
     panel_slot_plain(SLOT_IMAGE((int16_t)guest.item_shown), kind);
     panel_shutter_refresh();
-    item_message(guest.slots_30c[guest.item_chosen]);
+    item_message(guest.item_slots[guest.item_chosen]);
     player_end(d7);
 }
 
@@ -11723,7 +11723,7 @@ static void pickup_find_near(int16_t d7)
 static void state_pickup(int16_t d7, int16_t leave_state)
 {
     if (!(guest.game_stick & 2)) {
-        if (guest.slots_30c[guest.item_shown] >= 0)
+        if (guest.item_slots[guest.item_shown] >= 0)
             drop_chosen_item();
         d7--;
         if (d7 >= 0) {
@@ -11745,7 +11745,7 @@ static void state_pickup(int16_t d7, int16_t leave_state)
             item_button_step(d7);
             return;
         }
-        if (guest.slots_30c[guest.item_shown] >= 0)
+        if (guest.item_slots[guest.item_shown] >= 0)
             drop_chosen_item();
         if (guest.pickup_active != 0) {
             player_end(d7);
@@ -11760,7 +11760,7 @@ static void state_pickup(int16_t d7, int16_t leave_state)
 /* orig $0124DE: the frame is kept and mapped through frame_map_125ac; the machine goes on at $1263E (states 5 and 6) */
 static void state_5_map(int16_t d7)
 {
-    guest.word_19a = d7;
+    guest.player_frame = d7;
     player_after((int16_t)frame_map_125ac[d7]);
 }
 
@@ -12133,7 +12133,7 @@ static void player_state_run(int16_t state, int16_t d7)
  * states */
 void player_control(void)
 {
-    int16_t d7 = guest.word_19a;
+    int16_t d7 = guest.player_frame;
     int16_t state = guest.player_state;
 
     if (state != 18 && state != 19)
@@ -12283,7 +12283,7 @@ static void bolt_hits_player(struct Slot8 *bolt, int16_t x, int16_t y)
     int16_t py = (int16_t)(y + 4 + guest.scroll_y);
     int16_t top = guest.player_y;
 
-    if (guest.word_19c >= 18 && guest.word_19c <= 19)
+    if (guest.player_state >= 18 && guest.player_state <= 19)
         top += 24;
     if (py < top || px < guest.player_x)
         return;
@@ -12520,11 +12520,11 @@ void clear_puff_records(void)
         guest.puff_records[i] = -1;
 }
 
-/* orig $0077BE: the word at +4 of the 42 records (10 bytes) at records_7544 is -1; the routines at $77E6 and $7906 are switched off */
+/* orig $0077BE: the word at +4 of the 42 records (10 bytes) at face_bolt_records is -1; the routines at $77E6 and $7906 are switched off */
 void reset_bolt_pieces(void)
 {
     for (int i = 0; i < 42; i++)
-        guest.records_7544[i * 5 + 2] = -1;
+        guest.face_bolt_records[i * 5 + 2] = -1;
     guest.bolts_switch = 0x4E75;
     guest.bolt_pieces_switch = 0x4E75;
 }
@@ -12577,7 +12577,7 @@ void reset_shot_block(void)
     static const uint16_t words[12] = { 0x000C, 0xFFFD, 0x000C, 0x0000, 0x000C, 0x0003, 0xFFF4, 0xFFFD, 0xFFF4, 0x0000, 0xFFF4, 0x0003 };
 
     for (int i = 0; i < 12; i++)
-        ((uint16_t *)guest.block_16bb4)[i] = words[i];
+        ((uint16_t *)guest.shot_block)[i] = words[i];
 }
 
 /* orig $0017DBA: the 25 records of 24 bytes at path_records get -1 in their first two words and in the byte at +4; the cells
@@ -12728,13 +12728,13 @@ void random_table_make(void)
     }
 }
 
-/* orig $00D5EE: when the password is used (word_0266) the map of the level is searched for the cells 35 and 36 (level 1) that the
+/* orig $00D5EE: when the password is used (world_b_files) the map of the level is searched for the cells 35 and 36 (level 1) that the
  * entries of level_entry_table are made of (goes on at $00D5FE, not run); otherwise the first two longs of level_entry_table are -1 */
 void scan_password_cells(void)
 {
     uint32_t *entry = (uint32_t *)guest.level_entry_table;
 
-    if (guest.word_0266 != 0)
+    if (guest.world_b_files != 0)
         return;   /* goes on at $00D5FE */
     entry[0] = 0xFFFFFFFF;
     entry[1] = 0xFFFFFFFF;
@@ -12762,7 +12762,7 @@ void records_113c_reset(void)
  * file is not read; with a failed read of the level's map ($286 clear) the original loads the files again: not run */
 void load_pattern_data(const uint8_t *names)
 {
-    if (guest.word_0266 == 0) {
+    if (guest.world_b_files == 0) {
         load_unpacked((const char *)names + NAME_PATTERN, guest.entry_list);
         file_longs(guest.entry_list, 100);
         assign_addresses();
@@ -12930,7 +12930,7 @@ void load_weapons_file(const uint8_t *names)
 /* orig $01477E: the weapons file and the objects file (neither when the password is used) */
 void load_level_objects(const uint8_t *names)
 {
-    if (guest.word_0266 != 0)
+    if (guest.world_b_files != 0)
         return;
     load_weapons_file(names);
     load_objects_file(names);
@@ -13108,10 +13108,10 @@ void load_background_tiles(const uint8_t *name)
     int16_t count;
 
     guest.background = top - 33792;
-    blocks = (int16_t)table_17a6e[(int16_t)((guest.param_index - 1) * 2) + guest.word_0266];
+    blocks = (int16_t)table_17a6e[(int16_t)((guest.param_index - 1) * 2) + guest.world_b_files];
     guest.background = top - ((uint32_t)(uint16_t)blocks << 8);
     guest.background_tile_graphics = guest.background - 256;
-    guest.word_276 = 0;
+    guest.unused_276 = 0;
     load_picture_to_screen(name);
     count = (int16_t)(blocks - 1);
     if (count >= 119)
@@ -13325,7 +13325,7 @@ void image_draw_clipped(int16_t x, int16_t y, uint16_t image)
     }
     if (height < 0)
         return;   /* goes on at $01F02C */
-    guest.word_dd6 = 0;
+    guest.unused_dd6 = 0;
     guest.image_clip_skip_rows = 0;
     if (guest.image_draw_flags & 0x20)
         return;   /* goes on at $01F05E */
@@ -13336,7 +13336,7 @@ void image_draw_clipped(int16_t x, int16_t y, uint16_t image)
 
         blit_clipped(x, y, width, height, source, clip);
         guest.image_clip_skip_rows = kept;
-        guest.word_dd6 = 0;
+        guest.unused_dd6 = 0;
     }
 }
 
@@ -13381,9 +13381,9 @@ void level_state_init(void)
     guest.boss_phase_flags &= (uint8_t)~4;
     play_sound(0, 0);
     guest.sound_enabled = 1;
-    guest.flag_2b0 = 0;
-    guest.word_a68 = 0;
-    guest.word_19c = 4;
+    guest.unused_2b0 = 0;
+    guest.unused_a68 = 0;
+    guest.player_state = 4;
     guest.ladder_side = 0;
     guest.player_x = guest.start_x;
     guest.player_y = guest.start_y;
@@ -13399,32 +13399,32 @@ void level_state_init(void)
     guest.previous_player_pos[0] = guest.start_x;
     guest.previous_player_pos[1] = guest.start_y;
     scroll_to_player(guest.start_x, guest.start_y);
-    guest.word_19a = 0;
+    guest.player_frame = 0;
     guest.frame_toggle = 0;
     guest.frame_phase = 0;
-    guest.word_1f8 = 0;
-    guest.word_1ba = 0;
+    guest.unused_1f8 = 0;
+    guest.unused_1ba = 0;
     guest.door_entered = 0;
     guest.things_activated_at_column = 0;
     guest.message_state = 0;
     guest.tick_hold_296 = 0;
     guest.player_invulnerable = 0;
-    guest.flag_210 = 0;
+    guest.unused_210 = 0;
     guest.burst_respawn_delay = 0;
     guest.jump_boost_timer = 0;
     guest.text_index = 0;
     guest.visited_spots_count = 0;
     guest.level_ended = 0;
     guest.fall_distance = 0;
-    guest.word_3a1fa = 0;
+    guest.unused_3a1fa = 0;
     guest.hint_scrolling = 0;
-    guest.word_238 = 0;
+    guest.unused_238 = 0;
     guest.boss_load_request = 0;
     guest.shop_door_index = 0;
-    guest.word_280 = 0;
+    guest.unused_280 = 0;
     guest.creature_hit_flag = 0;
     guest.freeze_timer = 0;
-    guest.word_025c = 1;
+    guest.unused_25c = 1;
     guest.event_flags &= (uint8_t)~1;
     guest.event_flags &= (uint8_t)~4;
     guest.boss_phase_flags &= (uint8_t)~1;
@@ -13455,10 +13455,10 @@ void level_state_init(void)
             guest.armour_level = 1;
         guest.item_shown = 3;
         guest.item_chosen = 3;
-        guest.slots_30c[0] = -1;
-        guest.slots_30c[1] = -1;
-        guest.slots_30c[2] = -1;
-        guest.slots_30c[3] = -1;
+        guest.item_slots[0] = -1;
+        guest.item_slots[1] = -1;
+        guest.item_slots[2] = -1;
+        guest.item_slots[3] = -1;
         item_panels_make();
         for (int i = 0; i < 4; i++)
             guest.score_words[i] = 0;
@@ -13512,7 +13512,7 @@ void level_state_init(void)
     guest.particle_burst_active = 0;
     guest.particle_glyph_step = 0;
     guest.particle_burst_counter = 0;
-    guest.word_1f2 = 4;
+    guest.unused_1f2 = 4;
     guest.last_drop_frame = -1;
     guest.burst_marks[0] = -1;
     guest.burst_marks[3] = -1;
@@ -14061,8 +14061,8 @@ static void set_level_pointers(void)
  * the template, the objects, weapons, text and map files are loaded, the sprites of the level, the pictures; the state is
  * made (level_state_init), two frames are drawn (draw_start_frame) behind the loading screen, which is then faded in: the game loop goes
  * on from here.  (The original puts the stack back to its saved value at $2464; that is not needed here) */
-/* orig $00247C to $002AA8 (the end of its part that the loading of a world also runs): the level's names are made from the template (the `b` files of a world that follows another, word_0266 not 0), the objects,
- * weapons, text and map files are read, the sprites of the level and the pictures.  With word_0384 not 0 (the loading of a world in the middle of a play, $013532) it ends where the original goes on at $013568 */
+/* orig $00247C to $002AA8 (the end of its part that the loading of a world also runs): the level's names are made from the template (the `b` files of a world that follows another, world_b_files not 0), the objects,
+ * weapons, text and map files are read, the sprites of the level and the pictures.  With world_loading not 0 (the loading of a world in the middle of a play, $013532) it ends where the original goes on at $013568 */
 static void load_level_files(void)
 {
     uint8_t *names = guest.level_names;
@@ -14072,7 +14072,7 @@ static void load_level_files(void)
 
     guest.background = guest.memory_base;
     select_params();
-    if (guest.word_0266 != 0)
+    if (guest.world_b_files != 0)
         letter = 'b';
     do {
         c = *template++;
@@ -14106,13 +14106,13 @@ static void load_level_files(void)
     scan_password_cells();
     check_flag_286();
     build_thing_kinds();
-    if (guest.word_0266 == 0) {
+    if (guest.world_b_files == 0) {
         guest.entry_list[0].address = 0xFFFFFFFF;
         guest.entry_list[0].size = 0xFFFFFFFF;
     }
     load_pattern_data(names);
     guest.image_draw_flags |= 0x10;
-    if (guest.word_0266 == 0) {
+    if (guest.world_b_files == 0) {
         const uint32_t *source = &shift_tables[(int16_t)((guest.param_index - 1) * 10)];
 
         guest.line_text = guest.line_text_default;
@@ -14133,7 +14133,7 @@ static void load_level_files(void)
         guest.asset_flag = -1;
         guest.asset_end_0ca2 = guest.asset_mem_end;
         guest.asset_table_0ca6 = (uint8_t *)guest.asset_table_end;
-        if (guest.word_0384 == 0) {
+        if (guest.world_loading == 0) {
             guest.sprites_name_place = names + NAME_SPRITES;
             assets_load((const char *)names + NAME_SPRITES, guest.palette_words, guest.asset_mem_end, guest.asset_table_end);
             guest.menu_state_25a = 0;
@@ -14146,7 +14146,7 @@ static void load_level_files(void)
     guest.image_draw_flags |= 2;
     guest.image_draw_flags |= 8;
     guest.clip_rect_list = (const int16_t *)clip_rectangles;
-    if (guest.word_0384 != 0)
+    if (guest.world_loading != 0)
         return;   /* goes on at $013568 */
 }
 
@@ -14159,7 +14159,7 @@ void begin_quest(void)
     guest.param_index = host_start_level();
     guest.play_starting = 1;   /* (the start of a play: the score, the lives and the weapons are made; the next level of a play does not) */
     guest.menu_active = 0;
-    guest.word_0266 = 0;
+    guest.world_b_files = 0;
     level_begin();
 }
 
@@ -14174,7 +14174,7 @@ static void level_begin(void)
     background_draw();
     loading_level_screen();
     load_level_files();
-    if (guest.word_0384 != 0)
+    if (guest.world_loading != 0)
         return;   /* goes on at $013568 */
 
     /* $002AAA */
@@ -14183,7 +14183,7 @@ static void level_begin(void)
     copper_colors_restore();
     hud_digits_load();
     clear_entry_table();
-    guest.word_276 = 0;
+    guest.unused_276 = 0;
     guest.message_shown = 0;
     guest.tick_hold_26c = 0;
     clear_work_area();
@@ -14205,7 +14205,7 @@ static void level_begin(void)
     set_near_flags_all();
     activate_records_now();
     guest.frame_wait = 2;
-    guest.word_1de = 0;
+    guest.unused_1de = 0;
     fill_cce_ones();
     update_energy_display();
     if (guest.menu_active != 0) {
@@ -14233,7 +14233,7 @@ static void level_begin(void)
     level_next_fade = 0;
     fade_in(guest.palette_words, 1);
     guest.draw_routine_index = 1;
-    guest.word_ddc = 0;
+    guest.unused_ddc = 0;
     guest.image_draw_flags |= 8;
     guest.image_draw_flags |= 2;
     guest.tick_hold_26c = 0;
@@ -14300,13 +14300,13 @@ static void world_set_up(void)
 }
 
 /* orig $013532 to $0135C4: the next world of the level is loaded from the disk while the play goes on (the end of the world's record sets it): the tick count is kept, the files are read the way a level's
- * are (the `b` ones: word_0266 is 1), the records of the world are made, the shop's door is set (shop_door_index is as it was after) and the sound file is read again.  The loading takes the frames of the disk */
+ * are (the `b` ones: world_b_files is 1), the records of the world are made, the shop's door is set (shop_door_index is as it was after) and the sound file is read again.  The loading takes the frames of the disk */
 static void level_load_world(void)
 {
     uint32_t saved_ticks = guest.tick_count;
 
-    guest.word_0384 = 1;
-    guest.word_0266 = 1;
+    guest.world_loading = 1;
+    guest.world_b_files = 1;
     play_sound(0, 0);
     wait_vblank();
     guest.tick_hold_38a = 1;
@@ -14321,7 +14321,7 @@ static void level_load_world(void)
     world_set_up();
     guest.shop_door_index--;
     guest.score_redraw = 0xFFFF;
-    guest.word_0384 = 0;
+    guest.world_loading = 0;
     file_read((const char *)sound1_name, guest.picture_buffer);
     drives_idle();
     host_world_load_wait();   /* (the original's drive takes about 600 frames for the files of the world and its sprites) */
@@ -14379,18 +14379,18 @@ void world_end_auto_walk(void)
         if (guest.player_state != 0)
             guest.game_stick = 4;
         else {
-            player_end(guest.word_19a);
+            player_end(guest.player_frame);
             return;
         }
     } else {
         if (guest.player_state != 1)
             guest.game_stick = 8;
         else {
-            player_end(guest.word_19a);
+            player_end(guest.player_frame);
             return;
         }
     }
-    player_state_run(guest.player_state, guest.word_19a);
+    player_state_run(guest.player_state, guest.player_frame);
 }
 
 /* orig $00328A: the screen is copied and "LOADING" and "PLEASE  WAIT" are written on it */
@@ -16138,7 +16138,7 @@ static void game_won_screen(void)
     if (guest.armour_level >= 4)
         guest.armour_level = 4;
     guest.param_index = 1;
-    guest.word_0266 = 0;
+    guest.world_b_files = 0;
     guest.score_redraw = 0xFFFF;
     clear_shot_lists();
     reset_shot_block();
@@ -16149,7 +16149,7 @@ static void game_won_screen(void)
     guest.item_shown = 3;
     guest.item_chosen = 3;
     for (int i = 0; i < 4; i++)
-        guest.slots_30c[i] = -1;
+        guest.item_slots[i] = -1;
     item_panels_make();
     guest.boss4_death_wait_switch = 0x4E75;
     level_next_wait = 1;   /* (the lockstep: the level's loading waits for the original's reads, as after the end of a level) */
@@ -16166,7 +16166,7 @@ static void password_start_level(void)
     guest.shop_door_index = 0;
     guest.shop_score_shown = guest.score_total_1fc;
     guest.cursor_pos = 0;
-    guest.word_0384 = 0;
+    guest.world_loading = 0;
     guest.shop_repeat = 0;
     guest.shop_held[0] = 0;
     guest.shop_selected = -1;
@@ -16217,7 +16217,7 @@ void password_entered(void)
     guest.param_index = (uint16_t)level;
     guest.menu_active = 1;
     guest.play_starting = 1;
-    guest.word_0266 = 0;
+    guest.world_b_files = 0;
     level_next_wait = 1;   /* (the lockstep: the level's loading waits for the original's reads, as after the end of a level) */
     level_begin();
 }
@@ -16984,7 +16984,7 @@ static void shop_run(void)
         host_fade_lag(0);
     }
 
-    uint16_t saved_25c = shop_from_password ? 1 : guest.word_025c;
+    uint16_t saved_25c = shop_from_password ? 1 : guest.unused_25c;
     shop_from_password = 0;
     int16_t saved_x_offset = guest.x_offset;
 
@@ -17064,7 +17064,7 @@ static void shop_run(void)
     guest.message_words[1] = guest.message_words[3] = guest.palette_words[6];
     guest.message_words[4] = guest.message_words[6] = guest.palette_words[4];
     guest.message_words[5] = guest.message_words[7] = guest.palette_words[4];
-    guest.word_025c = 1;
+    guest.unused_25c = 1;
     guest.copper_setup_done = 0;
     host_fade_bind();   /* (the lockstep: the fade-in begins when the original calls its own) */
     host_fade_lag(0);
@@ -17164,7 +17164,7 @@ static void shop_run(void)
     copper_list_make();
     clear_work_area();
     guest.x_offset = saved_x_offset;
-    guest.word_025c = saved_25c;
+    guest.unused_25c = saved_25c;
     copper_colors_restore();
     host_fade_bind();   /* (the lockstep: the fade-in begins when the original calls its own) */
     host_fade_lag(2);

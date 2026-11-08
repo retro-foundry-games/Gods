@@ -418,7 +418,7 @@ const uint32_t table_18714[10] = {
     0x00017e12, 0x00017e16,
 };
 
-/* $10A34  the first eight bytes of the message fn_10976 makes */
+/* $10A34  the first eight bytes of the message orig_hint_message makes */
 const uint8_t text_10a34[8] __attribute__((aligned(1))) = {
     0x11, 0x20, 0x48, 0x69, 0x6e, 0x74, 0x20, 0x11,
 };
@@ -620,7 +620,7 @@ const uint32_t shift_tables[40] = {
     0x01ffffff, 0xe0000c1f, 0xffffe000, 0x00000000,
 };
 
-/* $17A6E  for each level two words (by word_0266): how many 32 by 16 pixel blocks its background tiles have */
+/* $17A6E  for each level two words (by world_b_files): how many 32 by 16 pixel blocks its background tiles have */
 const uint16_t table_17a6e[8] = {
     0x006e, 0x007e, 0x0085, 0x0076, 0x007c, 0x006e, 0x0076, 0x007b,
 };

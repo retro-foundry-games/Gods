@@ -152,7 +152,7 @@ void memory_map_init(void)
     p += 0x140;
     guest.level_map = p;
     p += 0x4000;
-    guest.ptr_0cc2 = p;
+    guest.unused_buffer_200 = p;
     p += 0x200;
     guest.copper_colours = p;
     p += 0xc0;
@@ -162,13 +162,13 @@ void memory_map_init(void)
     p += 0x960;
     guest.message_offsets = p;
     p += 0x50;
-    guest.ptr_0bce = p;
+    guest.unused_buffer_10 = p;
     p += 0xa;
     guest.bolt_slots = p;
     p += 0xa0;
     guest.path_records = (struct PathRecord *)p;
     p += 0x258;
-    guest.ptr_0bb2 = p;
+    guest.unused_scratch_alias = p;
     guest.scratch_buffer = p;
     p += 0x300;
     guest.message_text_block = p;
@@ -202,9 +202,9 @@ void menu_boot(void)
     guest.scroll_ease_phase = 0;
     guest.message_arg = 0;
     guest.message_current = 0;
-    guest.word_5418 = 0;
+    guest.unused_5418 = 0;
     guest.tick_count = 0;
-    guest.word_0240 = 0;
+    guest.unused_240 = 0;
     guest.sound_enabled = 0;
     guest.screen_prepared = 0;
     guest.frame_wait = 2;
@@ -226,9 +226,9 @@ void menu_boot(void)
     for (int k = 1; k <= 9; k++)
         *(uint32_t *)(guest.creature_types + 0x24 * k) = *(uint32_t *)guest.creature_types + 0x8c * k;
     guest.param_index = 0;
-    guest.word_025c = 0;
-    guest.word_0266 = 0;
-    guest.word_0384 = 0;
+    guest.unused_25c = 0;
+    guest.world_b_files = 0;
+    guest.world_loading = 0;
     guest.menu_active = 0;
     guest.has_continue = 0;
     guest.param_index = 1;
@@ -239,7 +239,7 @@ void menu_boot(void)
     guest.asset_table_28f0 = (uint8_t *)guest.asset_table_end;
     guest.asset_end_0ca2 = guest.asset_mem_end;
     guest.asset_table_0ca6 = (uint8_t *)guest.asset_table_end;
-    guest.word_28ea = 0;
+    guest.unused_28ea = 0;
 
     /* the memory end is moved back to the start of the last sprite's data */
     uint8_t *last = (uint8_t *)(uintptr_t)((uint32_t *)guest.asset_table_end)[-1];

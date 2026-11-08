@@ -388,7 +388,7 @@ struct ScriptRecord {
     } condition[3];
     int16_t x;                /* +12 where it is about (a position in the level) */
     int16_t y;                /* +14 */
-    uint16_t effect;          /* +16 which routine of dispatch_18ba4 does its part (the top bit: another way) */
+    uint16_t effect;          /* +16 which routine of finished_record_dispatch does its part (the top bit: another way) */
     int16_t effect_argument;  /* +18 */
     uint16_t message;         /* +20 the number of a message (the offset is in message_offsets), when it has one */
     int16_t unused_22;

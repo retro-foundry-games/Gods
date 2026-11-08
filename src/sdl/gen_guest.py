@@ -4,7 +4,7 @@
     gen_guest.py SRC_DIR OUT_DIR
 
 The game keeps its variables in struct Gods (game.h, guest.c).
-  g_stubs.c           the symbols that are routines of the original's code (`void fn_30c6(void)` ...) are not in the host program:
+  g_stubs.c           the symbols that are routines of the original's code (`void orig_scroll_push(void)` ...) are not in the host program:
                       they are functions that log the call and return
   guest_tables.h      the `table` lines (constant data of data.c): guest.c copies them to their addresses; they are native-endian
                       C data, the bytes of the disk image are not, so the loader keeps them

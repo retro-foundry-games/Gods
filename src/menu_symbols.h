@@ -12,73 +12,73 @@ extern void original_start(void);   /* $0240C  the original's start-up after the
 extern void original_begin(void);   /* $0651E  the original's Begin Quest (replaced by begin_quest in game_h.c, no longer called) */
 extern void original_continue(void);   /* $06650  ... and Continue Game */
 extern void original_after_password(void);   /* $064C2  the original's code after the password screen */
-extern void fn_30c6(void);   /* $030C6 */
-extern void fn_417c(void);   /* $0417C */
-extern void fn_6ed0(void);   /* $06ED0 */
-extern void fn_33d4(void);   /* $033D4 */
-extern void fn_c58e(void);   /* $0C58E */
-extern void fn_cb0e(void);   /* $0CB0E */
-extern void fn_c406(void);   /* $0C406 */
-extern void fn_57fc(void);   /* $057FC */
-extern void fn_12e08(void);   /* $12E08 */
-extern void fn_5af6(void);   /* $05AF6 */
-extern void fn_5496(void);   /* $05496 */
-extern void fn_3c94(void);   /* $03C94 */
-extern int16_t fn_fdba(void);   /* $0FDBA */
-extern void fn_12710(void);   /* $12710 */
-extern void fn_6002(void);   /* $06002 */
-extern void fn_178c6(void);   /* $178C6 */
-extern void fn_1924c(void);   /* $1924C */
-extern void fn_194d0(void);   /* $194D0 */
-extern void fn_17cc0(void);   /* $17CC0 */
-extern void fn_ba34(void);   /* $0BA34 */
-extern void fn_17e9c(void);   /* $17E9C */
-extern void fn_3ea4(void);   /* $03EA4 */
-extern void fn_15b04(void);   /* $15B04 */
-extern void fn_15cc4(void);   /* $15CC4 */
-extern void fn_836c(void);   /* $0836C */
-extern void fn_3f8e(void);   /* $03F8E */
-extern void fn_18d14(void);   /* $18D14 */
-extern void fn_10368(void);   /* $10368 */
-extern void fn_9912(void);   /* $09912 */
-extern void fn_16aee(void);   /* $16AEE */
-extern void fn_db04(void);   /* $0DB04 */
-extern void fn_190f2(void);   /* $190F2 */
-extern void fn_e142(void);   /* $0E142 */
-extern void fn_de54(void);   /* $0DE54 */
-extern void fn_9ae6(void);   /* $09AE6 */
-extern void fn_3c56(void);   /* $03C56 */
-extern void fn_8a54(void);   /* $08A54 */
-extern void fn_7292(void);   /* $07292 */
-extern void fn_e3a2(void);   /* $0E3A2 */
-extern void fn_e486(void);   /* $0E486 */
-extern void fn_e76c(void);   /* $0E76C */
-extern void fn_ea52(void);   /* $0EA52 */
-extern void fn_ed38(void);   /* $0ED38 */
-extern void fn_f01e(void);   /* $0F01E */
-extern void fn_d47e(void);   /* $0D47E */
-extern void fn_d314(void);   /* $0D314 */
-extern void fn_d6b8(void);   /* $0D6B8 */
-extern void fn_d898(void);   /* $0D898 */
-extern void fn_bc1a(void);   /* $0BC1A */
-extern void fn_3dfc(void);   /* $03DFC */
-extern void fn_8452(void);   /* $08452 */
-extern void fn_6136(void);   /* $06136 */
-extern void fn_1843e(void);   /* $1843E */
-extern void fn_c374(void);   /* $0C374 */
-extern void fn_5842(void);   /* $05842 */
-extern void fn_5e02(void);   /* $05E02 */
-extern void fn_3806(void);   /* $03806 */
-extern void fn_3436(void);   /* $03436 */
-extern void fn_77e6(void);   /* $077E6 */
-extern void fn_7906(void);   /* $07906 */
-extern void fn_4070(void);   /* $04070 */
-extern void fn_73d2(void);   /* $073D2 */
-extern void fn_54c4(void);   /* $054C4 */
-extern void fn_5608(void);   /* $05608 */
-extern void fn_5d76(void);   /* $05D76 */
-extern void fn_7faa(void);   /* $07FAA */
-extern void fn_10976(void);   /* $10976  game_d: the pick-up handler 18 of the table at $1067A (game_e writes it in C) */
+extern void orig_scroll_push(void);   /* $030C6 */
+extern void orig_update_records(void);   /* $0417C */
+extern void orig_update_creatures(void);   /* $06ED0 */
+extern void orig_world_end_auto_walk(void);   /* $033D4 */
+extern void orig_boss_sparks_move(void);   /* $0C58E */
+extern void orig_boss2_shots_move(void);   /* $0CB0E */
+extern void orig_boss_shots_move(void);   /* $0C406 */
+extern void orig_draw_score_panel(void);   /* $057FC */
+extern void orig_level_end_screen(void);   /* $12E08 */
+extern void orig_check_high_scores(void);   /* $05AF6 */
+extern void orig_set_shutter_wait(void);   /* $05496 */
+extern void orig_use_lever(void);   /* $03C94 */
+extern int16_t orig_claim_free_entries(void);   /* $0FDBA */
+extern void orig_player_cell_entries(void);   /* $12710 */
+extern void orig_fill_buffer(void);   /* $06002 */
+extern void orig_draw_background(void);   /* $178C6 */
+extern void orig_find_used_pickup_record(void);   /* $1924C */
+extern void orig_do_nothing_b(void);   /* $194D0 */
+extern void orig_update_crumbles(void);   /* $17CC0 */
+extern void orig_boss4_death_wait(void);   /* $0BA34 */
+extern void orig_redraw_record_images(void);   /* $17E9C */
+extern void orig_activate_records(void);   /* $03EA4 */
+extern void orig_run_object_lists(void);   /* $15B04 */
+extern void orig_fn_15cc4_c(void);   /* $15CC4 */
+extern void orig_falcon_seek_target(void);   /* $0836C */
+extern void orig_draw_effects(void);   /* $03F8E */
+extern void orig_draw_marks_316(void);   /* $18D14 */
+extern void orig_player_control(void);   /* $10368 */
+extern void orig_count_zones(void);   /* $09912 */
+extern void orig_invulnerability_step(void);   /* $16AEE */
+extern void orig_bats_run(void);   /* $0DB04 */
+extern void orig_dropped_sparkle_update(void);   /* $190F2 */
+extern void orig_thrown_things_update(void);   /* $0E142 */
+extern void orig_archers_update(void);   /* $0DE54 */
+extern void orig_update_walker_groups(void);   /* $09AE6 */
+extern void orig_mark_player_cells(void);   /* $03C56 */
+extern void orig_update_monsters(void);   /* $08A54 */
+extern void orig_draw_puffs(void);   /* $07292 */
+extern void orig_falling_things_update(void);   /* $0E3A2 */
+extern void orig_unit0_update(void);   /* $0E486 */
+extern void orig_unit1_update(void);   /* $0E76C */
+extern void orig_unit2_update(void);   /* $0EA52 */
+extern void orig_unit3_update(void);   /* $0ED38 */
+extern void orig_unit4_update(void);   /* $0F01E */
+extern void orig_next_table_entry(void);   /* $0D47E */
+extern void orig_find_used_stone_record(void);   /* $0D314 */
+extern void orig_pods_update(void);   /* $0D6B8 */
+extern void orig_spores_update(void);   /* $0D898 */
+extern void orig_boss3_death_fall(void);   /* $0BC1A */
+extern void orig_move_debris(void);   /* $03DFC */
+extern void orig_falcon_draw(void);   /* $08452 */
+extern void orig_update_bolts(void);   /* $06136 */
+extern void orig_bolts_update(void);   /* $1843E */
+extern void orig_boss_death_score(void);   /* $0C374 */
+extern void orig_update_score_display(void);   /* $05842 */
+extern void orig_update_energy_display(void);   /* $05E02 */
+extern void orig_draw_item_row(void);   /* $03806 */
+extern void orig_game_nothing(void);   /* $03436 */
+extern void orig_face_bolts_move(void);   /* $077E6 */
+extern void orig_face_bolt_pieces_move(void);   /* $07906 */
+extern void orig_chest_pieces_move(void);   /* $04070 */
+extern void orig_move_shards(void);   /* $073D2 */
+extern void orig_draw_shutter(void);   /* $054C4 */
+extern void orig_update_item_panel(void);   /* $05608 */
+extern void orig_draw_energy_bar(void);   /* $05D76 */
+extern void orig_update_falling_thing(void);   /* $07FAA */
+extern void orig_hint_message(void);   /* $10976  game_d: the pick-up handler 18 of the table at $1067A (game_e writes it in C) */
 extern volatile uint8_t video_address_high;   /* $FF8207  the Atari ST's video address register (high byte): the game reads it as the seed of its random numbers; the Amiga has no such address */
 extern volatile uint8_t video_address_low;   /* $FF8209  ... and the low byte */
 extern const struct CreatureTemplate creature_templates[51];   /* $1C698  what a group is: its draw kind, move and step routines and its box (the pointers of table_1c678 point into it) */
@@ -112,7 +112,7 @@ extern const uint16_t frame_map_125ac[6];   /* $125AC  the frame after a frame o
 extern const uint32_t state_table[58];   /* $10280  29 states of the player, two longs each: the first sprite and the routine (the C does not use the second) */
 extern const char text_power[12];   /* $12CEE  "Power", 0, "Value", 0 (text_power + 6 is "Value") */
 extern const uint32_t table_18714[10];   /* $18714  the routines (take_creature_entry, finish_script_record, ...) the cell kinds' states name */
-extern const uint8_t text_10a34[8];   /* $10A34  the first eight bytes of the message fn_10976 makes */
+extern const uint8_t text_10a34[8];   /* $10A34  the first eight bytes of the message orig_hint_message makes */
 extern const uint8_t fall_steps_f2[52];   /* $000F2  game_d: signed bytes: how far a thing falls (added to y) at each step 0 to 23 of its flag byte (steps 24 to 37 read on into the next bytes, the sounds: up to $12F, where clip_rectangles is from $128) */
 extern const uint16_t frames_44b4[4];   /* $044B4  game_d: the four glyphs of the sprite 280, by glyph_frame */
 extern const uint16_t frames_44bc[4];   /* $044BC  game_d: ... of the sprite 279 */
@@ -140,7 +140,7 @@ extern const uint16_t mask_table[32];   /* $17380  draw: the masks of the screen
 extern const uint8_t level_name_template[196];   /* $02752  file names of a level: `?` is the level's number, `*` its letter (a or b) */
 extern const uint32_t level_starts[4];   /* $028DA  where the player starts each level: the x in the high word, the y in the low */
 extern const uint32_t shift_tables[40];   /* $02A0A  for each level (ten longs): the first is the shift register's start, the others its source */
-extern const uint16_t table_17a6e[8];   /* $17A6E  for each level two words (by word_0266): how many 32 by 16 pixel blocks its background tiles have */
+extern const uint16_t table_17a6e[8];   /* $17A6E  for each level two words (by world_b_files): how many 32 by 16 pixel blocks its background tiles have */
 extern const uint16_t table_fa5c[4];   /* $0FA5C  the glyph of the pick-ups of each level (pickup_glyph) */
 extern const ByteP table_143b8[4];   /* $143B8  for each level the list of spots that level_end_record points to */
 extern const struct LevelEnds level_ends[1];   /* $143D8  the lists of the four levels' ends (struct LevelEnd, 34 bytes each: 4, 5, 3 and 5; two bytes before the second list, which the original has at $14462): the first level's is three spots, six, eight and twelve, the second's six, ten, eleven (the guardian's), fifteen and the level's end ($144E8 in the original, here 2 bytes later) */
