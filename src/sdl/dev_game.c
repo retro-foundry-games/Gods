@@ -40,7 +40,7 @@ static int record_key(int raw, int down, void *arg)
 }
 
 /* the quicksave (F5) and the quickload (F9): the window asks (host_quick_request), the program's thread does it at the top of an iteration of the loop, where nothing of the game
- * is half done on its stack: the memory the program has (struct Guest, the chips' registers) is written to a file or read back from it, as the host has it (native
+ * is half done on its stack: the memory the program has (struct Gods, the chips' registers) is written to a file or read back from it, as the host has it (native
  * words).  The state is what the memory holds; what the host keeps outside it (the sound mixer's voices, the window) is not. */
 volatile int host_quick_request;   /* devmain.c: 1 F5, 2 F9 */
 const char *host_quicksave_file = "gods-quicksave.bin";

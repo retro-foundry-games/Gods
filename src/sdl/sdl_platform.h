@@ -1,12 +1,12 @@
 /* Gods on the host (SDL port): what amiga/platform.h does on the Amiga.  The program's memory is at the Amiga's addresses (the
- * block is struct Guest), the custom chips and the CIAs are objects of plain memory, and the blitter runs when it is started. */
+ * block is struct Gods), the custom chips and the CIAs are objects of plain memory, and the blitter runs when it is started. */
 #ifndef GODS_SDL_PLATFORM_H
 #define GODS_SDL_PLATFORM_H
 
 #include <stdint.h>
 
-struct Guest;
-extern struct Guest guest;   /* guest_struct.h */
+struct Gods;
+extern struct Gods guest;   /* game.h */
 
 uint32_t guest_address(uint32_t address);   /* guest.c: an address of the original's memory (a pointer in an imported RAM) as this program's pointer: into a table that has it, else into the block */
 

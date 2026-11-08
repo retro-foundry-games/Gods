@@ -6,7 +6,7 @@
 
 #include "menu_types.h"
 
-#include "guest_struct.h"   /* the variables: members of struct Guest, at the offsets of their addresses (scripts/gen_guest_struct.py); `guest.NAME` */
+#include "game.h"   /* struct Gods: the variables, members at the offsets of their addresses (scripts/gen_guest_struct.py); `guest.NAME` */
 
 extern void original_start(void);   /* $0240C  the original's start-up after the chips are set up: it loads the copy protection's stub and runs it (not in C) */
 extern void original_begin(void);   /* $0651E  the original's Begin Quest (replaced by begin_quest in game_h.c, no longer called) */

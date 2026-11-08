@@ -4,7 +4,7 @@
 #   make -f Makefile.web serve      the folder is served on http://localhost:8080/ with the headers a page that uses threads needs (scripts/serve_web.py)
 #   make -f Makefile.web clean
 #
-# The program's memory is one struct (struct Guest, guest_struct.h): nothing of it is at a fixed address.  The program runs on a thread of its own (a web worker, as on the desktop), so
+# The program's memory is one struct (struct Gods, game.h): nothing of it is at a fixed address.  The program runs on a thread of its own (a web worker, as on the desktop), so
 # the page needs cross-origin isolation (SharedArrayBuffer).  The disk images are not in the build: the page asks for them (web/shell.html).
 # Run inside the flake's shell (nix develop projects/gods/native): it has emcc, cmake and ninja; GODS_SDL3_SOURCE_DIR is SDL3's source, built here for Emscripten once.
 # `nix build projects/gods/native#web` does the same in the sandbox (GODS_NO_NIX=1: no shell of its own; SDL3_PREFIX: the SDL3 the flake built for Emscripten; W: the output folder).

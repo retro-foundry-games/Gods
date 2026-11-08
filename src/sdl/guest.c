@@ -1,6 +1,6 @@
 /* Gods SDL port: the guest memory and the chips' registers (the loading of images into it is guest_load.c).
  *
- * The program's memory is one block, struct Guest (guest_struct.h): its variables are members at the offsets of the Amiga's addresses, and its end is the heap the program hands out.  The registers of the custom chips
+ * The program's memory is one block, struct Gods (game.h): its variables are members at the offsets of the Amiga's addresses, and its end is the heap the program hands out.  The registers of the custom chips
  * and of the CIAs are objects of their own.  Here: the block and the chips, where an address of the original's memory is (tables of data.c, or the block), the reset and the port's own save state. */
 #include <stdint.h>
 #include <stdio.h>
@@ -11,7 +11,7 @@
 #include "guest.h"
 #include "guest_tables.h"
 
-struct Guest guest __attribute__((aligned(16)));
+struct Gods guest __attribute__((aligned(16)));
 /* the Atari ST's video address registers that the program reads as the seed of its random numbers: what the emulated Amiga gives */
 volatile uint8_t video_address_high = 0x64;
 volatile uint8_t video_address_low = 0xFF;
@@ -67,7 +67,7 @@ void guest_reset(void)
     host_cia_raw[0x1001] = 0xff;   /* CIA A port A: no fire button down */
 }
 
-/* ---- the port's own save state: struct Guest as it is (and the registers of the custom chips) ----------------------------------------------------------------------------------------------------
+/* ---- the port's own save state: struct Gods as it is (and the registers of the custom chips) ----------------------------------------------------------------------------------------------------
  * The file is the memory of the program, which is one block: a header (the magic, the block's size and the address it was at), the block and the chips' registers.  The pointers in it are the block's own
  * addresses: when the block is at another address now (another build) every long that was a pointer into it is moved by the difference (the longs of the block are at even offsets). */
 #define STATE_MAGIC 0x32535147u   /* "GQS2" */

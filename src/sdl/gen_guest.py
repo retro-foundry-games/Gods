@@ -3,7 +3,7 @@
 
     gen_guest.py SRC_DIR OUT_DIR
 
-The game keeps its variables in struct Guest (guest_struct.h, guest.c).
+The game keeps its variables in struct Gods (game.h, guest.c).
   g_stubs.c           the symbols that are routines of the original's code (`void fn_30c6(void)` ...) are not in the host program:
                       they are functions that log the call and return
   guest_tables.h      the `table` lines (constant data of data.c): guest.c copies them to their addresses; they are native-endian
