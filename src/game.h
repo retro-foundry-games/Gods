@@ -1036,12 +1036,10 @@ struct Gods {
     int16_t falling_things[50];   /* $011B4 */
     uint16_t falling_things_count;   /* $01218 */
     uint16_t bat_count;   /* $0121A */
-    union {   /* the variables that overlap */
-        struct { int16_t frame_things[66]; };   /* $0121C */
-        struct { PAD(120) uint16_t list_count_1294; };   /* $01294 */
-        struct { PAD(122) uint32_t screen_list_cursor; };   /* $01296 */
-        uint8_t bytes_0121c[132];
-    };
+    int16_t frame_things[60];   /* $0121C */
+    uint16_t list_count_1294;   /* $01294 */
+    uint32_t screen_list_cursor;   /* $01296 */
+    PAD(6)
     struct WalkGroup walker_groups[10];   /* $012A0 */
     struct Monster monster_records[10];   /* $01354 */
     PAD(722)
@@ -1203,11 +1201,8 @@ struct Gods {
     PAD(128)
     struct Unit units[5];   /* $18740 */
     PAD(1004)
-    union {   /* the variables that overlap */
-        struct { void (*finished_record_dispatch[484])(void); };   /* $18BA4 */
-        struct { PAD(60) void (*record_kind_dispatch[469])(void); };   /* $18BE0 */
-        uint8_t bytes_18ba4[1936];
-    };
+    void (*finished_record_dispatch[15])(void);   /* $18BA4 */
+    void (*record_kind_dispatch[469])(void);   /* $18BE0 */
     struct Slot8 pickup_spots[20];   /* $19334 */
     PAD(130)
     uint16_t pickup_entries[60];   /* $19456 */
@@ -1290,11 +1285,11 @@ struct Gods {
     int16_t effects[100];   /* $3A196 */
     struct Rec6 entry_table[50];   /* $3A25E */
     PAD(742)
+    uint8_t program_end[217488];   /* $3A670 */
     union {   /* the variables that overlap */
-        struct { uint8_t program_end[286096]; };   /* $3A670 */
-        struct { PAD(217488) uint8_t screen_1[68608]; };   /* $6F800 */
-        struct { PAD(251280) uint8_t screen_2[34816]; };   /* $77C00 */
-        uint8_t bytes_3a670[286096];
+        struct { uint8_t screen_1[68608]; };   /* $6F800 */
+        struct { PAD(33792) uint8_t screen_2[34816]; };   /* $77C00 */
+        uint8_t bytes_6f800[68608];
     };
     PAD(0)
 #ifdef GODS_HEAP_IN_GUEST   /* the host's builds: the program's heap is the end of the block */

@@ -307,7 +307,7 @@ uncut_hit_box_height           0x000003a2 int16_t %s    the height hit_box_extra
 creature_hit_flag           0x000003a6 uint16_t %s
 message_base           0x00000b66 uint8_t *%s    the base the message offsets (words) point from
 condition_results          0x00000300 int16_t %s[3]  the three results of the calls of finish_script_record (-1: yes)
-finished_record_dispatch    0x00018ba4 void (*%s[])(void)   the routines the kind of a finished record names
+finished_record_dispatch    0x00018ba4 void (*%s[15])(void)   the routines the kind of a finished record names
 claimed_entries          0x00000b92 uint16_t *%s[3]  the free entry of each of the three units that claim_free_entries found (0: none)
 claimed_entry_ids       0x000002ea int16_t %s[3]    the number of that entry (1, 4, 7 for the first unit, 10, 13, 16 and 19, 22, 25)
 single_claim_taken           0x000002f0 uint16_t %s
@@ -622,7 +622,7 @@ axe_steps         0x0000066e  int16_t %s[27]  the magic axe's nine shots' steps
 ball_pillars      0x00000a6e  int16_t %s[21]  the ball's pillars of fire
 ball_pieces       0x00000e6c  int16_t %s[50]  its burst's pieces
 guardian         0x000004e0  struct Guardian %s   the guardians' state: the routine of every frame, the callback and the area of their variables
-frame_things         0x0000121c  int16_t %s[66]  the list of things that list_count_1294 counts
+frame_things         0x0000121c  int16_t %s[60]  the list of things that list_count_1294 counts
 bat_count        0x0000121a  uint16_t %s
 game_loop_jump         0x00002c20  uint8_t %s[6]   the original's code at $2C20: the jump that game_loop_install puts there
 irq_vectors       0x00000068  uint32_t %s[3]  the interrupt vectors the start-up sets (the keyboard's, the blank's, the audio's)
