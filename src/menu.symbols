@@ -52,8 +52,7 @@ buffer_state      0x00000de4  struct Rec6 %s[2]   what is kept for each of the t
 vbl_saturating    0x0001d058  volatile uint16_t %s     frames since the last flip, stops at $7FFF
 vbl_count         0x0001d05a  volatile uint16_t %s     frames, wraps
 copper_colors     0x00004e3a  uint16_t %s[]   the part of the copper list that has the moves to COLOR01 (the colour of each band)
-copper_list_a     0x00004d8a  struct CopperListA %s   the copper list of one screen
-copper_list_b     0x00004dde  struct CopperListB %s   ... and of the other
+copper_lists      0x00004d8a  struct CopperLists %s   the copper lists of the two screens and the tail they share
 screen_1          0x0006f800  uint8_t %s[]    the two screens
 screen_2          0x00077c00  uint8_t %s[]
 copper_setup_done 0x000002f2  uint16_t %s     non-zero: the copper list's two moves at copper_move_a / copper_move_b are set already

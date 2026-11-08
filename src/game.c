@@ -12977,8 +12977,8 @@ void copper_list_make(void)
     uint16_t line;
 
     wait_vblank();
-    guest.copper_list_b.move_a = 0x00840000;
-    guest.copper_list_b.move_b = 0x00865246;
+    guest.copper_lists.tail.move_a = 0x00840000;
+    guest.copper_lists.tail.move_b = 0x00865246;
     if (count >= 0) {
         int16_t half = (int16_t)(spacing + 1) >> 1;
 

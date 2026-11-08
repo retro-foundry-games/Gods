@@ -672,27 +672,26 @@ struct CopperHead {
 };
 LAYOUT_ASSERT(sizeof(struct CopperHead) == 72, "copper head");
 
-/* the copper list of the first screen ($4D8A, 84 bytes): its head and then the moves that send the copper on to the tail of the second list (COP2LC = $4E26 and the strobe of COPJMP2) */
-struct CopperListA {
-    struct CopperHead head;
-    struct CopperMove jump_high;  /* +72: COP2LCH */
-    struct CopperMove jump_low;   /* +76: COP2LCL: the tail of the second list */
-    struct CopperMove strobe;     /* +80: COPJMP2 */
+/* the program's copper lists ($4D8A, 176 bytes): the list of the first screen (its head and the moves that send the copper on to the tail: COP2LC = $4E26 and the strobe of COPJMP2), the list of the
+ * second screen (its head, and the copper goes on into the tail) and the tail both run through: the WAIT for the line $3C, BPLCON0 with the bitplanes on, the two moves that send the copper on to the
+ * colour bands (COP2LC = $4E3A) or over them ($5246), which fade_in and fade_out set (move_a and move_b), and the strobe */
+struct CopperLists {
+    struct CopperHead a;          /* +0: the list of the first screen (screen_1) */
+    struct CopperMove a_jump_high;/* +72: COP2LCH */
+    struct CopperMove a_jump_low; /* +76: COP2LCL: the tail */
+    struct CopperMove a_strobe;   /* +80: COPJMP2 */
+    struct CopperHead b;          /* +84: the list of the second screen (screen_2) */
+    struct {                      /* +156: the tail */
+        uint16_t wait[2];         /* a WAIT for the line $3C */
+        struct CopperMove bplcon0;
+        uint32_t move_a;          /* COP2LCH: two words of the list (a register move) */
+        uint32_t move_b;          /* COP2LCL */
+        struct CopperMove strobe; /* COPJMP2 */
+    } tail;
 };
-LAYOUT_ASSERT(sizeof(struct CopperListA) == 84, "copper list a");
-
-/* ... and of the second ($4DDE, 92 bytes): its head and the tail both lists run through: the WAIT for the line $3C, BPLCON0 with the bitplanes on, the two moves that send the copper on to the colour
- * bands (COP2LC = $4E3A) or over them ($5246), which fade_in and fade_out set (move_a and move_b), and the strobe */
-struct CopperListB {
-    struct CopperHead head;
-    uint16_t wait[2];             /* +72: a WAIT for the line $3C */
-    struct CopperMove bplcon0;    /* +76 */
-    uint32_t move_a;              /* +80: COP2LCH: two words of the list (a register move) */
-    uint32_t move_b;              /* +84: COP2LCL */
-    struct CopperMove strobe;     /* +88: COPJMP2 */
-};
-LAYOUT_ASSERT(sizeof(struct CopperListB) == 92, "copper list b");
-LAYOUT_ASSERT(offsetof(struct CopperListB, move_a) == 0x50, "move a");
+LAYOUT_ASSERT(sizeof(struct CopperLists) == 176, "copper lists");
+LAYOUT_ASSERT(offsetof(struct CopperLists, b) == 84, "list b");
+LAYOUT_ASSERT(offsetof(struct CopperLists, tail.move_a) == 0xA4, "move a");
 
 /* the sound system's variables ($2079E, 14 bytes): the start-up clears them; busy is not 0 while there is something to play (a long to the loader: the first voice's byte is the top one) and voice_ids the sound each of the four voices plays */
 struct SoundState {
@@ -1120,8 +1119,7 @@ struct Gods {
     PAD(2064)
     uint16_t game_nothing_opcode;   /* $03436 */
     PAD(6482)
-    struct CopperListA copper_list_a;   /* $04D8A */
-    struct CopperListB copper_list_b;   /* $04DDE */
+    struct CopperLists copper_lists;   /* $04D8A */
     uint16_t copper_colors[518];   /* $04E3A */
     uint16_t copper_list_end[1];   /* $05246 */
     PAD(12)
@@ -1679,8 +1677,7 @@ LAYOUT_ASSERT(offsetof(struct Gods, asset_table_28f0) == 0x28f0, "asset_table_28
 LAYOUT_ASSERT(offsetof(struct Gods, level_text) == 0x28f8, "level_text");
 LAYOUT_ASSERT(offsetof(struct Gods, game_loop_jump) == 0x2c20, "game_loop_jump");
 LAYOUT_ASSERT(offsetof(struct Gods, game_nothing_opcode) == 0x3436, "game_nothing_opcode");
-LAYOUT_ASSERT(offsetof(struct Gods, copper_list_a) == 0x4d8a, "copper_list_a");
-LAYOUT_ASSERT(offsetof(struct Gods, copper_list_b) == 0x4dde, "copper_list_b");
+LAYOUT_ASSERT(offsetof(struct Gods, copper_lists) == 0x4d8a, "copper_lists");
 LAYOUT_ASSERT(offsetof(struct Gods, copper_colors) == 0x4e3a, "copper_colors");
 LAYOUT_ASSERT(offsetof(struct Gods, copper_list_end) == 0x5246, "copper_list_end");
 LAYOUT_ASSERT(offsetof(struct Gods, copper_message_5254) == 0x5254, "copper_message_5254");

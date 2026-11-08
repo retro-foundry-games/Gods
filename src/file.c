@@ -53,10 +53,10 @@ void load_directory(void)
 void display_reset(void)
 {
     guest.x_offset = 0;
-    set_scroll(&guest.copper_list_b.head, 0);
-    set_scroll(&guest.copper_list_b.head, 0);
-    guest.copper_list_b.move_a = 0x00840000;
-    guest.copper_list_b.move_b = 0x00865246;
+    set_scroll(&guest.copper_lists.b, 0);
+    set_scroll(&guest.copper_lists.b, 0);
+    guest.copper_lists.tail.move_a = 0x00840000;
+    guest.copper_lists.tail.move_b = 0x00865246;
 }
 
 /* orig $01ECA8: the list of file names for an asset name (assets_load).  The name is compared with the names of

@@ -104,7 +104,7 @@ void screens_flip(void)
     guest.screen_buffer = guest.screen_other;
     guest.screen_other = swap;
     shop_flip_strip();
-    list = guest.screen_other == guest.screen_1 ? &guest.copper_list_a.head : &guest.copper_list_b.head;
+    list = guest.screen_other == guest.screen_1 ? &guest.copper_lists.a : &guest.copper_lists.b;
     set_scroll(list, (uint8_t)guest.x_offset);
     int late = flip_late && host_flip_is_late();
 
@@ -215,8 +215,8 @@ void fade_in(const uint16_t *target, uint16_t delay)
     copper_colors_save(0);
     if (guest.copper_setup_done == 0) {
         wait_vblank();
-        guest.copper_list_b.move_a = 0x00840000;
-        guest.copper_list_b.move_b = 0x00864e3a;
+        guest.copper_lists.tail.move_a = 0x00840000;
+        guest.copper_lists.tail.move_b = 0x00864e3a;
     }
     for (int step = 0; step < 15; step++) {
         for (int i = 15; i >= 0; i--) {
@@ -250,8 +250,8 @@ void frame_tick(void)
 
     if (guest.copper_setup_done)
         scroll = guest.shadow_table[1];
-    guest.copper_list_a.head.color01 = scroll;
-    guest.copper_list_b.head.color01 = scroll;
+    guest.copper_lists.a.color01 = scroll;
+    guest.copper_lists.b.color01 = scroll;
     if (guest.sound_enabled)
         sound_tick();
     guest.tick_count++;
@@ -308,8 +308,8 @@ void fade_out(uint16_t delay, uint16_t arg)
     if (!fade_keep_screens)
         clear_both_screens();
     wait_vblank();
-    guest.copper_list_b.move_a = 0x00840000;
-    guest.copper_list_b.move_b = 0x00865246;
+    guest.copper_lists.tail.move_a = 0x00840000;
+    guest.copper_lists.tail.move_b = 0x00865246;
     copper_colors_restore();
     guest.palette_lit = 0;
     display_fresh_tail = effective_lag() != 0;
@@ -325,7 +325,7 @@ uint8_t list_scroll[2];
 
 void set_scroll(struct CopperHead *copper_list, uint8_t x)
 {
-    list_scroll[copper_list == &guest.copper_list_a.head ? 0 : 1] = x;
+    list_scroll[copper_list == &guest.copper_lists.a ? 0 : 1] = x;
 }
 
 /* orig $01D05C: wait for the next vertical blank (the main thread raises it) */
@@ -677,7 +677,7 @@ void blit_image_wide(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t 
 /* ================ the picture (was render.c) ================ */
 /* Gods SDL port: the display.  The program's copper lists are not run: what they do is emulated from the state the program keeps.
  *
- *   - which screen is shown: COP1LC names copper_list_a (the first screen) or copper_list_b (the second); the screens are 44 bytes
+ *   - which screen is shown: COP1LC names copper_lists.a (the first screen) or copper_lists.b (the second); the screens are 44 bytes
  *     a row, 192 rows, four bitplanes 8448 bytes apart;
  *   - the fine scroll: set_scroll() (display.c of the program) makes the copper list show the screen from pixel x_offset & 31 on;
  *   - the colours: the colour registers (the program writes them directly, the vertical blank copies the shadow table);
@@ -727,7 +727,7 @@ void display_latch(void)
     }
     /* (the screen and its scroll are not latched: the original shows a flip in the frame the program's logic makes it, the program's thread having flipped just after the blank) */
     latched_cop1lc = REG32(0x080);
-    latched_x_offset = list_scroll[(void *)(uintptr_t)REG32(0x080) == (void *)&guest.copper_list_a ? 0 : 1];
+    latched_x_offset = list_scroll[(void *)(uintptr_t)REG32(0x080) == &guest.copper_lists.a ? 0 : 1];
     display_latch_colors();
     {
         uint32_t cop1lc = REG32(0x080);
@@ -866,8 +866,8 @@ static void line_palettes(uint16_t colors[][16], int lines)
     }
     /* the list goes on where a MOVE to COPJMP2 sends it: the address that the moves to COP2LCH and COP2LCL made (the two lists of the program end
      * so: the gradient of the level's colours is jumped over when the moves name the list at $5246, as the menu's do).  The addresses are the
-     * program's: the first list is at $4D8A (copper_list_a) or $4DDE.  The list the jump comes to may be the image's own (big-endian words) */
-    uint32_t base = (const void *)(uintptr_t)latched_list_head == (const void *)&guest.copper_list_a ? 0x4d8a : 0x4dde, jump_to = 0;
+     * program's: the first list is at $4D8A (copper_lists.a) or $4DDE (copper_lists.b).  The list the jump comes to may be the image's own (big-endian words) */
+    uint32_t base = (const void *)(uintptr_t)latched_list_head == (const void *)&guest.copper_lists.a ? 0x4d8a : 0x4dde, jump_to = 0;
     int steps = 0;
 
     for (int i = 0; count && i + 1 < 1024 && steps++ < 4096; i += 2) {
@@ -923,9 +923,9 @@ void display_render(uint32_t *pixels)
     static uint16_t colors_before[320][16];
     uint32_t palette[16];
     latched_cop1lc = REG32(0x080);   /* the screen and the scroll as they are now (see display_latch) */
-    latched_x_offset = list_scroll[(void *)(uintptr_t)latched_cop1lc == (void *)&guest.copper_list_a ? 0 : 1];
+    latched_x_offset = list_scroll[(void *)(uintptr_t)latched_cop1lc == &guest.copper_lists.a ? 0 : 1];
     const uint8_t *first_list = (const uint8_t *)(uintptr_t)latched_cop1lc;
-    const uint8_t *screen = (const void *)first_list == (const void *)&guest.copper_list_a ? guest.screen_1 : guest.screen_2;
+    const uint8_t *screen = (const void *)first_list == (const void *)&guest.copper_lists.a ? guest.screen_1 : guest.screen_2;
     int scroll = latched_x_offset & 31;
 
     line_palettes(colors, 320);

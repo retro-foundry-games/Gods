@@ -69,7 +69,7 @@ void screens_flip(void)
     swap = guest.screen_buffer;
     guest.screen_buffer = guest.screen_other;
     guest.screen_other = swap;
-    list = guest.screen_other == guest.screen_1 ? &guest.copper_list_a.head : &guest.copper_list_b.head;
+    list = guest.screen_other == guest.screen_1 ? &guest.copper_lists.a : &guest.copper_lists.b;
     set_scroll(list, (uint8_t)guest.x_offset);
     display_show(list);
     guest.vbl_saturating = 0;
@@ -147,8 +147,8 @@ void fade_in(const uint16_t *target, uint16_t delay)
     copper_colors_save(0);
     if (guest.copper_setup_done == 0) {
         wait_vblank();
-        guest.copper_list_b.move_a = 0x00840000;
-        guest.copper_list_b.move_b = 0x00864e3a;
+        guest.copper_lists.tail.move_a = 0x00840000;
+        guest.copper_lists.tail.move_b = 0x00864e3a;
     }
     for (int step = 0; step < 15; step++) {
         for (int i = 15; i >= 0; i--) {
@@ -179,8 +179,8 @@ void frame_tick(void)
 
     if (guest.copper_setup_done)
         scroll = guest.shadow_table[1];
-    guest.copper_list_a.head.color01 = scroll;
-    guest.copper_list_b.head.color01 = scroll;
+    guest.copper_lists.a.color01 = scroll;
+    guest.copper_lists.b.color01 = scroll;
     if (guest.sound_enabled)
         sound_tick();
     guest.tick_count++;
@@ -234,8 +234,8 @@ void fade_out(uint16_t delay, uint16_t arg)
     if (!fade_keep_screens)
         clear_both_screens();
     wait_vblank();
-    guest.copper_list_b.move_a = 0x00840000;
-    guest.copper_list_b.move_b = 0x00865246;
+    guest.copper_lists.tail.move_a = 0x00840000;
+    guest.copper_lists.tail.move_b = 0x00865246;
     copper_colors_restore();
     guest.palette_lit = 0;
 }
