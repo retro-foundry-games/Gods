@@ -495,7 +495,7 @@ local trace = args:find("%f[%w]trace%f[%W]")
 local dump = args:match("dump=(%S+)")
 local watching = args:find("%f[%w]watch%f[%W]")
 local pause_at = tonumber(args:match("pause=(%d+)"))
-local WATCH = { frame_toggle = 0x196, frame_phase = 0x1e4, player_x = 0x1e0, player_y = 0x1e2, player_state = 0x19c, player_frame = 0x19a, counter_204 = 0x204, counter_260 = 0x260, scroll_x = 0x358, scroll_y = 0x35a, word_39e = 0x39e,
+local WATCH = { frame_toggle = 0x196, frame_phase = 0x1e4, player_x = 0x1e0, player_y = 0x1e2, player_state = 0x19c, player_frame = 0x19a, counter_204 = 0x204, counter_260 = 0x260, scroll_x = 0x358, scroll_y = 0x35a, hit_box_extra_height = 0x39e,
                 onscreen_count = 0x2b8, flag_23a = 0x23a, timer_306 = 0x306, energy_shown = 0x216, flag_230 = 0x230, word_3b0 = 0x3b0, player_energy = 0xc96, hit = 0x3a6, word_2ba = 0x2ba, tick_hold = 0x26c, word_226 = 0x226, word_228 = 0x228, item_count = 0x20a }
 local watch_found = {}
 -- track=ADDR (hex): the long at ADDR on both sides is logged whenever either changes (to find where two states part)
