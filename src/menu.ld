@@ -551,7 +551,6 @@ _shot_block = 0x16bb4;
 _digit_font = 0x58f0;
 _start_x = 0x21a;
 _start_y = 0x21c;
-_copylock_seed = 0x282;
 _level_files_read = 0x286;
 _copper_colour_count = 0x1ec;
 _color_line_spacing = 0x1ee;

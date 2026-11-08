@@ -544,7 +544,6 @@ shot_block       0x00016bb4  uint8_t %s[24]   twenty-four bytes of data the game
 digit_font        0x000058f0  uint8_t %s[512]   sixteen digits of 8 rows of 4 bytes (a plane each); hud_digits_load makes the first ten from the picture of the digits
 start_x           0x0000021a  int16_t %s      where the player starts the level
 start_y           0x0000021c  int16_t %s
-copylock_seed          0x00000282  uint32_t %s     a seed set at the start of the game
 level_files_read          0x00000286  int16_t %s      -1: the level's files were read
 copper_colour_count          0x000001ec  uint16_t %s     how many colours the level's copper list has
 color_line_spacing          0x000001ee  uint16_t %s     the spacing of the lines of the level's colours

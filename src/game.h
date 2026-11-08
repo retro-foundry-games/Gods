@@ -127,11 +127,8 @@ struct Gods {
     uint16_t life_score_offset;   /* $0027C */
     uint16_t bonus_score_offset;   /* $0027E */
     uint16_t glyph_plane_size;   /* $00280 */
-    union {   /* the variables that overlap */
-        struct { uint32_t copylock_seed; };   /* $00282 */
-        struct { PAD(2) int16_t armour_level; };   /* $00284 */
-        uint8_t bytes_00282[4];
-    };
+    PAD(2)
+    int16_t armour_level;   /* $00284 */
     int16_t level_files_read;   /* $00286 */
     int16_t shop_door_x;   /* $00288 */
     int16_t shop_door_y;   /* $0028A */
@@ -806,7 +803,6 @@ _Static_assert(offsetof(struct Gods, has_continue) == 0x27a, "has_continue");
 _Static_assert(offsetof(struct Gods, life_score_offset) == 0x27c, "life_score_offset");
 _Static_assert(offsetof(struct Gods, bonus_score_offset) == 0x27e, "bonus_score_offset");
 _Static_assert(offsetof(struct Gods, glyph_plane_size) == 0x280, "glyph_plane_size");
-_Static_assert(offsetof(struct Gods, copylock_seed) == 0x282, "copylock_seed");
 _Static_assert(offsetof(struct Gods, armour_level) == 0x284, "armour_level");
 _Static_assert(offsetof(struct Gods, level_files_read) == 0x286, "level_files_read");
 _Static_assert(offsetof(struct Gods, shop_door_x) == 0x288, "shop_door_x");

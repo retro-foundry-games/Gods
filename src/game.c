@@ -13442,10 +13442,12 @@ void level_state_init(void)
         do_nothing();
     }
     if (guest.play_starting != 0) {
+        /* orig $00F6BE: the copylock's long ($282, which ends in armour_level) is stored: 0 when it passed, $4B79C278 when it failed (the immediate at $F6C0).  Its first word at $282 is read by nothing,
+         * so only the second word is kept: the armour the player starts the game with */
 #ifdef PIRATED
-        guest.copylock_seed = 0x4B79C278;   /* the long that the copylock leaves when it fails (the immediate at $F6C0) */
+        guest.armour_level = (int16_t)0xC278;
 #else
-        guest.copylock_seed = 0;            /* what it leaves when it passes */
+        guest.armour_level = 0;
 #endif
         if (guest.param_index == 4)
             guest.armour_level = 1;
