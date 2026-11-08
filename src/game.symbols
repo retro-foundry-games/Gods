@@ -1,5 +1,5 @@
-# The menu program's data: name, address, C declaration (%s is the name), what it is.  scripts/gen_menu_symbols.py writes
-# native/game.h (the declarations) and native/menu.ld (the names at their addresses), so the C names no address.
+# The menu program's data: name, address, C declaration (%s is the name), what it is.  scripts/gen_game_symbols.py writes
+# native/game.h (the declarations) and native/game.ld (the names at their addresses), so the C names no address.
 work_area         0x00000caa  uint32_t *%s    pointer to a buffer of 80 longs that clear_work_area clears
 shadow_table      0x00000e10  uint16_t %s[]   a table of words indexed by shadow_set / shadow_get (colour register shadows)
 mouse_x           0x0001e4fc  uint16_t %s     pointer position, 0 to $200 (moved by input_poll)

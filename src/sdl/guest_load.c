@@ -32,7 +32,7 @@ static void swap32_range(uint32_t address, uint32_t bytes)
         p[i] = __builtin_bswap32(p[i]);
 }
 
-/* the words and longs of the program's variables (guest_fixups.h, from menu.symbols' types) are made native: they are the image's, big endian, what the loader leaves in memory */
+/* the words and longs of the program's variables (guest_fixups.h, from game.symbols' types) are made native: they are the image's, big endian, what the loader leaves in memory */
 static void apply_fixups(long size)
 {
     uint8_t *swapped = calloc((size_t)size + 8, 1);
@@ -76,7 +76,7 @@ void guest_load_image(const uint8_t *image, uint32_t size)
             *to = image[i];
     }
 
-    /* the variables the image has: their words and longs are made native (what the types of menu.symbols say) */
+    /* the variables the image has: their words and longs are made native (what the types of game.symbols say) */
     apply_fixups(IMAGE_BASE + size);
     swap16_range(0x4d8a, 0xac);  /* the two copper lists (the program changes their words, the display reads them as words) */
 
@@ -96,7 +96,7 @@ void guest_load_image(const uint8_t *image, uint32_t size)
 
 /* ---- a RAM image of the original in level 1 (a test of the level on the host: --level1-image) ---------------------------------------
  * The image is the original's chip RAM (big endian); the tables of data.c stay as they are, the rest is copied in and then the words
- * and longs of the program's variables (guest_fixups.h, from menu.symbols' types) are made native, and so are the pictures: the two
+ * and longs of the program's variables (guest_fixups.h, from game.symbols' types) are made native, and so are the pictures: the two
  * screens, the sprites of the image table, the background.  What the image has that the C reads in other ways (the level's map, ...) is
  * not known here and is left as it is. */
 

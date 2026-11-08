@@ -48,9 +48,9 @@ $(SDL3_PREFIX)/lib/libSDL3.a: | $(W)
 	cmake --install $(W)/sdl3-build
 
 # generated: the tables, the stubs, the fixups
-$(W)/g_stubs.c $(W)/guest_tables.h: $(HERE)/gen_guest.py $(SRC)/menu.symbols $(SRC)/menu.ld | $(W)
+$(W)/g_stubs.c $(W)/guest_tables.h: $(HERE)/gen_guest.py $(SRC)/game.symbols $(SRC)/game.ld | $(W)
 	$(PYTHON) $(HERE)/gen_guest.py $(SRC) $(W)
-$(W)/guest_fixups.h: $(HERE)/gen_fixups.py $(SRC)/menu.symbols | $(W)
+$(W)/guest_fixups.h: $(HERE)/gen_fixups.py $(SRC)/game.symbols | $(W)
 	$(PYTHON) $(HERE)/gen_fixups.py $(SRC) $(W)
 GENERATED := $(W)/guest_tables.h $(W)/guest_fixups.h $(SDL3_PREFIX)/lib/libSDL3.a
 

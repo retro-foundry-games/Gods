@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Write guest_fixups.h from native/src/menu.symbols: for a RAM image of the original (a test of the level on the host) which words and
+"""Write guest_fixups.h from native/src/game.symbols: for a RAM image of the original (a test of the level on the host) which words and
 longs of each variable are to be swapped to the host's byte order.
 
     gen_fixups.py SRC_DIR OUT_DIR
 
-The types are the declarations of menu.symbols; the structs are the ones of game.h as (offset, width) of every field wider than a byte.
+The types are the declarations of game.symbols; the structs are the ones of game.h as (offset, width) of every field wider than a byte.
 Variables of unknown length (`name[]`) are left alone.
 """
 from __future__ import annotations
@@ -41,7 +41,7 @@ STRUCTS = {
 }
 POINTER_LONGS = {"marker_table", "screen_list_cursor"}   # variables typed as longs that hold addresses (cells, the list of the records that go along)
 fixups: set[tuple[int, int, int]] = set()   # address, width, count
-for line in (src / "menu.symbols").read_text().splitlines():
+for line in (src / "game.symbols").read_text().splitlines():
     if not line.strip() or line.startswith("#") or line.split()[0] == "table" or "(void)" in line:
         continue
     parts = line.split()

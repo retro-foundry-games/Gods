@@ -60,10 +60,10 @@ all: $(BUILD)/gods-sdl $(BUILD)/gods-sdl-dev
 $(BUILD):
 	mkdir -p $@
 
-# the stubs and the table list come from menu.symbols
-$(BUILD)/g_stubs.c $(BUILD)/guest_tables.h: $(HERE)/gen_guest.py $(SRC)/menu.symbols $(SRC)/menu.ld | $(BUILD)
+# the stubs and the table list come from game.symbols
+$(BUILD)/g_stubs.c $(BUILD)/guest_tables.h: $(HERE)/gen_guest.py $(SRC)/game.symbols $(SRC)/game.ld | $(BUILD)
 	$(PYTHON) $(HERE)/gen_guest.py $(SRC) $(BUILD)
-$(BUILD)/guest_fixups.h: $(HERE)/gen_fixups.py $(SRC)/menu.symbols | $(BUILD)
+$(BUILD)/guest_fixups.h: $(HERE)/gen_fixups.py $(SRC)/game.symbols | $(BUILD)
 	$(PYTHON) $(HERE)/gen_fixups.py $(SRC) $(BUILD)
 
 $(BUILD)/g_data.o: $(SRC)/data.c $(FLAGS_STAMP) | $(BUILD)

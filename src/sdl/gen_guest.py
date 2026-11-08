@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write the host build's linker symbols, function stubs and table list from native/src/menu.symbols.
+"""Write the host build's linker symbols, function stubs and table list from native/src/game.symbols.
 
     gen_guest.py SRC_DIR OUT_DIR
 
@@ -26,7 +26,7 @@ stubs: list[tuple[str, str]] = []         # name, return type
 declarations: dict[str, str] = {}         # the variables' declarations (%s for the name)
 SIZES = {"char": 1, "uint8_t": 1, "uint16_t": 2, "uint32_t": 4, "ByteP": 4}
 
-for line in (src / "menu.symbols").read_text().splitlines():
+for line in (src / "game.symbols").read_text().splitlines():
     if not line.strip() or line.startswith("#"):
         continue
     parts = line.split()

@@ -7,7 +7,7 @@
  * tables at $2080E) in a software mixer: Paula's rate (3546895 / period), 8 bit samples, voices 0 and 3 left, 1 and 2 right.
  * Not done: the volume envelopes (a note plays at its full volume), the period and volume slides, the random variations of some sounds.
  * The data is the program's own, typed: the table of sounds (struct SoundRecord), the track addresses (sound_tracks), the instruments (struct SoundInstrument) and the period
- * tables (sound_periods) are tables of menu.symbols, native words; the tracks themselves are the commands in the program's image, bytes.  The voices' flags are the variables
+ * tables (sound_periods) are tables of game.symbols, native words; the tracks themselves are the commands in the program's image, bytes.  The voices' flags are the variables
  * sound_busy_207a0 and voice_ids_207a6. */
 #include <pthread.h>
 #include <stdint.h>

@@ -1,7 +1,7 @@
 /* Gods: the menu program (the part of the game the loader reads after a fire button), as C.
  *
  * It is a separate program from the intro (intro.c): the loader reads it into memory and its data sits at the addresses
- * the original keeps it at; menu.symbols lists those, game.h declares them and menu.ld gives the names their
+ * the original keeps it at; game.symbols lists those, game.h declares them and game.ld gives the names their
  * addresses.  The program is split in modules by what they do: disk.c (the disk layer), alloc.c (memory), decrunch.c (the
  * unpacker), input.c (buttons, joystick, mouse), screen.c (buffers, colours, copper, blitter), draw.c (images and text), display.c (the screens' scroll and flip, the colours); menu.c has what is not
  * placed yet.  Every function says where the original has it (`orig $ADDR`). */

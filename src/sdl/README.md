@@ -34,7 +34,7 @@ image of the original (for testing only: nothing is embedded, it is not the defa
     projects/gods/native/build/sdl/gods-sdl-dev --disks projects/gods/local --level1-image projects/gods/native/build/game-ram.bin --start level
 
 (or leave `--start level` out and choose Begin Quest in the menu).  The image is the Amiga's big-endian chip RAM: the words and longs of
-the program's variables (from the types of `menu.symbols`, `gen_fixups.py`), the two screens, the sprites' planes and the background are
+the program's variables (from the types of `game.symbols`, `gen_fixups.py`), the two screens, the sprites' planes and the background are
 swapped to native order; what the C reads in other ways (the level's map, ...) is not known to the port and is left as it is.
 `game_frame` is then called in a loop.
 
@@ -61,7 +61,7 @@ the sound as raw signed 16 bit stereo 44100 Hz.
 | --- | --- |
 | `Makefile` | builds the program's modules unchanged with `-m32 -fpack-struct=2` (the game's data has the 68000's layout and 32-bit pointers); links the intro apart |
 | `main.c` | the window, the 50 Hz loop, the keys, the audio stream, the change from one program to the next |
-| `gen_guest.py`, `gen_fixups.py` | from `menu.symbols`: the variables as absolute symbols, stubs for the original's code (`fn_...`), the table list, the byte order list of the variables |
+| `gen_guest.py`, `gen_fixups.py` | from `game.symbols`: the variables as absolute symbols, stubs for the original's code (`fn_...`), the table list, the byte order list of the variables |
 | `guest.c` | the memory at the Amiga's addresses (the first 64 KiB at `0x01000000 +`: Linux does not map them), the chips' register pages, the menu image, the level image |
 | `files.c` | the disks (ADF): the directory in sector 22, `file_read`, the packer, the menu image (`bm.2` of disk 1, unpacked to `$84`) |
 | `display.c` | the screens' flip, the colours and fades, the masked-image blits done directly (`blit_masked_image` of draw.c is replaced, and `blit_image`/`blit_image_wide` of the asm) and the picture: the copper lists' effect from the program's state (screen shown, scroll, colours, message line); the chip's blitter itself is not emulated |
