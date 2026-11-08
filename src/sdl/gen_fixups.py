@@ -28,6 +28,10 @@ STRUCTS = {
     "Image": (8, [(0, 2), (2, 2), (4, 4)]),
     "Shot": (8, [(0, 2), (2, 2), (4, 2), (6, 2)]),
     "Voice": (148, []),
+    "ShotList": (146, [(2 * i, 2) for i in range(73)]),   # (the number of the object and 18 shots of four words)
+    "SoundState": (14, [(2, 4)]),   # (busy: the long the loader writes)
+    "CopperListA": (84, [(6, 2)]),   # (the COLOR01 word)
+    "CopperListB": (92, [(6, 2), (0x50, 4), (0x54, 4)]),   # (the COLOR01 word and the two moves)
     "Monster": (428, [(0, 2), (2, 5), (6, 2), (20, 2), (22, 2)] + [(24 + 2 * i, 2) for i in range(200)] + [(424, 2)]),
     "Bolt": (22, [(0, 4)] + [(4 + 2 * i, 2) for i in range(9)]),
     "Unit": (24, [(0, 2), (4, 2), (10, 4), (14, 2), (16, 2), (18, 4)]),

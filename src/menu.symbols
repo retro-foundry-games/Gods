@@ -21,7 +21,6 @@ param_b           0x00000250  uint32_t %s
 param_c           0x00000254  uint16_t %s
 param_d           0x00000256  uint16_t %s
 entry_list        0x00000cae  struct Entry8 *%s   a list of address/size entries that assign_addresses fills in
-words_source      0x00000cbe  const uint16_t *%s   words that narrow_words_to_bytes makes bytes of
 bytes_dest        0x00000cc2  uint8_t *%s     ... and where the bytes go
 script_records        0x00000cb6  struct ScriptRecord *%s     a buffer of 2400 bytes that load_script_records fills
 saved_slot_words  0x000148e8  uint16_t %s[22]   two words of each of the eleven slots, put away by save_slot_words
@@ -153,7 +152,6 @@ monster_type_data        0x0001b7be  uint8_t %s[]
 loading_text      0x0001d3f4  uint8_t %s[]      "loading game please wait"
 palette_words     0x00000134  uint16_t %s[16]   the sixteen colours of the picture assets_load read last
 first_asset_name  0x000196d6  char %s[]         "always": the name of the first asset set
-key_modifiers     0x0001e69a  uint8_t %s[2]     the shift keys: non-zero while one is down
 table keymap      0x0001e5ae uint8_t 128   the character a raw key code gives (0 when none)
 hint_data        0x0001c5be  uint8_t %s[]
 copper_save_second          0x00000e58  uint8_t *%s
@@ -297,16 +295,12 @@ hit_box_extra_width          0x0000039c int16_t %s    added (half of it) to the 
 hit_box_extra_height          0x0000039e int16_t %s    the same for its height
 game_nothing_opcode         0x00003436 uint16_t %s   the first word of the original's routine at $3436 (an rts, $4E75)
 hit_list_recording          0x00000214 int16_t %s
-slot_ref_6b6      0x000006b6 int16_t %s    first word of the first of three records of 146 bytes: negative none, else the number of a record of object_slots
-slot_ref_748      0x00000748 int16_t %s    the second
-slot_ref_7da      0x000007da int16_t %s    the third
 burst_marks       0x00000316 int16_t %s[12]  four records of three words (a state that counts up from 0 to 6, x, y; negative: free)
 path_steps_left        0x000185bc int16_t %s
 level_walker_templates          0x00000b82 uint8_t *%s
 background_tile_graphics          0x00000c70 uint8_t *%s    the graphics of the background tiles (256 bytes for each)
 moving_paths_count          0x000004a2 uint16_t %s
 sound_last_variant 0x0001faca uint8_t %s   the last choice of the sounds that vary (variant 6): it is not chosen twice in a row
-voice_ids_207a6   0x000207a6 uint8_t %s[4]   the sound each of the four voices plays
 redraw_gate_opcode        0x00017e9c uint16_t %s   the first word of the routine at $17E9C (a nop; the routine makes it an rts, $4E75)
 uncut_hit_box_width           0x000003a0 int16_t %s    the width hit_box_extra_width had before check_hit_and_walls cut it
 uncut_hit_box_height           0x000003a2 int16_t %s    the height hit_box_extra_height had
@@ -334,7 +328,7 @@ table particle_speeds_15b5c 0x00015b5c uint16_t 8   game_b: the two speed bytes 
 # game_c.c (the routines at $10000-$167FF)
 particle_burst_active          0x00000a4c  int16_t %s
 list_index_a98    0x00000a98  uint16_t %s    which of the three shot lists is being run (0 to 2)
-shot_lists_raw    0x000006b6  uint16_t %s[219]    the three lists of shots (struct ShotList, 146 bytes each)
+shot_lists        0x000006b6  struct ShotList %s[3]   the three lists of shots: the number of the object it is for (negative: none; the unit's weapon slot) and its shots
 shot_prev_x       0x000001f4  int16_t %s     where the shot being moved was
 shot_prev_y       0x000001f6  int16_t %s
 table shot_deltas 0x00016bb4  uint16_t 64    pairs of words: how a shot of direction n moves (x, y)
@@ -570,7 +564,6 @@ image_clip_skip_rows          0x00000dd4  uint16_t %s
 unused_dd6          0x00000dd6  uint16_t %s
 image_plane_bytes          0x00000dd8  uint32_t %s     the bytes of one plane of the image
 draw_routine_index          0x00000dde  uint16_t %s     which draw routine of the table at $0D9A image_draw_clipped uses
-sound_busy_207a0  0x000207a0  volatile uint32_t %s   not 0 while the sound system has something to play
 spore_records      0x00001036  uint8_t %s[120]   ten records of 12 bytes
 pod_records         0x00000fd0  int16_t %s[50]    ten records of 10 bytes, the first word -1 when free
 falling_things        0x000011b4  int16_t %s[50]    ... the same
@@ -635,7 +628,7 @@ game_loop_jump         0x00002c20  uint8_t %s[6]   the original's code at $2C20:
 irq_vectors       0x00000068  uint32_t %s[3]  the interrupt vectors the start-up sets (the keyboard's, the blank's, the audio's)
 copper_message_5254 0x00005254 uint16_t %s[3]  the copper list's bitplane pointer for the message (the high word, ?, the low word)
 sound_silence     0x00021e5e  uint8_t %s[16]  the silent sample
-sound_state_2079e 0x0002079e  uint8_t %s[14]  the sound system's words the start-up clears
+sound_state       0x0002079e  struct SoundState %s   the sound system's variables: the start-up clears them
 teleport_lists       0x0001078a  uint8_t %s[96]   the lists table_1077a points to
 sound_track_data  0x00020f74  uint8_t %s[3270]   the sequencer's tracks of the sounds (sound_tracks points into it)
 sound_sample_data 0x00021e5e  uint8_t %s[98290]   the 8 bit samples of the instruments (sound_instruments points into it)

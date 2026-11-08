@@ -63,7 +63,7 @@ void clear_entry_table(void)
 /* orig $00F382: make bytes of 506 words: the low byte of each */
 void narrow_words_to_bytes(void)
 {
-    const uint16_t *from = guest.words_source;
+    const uint16_t *from = (const uint16_t *)guest.cell_entry_table;
     uint8_t *to = guest.bytes_dest;
     int i;
 

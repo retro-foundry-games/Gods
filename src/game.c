@@ -115,7 +115,7 @@ void call_by_kind(int16_t kind, int16_t arg, int16_t *result)
     }
     case 3:
     case 4: {
-        int16_t found = arg == guest.slot_ref_6b6 || arg == guest.slot_ref_748 || arg == guest.slot_ref_7da;
+        int16_t found = arg == guest.shot_lists[0].object || arg == guest.shot_lists[1].object || arg == guest.shot_lists[2].object;
 
         clear = kind == 3 ? !found : found;
         break;
@@ -1885,7 +1885,7 @@ static void level_end_quiet(void)
         wait_vblank();
         if (--frames < 0)
             break;
-        if (guest.sound_busy_207a0 == 0)
+        if (guest.sound_state.busy == 0)
             break;
     }
 }
@@ -2658,7 +2658,7 @@ void falcon_choose_weapon(void)
         return;
 
     const struct Object *objects = (const struct Object *)guest.object_slots;
-    int16_t slot[3] = { (int16_t)guest.slot_ref_6b6, (int16_t)guest.slot_ref_748, (int16_t)guest.slot_ref_7da };
+    int16_t slot[3] = { (int16_t)guest.shot_lists[0].object, (int16_t)guest.shot_lists[1].object, (int16_t)guest.shot_lists[2].object };
     int count = 0;
 
     for (int i = 0; i < 3; i++)
@@ -3219,7 +3219,7 @@ void reset_object_slot(int16_t index, int16_t other)
     if (r[1] == 3)
         r[1] = 0;
     guest.hit_list_recording = -1;
-    if (guest.falcon_energy >= 0 || guest.slot_ref_6b6 == 8 || guest.slot_ref_748 == 8 || guest.slot_ref_7da == 8)
+    if (guest.falcon_energy >= 0 || guest.shot_lists[0].object == 8 || guest.shot_lists[1].object == 8 || guest.shot_lists[2].object == 8)
         guest.hit_list_recording = 0;   /* $FB94: the list of the creatures hit stays on while the falcon is there (or a weapon 8 is) */
 }
 
@@ -3455,8 +3455,8 @@ void stop_sound(uint16_t id)
     uint8_t wanted = sound_records[id].track[0];
 
     for (int i = 0; i < 4; i++)
-        if (guest.voice_ids_207a6[i] == wanted) {
-            guest.voice_ids_207a6[i] = 0;
+        if (guest.sound_state.voice_ids[i] == wanted) {
+            guest.sound_state.voice_ids[i] = 0;
             voice_start(22, (uint16_t)i);
             return;
         }
@@ -3635,7 +3635,7 @@ void falcon_end(void)
     guest.falcon_energy = -1;
     guest.falcon_choice = -1;
     guest.wing_glyph = -1;
-    if (guest.slot_ref_6b6 != 8 && guest.slot_ref_748 != 8 && guest.slot_ref_7da != 8)
+    if (guest.shot_lists[0].object != 8 && guest.shot_lists[1].object != 8 && guest.shot_lists[2].object != 8)
         guest.hit_list_recording = -1;
 }
 
@@ -3694,7 +3694,7 @@ static int16_t hit_cell_effect(const uint8_t *after)
         }
     }
 
-    struct ShotList *list = &((struct ShotList *)guest.shot_lists_raw)[list_number];
+    struct ShotList *list = &guest.shot_lists[list_number];
     const struct Object *object = &((const struct Object *)guest.object_slots)[list->object];
 
     guest.hit_damage_1cc = object->last_value;
@@ -4165,12 +4165,12 @@ static void kind_free_slot_ref(const struct ScriptRecord *a1)
 {
     int16_t number = (int16_t)a1->effect_argument;
 
-    if (guest.slot_ref_6b6 == number)
-        guest.slot_ref_6b6 = -1;
-    else if (guest.slot_ref_748 == number)
-        guest.slot_ref_748 = -1;
-    else if (guest.slot_ref_7da == number)
-        guest.slot_ref_7da = -1;
+    if (guest.shot_lists[0].object == number)
+        guest.shot_lists[0].object = -1;
+    else if (guest.shot_lists[1].object == number)
+        guest.shot_lists[1].object = -1;
+    else if (guest.shot_lists[2].object == number)
+        guest.shot_lists[2].object = -1;
 }
 
 /* orig $01895A: the record a0 (its word +2 numbers a record of 24 bytes of script_records) is looked at by call_by_kind (kind and
@@ -4270,7 +4270,7 @@ static uint16_t *first_free_entry(uint16_t *entry, int16_t count, int16_t *numbe
  * unit got an entry, else 1 (also 1 and nothing done when fire_latch is not 0; fire_latch is set) */
 uint16_t claim_free_entries(void)
 {
-    int16_t *refs[3] = { &guest.slot_ref_6b6, &guest.slot_ref_748, &guest.slot_ref_7da };
+    int16_t *refs[3] = { &guest.shot_lists[0].object, &guest.shot_lists[1].object, &guest.shot_lists[2].object };
     int16_t first_id[3] = { 1, 10, 19 };
     uint16_t result = 1;
 
@@ -4310,7 +4310,6 @@ uint16_t claim_free_entries(void)
  * it (`orig $ADDR`). */
 
 #define OBJECT(n) (&((struct Object *)guest.object_slots)[(n)])
-#define shot_lists ((struct ShotList *)guest.shot_lists_raw)
 
 /* orig $0112F6: where in the level's second map (8192 bytes after level_map; a tile is 32 by 16 pixels, a row of them 128 bytes) the
  * tile at the player's place is */
@@ -5141,7 +5140,7 @@ void run_object_lists(void)
 {
     for (int i = 0; i < 3; i++) {
         guest.list_index_a98 = i;
-        run_object_list(&shot_lists[i]);
+        run_object_list(&guest.shot_lists[i]);
     }
 }
 
@@ -5345,7 +5344,7 @@ void spawn_player_shots(void)
             x = guest.falcon_x + 8;
             y = guest.falcon_y + 16;
         }
-        spawn_shots(slots[i], ids[i], &shot_lists[i], x, y);
+        spawn_shots(slots[i], ids[i], &guest.shot_lists[i], x, y);
     }
 }
 
@@ -5527,7 +5526,7 @@ static void count_slots(void);   /* orig $0152D8 (below) */
  * which the original changes in the same way (a word of the machine's byte order there) */
 static void raise_unit_counts(void)
 {
-    int16_t refs[3] = { guest.slot_ref_6b6, guest.slot_ref_748, guest.slot_ref_7da };
+    int16_t refs[3] = { guest.shot_lists[0].object, guest.shot_lists[1].object, guest.shot_lists[2].object };
 
     for (int i = 0; i < 3; i++) {
         if (refs[i] >= 0) {
@@ -6639,11 +6638,11 @@ static int crumble_hit_existing(uint16_t x, uint16_t y, const int16_t *slot)
         int16_t weapon = (int16_t)y;   /* d5 as it is when the list number is not 0 to 2 */
 
         if (guest.list_index_a98 == 0)
-            weapon = guest.slot_ref_6b6;
+            weapon = guest.shot_lists[0].object;
         if (guest.list_index_a98 == 1)
-            weapon = guest.slot_ref_748;
+            weapon = guest.shot_lists[1].object;
         if (guest.list_index_a98 == 2)
-            weapon = guest.slot_ref_7da;
+            weapon = guest.shot_lists[2].object;
         if (weapon == 10)
             hit = (int16_t)(hit + 0x32);
         entry[2] = (uint16_t)(entry[2] - hit);
@@ -10346,13 +10345,13 @@ static int pick_slot(int16_t item, const struct Object *object)
     }
     if (object->w0 == 0)
         return 0;
-    if (guest.slot_ref_748 < 0)
+    if (guest.shot_lists[1].object < 0)
         return 1;
-    if (guest.slot_ref_7da < 0)
+    if (guest.shot_lists[2].object < 0)
         return 2;
 
-    const struct Object *a = &((const struct Object *)guest.object_slots)[guest.slot_ref_748];
-    const struct Object *b = &((const struct Object *)guest.object_slots)[guest.slot_ref_7da];
+    const struct Object *a = &((const struct Object *)guest.object_slots)[guest.shot_lists[1].object];
+    const struct Object *b = &((const struct Object *)guest.object_slots)[guest.shot_lists[2].object];
 
     return a->last_value < b->last_value ? 1 : 2;
 }
@@ -10386,9 +10385,9 @@ static void count_slot(int16_t reference)
 static void count_slots(void)
 {
     guest.slot_value_sum = 0;
-    count_slot(guest.slot_ref_6b6);
-    count_slot(guest.slot_ref_748);
-    count_slot(guest.slot_ref_7da);
+    count_slot(guest.shot_lists[0].object);
+    count_slot(guest.shot_lists[1].object);
+    count_slot(guest.shot_lists[2].object);
 }
 
 /* orig $015282 (inlined: $015328, $0152F6, $0152D8, $0152BE): the object `item` is picked up.  One already in a slot has its
@@ -10399,7 +10398,7 @@ void pick_up_object(int16_t item)
 {
     struct Object *object = &((struct Object *)guest.object_slots)[item];
 
-    if (item == guest.slot_ref_6b6 || item == guest.slot_ref_748 || item == guest.slot_ref_7da) {
+    if (item == guest.shot_lists[0].object || item == guest.shot_lists[1].object || item == guest.shot_lists[2].object) {
         object->last_value++;
         object_message(object);
         count_slots();
@@ -10407,7 +10406,7 @@ void pick_up_object(int16_t item)
     }
 
     int slot = pick_slot(item, object);
-    int16_t *slot_ref = slot == 0 ? &guest.slot_ref_6b6 : slot == 1 ? &guest.slot_ref_748 : &guest.slot_ref_7da;
+    int16_t *slot_ref = slot == 0 ? &guest.shot_lists[0].object : slot == 1 ? &guest.shot_lists[1].object : &guest.shot_lists[2].object;
 
     *slot_ref = item;
     reset_object_slot(item, (int16_t)slot);
@@ -10428,7 +10427,6 @@ void pick_up_object(int16_t item)
  * (ladders) are each other's mirror images but are written out as they are in the original, with the differences it has. */
 
 #define OBJECT(n) (&((struct Object *)guest.object_slots)[(n)])
-#define shot_lists ((struct ShotList *)guest.shot_lists_raw)
 #define SLOT_IMAGE(n) ((uint8_t *)guest.image_table[115 + (n)].data)
 
 static void player_after(int16_t frame);
@@ -10655,7 +10653,7 @@ static void spawn_player_shots_left(void)
             y = guest.falcon_y + 16;
         }
 
-        struct Object *object = OBJECT(shot_lists[i].object);
+        struct Object *object = OBJECT(guest.shot_lists[i].object);
         uint32_t kind = ((uint32_t)object->pad_16[0] << 24) | ((uint32_t)object->pad_16[1] << 16) | ((uint32_t)object->pad_16[2] << 8) |
                         object->pad_16[3];
 
@@ -12513,15 +12511,12 @@ void clear_creature_state(void)
 /* orig $00FA9C: the first word of each of the three lists of shots is -1 and the rest of it (72 words) is cleared; hit_list_recording is -1 */
 void clear_shot_lists(void)
 {
-    uint16_t *p;
-
-    guest.slot_ref_6b6 = -1;
-    p = &guest.shot_lists_raw[1];
-    clear_72_words(p);
-    guest.slot_ref_748 = -1;
-    clear_72_words((uint16_t *)((uint8_t *)&guest.slot_ref_748 + 2));
-    guest.slot_ref_7da = -1;
-    clear_72_words((uint16_t *)((uint8_t *)&guest.slot_ref_7da + 2));
+    guest.shot_lists[0].object = -1;
+    clear_72_words((uint16_t *)((uint8_t *)&guest.shot_lists[0].object + 2));
+    guest.shot_lists[1].object = -1;
+    clear_72_words((uint16_t *)((uint8_t *)&guest.shot_lists[1].object + 2));
+    guest.shot_lists[2].object = -1;
+    clear_72_words((uint16_t *)((uint8_t *)&guest.shot_lists[2].object + 2));
     guest.hit_list_recording = -1;
 }
 
@@ -12537,7 +12532,7 @@ void stop_game_sounds(void)
     stop_sound(66);
     do {
         wait_vblank();
-    } while (guest.sound_busy_207a0 != 0);
+    } while (guest.sound_state.busy != 0);
 }
 
 /* orig $016C14 and $016C1E: the 24 bytes at $16BCC (the same twelve words as the ones that are at $16BB4 at the start: the original
@@ -12568,7 +12563,7 @@ void clear_cell_records(void)
  * words are then 11, 0, 6 and 0 */
 void widen_bytes_to_words(void)
 {
-    uint16_t *to = (uint16_t *)guest.words_source;
+    uint16_t *to = (uint16_t *)guest.cell_entry_table;
     const uint8_t *from = guest.bytes_dest;
 
     for (int i = 0; i < 506; i++)
@@ -16221,7 +16216,7 @@ static void boss_quickload(void)
     if (guest.boss_mode != 0 && guest.menu_state_25a == 2 && guest.param_index == 2) {
         struct Guardian *boss = &guest.guardian;
 
-        file_words(boss, (0x632 - 0x4E8) / 2);
+        file_words(&boss->x, (0x632 - 0x4E8) / 2);
         file_words(&guest.guardian.tail.boss1.path_count, 1);
         guest.guardian.frame = boss2_frame;
         guest.guardian.callback = boss_rts;
@@ -16232,7 +16227,7 @@ static void boss_quickload(void)
     if (guest.boss_mode != 0 && guest.menu_state_25a == 2 && guest.param_index == 3) {
         struct Guardian *boss = &guest.guardian;
 
-        file_words(boss, 2);
+        file_words(&boss->x, 2);
         file_words(&boss->picture, 6);
         file_words(boss->tail.boss3.shots, 75);
         file_words(&boss->tail.boss3.can_shoot, 1);
@@ -16257,7 +16252,7 @@ static void boss_quickload(void)
 
     struct Guardian *boss = &guest.guardian;
 
-    file_words(boss, 2);
+    file_words(&boss->x, 2);
     file_words(&boss->picture, 6);
     file_words(boss->tail.boss1.shots, 75);
     file_words(guest.scratch_buffer, 250);
@@ -16557,7 +16552,7 @@ static void shop_score(void)
     int32_t score = (int32_t)guest.score_total_1fc;
 
     if (shown != score) {
-        if (guest.sound_busy_207a0 == 0)
+        if (guest.sound_state.busy == 0)
             play_sound(0x21, 1);
         if (shown > score) {
             shown -= 750;
@@ -16638,7 +16633,7 @@ static void shop_stock_filter(void)
                     kind++;
             if (guest.shop_bought & (1u << kind))
                 continue;
-            if ((guest.slot_ref_6b6 & guest.slot_ref_748 & guest.slot_ref_7da) == -1 && (id == 2 || id == 3))
+            if ((guest.shot_lists[0].object & guest.shot_lists[1].object & guest.shot_lists[2].object) == -1 && (id == 2 || id == 3))
                 continue;
             if (guest.falcon_energy == -1 && (id == 0x28 || id == 0x29))
                 continue;
@@ -16729,7 +16724,7 @@ static int16_t *shop_object_slot(int16_t item)
 {
     int slot = pick_slot(item, &((const struct Object *)guest.object_slots)[item]);
 
-    return slot == 0 ? &guest.slot_ref_6b6 : slot == 1 ? &guest.slot_ref_748 : &guest.slot_ref_7da;
+    return slot == 0 ? &guest.shot_lists[0].object : slot == 1 ? &guest.shot_lists[1].object : &guest.shot_lists[2].object;
 }
 
 /* orig $013A22 to $013C12: the fire button is pressed on a cell.  The first press chooses the item (its message is shown); the second buys it: a pick-up of a kind with a handler (shop_kinds_13b32) has the

@@ -32,10 +32,11 @@ void sound_init(void)
 
     guest.sound_lock = 0xff;
     CIAA_PRA |= 0x02;
-    *(uint32_t *)guest.sound_state_2079e = 0;
-    *(uint16_t *)(guest.sound_state_2079e + 4) = 0;
-    *(uint32_t *)(guest.sound_state_2079e + 6) = 0;
-    *(uint16_t *)(guest.sound_state_2079e + 10) = 0;
+    guest.sound_state.word_0 = 0;
+    guest.sound_state.busy = 0;
+    guest.sound_state.word_6 = 0;
+    for (int i = 0; i < 4; i++)
+        guest.sound_state.voice_ids[i] = 0;
     custom->dmacon = 0x820f;
     custom->intena = 0x0780;
     custom->intreq = 0x0780;

@@ -636,6 +636,16 @@ _Static_assert(sizeof(struct CopperListB) == 92, "copper list b");
 #define COPPER_LIST_A ((uint8_t *)&guest.copper_list_a)
 #define COPPER_LIST_B ((uint8_t *)&guest.copper_list_b)
 
+/* the sound system's variables ($2079E, 14 bytes): the start-up clears them; busy is not 0 while there is something to play (a long to the loader: the first voice's byte is the top one) and voice_ids the sound each of the four voices plays */
+struct SoundState {
+    uint16_t word_0;
+    volatile uint32_t busy;
+    uint16_t word_6;
+    uint8_t voice_ids[4];
+    uint16_t word_c;
+};
+_Static_assert(sizeof(struct SoundState) == 14, "sound state");
+
 /* The members of struct Gods are at the offsets of the original's addresses when MATCH_MEMORY_LAYOUT is defined (the Amiga build, where the struct is the memory at address 0, and
  * the SDL builds that read the original's RAM images and states).  Without it PAD() is nothing: the struct is just the variables, packed, and the variables that overlap in the
  * original (a word and the byte in it) share their first byte only. */
@@ -885,13 +895,7 @@ struct Gods {
     struct Guardian guardian;   /* $004E0 */
     int16_t axe_steps[27];   /* $0066E */
     int16_t shot_offsets_6a4[9];   /* $006A4 */
-    union {   /* the variables that overlap */
-        struct { uint16_t shot_lists_raw[219]; };   /* $006B6 */
-        struct { int16_t slot_ref_6b6; };   /* $006B6 */
-        struct { PAD(146) int16_t slot_ref_748; };   /* $00748 */
-        struct { PAD(292) int16_t slot_ref_7da; };   /* $007DA */
-        uint8_t bytes_006b6[438];
-    };
+    struct ShotList shot_lists[3];   /* $006B6 */
     int16_t particle_records[240];   /* $0086C */
     int16_t particle_burst_active;   /* $00A4C */
     int16_t particle_glyph_step;   /* $00A4E */
@@ -967,11 +971,7 @@ struct Gods {
     uint8_t *unit_scripts;   /* $00CB2 */
     struct ScriptRecord *script_records;   /* $00CB6 */
     uint8_t *message_offsets;   /* $00CBA */
-    union {   /* the variables that overlap */
-        struct { struct EntryRef *cell_entry_table; };   /* $00CBE */
-        struct { const uint16_t *words_source; };   /* $00CBE */
-        uint8_t bytes_00cbe[4];
-    };
+    struct EntryRef *cell_entry_table;   /* $00CBE */
     uint8_t *bytes_dest;   /* $00CC2 */
     uint8_t *random_words;   /* $00CC6 */
     PAD(4)
@@ -1266,11 +1266,7 @@ struct Gods {
     volatile uint32_t pending_request;   /* $1E5A8 */
     volatile uint8_t joystick;   /* $1E5AC */
     PAD(141)
-    union {   /* the variables that overlap */
-        struct { volatile uint8_t key_down[128]; };   /* $1E63A */
-        struct { PAD(96) uint8_t key_modifiers[2]; };   /* $1E69A */
-        uint8_t bytes_1e63a[128];
-    };
+    volatile uint8_t key_down[128];   /* $1E63A */
     PAD(5136)
     uint8_t sound_last_variant;   /* $1FACA */
     PAD(2177)
@@ -1279,12 +1275,7 @@ struct Gods {
     uint8_t voice_buffers[384];   /* $2061C */
     uint8_t sound_lock;   /* $2079C */
     PAD(1)
-    union {   /* the variables that overlap */
-        struct { uint8_t sound_state_2079e[14]; };   /* $2079E */
-        struct { PAD(2) volatile uint32_t sound_busy_207a0; };   /* $207A0 */
-        struct { PAD(8) uint8_t voice_ids_207a6[4]; };   /* $207A6 */
-        uint8_t bytes_2079e[14];
-    };
+    struct SoundState sound_state;   /* $2079E */
     PAD(1992)
     uint8_t sound_track_data[3270];   /* $20F74 */
     PAD(548)
@@ -1516,10 +1507,7 @@ _Static_assert(offsetof(struct Gods, planner) == 0x4be, "planner");
 _Static_assert(offsetof(struct Gods, guardian) == 0x4e0, "guardian");
 _Static_assert(offsetof(struct Gods, axe_steps) == 0x66e, "axe_steps");
 _Static_assert(offsetof(struct Gods, shot_offsets_6a4) == 0x6a4, "shot_offsets_6a4");
-_Static_assert(offsetof(struct Gods, shot_lists_raw) == 0x6b6, "shot_lists_raw");
-_Static_assert(offsetof(struct Gods, slot_ref_6b6) == 0x6b6, "slot_ref_6b6");
-_Static_assert(offsetof(struct Gods, slot_ref_748) == 0x748, "slot_ref_748");
-_Static_assert(offsetof(struct Gods, slot_ref_7da) == 0x7da, "slot_ref_7da");
+_Static_assert(offsetof(struct Gods, shot_lists) == 0x6b6, "shot_lists");
 _Static_assert(offsetof(struct Gods, particle_records) == 0x86c, "particle_records");
 _Static_assert(offsetof(struct Gods, particle_burst_active) == 0xa4c, "particle_burst_active");
 _Static_assert(offsetof(struct Gods, particle_glyph_step) == 0xa4e, "particle_glyph_step");
@@ -1587,7 +1575,6 @@ _Static_assert(offsetof(struct Gods, unit_scripts) == 0xcb2, "unit_scripts");
 _Static_assert(offsetof(struct Gods, script_records) == 0xcb6, "script_records");
 _Static_assert(offsetof(struct Gods, message_offsets) == 0xcba, "message_offsets");
 _Static_assert(offsetof(struct Gods, cell_entry_table) == 0xcbe, "cell_entry_table");
-_Static_assert(offsetof(struct Gods, words_source) == 0xcbe, "words_source");
 _Static_assert(offsetof(struct Gods, bytes_dest) == 0xcc2, "bytes_dest");
 _Static_assert(offsetof(struct Gods, random_words) == 0xcc6, "random_words");
 _Static_assert(offsetof(struct Gods, bolt_slots) == 0xcce, "bolt_slots");
@@ -1782,14 +1769,11 @@ _Static_assert(offsetof(struct Gods, button_presses) == 0x1e50a, "button_presses
 _Static_assert(offsetof(struct Gods, pending_request) == 0x1e5a8, "pending_request");
 _Static_assert(offsetof(struct Gods, joystick) == 0x1e5ac, "joystick");
 _Static_assert(offsetof(struct Gods, key_down) == 0x1e63a, "key_down");
-_Static_assert(offsetof(struct Gods, key_modifiers) == 0x1e69a, "key_modifiers");
 _Static_assert(offsetof(struct Gods, sound_last_variant) == 0x1faca, "sound_last_variant");
 _Static_assert(offsetof(struct Gods, voice) == 0x2034c, "voice");
 _Static_assert(offsetof(struct Gods, voice_buffers) == 0x2061c, "voice_buffers");
 _Static_assert(offsetof(struct Gods, sound_lock) == 0x2079c, "sound_lock");
-_Static_assert(offsetof(struct Gods, sound_state_2079e) == 0x2079e, "sound_state_2079e");
-_Static_assert(offsetof(struct Gods, sound_busy_207a0) == 0x207a0, "sound_busy_207a0");
-_Static_assert(offsetof(struct Gods, voice_ids_207a6) == 0x207a6, "voice_ids_207a6");
+_Static_assert(offsetof(struct Gods, sound_state) == 0x2079e, "sound_state");
 _Static_assert(offsetof(struct Gods, sound_track_data) == 0x20f74, "sound_track_data");
 _Static_assert(offsetof(struct Gods, sound_sample_data) == 0x21e5e, "sound_sample_data");
 _Static_assert(offsetof(struct Gods, sound_silence) == 0x21e5e, "sound_silence");
