@@ -103,7 +103,7 @@ def main() -> None:
 
     for c in clusters:
         if c["start"] > at:
-            out.append(f"    uint8_t pad_{at:05x}[{c['start'] - at}];")
+            out.append(f"    PAD({c['start'] - at})")
         if len(c["members"]) == 1:
             name, addr, decl = c["members"][0]
             out.append(f"    {declare(decl, name)}   /* ${addr:05X} */")
@@ -114,19 +114,21 @@ def main() -> None:
                 if addr == c["start"]:
                     out.append(f"        struct {{ {declare(decl, name)} }};   /* ${addr:05X} */")
                 else:
-                    out.append(f"        struct {{ uint8_t pad_in_{addr:05x}_{len(checks)}[{addr - c['start']}]; {declare(decl, name)} }};   /* ${addr:05X} */")
+                    out.append(f"        struct {{ PAD({addr - c['start']}) {declare(decl, name)} }};   /* ${addr:05X} */")
                 checks.append((name, addr))
             out.append(f"        uint8_t bytes_{c['start']:05x}[{c['end'] - c['start']}];")
             out.append("    };")
         at = c["end"]
-    out.append(f"    uint8_t pad_{at:05x}[{HEAP - at}];")
+    out.append(f"    PAD({HEAP - at})")
     out.append("#ifdef GODS_HEAP_IN_GUEST   /* the host's builds: the program's heap is the end of the block */")
     out.append(f"    uint8_t heap[{GUEST_END - HEAP}];   /* ${HEAP:05X} */")
     out.append("#endif")
     out.append("};")
     out.append("")
+    out.append("#ifdef MATCH_MEMORY_LAYOUT")
     for name, addr in checks:
         out.append(f'_Static_assert(offsetof(struct Gods, {name}) == 0x{addr:x}, "{name}");')
+    out.append("#endif")
     out += ["", "extern struct Gods guest;"]
     header = SRC / "game.h"
     text = header.read_text()
