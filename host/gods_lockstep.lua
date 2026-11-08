@@ -95,7 +95,7 @@ MEMCMP_REGIONS = {
     { name = "burst_marks", addr = 0x316, count = 4, size = 6, unit = 2 },
     { name = "particle_records (particles)", addr = 0x86c, count = 80, size = 6, unit = 2 },
     { name = "slots_30c", addr = 0x30c, count = 1, size = 8, unit = 2 },
-    { name = "records_7544", addr = 0x7544, count = 42, size = 10, unit = 2 },
+    { name = "face_bolt_records", addr = 0x7544, count = 42, size = 10, unit = 2 },
     { name = "bolt_records (bolts)", addr = 0x1a154, count = 20, size = 22, unit = 2, skip = { 0, 4 } },
     { name = "player x,y", addr = 0x1e0, count = 1, size = 4, unit = 2 },
     { name = "energy", addr = 0xc96, count = 1, size = 2, unit = 2 },
