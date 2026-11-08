@@ -2152,7 +2152,6 @@ static void level_end_screen(void)
     text_draw_at((const char *)record->text, 0, 0x12);
     text_draw_at("COMPLETED", 0x58, 0x26);
     text_draw_at("BONUS", 0x30, 0x88);
-    ((volatile uint8_t *)&guest.unused_ddc)[0] = 0;
     guest.draw_routine_index = 1;
     guest.image_draw_flags |= 2;
     guest.image_draw_flags |= 8;
@@ -3194,7 +3193,7 @@ int16_t damage_player_at(int16_t x, int16_t y, int16_t strength)
         guest.player_energy -= loss;
     if (guest.boss_mode == 0)
         strength = -1;
-    if (guest.sound_gate_opcode == 0x4E75)
+    if (guest.game_nothing_opcode == 0x4E75)
         play_sound(4, 120);
     return strength;
 }
@@ -6065,7 +6064,7 @@ static void record_update(struct Slot8 *record, uint8_t *flag, int16_t counter)
 
 /* orig $00417C: one frame of the things of the level.  The counters of the animations go on, then the two hundred records of
  * thing_records (a thing whose fourth word is not 0 and third not negative) are done with record_update; at the end the sound 19 is
- * played (priority 1) while things were counted on the screen (onscreen_count) and sound_gate_opcode is the rts of the sound routine,
+ * played (priority 1) while things were counted on the screen (onscreen_count) and game_nothing_opcode is the rts of the sound routine,
  * otherwise stopped */
 void update_records(void)
 {
@@ -6097,7 +6096,7 @@ void update_records(void)
     }
     if (guest.kind45_seen != 0)
         guest.list_count_1294 = 1;
-    if (guest.onscreen_count != 0 && guest.sound_gate_opcode == 0x4e75 && guest.tick_hold_38a == 0) {
+    if (guest.onscreen_count != 0 && guest.game_nothing_opcode == 0x4e75 && guest.tick_hold_38a == 0) {
         play_sound(19, 1);
         return;
     }
@@ -6827,14 +6826,14 @@ static void score_add_packed(uint8_t packed)
 static void spawn_stone_enemy(int16_t *entry)
 {
     int16_t saved_energy = (int16_t)guest.player_energy;
-    uint16_t saved_3436 = guest.sound_gate_opcode;
+    uint16_t saved_3436 = guest.game_nothing_opcode;
 
     guest.hit_box_extra_width = 0x30;
     guest.hit_box_extra_height = 0x30;
-    guest.sound_gate_opcode = 0x4E71;
+    guest.game_nothing_opcode = 0x4E71;
     int16_t result = damage_player_at((int16_t)((entry[0] << 5) - 8), (int16_t)((entry[1] << 4) - 8), 0x32);
 
-    guest.sound_gate_opcode = saved_3436;
+    guest.game_nothing_opcode = saved_3436;
     if (result < 0) {
         guest.player_energy = (uint16_t)saved_energy;
         return;
@@ -12138,7 +12137,7 @@ void player_control(void)
 
     if (state != 18 && state != 19)
         set_shutter_wait();
-    if (guest.shop_door_opcode == 20081 || guest.world_end_steps >= 0) {
+    if (guest.game_nothing_opcode == 20081 || guest.world_end_steps >= 0) {
         player_end(d7);
         return;
     }
@@ -13111,7 +13110,6 @@ void load_background_tiles(const uint8_t *name)
     blocks = (int16_t)table_17a6e[(int16_t)((guest.param_index - 1) * 2) + guest.world_b_files];
     guest.background = top - ((uint32_t)(uint16_t)blocks << 8);
     guest.background_tile_graphics = guest.background - 256;
-    guest.unused_276 = 0;
     load_picture_to_screen(name);
     count = (int16_t)(blocks - 1);
     if (count >= 119)
@@ -13416,19 +13414,17 @@ void level_state_init(void)
     guest.visited_spots_count = 0;
     guest.level_ended = 0;
     guest.fall_distance = 0;
-    guest.unused_3a1fa = 0;
     guest.hint_scrolling = 0;
     guest.unused_238 = 0;
     guest.boss_load_request = 0;
     guest.shop_door_index = 0;
-    guest.unused_280 = 0;
     guest.creature_hit_flag = 0;
     guest.freeze_timer = 0;
     guest.unused_25c = 1;
     guest.event_flags &= (uint8_t)~1;
     guest.event_flags &= (uint8_t)~4;
     guest.boss_phase_flags &= (uint8_t)~1;
-    guest.sound_gate_opcode = 0x4E75;
+    guest.game_nothing_opcode = 0x4E75;
     guest.world_end_steps = -1;
     guest.redraw_gate_opcode = 0x4E75;
     guest.moving_paths_count = 0;
@@ -13477,7 +13473,7 @@ void level_state_init(void)
         guest.event_flags &= (uint8_t)~0x40;
     }
     guest.slot_value_target = (int16_t)table_1527a[(int16_t)(guest.param_index - 1)];
-    guest.boss2_active = 0;
+    guest.energy_pickup_active = 0;
     guest.energy_shown = 0;
     guest.death_frame = -1;
     guest.orbit_timer = -1;
@@ -14183,7 +14179,6 @@ static void level_begin(void)
     copper_colors_restore();
     hud_digits_load();
     clear_entry_table();
-    guest.unused_276 = 0;
     guest.message_shown = 0;
     guest.tick_hold_26c = 0;
     clear_work_area();
@@ -14233,7 +14228,6 @@ static void level_begin(void)
     level_next_fade = 0;
     fade_in(guest.palette_words, 1);
     guest.draw_routine_index = 1;
-    guest.unused_ddc = 0;
     guest.image_draw_flags |= 8;
     guest.image_draw_flags |= 2;
     guest.tick_hold_26c = 0;
@@ -14335,7 +14329,7 @@ static void level_load_world(void)
  * while the first word of the routine at $3436 is not an rts (the end of a world: $3342).  Returns 1 when the player has gone in */
 static int shop_door(void)
 {
-    if (guest.shop_door_opcode == 0x4E75)
+    if (guest.game_nothing_opcode == 0x4E75)
         return 0;
 
     int16_t x = (int16_t)guest.shop_door_x;
@@ -14363,7 +14357,7 @@ static int shop_door(void)
     if (damage_player_at((int16_t)guest.shop_door_x, (int16_t)guest.shop_door_y, 5) < 0) {
         if (guest.player_invulnerable == 0)
             guest.player_energy += 5;
-        guest.shop_door_opcode = 0x4E75;
+        guest.game_nothing_opcode = 0x4E75;
         return 1;
     }
     return 0;
@@ -14417,7 +14411,7 @@ static void world_end_countdown(void)
         world_assets();
     }
     world_door();
-    guest.shop_door_opcode = 0x4E71;
+    guest.game_nothing_opcode = 0x4E71;
 }
 
 /* orig $00B09E: the fifteen records of ten bytes at $518 are free (the word at +6 is -1) */
@@ -14804,7 +14798,7 @@ static void boss2_514(void)
 {
     struct Boss2 *boss = boss2_state();
 
-    guest.boss2_active = 1;
+    guest.energy_pickup_active = 1;
     boss->x = 0x280;
     boss->y = 0x370;
     boss->offset_x = -28;

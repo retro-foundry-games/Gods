@@ -152,7 +152,6 @@ void memory_map_init(void)
     p += 0x140;
     guest.level_map = p;
     p += 0x4000;
-    guest.unused_buffer_200 = p;
     p += 0x200;
     guest.copper_colours = p;
     p += 0xc0;

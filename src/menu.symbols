@@ -132,7 +132,6 @@ copper_save_first          0x00000e4c  uint8_t *%s
 monster_part_blocks          0x00000cee  uint8_t *%s
 random_words          0x00000cc6  uint8_t *%s
 level_map          0x00000b86  uint8_t *%s
-unused_buffer_200          0x00000cc2  uint8_t *%s
 copper_colours          0x00000cda  uint8_t *%s
 unit_member_blocks         0x00000cfa  uint8_t *%s[5]   five pointers, 200 bytes apart (the first is set by memory_map_init)
 message_offsets          0x00000cba  uint8_t *%s
@@ -305,7 +304,7 @@ bolts_active        0x000186be uint16_t %s
 last_drop_frame          0x00000354 int16_t %s
 hit_box_extra_width          0x0000039c int16_t %s    added (half of it) to the width of the box the player is hit in
 hit_box_extra_height          0x0000039e int16_t %s    the same for its height
-sound_gate_opcode         0x00003436 uint16_t %s   the first word of the original's routine at $3436 (an rts, $4E75)
+game_nothing_opcode         0x00003436 uint16_t %s   the first word of the original's routine at $3436 (an rts, $4E75)
 hit_list_recording          0x00000214 int16_t %s
 slot_ref_6b6      0x000006b6 int16_t %s    first word of the first of three records of 146 bytes: negative none, else the number of a record of object_slots
 slot_ref_748      0x00000748 int16_t %s    the second
@@ -372,7 +371,6 @@ pickup_active          0x0000035c  int16_t %s
 pickup_button_held          0x00000368  int16_t %s
 fall_fire_flip          0x0000036e  int16_t %s
 pickup_nothing_near          0x000001fa  int16_t %s
-shop_door_opcode         0x00003436  uint16_t %s    the first word of orig_game_nothing (a NOP, 20081, there disables the player's control)
 table jump_deltas 0x00011318  uint16_t 23    how many rows up the player is in each step (2 bytes a step) of a jump
 table frame_map_125ac 0x000125ac uint16_t 6  the frame after a frame of the state 5 (five words), then how near the left or right of the screen the player may go before the scroll follows
 table state_table 0x00010280 uint32_t 58     29 states of the player, two longs each: the first sprite and the routine (the C does not use the second)
@@ -558,11 +556,8 @@ unused_1f8          0x000001f8  uint16_t %s
 unused_1ba          0x000001ba  uint16_t %s
 unused_1de          0x000001de  uint16_t %s
 unused_238          0x00000238  uint16_t %s
-boss2_active          0x00000268  uint16_t %s
-unused_276          0x00000276  uint16_t %s
 life_score_offset          0x0000027c  uint16_t %s
 bonus_score_offset          0x0000027e  uint16_t %s
-unused_280          0x00000280  uint16_t %s
 shop_door_index          0x00000294  uint16_t %s
 shop_door_x          0x00000288  int16_t %s       the x of the shop's door in the level (the table at $351A by level and world), set when a world is loaded
 shop_door_y          0x0000028a  int16_t %s       its y
@@ -585,7 +580,6 @@ particle_glyph_step          0x00000a4e  int16_t %s
 particle_phase          0x00000a50  int16_t %s
 unused_a68          0x00000a68  int16_t %s
 orbit_timer          0x00000a9a  int16_t %s
-unused_3a1fa        0x0003a1fa  uint16_t %s
 image_mirrored          0x00000d82  uint16_t %s     image_draw_clipped: negative when the image is mirrored
 image_x_shift          0x00000d86  uint16_t %s     ... the shift in the bits of x
 image_clip_flags          0x00000d88  uint16_t %s     ... 1 left side clipped, 2 right side clipped
@@ -593,7 +587,6 @@ screen_row_bytes          0x00000dd2  uint16_t %s     the bytes of a row of the 
 image_clip_skip_rows          0x00000dd4  uint16_t %s
 unused_dd6          0x00000dd6  uint16_t %s
 image_plane_bytes          0x00000dd8  uint32_t %s     the bytes of one plane of the image
-unused_ddc          0x00000ddc  uint16_t %s
 draw_routine_index          0x00000dde  uint16_t %s     which draw routine of the table at $0D9A image_draw_clipped uses
 sound_busy_207a0  0x000207a0  volatile uint32_t %s   not 0 while the sound system has something to play
 spore_records      0x00001036  uint8_t %s[120]   ten records of 12 bytes
