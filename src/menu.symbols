@@ -118,7 +118,7 @@ asset_mem_end     0x00000d3e  uint8_t *%s       where assets_load stopped writin
 asset_table_end   0x00000d3a  struct AssetEntry *%s   ... and where its table of entries ended
 picture_buffer    0x00031fde  uint8_t %s[]      where a picture file is read to
 table asset_extensions 0x00000d2e uint8_t 11   the endings of a picture file name (.pi1) and of its table (.dat, 6 bytes on)
-table asset_names 0x0001ecec uint8_t 138   the names assets_load knows (each ended by 0, ended by $FF), and from byte 86 on a long for each: the address of its list of file names
+table asset_names 0x0001ecec uint8_t 134   the names assets_load knows (each ended by 0, ended by $FF), and from byte 86 on a long for each: the address of its list of file names
 menu_active      0x00000278  uint16_t %s     set when the menu program's main part has started
 stack_top        0x00000e38  uint8_t *%s
 asset_memory    0x00000e40  uint8_t *%s
@@ -649,3 +649,16 @@ table respawn_search 0x00003864 uint16_t 45  fifteen records of three words: whe
 planner           0x000004be  struct Planner %s   the path planner of the walkers (orig $A492)
 plan_queue        0x0001971c  struct PlanItem %s[32]   the places the planner has still to look at (x and y 0: free)
 plan_list         0x0001981c  struct PlanItem %s[50]   the places along the floor that the planner has been to
+ball_values       0x00000206  int16_t %s[3]   the bouncing ball's speeds (x, y) and its jump
+hit_list          0x00000bd6  int16_t %s[75]  the list of the creatures hit (x, y, strength: 25 of them)
+axe_steps         0x0000066e  int16_t %s[27]  the magic axe's nine shots' steps
+ball_pillars      0x00000a6e  int16_t %s[21]  the ball's pillars of fire
+ball_pieces       0x00000e6c  int16_t %s[50]  its burst's pieces
+boss_area         0x000004e8  uint8_t %s[390]  the guardians' variables (the structs of game.c lie on it: struct BossState, Boss2, the level 4's words)
+list_121c         0x0000121c  int16_t %s[66]  the list of things that list_count_1294 counts
+count_121a        0x0000121a  uint16_t %s
+code_2c20         0x00002c20  uint8_t %s[6]   the original's code at $2C20: the jump that game_loop_install puts there
+irq_vectors       0x00000068  uint32_t %s[3]  the interrupt vectors the start-up sets (the keyboard's, the blank's, the audio's)
+copper_message_5254 0x00005254 uint16_t %s[3]  the copper list's bitplane pointer for the message (the high word, ?, the low word)
+sound_silence     0x00021e5e  uint8_t %s[16]  the silent sample
+sound_state_2079e 0x0002079e  uint8_t %s[14]  the sound system's words the start-up clears

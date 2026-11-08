@@ -30,7 +30,7 @@ GAME_CFLAGS := $(COMMON) -fpack-struct=2 -DGODS_SDL -DGODS_HEAP_IN_GUEST $(if $(
 HOST_CFLAGS := $(COMMON)
 
 MENU_MODULES := menu disk alloc decrunch input draw message file boot game data
-GAME_OBJS := $(W)/g_shims.o $(W)/g_display.o $(W)/g_sound.o $(W)/g_guest.o $(W)/g_irq.o $(W)/g_files.o $(MENU_MODULES:%=$(W)/g_%.o) $(W)/g_stubs.o
+GAME_OBJS := $(W)/g_shims.o $(W)/g_display.o $(W)/g_sound.o $(W)/g_guest.o $(W)/g_guest_load.o $(W)/g_irq.o $(W)/g_files.o $(MENU_MODULES:%=$(W)/g_%.o) $(W)/g_stubs.o
 HOST_OBJS := $(W)/h_host.o $(W)/h_intro_view.o $(W)/h_main.o
 INTRO_OBJS := $(W)/i_intro_host.o $(W)/i_intro.o $(W)/i_intro_data.o
 
@@ -65,6 +65,8 @@ $(W)/g_display.o: $(HERE)/display.c $(GENERATED)
 $(W)/g_sound.o: $(HERE)/sound.c $(GENERATED)
 	$(EMCC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
 $(W)/g_guest.o: $(HERE)/guest.c $(GENERATED)
+	$(EMCC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
+$(W)/g_guest_load.o: $(HERE)/guest_load.c $(GENERATED)
 	$(EMCC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
 $(W)/g_irq.o: $(HERE)/irq.c $(GENERATED)
 	$(EMCC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@

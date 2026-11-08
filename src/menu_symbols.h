@@ -92,7 +92,7 @@ extern const char text_game_over[11];   /* $100A9  "GAME  OVER" */
 extern const uint8_t key_table[40];   /* $06CE0  the keys of the grid in the order of its cells (a to z, full stop, space, 0 to 9, backspace), ended by $FF */
 extern const char tocache_name[12];   /* $196FE  "tocache.bin": the file with the directory of the disks (loaded at start) */
 extern const uint8_t asset_extensions[11];   /* $00D2E  the endings of a picture file name (.pi1) and of its table (.dat, 6 bytes on) */
-extern const uint8_t asset_names[138];   /* $1ECEC  the names assets_load knows (each ended by 0, ended by $FF), and from byte 86 on a long for each: the address of its list of file names */
+extern const uint8_t asset_names[134];   /* $1ECEC  the names assets_load knows (each ended by 0, ended by $FF), and from byte 86 on a long for each: the address of its list of file names */
 extern const uint8_t keymap[128];   /* $1E5AE  the character a raw key code gives (0 when none) */
 extern const char background_name[12];   /* $026D2  "backscr.pi1": the file of the menu's background picture */
 extern const char small_font_name[9];   /* $03232  "smallfnt": the asset set of the small font */

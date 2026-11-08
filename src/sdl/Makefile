@@ -20,6 +20,10 @@ GODS_DISKS ?= $(abspath $(NATIVE)/../local)
 PYTHON ?= python3
 CC := gcc   # the host compiler, not the Amiga cross compiler the flake shell also has
 
+# (the makefiles are not made by make's built-in rules: Makefile.web would make it try to tangle one)
+.DEFAULT_GOAL := all
+Makefile Makefile.web: ;
+
 ifeq ($(IN_NIX_SHELL),)
 .PHONY: all $(MAKECMDGOALS)
 all $(MAKECMDGOALS):
@@ -46,7 +50,7 @@ $(shell mkdir -p $(BUILD); echo '$(GAME_CFLAGS) | $(HOST_CFLAGS)' | cmp -s - $(F
 
 # the program's modules (as native/Makefile's MENU_MODULES) and the C that replaces the Amiga parts
 MENU_MODULES := menu disk alloc decrunch input draw message file boot game data
-GAME_OBJS := $(BUILD)/g_shims.o $(BUILD)/g_display.o $(BUILD)/g_sound.o $(BUILD)/g_guest.o $(BUILD)/g_irq.o $(BUILD)/g_files.o $(MENU_MODULES:%=$(BUILD)/g_%.o) $(BUILD)/g_stubs.o
+GAME_OBJS := $(BUILD)/g_shims.o $(BUILD)/g_display.o $(BUILD)/g_sound.o $(BUILD)/g_guest.o $(BUILD)/g_guest_load.o $(BUILD)/g_irq.o $(BUILD)/g_files.o $(MENU_MODULES:%=$(BUILD)/g_%.o) $(BUILD)/g_stubs.o
 HOST_OBJS := $(BUILD)/h_host.o
 
 .PHONY: all run clean
@@ -71,7 +75,9 @@ $(BUILD)/g_display.o: $(HERE)/display.c $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/g_sound.o: $(HERE)/sound.c $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
-$(BUILD)/g_guest.o: $(HERE)/guest.c $(BUILD)/guest_tables.h $(BUILD)/guest_fixups.h $(FLAGS_STAMP) | $(BUILD)
+$(BUILD)/g_guest.o: $(HERE)/guest.c $(BUILD)/guest_tables.h $(FLAGS_STAMP) | $(BUILD)
+	$(CC) $(GAME_CFLAGS) -I$(BUILD) -MMD -MP -c $< -o $@
+$(BUILD)/g_guest_load.o: $(HERE)/guest_load.c $(BUILD)/guest_tables.h $(BUILD)/guest_fixups.h $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -I$(BUILD) -MMD -MP -c $< -o $@
 $(BUILD)/g_irq.o: $(HERE)/irq.c $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
@@ -81,7 +87,7 @@ $(BUILD)/g_draw.o: $(SRC)/draw.c $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -fno-inline -MMD -MP -c $< -o $@   # (blit_masked_image is replaced by display.c: no copy of it inside)
 $(BUILD)/g_%.o: $(SRC)/%.c $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
-$(BUILD)/h_%.o: $(HERE)/%.c $(BUILD)/guest_tables.h $(BUILD)/guest_fixups.h $(FLAGS_STAMP) | $(BUILD)
+$(BUILD)/h_%.o: $(HERE)/%.c $(BUILD)/guest_tables.h $(BUILD)/guest_tables.h $(BUILD)/guest_fixups.h $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(HOST_CFLAGS) -I$(BUILD) -MMD -MP -c $< -o $@
 # the regular program has --disks DIR (default: the working folder) and --help
 $(BUILD)/h_main.o: $(HERE)/main.c $(HERE)/host.h $(FLAGS_STAMP) | $(BUILD)

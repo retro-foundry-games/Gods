@@ -166,12 +166,12 @@ static void dev_iteration(unsigned iteration)
         FILE *f = fopen(region_path, "wb");
 
         if (f) {
-            fwrite((const void *)(uintptr_t)GUEST(region_address), 1, region_length, f);
+            fwrite((const void *)guest_ptr(region_address), 1, region_length, f);
             fclose(f);
         }
     }
     if (dump) {
-        fwrite((const void *)(uintptr_t)GUEST(0x100), 1, 0xF00, dump);
+        fwrite((const void *)guest_ptr(0x100), 1, 0xF00, dump);
         fflush(dump);
     }
 }

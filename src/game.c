@@ -220,8 +220,8 @@ static void wait_frames_then_flip(uint16_t frames)
  * screen start the game */
 void game_loop_install(void)
 {
-    *(volatile uint16_t *)GUEST(0x2c20) = 0x4ef9;
-    *(volatile uint32_t *)GUEST(0x2c22) = (uint32_t)(uintptr_t)game_loop;
+    *(volatile uint16_t *)guest.code_2c20 = 0x4ef9;
+    *(volatile uint32_t *)(guest.code_2c20 + 2) = (uint32_t)(uintptr_t)game_loop;
 }
 
 /* orig $0030C6: the screen is pushed to the right, 4 pixels a frame (the toggle word shifted twice, or 4 when it is 0), and flag_26e (the
@@ -2484,7 +2484,7 @@ static int16_t falcon_target_8684(int16_t *x, int16_t *y)
 {
     int16_t best = -1;
     int16_t *chosen = 0;
-    int16_t *list = (int16_t *)GUEST(0xBD6);
+    int16_t *list = guest.hit_list;
 
     for (int i = 0; i <= guest.flag_20e; i++) {
         int16_t *record = &list[i * 3];
@@ -2737,7 +2737,7 @@ _Static_assert(sizeof(struct Spore) == 12, "spore");
 
 static struct Pod *pods(void)
 {
-    return (struct Pod *)GUEST(0xFD0);
+    return (struct Pod *)guest.slots_fd0;
 }
 
 static struct Spore *spores(void)
@@ -3816,6 +3816,12 @@ static int16_t hit_marked_cell(const uint8_t *after, int16_t x, int16_t y, int16
  * routine.  Returns the strength (or -1, or the strength left after a hit on a cell) */
 /* where the original's a4 is after $007EAE / $00D270 wrote a record of the list of hits ($0BD6, while the falcon is there): the next free record.  The routines that give the score of a monster killed ($9DDA) read the byte
  * at +1 of a4 as the monster's value, which is the template's when nothing was written and the low byte of the x of that free record (what an earlier frame left there) when the falcon made the list */
+/* the record of the list of the creatures hit that value_c6c (the original's address of it, $BD6 on) names */
+static int16_t *hit_list_at(uint32_t address)
+{
+    return (int16_t *)((uint8_t *)guest.hit_list + (address - 0xBD6));
+}
+
 static const uint8_t *hit_list_a4;
 
 static uint8_t kill_value_9dda(uint8_t life)
@@ -3872,14 +3878,14 @@ int16_t check_hit_and_walls(int16_t x, int16_t y, int16_t strength)
         x = -16;
     }
     if (guest.word_214 >= 0) {
-        int16_t *list = (int16_t *)GUEST(guest.value_c6c);
+        int16_t *list = hit_list_at(guest.value_c6c);
 
         list[0] = x;
         list[1] = y;
         list[2] = strength;
         guest.value_c6c += 6;
         guest.flag_20e++;
-        hit_list_a4 = (const uint8_t *)GUEST(guest.value_c6c);
+        hit_list_a4 = (const uint8_t *)hit_list_at(guest.value_c6c);
     }
 
     const uint8_t *cell = guest.line_text + 100 + (x >> 3);
@@ -4586,7 +4592,7 @@ static void update_shots(struct ShotList *list, struct Object *object)
  * power-ups and 50); the words are the host's own, a quickload makes them so */
 static int16_t *axe_table(void)
 {
-    return (int16_t *)GUEST(0x66E);
+    return guest.axe_steps;
 }
 
 /* orig $016592, $0165C6 and $0165FA: the cell of the second map (32 by 16, a 1 is a wall) that the point (x, y) is in, as the three tests of the axe look at it */
@@ -4697,9 +4703,9 @@ static void update_shots_axe(struct ShotList *list, struct Object *object)
  * the place (the y 32 up, a multiple of 4) and 47 frames of life */
 static void spawn_shot_ball(struct Shot *slot, int16_t id, int16_t x, int16_t y, int right)
 {
-    int16_t *speed_x = (int16_t *)GUEST(0x206);
-    int16_t *speed_y = (int16_t *)GUEST(0x208);
-    int16_t *jump = (int16_t *)GUEST(0x20A);
+    int16_t *speed_x = &guest.ball_values[0];
+    int16_t *speed_y = &guest.ball_values[1];
+    int16_t *jump = &guest.ball_values[2];
 
     play_sound(2, 4);
     if (right) {
@@ -4772,8 +4778,8 @@ static void ball_pillar_hurts(int16_t x, int16_t y, int16_t image)
  * the screen (the tiles are looked at: a piece that hits one is over) and the pillars go through their seven pictures (the sprites 108 to 114), mark the cells and hurt the player; when nothing is left the shot is over */
 static void ball_burst(struct Object *object, struct Shot *shot, int16_t x, int16_t y, int16_t counter)
 {
-    struct BallPiece *pieces = (struct BallPiece *)GUEST(0xE6C);
-    struct BallPillar *pillars = (struct BallPillar *)GUEST(0xA6E);
+    struct BallPiece *pieces = (struct BallPiece *)guest.ball_pieces;
+    struct BallPillar *pillars = (struct BallPillar *)guest.ball_pillars;
 
     if (counter == -1) {
         static const int16_t steps[5] = { -8, -6, -4, -2, -10 };
@@ -4878,9 +4884,9 @@ static void ball_burst(struct Object *object, struct Shot *shot, int16_t x, int1
 static void update_shots_ball(struct ShotList *list, struct Object *object)
 {
     struct Shot *shot = &list->shot[0];
-    int16_t *speed_x = (int16_t *)GUEST(0x206);
-    int16_t *speed_y = (int16_t *)GUEST(0x208);
-    int16_t *jump = (int16_t *)GUEST(0x20A);
+    int16_t *speed_x = &guest.ball_values[0];
+    int16_t *speed_y = &guest.ball_values[1];
+    int16_t *jump = &guest.ball_values[2];
 
     if (shot->active == 0)
         return;
@@ -5373,9 +5379,15 @@ struct BossState {
     struct BossShot shots[15];        /* $518 */
 };
 
+/* a place of the guardians' variables by the address the original keeps it at ($4E8 to $66E: boss_area) */
+static uint8_t *boss_at(uint16_t address)
+{
+    return guest.boss_area + (address - 0x4E8);
+}
+
 static struct BossState *boss_state(void)
 {
-    return (struct BossState *)GUEST(0x4E8);
+    return (struct BossState *)guest.boss_area;
 }
 
 
@@ -6022,7 +6034,7 @@ static void record_update(struct Slot8 *record, uint8_t *flag, int16_t counter)
     guest.list_count_1294++;
     if (guest.list_count_1294 <= 20) {
         if (id == 45) {
-            guest.value_1296 = GUEST(0x121c);
+            guest.value_1296 = (uint32_t)(uintptr_t)guest.list_121c;
             guest.list_count_1294 = 20;
             guest.flag_25e = 1;
         }
@@ -6060,7 +6072,7 @@ void update_records(void)
     guest.list_count_1294 = 0;
     guest.flag_25e = 0;
     guest.onscreen_count = 0;
-    guest.value_1296 = GUEST(0x121c);
+    guest.value_1296 = (uint32_t)(uintptr_t)guest.list_121c;
     guest.counter_204 = (guest.counter_204 + 1) & 31;
     if (guest.frame_toggle != 0)
         guest.counter_20c = (guest.counter_20c + 1) & 3;
@@ -7039,7 +7051,7 @@ struct Bat {
 
 static struct Bat *bats(void)
 {
-    return (struct Bat *)GUEST(0x10B0);
+    return (struct Bat *)guest.bytes_10b0;
 }
 
 /* orig $00DAA4 (d0 the thing's x on the screen, d1 its y in the level): the first free bat gets the place, 25 hit points and the state -1 and the routine at $DB04 is switched on; with none
@@ -7218,12 +7230,12 @@ static void bats_db04(void)
     struct Bat *bat = bats();
     int16_t used = 0;
 
-    *(uint16_t *)GUEST(0x121A) = 0;
+    guest.count_121a = 0;
     for (int i = 0; i < 10; i++, bat++) {
         if (bat->energy < 0)
             continue;
         used++;
-        *(uint16_t *)GUEST(0x121A) = (uint16_t)used;
+        guest.count_121a = (uint16_t)used;
         bat_frame_db36(bat);
     }
     if (used == 0)
@@ -7898,7 +7910,7 @@ static void monster_pickup(const struct MonsterType *type, struct MonsterPart *m
     if (guest.list_count_1294 == 0 || m->item >= 0)
         return;
 
-    const int16_t *list = (const int16_t *)GUEST(0x121c);
+    const int16_t *list = (const int16_t *)guest.list_121c;
     int16_t count = (int16_t)guest.list_count_1294;
     int16_t x = (int16_t)(m->x - 8);
     int16_t y = (int16_t)(m->y - 8);
@@ -8512,7 +8524,7 @@ void take_record_to_12a0(struct EntryRef *a0)
 void update_records_1354(void)
 {
     guest.flag_244 = 0;
-    guest.value_1296 = GUEST(0x121c);
+    guest.value_1296 = (uint32_t)(uintptr_t)guest.list_121c;
     for (int i = 0; i < 10; i++) {
         struct MonsterPart *block = (struct MonsterPart *)(guest.ptr_0cee + 400 * i);
 
@@ -8966,7 +8978,7 @@ static void plan_mark_column(int16_t sx, int16_t sy)
 static int plan_mark_things(void)
 {
     int16_t count = (int16_t)guest.list_count_1294;
-    const int16_t *list = (const int16_t *)GUEST(0x121c);
+    const int16_t *list = (const int16_t *)guest.list_121c;
 
     if (count == 0)
         return 0;
@@ -9356,7 +9368,7 @@ static void walker_item_place(const struct MonsterType *type, int16_t picture, i
  * flags for the common ones, 2 and 3 for the ones from kind $C0 on) when it is near (to 48 pixels up and left, 16 right and down): the record of that thing in records_19b14 is the walker's */
 static void walker_pickup(const struct MonsterType *type, struct WalkMember *m)
 {
-    const int16_t *list = (const int16_t *)GUEST(0x121c);
+    const int16_t *list = (const int16_t *)guest.list_121c;
     int16_t count = (int16_t)guest.list_count_1294;
     int16_t x, y;
 
@@ -9985,7 +9997,7 @@ static void unit_update(int k, uint16_t *words)
                 x = (int16_t)(x - guest.scroll_x);
                 y = (int16_t)(y - guest.scroll_y);
                 if (guest.word_214 >= 0) {
-                    int16_t *list = (int16_t *)GUEST(guest.value_c6c);
+                    int16_t *list = hit_list_at(guest.value_c6c);
 
                     list[0] = x;
                     list[1] = y;
@@ -14019,16 +14031,16 @@ void level_tables_quickload(void)
     }
     for (int i = 0; i < 20; i++)   /* the ten shards (struct Shard: four words) that the stone faces spit: the table is typed as longs, which the loader made native as longs: the words of each are the other way round */
         guest.records_737e[i] = (guest.records_737e[i] >> 16) | (guest.records_737e[i] << 16);
-    file_words((void *)GUEST(0xBD6), 75);   /* the list of the creatures hit (x, y, strength: 25 of them): what an earlier frame left there is read as the value of a killed monster ($9DDA) */
-    file_words((void *)GUEST(0x10B0), 70);   /* the bats */
-    file_words((void *)GUEST(0x206), 3);   /* the bouncing ball's speeds and jump */
-    file_words((void *)GUEST(0xE6C), 50);   /* its burst's pieces */
-    file_words((void *)GUEST(0xA6E), 21);   /* and its pillars of fire */
+    file_words(guest.hit_list, 75);   /* the list of the creatures hit (x, y, strength: 25 of them): what an earlier frame left there is read as the value of a killed monster ($9DDA) */
+    file_words(guest.bytes_10b0, 70);   /* the bats */
+    file_words(guest.ball_values, 3);   /* the bouncing ball's speeds and jump */
+    file_words(guest.ball_pieces, 50);   /* its burst's pieces */
+    file_words(guest.ball_pillars, 21);   /* and its pillars of fire */
     for (int i = 0; i < 10; i++) {   /* the spores: the four words and the count of each */
         file_words(&spores()[i].x, 4);
         file_words(&spores()[i].count, 1);
     }
-    file_words((void *)GUEST(0x66E), 27);   /* the magic axe's nine shots' steps ($66E) */
+    file_words(guest.axe_steps, 27);   /* the magic axe's nine shots' steps ($66E) */
     boss_quickload();
 }
 
@@ -14115,8 +14127,8 @@ static void load_level_files(void)
         guest.ptr_03ac = guest.ptr_0b5e;
         guest.asset_directory = guest.ptr_0b52;
         if (guest.param_index == 4) {
-            guest.line_text = (const uint8_t *)GUEST(226236);
-            guest.ptr_03ac = (uint8_t *)GUEST(227836);
+            guest.line_text = guest.picture_buffer + (0x373BC - 0x31FDE);   /* (the text buffers lie in the picture buffer) */
+            guest.ptr_03ac = guest.picture_buffer + (0x379FC - 0x31FDE);
             guest.asset_directory = (uint8_t *)guest.entry_list + 2820;
         }
         guest.asset_mem_end = guest.asset_end_28ec;
@@ -14141,7 +14153,7 @@ static void load_level_files(void)
     guest.flags_0ddd = 0;
     guest.flags_0ddd |= 2;
     guest.flags_0ddd |= 8;
-    guest.ptr_0de0 = (const int16_t *)GUEST(296);
+    guest.ptr_0de0 = (const int16_t *)clip_rectangles;
     if (guest.word_0384 != 0)
         return;   /* goes on at $013568 */
 }
@@ -14191,7 +14203,7 @@ static void level_begin(void)
     guest.message_arg = 0;
     level_state_init();
     widen_bytes_to_words();
-    guest.callback_4e0 = (void (*)(void))GUEST(45010);
+    guest.callback_4e0 = boss_rts;   /* (the original's address $AFD2: not called with flag_23a off) */
     guest.flag_23a = 0;
     guest.code_c58e = 0x4E75;
     guest.code_cb0e = 0x4E75;
@@ -14619,7 +14631,7 @@ static void boss_score_c374(void)
         return;
     score_add_packed(0x10);
 
-    uint16_t *count = (uint16_t *)GUEST(0x668);
+    uint16_t *count = (uint16_t *)boss_at(0x668);
 
     (*count)--;
     if (*count != 0)
@@ -14643,7 +14655,7 @@ static void boss_die(void)
     guest.word_a54 = -4;
     guest.flag_23a = 0;
     chest_burst_at((int16_t)(boss->x + 0x18), (int16_t)(boss->y + 0x28), words_3fde + 20);
-    *(uint16_t *)GUEST(0x668) = (uint16_t)(guest.param_index * 10);
+    *(uint16_t *)boss_at(0x668) = (uint16_t)(guest.param_index * 10);
     guest.code_c374 = 0x4E71;
 }
 
@@ -14767,7 +14779,7 @@ _Static_assert(offsetof(struct Boss2, points) == 0x60A - 0x4E8, "points");
 
 static struct Boss2 *boss2_state(void)
 {
-    return (struct Boss2 *)GUEST(0x4E8);
+    return (struct Boss2 *)guest.boss_area;
 }
 
 /* orig $00CDE4: the moves of the body (the step in x and y and what it is: 0 nothing, 1 and 2 other pictures, 2 it shoots; a negative one ends the table) */
@@ -14851,7 +14863,7 @@ static void boss2_target_c7ba(void)
 
         if (guest.list_count_1294 != 0) {
             int16_t n = guest.list_count_1294 > 0x14 ? 0x14 : (int16_t)guest.list_count_1294;
-            const int16_t *thing = (const int16_t *)GUEST(0x121C);
+            const int16_t *thing = (const int16_t *)guest.list_121c;
             int found = 0;
 
             for (int i = 0; i < n; i++, thing += 3) {
@@ -15263,8 +15275,8 @@ struct Boss3Shot {
     int16_t speed_y;
 };
 
-#define BOSS3_CAN_SHOOT (*(uint16_t *)GUEST(0x5B2))
-#define BOSS3_FALL (*(uint16_t *)GUEST(0x5B8))
+#define BOSS3_CAN_SHOOT (*(uint16_t *)boss_at(0x5B2))
+#define BOSS3_FALL (*(uint16_t *)boss_at(0x5B8))
 
 /* orig $00BD6E: a spark of blood (debris) at the place (x, y) of the screen: moved by up to 8 in each direction, with speeds -4 to 3 */
 static void boss3_blood_bd6e(int16_t x, int16_t y)
@@ -15481,7 +15493,7 @@ void boss3_fall_bc1c(void)
  * path of the level (the last entry of entry_list: a step of two signed nibbles each) two steps a frame, the second is the head; the head is hit (energy $50E) and when it is gone the pieces burst, the
  * guardian's own energy ($50A, a long) goes down by 1000 and they start again; it breathes a ball of fire at the player; the throne rises from below the screen when the fight begins (callback_4e4) ======== */
 
-#define B4_WORD(address) (*(int16_t *)GUEST(address))
+#define B4_WORD(address) (*(int16_t *)boss_at(address))
 #define BOSS4_Y B4_WORD(0x65A)            /* the throne's y (the guardian sits on it): $180 and it rises to $B0 */
 #define BOSS4_DONE B4_WORD(0x65C)         /* the count of the pieces that are at the end of their path (+1) or burst (-1) */
 #define BOSS4_HEAD_ENERGY B4_WORD(0x50E)  /* the head's energy: 750, then 1000 (negative: the pieces burst) */
@@ -15509,7 +15521,7 @@ struct Boss4Piece {
     uint16_t end_low;
 };
 
-#define BOSS4_PIECES ((struct Boss4Piece *)GUEST(0x10B0))
+#define BOSS4_PIECES ((struct Boss4Piece *)guest.bytes_10b0)
 
 /* the head's pictures: from the byte of the table below (the low three bits the way the head looks, the next bits for the mouth open) */
 static const uint8_t boss4_head_table[256] = {
@@ -16044,13 +16056,13 @@ static void boss4_start(void)
 /* the quickload of the fight (or of the end after it): the words of the guardian's state are the file's (big endian), the routines are the port's */
 static void boss4_quickload(void)
 {
-    file_words((void *)GUEST(0x4E8), 3);
-    file_words((void *)GUEST(0x4FA), 1);
-    file_words((void *)GUEST(0x504), 1);
-    file_words((void *)GUEST(0x50A), 3);
-    file_words((void *)GUEST(0x518), 4);
-    file_words((void *)GUEST(0x5AE), 2);
-    file_words((void *)GUEST(0x65A), 8);
+    file_words(boss_at(0x4E8), 3);
+    file_words(boss_at(0x4FA), 1);
+    file_words(boss_at(0x504), 1);
+    file_words(boss_at(0x50A), 3);
+    file_words(boss_at(0x518), 4);
+    file_words(boss_at(0x5AE), 2);
+    file_words(boss_at(0x65A), 8);
     guest.callback_4e0 = boss4_frame;
     guest.callback_4e4 = guest.code_b958 == 0x4E71 ? boss4_throne_b958 : boss_rts;
     guest.callback_514 = boss4_514;
@@ -16161,7 +16173,7 @@ static void password_start_334e(void)
     world_set_up();
     guest.word_294 = 0;
     guest.shop_score_shown = guest.score_total_1fc;
-    *(uint16_t *)GUEST(0x38E) = 0;
+    guest.cursor_pos = 0;
     guest.word_0384 = 0;
     guest.shop_repeat = 0;
     guest.shop_held[0] = 0;
@@ -16305,7 +16317,7 @@ static void boss_quickload(void)
         struct Boss2 *boss = boss2_state();
 
         file_words(boss, (0x632 - 0x4E8) / 2);
-        file_words((void *)GUEST(0x668), 1);
+        file_words(boss_at(0x668), 1);
         guest.callback_4e0 = boss2_frame;
         guest.callback_4e4 = boss_rts;
         guest.callback_514 = boss2_514;
@@ -16318,8 +16330,8 @@ static void boss_quickload(void)
         file_words(boss, 2);
         file_words(&boss->picture, 6);
         file_words(boss->shots, 75);
-        file_words((void *)GUEST(0x5B2), 1);
-        file_words((void *)GUEST(0x5B8), 1);
+        file_words(boss_at(0x5B2), 1);
+        file_words(boss_at(0x5B8), 1);
         guest.callback_4e0 = boss3_frame;
         guest.callback_4e4 = boss_rts;
         guest.callback_514 = boss3_514;
@@ -16344,7 +16356,7 @@ static void boss_quickload(void)
     file_words(&boss->picture, 6);
     file_words(boss->shots, 75);
     file_words(guest.ptr_0e44, 250);
-    file_words((void *)GUEST(0x668), 1);
+    file_words(boss_at(0x668), 1);
     guest.callback_4e0 = boss1_frame;
     guest.callback_4e4 = boss_rts;
     guest.callback_514 = boss1_514;
@@ -16359,8 +16371,8 @@ static void boss_load_30da(void)
         return;   /* goes on at $2C20: they are there */
     loading_screen_328a();
     if (guest.param_index == 3) {   /* $30EC: the level 3 changes two pointers of the text */
-        guest.line_text = (const uint8_t *)GUEST(0x373BC);
-        guest.ptr_03ac = (uint8_t *)GUEST(0x379FC);
+        guest.line_text = guest.picture_buffer + (0x373BC - 0x31FDE);
+        guest.ptr_03ac = guest.picture_buffer + (0x379FC - 0x31FDE);
     }
     play_sound(0, 0);
     uint8_t *saved_directory = guest.asset_directory;
@@ -16394,7 +16406,7 @@ static void boss_load_30da(void)
 /* the strip of text: where shop_text points; before the shop has made it (a message while a world is loaded) the original's pointer is 0 and it works on the memory from address 0 */
 static uint8_t *shop_strip(void)
 {
-    return guest.shop_text != 0 ? guest.shop_text : (uint8_t *)GUEST(0);
+    return guest.shop_text != 0 ? guest.shop_text : (uint8_t *)&guest;
 }
 
 /* orig $013D3C: the strip of text (9 rows of 64 bytes) is cleared */
@@ -16482,7 +16494,7 @@ static void shop_text_column(void)
         return;
     }
 
-    const uint8_t *character = (guest.message_text != 0 ? guest.message_text : (const uint8_t *)GUEST(0)) + column / 10;   /* (no text: the original's pointer is 0 and it reads the memory from address 0) */
+    const uint8_t *character = (guest.message_text != 0 ? guest.message_text : (const uint8_t *)&guest) + column / 10;   /* (no text: the original's pointer is 0 and it reads the memory from address 0) */
     int16_t rest = (int16_t)(column % 10);
 
     if (*character == 0) {
@@ -16621,7 +16633,7 @@ static void shop_draw_grid(void)
 /* orig $013FD6: the digit (8 rows of the four planes' bytes of digit_font) is put in the screen at `to`, the rows 44 bytes and the planes 8448 bytes apart */
 static void shop_draw_digit(uint8_t *to, int16_t digit)
 {
-    const uint8_t *from = (const uint8_t *)GUEST(0x58F0) + (int16_t)(digit << 5);   /* (adda.w: the offset is a signed word) */
+    const uint8_t *from = (const uint8_t *)guest.digit_font + (int16_t)(digit << 5);   /* (adda.w: the offset is a signed word) */
 
     for (int row = 0; row < 8; row++) {
         set_plane_byte(to, *from++);
@@ -17047,7 +17059,7 @@ static void shop_run(void)
 
     guest.scroll_y = 0;
     screens_flip();
-    guest.ptr_0cda = (uint8_t *)GUEST(0x14378);
+    guest.ptr_0cda = (uint8_t *)shop_data_14206 + (0x14378 - 0x14206);
     copper_list_make();
     clear_work_area();
 

@@ -10,10 +10,12 @@ int guest_state_write(FILE *f);                              /* the port's own s
 int guest_state_read(FILE *f);
 void guest_set_heap(void);                                   /* heap_base: the heap of the block (the loader leaves it in a vector slot) */
 void guest_set_mask_buffer(void);                            /* mask_buffer: the area of the original's boot code */
+void *guest_resolve(uint32_t address);                       /* where an address of the original's memory is here (a table, or the block) */
 uint32_t guest_address(uint32_t address);
-uint32_t guest_offset(const void *p);                        /* the offset in the block: what an address of the original's memory is */                    /* the same as a pointer's value (32 bits) */                        /* the host address of an address of the program's memory */
-void guest_init(void);                                       /* map the memory and the chips' pages (once) */
-void guest_reset(void);                                      /* the memory as the loader leaves it for a program: cleared, the tables in */                                       /* map the chips' pages */
+uint32_t guest_offset(const void *p);                        /* the offset in the block: what an address of the original's memory is */
+void guest_init(void);                                       /* the memory and the chips' registers cleared (once) */
+void guest_reset(void);                                      /* the memory as the loader leaves it for a program: cleared (the tables are not in the block: guest_resolve finds them) */
+/* guest_load.c */
 int guest_load_level_image(const char *path);                  /* a RAM image of the original in level 1 (a test) */
 void guest_load_image(const uint8_t *image, uint32_t size);  /* the menu program's image, at $84 */
 

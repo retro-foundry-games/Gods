@@ -10,7 +10,9 @@
 struct Guest {
     uint8_t pad_00000[44];
     uint32_t heap_base;   /* $0002C */
-    uint8_t pad_00030[130];
+    uint8_t pad_00030[56];
+    uint32_t irq_vectors[3];   /* $00068 */
+    uint8_t pad_00074[62];
     int16_t death_particles[28];   /* $000B2 */
     uint8_t pad_000ea[74];
     uint16_t palette_words[16];   /* $00134 */
@@ -56,7 +58,7 @@ struct Guest {
     uint16_t word_200;   /* $00200 */
     uint16_t word_202;   /* $00202 */
     uint16_t counter_204;   /* $00204 */
-    uint8_t pad_00206[6];
+    int16_t ball_values[3];   /* $00206 */
     uint16_t counter_20c;   /* $0020C */
     int16_t flag_20e;   /* $0020E */
     uint16_t flag_210;   /* $00210 */
@@ -137,7 +139,7 @@ struct Guest {
     };
     union {   /* the variables that overlap */
         struct { uint32_t seed_282; };   /* $00282 */
-        struct { uint8_t pad_in_00284_97[2]; int16_t word_284; };   /* $00284 */
+        struct { uint8_t pad_in_00284_99[2]; int16_t word_284; };   /* $00284 */
         uint8_t bytes_00282[4];
     };
     int16_t flag_286;   /* $00286 */
@@ -185,8 +187,8 @@ struct Guest {
     union {   /* the variables that overlap */
         struct { int16_t entry_id_2ea[3]; };   /* $002EA */
         struct { int16_t word_2ea; };   /* $002EA */
-        struct { uint8_t pad_in_002ec_136[2]; int16_t word_2ec; };   /* $002EC */
-        struct { uint8_t pad_in_002ee_137[4]; int16_t word_2ee; };   /* $002EE */
+        struct { uint8_t pad_in_002ec_138[2]; int16_t word_2ec; };   /* $002EC */
+        struct { uint8_t pad_in_002ee_139[4]; int16_t word_2ee; };   /* $002EE */
         uint8_t bytes_002ea[6];
     };
     uint16_t word_2f0;   /* $002F0 */
@@ -276,15 +278,18 @@ struct Guest {
     struct Planner planner;   /* $004BE */
     void (*callback_4e0)(void);   /* $004E0 */
     void (*callback_4e4)(void);   /* $004E4 */
-    uint8_t pad_004e8[44];
-    void (*callback_514)(void);   /* $00514 */
-    uint8_t pad_00518[396];
+    union {   /* the variables that overlap */
+        struct { uint8_t boss_area[390]; };   /* $004E8 */
+        struct { uint8_t pad_in_00514_216[44]; void (*callback_514)(void); };   /* $00514 */
+        uint8_t bytes_004e8[390];
+    };
+    int16_t axe_steps[27];   /* $0066E */
     int16_t shot_offsets_6a4[9];   /* $006A4 */
     union {   /* the variables that overlap */
         struct { uint16_t shot_lists_raw[219]; };   /* $006B6 */
         struct { int16_t slot_ref_6b6; };   /* $006B6 */
-        struct { uint8_t pad_in_00748_217[146]; int16_t slot_ref_748; };   /* $00748 */
-        struct { uint8_t pad_in_007da_218[292]; int16_t slot_ref_7da; };   /* $007DA */
+        struct { uint8_t pad_in_00748_221[146]; int16_t slot_ref_748; };   /* $00748 */
+        struct { uint8_t pad_in_007da_222[292]; int16_t slot_ref_7da; };   /* $007DA */
         uint8_t bytes_006b6[438];
     };
     int16_t records_86c[240];   /* $0086C */
@@ -295,7 +300,8 @@ struct Guest {
     int16_t word_a54;   /* $00A54 */
     uint8_t pad_00a56[18];
     int16_t word_a68;   /* $00A68 */
-    uint8_t pad_00a6a[46];
+    uint8_t pad_00a6a[4];
+    int16_t ball_pillars[21];   /* $00A6E */
     uint16_t list_index_a98;   /* $00A98 */
     int16_t word_a9a;   /* $00A9A */
     uint8_t pad_00a9c[2];
@@ -332,8 +338,8 @@ struct Guest {
     union {   /* the variables that overlap */
         struct { uint16_t *entry_b92[3]; };   /* $00B92 */
         struct { struct Shot *shot_slot_b92; };   /* $00B92 */
-        struct { uint8_t pad_in_00b96_258[4]; struct Shot *shot_slot_b96; };   /* $00B96 */
-        struct { uint8_t pad_in_00b9a_259[8]; struct Shot *shot_slot_b9a; };   /* $00B9A */
+        struct { uint8_t pad_in_00b96_263[4]; struct Shot *shot_slot_b96; };   /* $00B96 */
+        struct { uint8_t pad_in_00b9a_264[8]; struct Shot *shot_slot_b9a; };   /* $00B9A */
         uint8_t bytes_00b92[12];
     };
     uint8_t pad_00b9e[4];
@@ -350,7 +356,7 @@ struct Guest {
     uint8_t pad_00bca[4];
     uint8_t *ptr_0bce;   /* $00BCE */
     uint8_t *game_record_ptr;   /* $00BD2 */
-    uint8_t pad_00bd6[150];
+    int16_t hit_list[75];   /* $00BD6 */
     uint32_t value_c6c;   /* $00C6C */
     uint8_t *ptr_0c70;   /* $00C70 */
     const uint8_t *unit_path_end[5];   /* $00C74 */
@@ -409,7 +415,7 @@ struct Guest {
     uint32_t long_dd8;   /* $00DD8 */
     union {   /* the variables that overlap */
         struct { uint16_t word_ddc; };   /* $00DDC */
-        struct { uint8_t pad_in_00ddd_314[1]; uint8_t flags_0ddd; };   /* $00DDD */
+        struct { uint8_t pad_in_00ddd_320[1]; uint8_t flags_0ddd; };   /* $00DDD */
         uint8_t bytes_00ddc[2];
     };
     uint16_t word_dde;   /* $00DDE */
@@ -419,14 +425,14 @@ struct Guest {
     uint16_t palette_dirty;   /* $00E0E */
     union {   /* the variables that overlap */
         struct { uint16_t shadow_table[32]; };   /* $00E10 */
-        struct { uint8_t pad_in_00e12_320[2]; uint16_t scroll_value; };   /* $00E12 */
-        struct { uint8_t pad_in_00e38_321[40]; uint8_t *stack_top; };   /* $00E38 */
-        struct { uint8_t pad_in_00e3c_322[44]; struct Image *image_table; };   /* $00E3C */
-        struct { uint8_t pad_in_00e40_323[48]; uint8_t *asset_memory; };   /* $00E40 */
-        struct { uint8_t pad_in_00e44_324[52]; uint8_t *ptr_0e44; };   /* $00E44 */
-        struct { uint8_t pad_in_00e48_325[56]; uint16_t *mask_buffer; };   /* $00E48 */
-        struct { uint8_t pad_in_00e48_326[56]; uint8_t *restart_address; };   /* $00E48 */
-        struct { uint8_t pad_in_00e4c_327[60]; uint8_t *ptr_0e4c; };   /* $00E4C */
+        struct { uint8_t pad_in_00e12_326[2]; uint16_t scroll_value; };   /* $00E12 */
+        struct { uint8_t pad_in_00e38_327[40]; uint8_t *stack_top; };   /* $00E38 */
+        struct { uint8_t pad_in_00e3c_328[44]; struct Image *image_table; };   /* $00E3C */
+        struct { uint8_t pad_in_00e40_329[48]; uint8_t *asset_memory; };   /* $00E40 */
+        struct { uint8_t pad_in_00e44_330[52]; uint8_t *ptr_0e44; };   /* $00E44 */
+        struct { uint8_t pad_in_00e48_331[56]; uint16_t *mask_buffer; };   /* $00E48 */
+        struct { uint8_t pad_in_00e48_332[56]; uint8_t *restart_address; };   /* $00E48 */
+        struct { uint8_t pad_in_00e4c_333[60]; uint8_t *ptr_0e4c; };   /* $00E4C */
         uint8_t bytes_00e10[64];
     };
     uint16_t *copper_save;   /* $00E50 */
@@ -435,7 +441,8 @@ struct Guest {
     uint8_t *ptr_0e5c;   /* $00E5C */
     uint8_t *screen_buffer;   /* $00E60 */
     uint8_t *screen_other;   /* $00E64 */
-    uint8_t pad_00e68[104];
+    uint8_t pad_00e68[4];
+    int16_t ball_pieces[50];   /* $00E6C */
     int16_t table_ed0[128];   /* $00ED0 */
     int16_t slots_fd0[50];   /* $00FD0 */
     uint16_t word_1034;   /* $01034 */
@@ -445,10 +452,13 @@ struct Guest {
     struct Slot12 records_113c[10];   /* $0113C */
     int16_t slots_11b4[50];   /* $011B4 */
     uint16_t word_1218;   /* $01218 */
-    uint8_t pad_0121a[122];
-    uint16_t list_count_1294;   /* $01294 */
-    uint32_t value_1296;   /* $01296 */
-    uint8_t pad_0129a[6];
+    uint16_t count_121a;   /* $0121A */
+    union {   /* the variables that overlap */
+        struct { int16_t list_121c[66]; };   /* $0121C */
+        struct { uint8_t pad_in_01294_351[120]; uint16_t list_count_1294; };   /* $01294 */
+        struct { uint8_t pad_in_01296_352[122]; uint32_t value_1296; };   /* $01296 */
+        uint8_t bytes_0121c[132];
+    };
     struct WalkGroup records_12a0[10];   /* $012A0 */
     struct Monster records_1354[10];   /* $01354 */
     uint8_t pad_0240c[722];
@@ -461,7 +471,9 @@ struct Guest {
     uint8_t *asset_table_28f0;   /* $028F0 */
     uint8_t pad_028f4[4];
     uint8_t level_text[16];   /* $028F8 */
-    uint8_t pad_02908[2862];
+    uint8_t pad_02908[792];
+    uint8_t code_2c20[6];   /* $02C20 */
+    uint8_t pad_02c26[2064];
     union {   /* the variables that overlap */
         struct { uint16_t code_3436; };   /* $03436 */
         struct { uint16_t word_3436; };   /* $03436 */
@@ -470,14 +482,16 @@ struct Guest {
     uint8_t pad_03438[6482];
     union {   /* the variables that overlap */
         struct { uint8_t copper_list_a[176]; };   /* $04D8A */
-        struct { uint8_t pad_in_04d90_355[6]; uint16_t copper_a_scroll; };   /* $04D90 */
-        struct { uint8_t pad_in_04dde_356[84]; uint8_t copper_list_b[92]; };   /* $04DDE */
-        struct { uint8_t pad_in_04de4_357[90]; uint16_t copper_b_scroll; };   /* $04DE4 */
-        struct { uint8_t pad_in_04e2e_358[164]; uint32_t copper_move_a; };   /* $04E2E */
-        struct { uint8_t pad_in_04e32_359[168]; uint32_t copper_move_b; };   /* $04E32 */
+        struct { uint8_t pad_in_04d90_365[6]; uint16_t copper_a_scroll; };   /* $04D90 */
+        struct { uint8_t pad_in_04dde_366[84]; uint8_t copper_list_b[92]; };   /* $04DDE */
+        struct { uint8_t pad_in_04de4_367[90]; uint16_t copper_b_scroll; };   /* $04DE4 */
+        struct { uint8_t pad_in_04e2e_368[164]; uint32_t copper_move_a; };   /* $04E2E */
+        struct { uint8_t pad_in_04e32_369[168]; uint32_t copper_move_b; };   /* $04E32 */
         uint8_t bytes_04d8a[176];
     };
-    uint16_t copper_colors[730];   /* $04E3A */
+    uint16_t copper_colors[525];   /* $04E3A */
+    uint16_t copper_message_5254[3];   /* $05254 */
+    uint8_t pad_0525a[404];
     uint16_t message_words[16];   /* $053EE */
     uint8_t pad_0540e[10];
     uint16_t word_5418;   /* $05418 */
@@ -615,7 +629,7 @@ struct Guest {
     uint8_t pad_187b8[1004];
     union {   /* the variables that overlap */
         struct { void (*dispatch_18ba4[484])(void); };   /* $18BA4 */
-        struct { uint8_t pad_in_18be0_441[60]; void (*dispatch_18be0[469])(void); };   /* $18BE0 */
+        struct { uint8_t pad_in_18be0_452[60]; void (*dispatch_18be0[469])(void); };   /* $18BE0 */
         uint8_t bytes_18ba4[1936];
     };
     struct Slot8 records_19334[20];   /* $19334 */
@@ -636,14 +650,14 @@ struct Guest {
     uint8_t pad_1aa3c[42];
     union {   /* the variables that overlap */
         struct { uint8_t data_1aa66[7322]; };   /* $1AA66 */
-        struct { uint8_t pad_in_1ad8a_455[804]; uint8_t data_1ad8a[4812]; };   /* $1AD8A */
-        struct { uint8_t pad_in_1b17e_456[1816]; uint8_t data_1b17e[3800]; };   /* $1B17E */
-        struct { uint8_t pad_in_1b7be_457[3416]; uint8_t data_1b7be[2200]; };   /* $1B7BE */
-        struct { uint8_t pad_in_1c056_458[5616]; struct LeverFlag flags_1c056[64]; };   /* $1C056 */
-        struct { uint8_t pad_in_1c1d6_459[6000]; int16_t table_1c1d6[90]; };   /* $1C1D6 */
-        struct { uint8_t pad_in_1c28a_460[6180]; uint16_t table_1c28a[60]; };   /* $1C28A */
-        struct { uint8_t pad_in_1c302_461[6300]; struct PathDescription path_descriptions[25]; };   /* $1C302 */
-        struct { uint8_t pad_in_1c5be_462[7000]; uint8_t data_1c5be[186]; };   /* $1C5BE */
+        struct { uint8_t pad_in_1ad8a_466[804]; uint8_t data_1ad8a[4812]; };   /* $1AD8A */
+        struct { uint8_t pad_in_1b17e_467[1816]; uint8_t data_1b17e[3800]; };   /* $1B17E */
+        struct { uint8_t pad_in_1b7be_468[3416]; uint8_t data_1b7be[2200]; };   /* $1B7BE */
+        struct { uint8_t pad_in_1c056_469[5616]; struct LeverFlag flags_1c056[64]; };   /* $1C056 */
+        struct { uint8_t pad_in_1c1d6_470[6000]; int16_t table_1c1d6[90]; };   /* $1C1D6 */
+        struct { uint8_t pad_in_1c28a_471[6180]; uint16_t table_1c28a[60]; };   /* $1C28A */
+        struct { uint8_t pad_in_1c302_472[6300]; struct PathDescription path_descriptions[25]; };   /* $1C302 */
+        struct { uint8_t pad_in_1c5be_473[7000]; uint8_t data_1c5be[186]; };   /* $1C5BE */
         uint8_t bytes_1aa66[7322];
     };
     uint8_t pad_1c700[740];
@@ -678,7 +692,7 @@ struct Guest {
     uint8_t pad_1e5ad[141];
     union {   /* the variables that overlap */
         struct { volatile uint8_t key_down[128]; };   /* $1E63A */
-        struct { uint8_t pad_in_1e69a_484[96]; uint8_t key_modifiers[2]; };   /* $1E69A */
+        struct { uint8_t pad_in_1e69a_495[96]; uint8_t key_modifiers[2]; };   /* $1E69A */
         uint8_t bytes_1e63a[128];
     };
     uint8_t pad_1e6ba[5136];
@@ -688,25 +702,30 @@ struct Guest {
     uint8_t pad_2059c[128];
     uint8_t voice_buffers[384];   /* $2061C */
     uint8_t sound_lock;   /* $2079C */
-    uint8_t pad_2079d[3];
-    volatile uint32_t sound_busy_207a0;   /* $207A0 */
-    uint8_t pad_207a4[2];
-    uint8_t voice_ids_207a6[4];   /* $207A6 */
-    uint8_t pad_207aa[71732];
+    uint8_t pad_2079d[1];
+    union {   /* the variables that overlap */
+        struct { uint8_t sound_state_2079e[14]; };   /* $2079E */
+        struct { uint8_t pad_in_207a0_501[2]; volatile uint32_t sound_busy_207a0; };   /* $207A0 */
+        struct { uint8_t pad_in_207a6_502[8]; uint8_t voice_ids_207a6[4]; };   /* $207A6 */
+        uint8_t bytes_2079e[14];
+    };
+    uint8_t pad_207ac[5810];
+    uint8_t sound_silence[16];   /* $21E5E */
+    uint8_t pad_21e6e[65904];
     uint8_t picture_buffer[32768];   /* $31FDE */
     uint8_t flags_39fde[200];   /* $39FDE */
     int16_t records_3a0a6[120];   /* $3A0A6 */
     union {   /* the variables that overlap */
         struct { int16_t effects[100]; };   /* $3A196 */
-        struct { uint8_t pad_in_3a1fa_495[100]; uint16_t word_3a1fa; };   /* $3A1FA */
+        struct { uint8_t pad_in_3a1fa_508[100]; uint16_t word_3a1fa; };   /* $3A1FA */
         uint8_t bytes_3a196[200];
     };
     struct Rec6 entry_table[50];   /* $3A25E */
     uint8_t pad_3a38a[742];
     union {   /* the variables that overlap */
         struct { uint8_t program_end[286096]; };   /* $3A670 */
-        struct { uint8_t pad_in_6f800_498[217488]; uint8_t screen_1[68608]; };   /* $6F800 */
-        struct { uint8_t pad_in_77c00_499[251280]; uint8_t screen_2[34816]; };   /* $77C00 */
+        struct { uint8_t pad_in_6f800_511[217488]; uint8_t screen_1[68608]; };   /* $6F800 */
+        struct { uint8_t pad_in_77c00_512[251280]; uint8_t screen_2[34816]; };   /* $77C00 */
         uint8_t bytes_3a670[286096];
     };
     uint8_t pad_80400[0];
@@ -716,6 +735,7 @@ struct Guest {
 };
 
 _Static_assert(offsetof(struct Guest, heap_base) == 0x2c, "heap_base");
+_Static_assert(offsetof(struct Guest, irq_vectors) == 0x68, "irq_vectors");
 _Static_assert(offsetof(struct Guest, death_particles) == 0xb2, "death_particles");
 _Static_assert(offsetof(struct Guest, palette_words) == 0x134, "palette_words");
 _Static_assert(offsetof(struct Guest, ptr_0168) == 0x168, "ptr_0168");
@@ -749,6 +769,7 @@ _Static_assert(offsetof(struct Guest, score_total_1fc) == 0x1fc, "score_total_1f
 _Static_assert(offsetof(struct Guest, word_200) == 0x200, "word_200");
 _Static_assert(offsetof(struct Guest, word_202) == 0x202, "word_202");
 _Static_assert(offsetof(struct Guest, counter_204) == 0x204, "counter_204");
+_Static_assert(offsetof(struct Guest, ball_values) == 0x206, "ball_values");
 _Static_assert(offsetof(struct Guest, counter_20c) == 0x20c, "counter_20c");
 _Static_assert(offsetof(struct Guest, flag_20e) == 0x20e, "flag_20e");
 _Static_assert(offsetof(struct Guest, flag_210) == 0x210, "flag_210");
@@ -928,7 +949,9 @@ _Static_assert(offsetof(struct Guest, zone_counts) == 0x4b6, "zone_counts");
 _Static_assert(offsetof(struct Guest, planner) == 0x4be, "planner");
 _Static_assert(offsetof(struct Guest, callback_4e0) == 0x4e0, "callback_4e0");
 _Static_assert(offsetof(struct Guest, callback_4e4) == 0x4e4, "callback_4e4");
+_Static_assert(offsetof(struct Guest, boss_area) == 0x4e8, "boss_area");
 _Static_assert(offsetof(struct Guest, callback_514) == 0x514, "callback_514");
+_Static_assert(offsetof(struct Guest, axe_steps) == 0x66e, "axe_steps");
 _Static_assert(offsetof(struct Guest, shot_offsets_6a4) == 0x6a4, "shot_offsets_6a4");
 _Static_assert(offsetof(struct Guest, shot_lists_raw) == 0x6b6, "shot_lists_raw");
 _Static_assert(offsetof(struct Guest, slot_ref_6b6) == 0x6b6, "slot_ref_6b6");
@@ -941,6 +964,7 @@ _Static_assert(offsetof(struct Guest, word_a50) == 0xa50, "word_a50");
 _Static_assert(offsetof(struct Guest, word_a52) == 0xa52, "word_a52");
 _Static_assert(offsetof(struct Guest, word_a54) == 0xa54, "word_a54");
 _Static_assert(offsetof(struct Guest, word_a68) == 0xa68, "word_a68");
+_Static_assert(offsetof(struct Guest, ball_pillars) == 0xa6e, "ball_pillars");
 _Static_assert(offsetof(struct Guest, list_index_a98) == 0xa98, "list_index_a98");
 _Static_assert(offsetof(struct Guest, word_a9a) == 0xa9a, "word_a9a");
 _Static_assert(offsetof(struct Guest, words_a9e) == 0xa9e, "words_a9e");
@@ -986,6 +1010,7 @@ _Static_assert(offsetof(struct Guest, shift_source) == 0xbbe, "shift_source");
 _Static_assert(offsetof(struct Guest, ptr_0bc6) == 0xbc6, "ptr_0bc6");
 _Static_assert(offsetof(struct Guest, ptr_0bce) == 0xbce, "ptr_0bce");
 _Static_assert(offsetof(struct Guest, game_record_ptr) == 0xbd2, "game_record_ptr");
+_Static_assert(offsetof(struct Guest, hit_list) == 0xbd6, "hit_list");
 _Static_assert(offsetof(struct Guest, value_c6c) == 0xc6c, "value_c6c");
 _Static_assert(offsetof(struct Guest, ptr_0c70) == 0xc70, "ptr_0c70");
 _Static_assert(offsetof(struct Guest, unit_path_end) == 0xc74, "unit_path_end");
@@ -1048,6 +1073,7 @@ _Static_assert(offsetof(struct Guest, ptr_0e58) == 0xe58, "ptr_0e58");
 _Static_assert(offsetof(struct Guest, ptr_0e5c) == 0xe5c, "ptr_0e5c");
 _Static_assert(offsetof(struct Guest, screen_buffer) == 0xe60, "screen_buffer");
 _Static_assert(offsetof(struct Guest, screen_other) == 0xe64, "screen_other");
+_Static_assert(offsetof(struct Guest, ball_pieces) == 0xe6c, "ball_pieces");
 _Static_assert(offsetof(struct Guest, table_ed0) == 0xed0, "table_ed0");
 _Static_assert(offsetof(struct Guest, slots_fd0) == 0xfd0, "slots_fd0");
 _Static_assert(offsetof(struct Guest, word_1034) == 0x1034, "word_1034");
@@ -1057,6 +1083,8 @@ _Static_assert(offsetof(struct Guest, bytes_10b0) == 0x10b0, "bytes_10b0");
 _Static_assert(offsetof(struct Guest, records_113c) == 0x113c, "records_113c");
 _Static_assert(offsetof(struct Guest, slots_11b4) == 0x11b4, "slots_11b4");
 _Static_assert(offsetof(struct Guest, word_1218) == 0x1218, "word_1218");
+_Static_assert(offsetof(struct Guest, count_121a) == 0x121a, "count_121a");
+_Static_assert(offsetof(struct Guest, list_121c) == 0x121c, "list_121c");
 _Static_assert(offsetof(struct Guest, list_count_1294) == 0x1294, "list_count_1294");
 _Static_assert(offsetof(struct Guest, value_1296) == 0x1296, "value_1296");
 _Static_assert(offsetof(struct Guest, records_12a0) == 0x12a0, "records_12a0");
@@ -1067,6 +1095,7 @@ _Static_assert(offsetof(struct Guest, word_28ea) == 0x28ea, "word_28ea");
 _Static_assert(offsetof(struct Guest, asset_end_28ec) == 0x28ec, "asset_end_28ec");
 _Static_assert(offsetof(struct Guest, asset_table_28f0) == 0x28f0, "asset_table_28f0");
 _Static_assert(offsetof(struct Guest, level_text) == 0x28f8, "level_text");
+_Static_assert(offsetof(struct Guest, code_2c20) == 0x2c20, "code_2c20");
 _Static_assert(offsetof(struct Guest, code_3436) == 0x3436, "code_3436");
 _Static_assert(offsetof(struct Guest, word_3436) == 0x3436, "word_3436");
 _Static_assert(offsetof(struct Guest, copper_list_a) == 0x4d8a, "copper_list_a");
@@ -1076,6 +1105,7 @@ _Static_assert(offsetof(struct Guest, copper_b_scroll) == 0x4de4, "copper_b_scro
 _Static_assert(offsetof(struct Guest, copper_move_a) == 0x4e2e, "copper_move_a");
 _Static_assert(offsetof(struct Guest, copper_move_b) == 0x4e32, "copper_move_b");
 _Static_assert(offsetof(struct Guest, copper_colors) == 0x4e3a, "copper_colors");
+_Static_assert(offsetof(struct Guest, copper_message_5254) == 0x5254, "copper_message_5254");
 _Static_assert(offsetof(struct Guest, message_words) == 0x53ee, "message_words");
 _Static_assert(offsetof(struct Guest, word_5418) == 0x5418, "word_5418");
 _Static_assert(offsetof(struct Guest, digit_font) == 0x58f0, "digit_font");
@@ -1204,8 +1234,10 @@ _Static_assert(offsetof(struct Guest, sound_last_variant) == 0x1faca, "sound_las
 _Static_assert(offsetof(struct Guest, voice) == 0x2034c, "voice");
 _Static_assert(offsetof(struct Guest, voice_buffers) == 0x2061c, "voice_buffers");
 _Static_assert(offsetof(struct Guest, sound_lock) == 0x2079c, "sound_lock");
+_Static_assert(offsetof(struct Guest, sound_state_2079e) == 0x2079e, "sound_state_2079e");
 _Static_assert(offsetof(struct Guest, sound_busy_207a0) == 0x207a0, "sound_busy_207a0");
 _Static_assert(offsetof(struct Guest, voice_ids_207a6) == 0x207a6, "voice_ids_207a6");
+_Static_assert(offsetof(struct Guest, sound_silence) == 0x21e5e, "sound_silence");
 _Static_assert(offsetof(struct Guest, picture_buffer) == 0x31fde, "picture_buffer");
 _Static_assert(offsetof(struct Guest, flags_39fde) == 0x39fde, "flags_39fde");
 _Static_assert(offsetof(struct Guest, records_3a0a6) == 0x3a0a6, "records_3a0a6");

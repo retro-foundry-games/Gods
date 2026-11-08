@@ -8,8 +8,9 @@
 struct Guest;
 extern struct Guest guest;   /* guest_struct.h */
 
-/* an address of the program's memory (struct Guest, guest_struct.h: its variables at the offsets of their original addresses, and its heap) as a pointer's value */
-#define GUEST(address) ((uintptr_t)&guest + (uintptr_t)(address))
+/* an address of the original's memory (a value in a table, an address of a record that the image brings) as a pointer's value */
+#define GUEST(address) ((uintptr_t)guest_resolve((uint32_t)(address)))
+void *guest_resolve(uint32_t address);   /* guest.c: where the original's address is here: the table that has it, else the block */
 
 void host_blitter_not_emulated(void);   /* display.c: the chip's blitter is not emulated: the program's routines that program its registers are replaced by C (said once on stderr if one is reached) */
 
