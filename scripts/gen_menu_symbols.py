@@ -75,6 +75,9 @@ def main(code_base: int = 0xC0000) -> None:
     for name, addr, decl, comment in variables:
         if re.match(r".*?\s*%s\(void\)", decl) and "(*" not in decl:   # a routine of the original's code
             h.append(f"extern {decl.replace('%s', name)};   /* ${addr:05X}" + (f"  {comment}" if comment else "") + " */")
+    for name, addr, decl, comment in variables:
+        if addr >= 0x200000:   # outside the memory (struct Guest): an object of its own at its address (menu.ld); the SDL port defines it
+            h.append(f"extern {decl.replace('%s', name)};   /* ${addr:05X}" + (f"  {comment}" if comment else "") + " */")
     for name, addr, ctype, count, comment in tables:
         h.append(f"extern const {ctype} {name}[{count}];   /* ${addr:05X}" + (f"  {comment}" if comment else "") + " */")
     h += ["", "#endif", ""]

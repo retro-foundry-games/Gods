@@ -32,6 +32,8 @@ def parse():
         decl = m.group(3).strip()
         if re.match(r".*?\s*%s\(void\)", decl) and "(*" not in decl:
             continue   # a routine of the original's code (a stub)
+        if int(m.group(2), 16) >= GUEST_END:   # outside the memory (a register of another machine): an object of its own, see menu_symbols.h
+            continue
         variables.append((m.group(1), int(m.group(2), 16), decl))
     return variables
 
