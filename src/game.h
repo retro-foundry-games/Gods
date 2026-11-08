@@ -1286,11 +1286,8 @@ struct Gods {
     struct Rec6 entry_table[50];   /* $3A25E */
     PAD(742)
     uint8_t program_end[217488];   /* $3A670 */
-    union {   /* the variables that overlap */
-        struct { uint8_t screen_1[68608]; };   /* $6F800 */
-        struct { PAD(33792) uint8_t screen_2[34816]; };   /* $77C00 */
-        uint8_t bytes_6f800[68608];
-    };
+    uint8_t screen_1[33792];   /* $6F800 */
+    uint8_t screen_2[34816];   /* $77C00 */
     PAD(0)
 #ifdef GODS_HEAP_IN_GUEST   /* the host's builds: the program's heap is the end of the block */
     uint8_t heap[1571840];   /* $80400 */
