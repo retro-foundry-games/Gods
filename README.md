@@ -14,8 +14,10 @@ execution, then replace translated routines with meaning-backed source.
   `python3 projects/gods/native/scripts/serve_web.py [DIR [PORT]]` serves them (default `build/web`, port 8080) with the headers the page needs: the game runs on a thread
   (a web worker), which wants cross-origin isolation, so a static host has to send `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`.
   The page asks for the two ADF files (they stay in the tab); the high scores and level codes are kept in the browser (IndexedDB). Arrows and Space; Esc quits a game to the menu.
-  There is no linker script in wasm: the program's variables are macros for the memory at their addresses (`src/sdl/gen_guest.py`, `guest_vars_web.h`) and the program is linked above
-  that memory (`--global-base`, no stack in front of the data).
+  The program's memory is one struct (`struct Guest`, `native/src/guest_struct.h`, generated from `menu.symbols` by `scripts/gen_guest_struct.py`): every variable is a member at the offset of its
+  original address, so the Amiga build links the struct at address 0 and the SDL and browser builds have it as an ordinary object (plus the program's heap). The sources say `guest.NAME`.
+  A save state is that block (`guest_state_write/read` in `sdl/guest.c`); the lockstep resumes the port from the original's RAM (`ram=f5-K.ram`: copied in at the offsets, the words made native and
+  the addresses of the data made the block's own) or from the port's own save (`.port`).
 
 ## Status
 
