@@ -253,9 +253,7 @@ struct Gods {
     int16_t monster_old_vy;   /* $004B4 */
     uint8_t zone_counts[8];   /* $004B6 */
     struct Planner planner;   /* $004BE */
-    void (*boss_frame)(void);   /* $004E0 */
-    void (*boss_callback)(void);   /* $004E4 */
-    uint8_t boss_area[390];   /* $004E8 */
+    struct Guardian guardian;   /* $004E0 */
     int16_t axe_steps[27];   /* $0066E */
     int16_t shot_offsets_6a4[9];   /* $006A4 */
     union {   /* the variables that overlap */
@@ -897,9 +895,7 @@ _Static_assert(offsetof(struct Gods, monster_old_vx) == 0x4b2, "monster_old_vx")
 _Static_assert(offsetof(struct Gods, monster_old_vy) == 0x4b4, "monster_old_vy");
 _Static_assert(offsetof(struct Gods, zone_counts) == 0x4b6, "zone_counts");
 _Static_assert(offsetof(struct Gods, planner) == 0x4be, "planner");
-_Static_assert(offsetof(struct Gods, boss_frame) == 0x4e0, "boss_frame");
-_Static_assert(offsetof(struct Gods, boss_callback) == 0x4e4, "boss_callback");
-_Static_assert(offsetof(struct Gods, boss_area) == 0x4e8, "boss_area");
+_Static_assert(offsetof(struct Gods, guardian) == 0x4e0, "guardian");
 _Static_assert(offsetof(struct Gods, axe_steps) == 0x66e, "axe_steps");
 _Static_assert(offsetof(struct Gods, shot_offsets_6a4) == 0x6a4, "shot_offsets_6a4");
 _Static_assert(offsetof(struct Gods, shot_lists_raw) == 0x6b6, "shot_lists_raw");

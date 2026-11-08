@@ -50,6 +50,15 @@ _Static_assert(sizeof(struct SoundRecord) == 6, "sound record");
 /* a pointer to bytes of the tables: the data holds them where the original has addresses */
 typedef const uint8_t *ByteP;
 
+/* the guardians' state ($4E0 to $66E): the routine run every frame while a guardian lives (frame), the routine run while one is being made or dies (callback), and the area its variables are in
+ * (the structs of game.c lie on it: struct BossState, Boss2, the level 4's words) */
+struct Guardian {
+    void (*frame)(void);
+    void (*callback)(void);
+    uint8_t area[390];
+};
+_Static_assert(sizeof(struct Guardian) == 398, "guardian");
+
 struct SoundInstrument {
     int16_t flags;            /* negative: the sample loops */
     uint16_t loop_start;      /* where the loop starts (bytes of the sample) */

@@ -206,8 +206,6 @@ player_energy          0x00000c96  uint16_t %s   the player's energy (0 to 24)
 energy_shown        0x00000216  int16_t %s   the energy as shown (it goes toward player_energy a step a frame); 0 or less: the player is dead (the loop goes on elsewhere)
 scroll_push_frames          0x0000026e  uint16_t %s
 boss_mode          0x0000023a  uint16_t %s
-boss_callback      0x000004e4  void (*%s)(void)
-boss_frame      0x000004e0  void (*%s)(void)
 scroll_x          0x00000358  int16_t %s   the screen's position in the level
 scroll_y          0x0000035a  int16_t %s
 scroll_x_a        0x0000029a  int16_t %s   the scroll position kept while the loop runs
@@ -636,7 +634,7 @@ hit_list          0x00000bd6  int16_t %s[75]  the list of the creatures hit (x, 
 axe_steps         0x0000066e  int16_t %s[27]  the magic axe's nine shots' steps
 ball_pillars      0x00000a6e  int16_t %s[21]  the ball's pillars of fire
 ball_pieces       0x00000e6c  int16_t %s[50]  its burst's pieces
-boss_area         0x000004e8  uint8_t %s[390]  the guardians' variables (the structs of game.c lie on it: struct BossState, Boss2, the level 4's words)
+guardian         0x000004e0  struct Guardian %s   the guardians' state: the routine of every frame, the callback and the area of their variables
 frame_things         0x0000121c  int16_t %s[66]  the list of things that list_count_1294 counts
 bat_count        0x0000121a  uint16_t %s
 game_loop_jump         0x00002c20  uint8_t %s[6]   the original's code at $2C20: the jump that game_loop_install puts there
