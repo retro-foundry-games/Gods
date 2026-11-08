@@ -4265,7 +4265,7 @@ static uint16_t *first_free_entry(uint16_t *entry, int16_t count, int16_t *numbe
 
 /* orig $00FDBA: each of the three units (the records at slot_ref_6b6, _748 and _7da, 146 bytes apart; a negative first word means
  * it is not there) that is there gets a free entry of its (the first of three entries of 24 bytes after the word), as many as
- * the count in the word at +10 of its object_slots record allows: the entry is kept in claimed_entries and its number in entry_id_2ea.
+ * the count in the word at +10 of its object_slots record allows: the entry is kept in claimed_entries and its number in claimed_entry_ids.
  * The first unit sets single_claim_taken when its object has the count 1 and the others then leave it alone.  Returns 0 when some
  * unit got an entry, else 1 (also 1 and nothing done when fire_latch is not 0; fire_latch is set) */
 uint16_t claim_free_entries(void)
@@ -4296,7 +4296,7 @@ uint16_t claim_free_entries(void)
         if (u > 0 && count == 1 && guest.single_claim_taken != 0)
             continue;
         guest.claimed_entries[u] = entry;
-        guest.entry_id_2ea[u] = number;
+        guest.claimed_entry_ids[u] = number;
         result = 0;
         if (u == 0 && count == 1)
             guest.single_claim_taken = 1;
@@ -5327,12 +5327,12 @@ static void spawn_shots(struct Shot *slot, int16_t id, struct ShotList *list, in
     }
 }
 
-/* orig $0153A2: each of the three lists that has a free place for a shot (shot_slot_b92, b96 and b9a, not 0) gets one, at the player (a
+/* orig $0153A2: each of the three lists that has a free place for a shot (claimed_entries, not 0) gets one, at the player (a
  * little below him) or, when falcon_choice is the list's number, at the place falcon_x and falcon_y give (8 and 16 on) */
 void spawn_player_shots(void)
 {
-    struct Shot *slots[3] = { guest.shot_slot_b92, guest.shot_slot_b96, guest.shot_slot_b9a };
-    int16_t ids[3] = { guest.shot_id_first, guest.shot_id_second, guest.shot_id_third };
+    struct Shot *slots[3] = { (struct Shot *)guest.claimed_entries[0], (struct Shot *)guest.claimed_entries[1], (struct Shot *)guest.claimed_entries[2] };
+    int16_t ids[3] = { guest.claimed_entry_ids[0], guest.claimed_entry_ids[1], guest.claimed_entry_ids[2] };
 
     for (int i = 0; i < 3; i++) {
         if (slots[i] == 0)
@@ -10669,8 +10669,8 @@ static void spawn_shots_fireball_left(struct Shot *slot, int16_t id, struct Obje
  * at +16 names in the table at $15220: 0 is $15968, 4 and 5 are bare returns; 1 to 3 and 6 to 15 did not run */
 static void spawn_player_shots_left(void)
 {
-    struct Shot *slots[3] = { guest.shot_slot_b92, guest.shot_slot_b96, guest.shot_slot_b9a };
-    int16_t ids[3] = { guest.shot_id_first, guest.shot_id_second, guest.shot_id_third };
+    struct Shot *slots[3] = { (struct Shot *)guest.claimed_entries[0], (struct Shot *)guest.claimed_entries[1], (struct Shot *)guest.claimed_entries[2] };
+    int16_t ids[3] = { guest.claimed_entry_ids[0], guest.claimed_entry_ids[1], guest.claimed_entry_ids[2] };
 
     for (int i = 0; i < 3; i++) {
         if (slots[i] == 0)

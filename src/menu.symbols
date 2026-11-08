@@ -323,7 +323,7 @@ message_base           0x00000b66 uint8_t *%s    the base the message offsets (w
 condition_results          0x00000300 int16_t %s[3]  the three results of the calls of finish_script_record (-1: yes)
 finished_record_dispatch    0x00018ba4 void (*%s[])(void)   the routines the kind of a finished record names
 claimed_entries          0x00000b92 uint16_t *%s[3]  the free entry of each of the three units that claim_free_entries found (0: none)
-entry_id_2ea       0x000002ea int16_t %s[3]    the number of that entry (1, 4, 7 for the first unit, 10, 13, 16 and 19, 22, 25)
+claimed_entry_ids       0x000002ea int16_t %s[3]    the number of that entry (1, 4, 7 for the first unit, 10, 13, 16 and 19, 22, 25)
 single_claim_taken           0x000002f0 uint16_t %s
 hit_damage_1cc    0x000001cc int16_t %s    game_b: the damage the cell hit by check_hit_and_walls does (set by the lookup of $159FC)
 slot_value_target          0x00000272 int16_t %s    game_b: compared with slot_value_sum by the lookup of $159FC (more than it: the damage grows)
@@ -373,12 +373,6 @@ pickup_nothing_near          0x000001fa  int16_t %s
 table jump_deltas 0x00011318  uint16_t 23    how many rows up the player is in each step (2 bytes a step) of a jump
 table frame_map_125ac 0x000125ac uint16_t 6  the frame after a frame of the state 5 (five words), then how near the left or right of the screen the player may go before the scroll follows
 table state_table 0x00010280 uint32_t 58     29 states of the player, two longs each: the first sprite and the routine (the C does not use the second)
-shot_id_first          0x000002ea  int16_t %s
-shot_id_second          0x000002ec  int16_t %s
-shot_id_third          0x000002ee  int16_t %s
-shot_slot_b92     0x00000b92  struct Shot *%s
-shot_slot_b96     0x00000b96  struct Shot *%s
-shot_slot_b9a     0x00000b9a  struct Shot *%s
 falcon_x         0x00008882  int16_t %s
 falcon_y         0x00008884  int16_t %s
 orig_set_shutter_wait           0x00005496  void %s(void)

@@ -171,13 +171,7 @@ struct Gods {
     int16_t shot_speed;   /* $002E4 */
     uint16_t random_index;   /* $002E6 */
     PAD(2)
-    union {   /* the variables that overlap */
-        struct { int16_t entry_id_2ea[3]; };   /* $002EA */
-        struct { int16_t shot_id_first; };   /* $002EA */
-        struct { PAD(2) int16_t shot_id_second; };   /* $002EC */
-        struct { PAD(4) int16_t shot_id_third; };   /* $002EE */
-        uint8_t bytes_002ea[6];
-    };
+    int16_t claimed_entry_ids[3];   /* $002EA */
     uint16_t single_claim_taken;   /* $002F0 */
     uint16_t copper_setup_done;   /* $002F2 */
     uint16_t message_shown;   /* $002F4 */
@@ -318,13 +312,7 @@ struct Gods {
     uint8_t *level_map;   /* $00B86 */
     uint8_t *map_file_name;   /* $00B8A */
     PAD(4)
-    union {   /* the variables that overlap */
-        struct { uint16_t *claimed_entries[3]; };   /* $00B92 */
-        struct { struct Shot *shot_slot_b92; };   /* $00B92 */
-        struct { PAD(4) struct Shot *shot_slot_b96; };   /* $00B96 */
-        struct { PAD(8) struct Shot *shot_slot_b9a; };   /* $00B9A */
-        uint8_t bytes_00b92[12];
-    };
+    uint16_t *claimed_entries[3];   /* $00B92 */
     PAD(4)
     uint16_t *lever_entry_ptr;   /* $00BA2 */
     struct Slot8 *viewed_record;   /* $00BA6 */
@@ -840,10 +828,7 @@ _Static_assert(offsetof(struct Gods, energy_bar_phase) == 0x2de, "energy_bar_pha
 _Static_assert(offsetof(struct Gods, energy_sound_played) == 0x2e0, "energy_sound_played");
 _Static_assert(offsetof(struct Gods, shot_speed) == 0x2e4, "shot_speed");
 _Static_assert(offsetof(struct Gods, random_index) == 0x2e6, "random_index");
-_Static_assert(offsetof(struct Gods, entry_id_2ea) == 0x2ea, "entry_id_2ea");
-_Static_assert(offsetof(struct Gods, shot_id_first) == 0x2ea, "shot_id_first");
-_Static_assert(offsetof(struct Gods, shot_id_second) == 0x2ec, "shot_id_second");
-_Static_assert(offsetof(struct Gods, shot_id_third) == 0x2ee, "shot_id_third");
+_Static_assert(offsetof(struct Gods, claimed_entry_ids) == 0x2ea, "claimed_entry_ids");
 _Static_assert(offsetof(struct Gods, single_claim_taken) == 0x2f0, "single_claim_taken");
 _Static_assert(offsetof(struct Gods, copper_setup_done) == 0x2f2, "copper_setup_done");
 _Static_assert(offsetof(struct Gods, message_shown) == 0x2f4, "message_shown");
@@ -965,9 +950,6 @@ _Static_assert(offsetof(struct Gods, level_walker_templates) == 0xb82, "level_wa
 _Static_assert(offsetof(struct Gods, level_map) == 0xb86, "level_map");
 _Static_assert(offsetof(struct Gods, map_file_name) == 0xb8a, "map_file_name");
 _Static_assert(offsetof(struct Gods, claimed_entries) == 0xb92, "claimed_entries");
-_Static_assert(offsetof(struct Gods, shot_slot_b92) == 0xb92, "shot_slot_b92");
-_Static_assert(offsetof(struct Gods, shot_slot_b96) == 0xb96, "shot_slot_b96");
-_Static_assert(offsetof(struct Gods, shot_slot_b9a) == 0xb9a, "shot_slot_b9a");
 _Static_assert(offsetof(struct Gods, lever_entry_ptr) == 0xba2, "lever_entry_ptr");
 _Static_assert(offsetof(struct Gods, viewed_record) == 0xba6, "viewed_record");
 _Static_assert(offsetof(struct Gods, high_score_baa) == 0xbaa, "high_score_baa");
