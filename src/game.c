@@ -12964,13 +12964,13 @@ void load_level_map(void)
     copper_list_make();
 }
 
-/* orig $00530A: the copper list of the level's colours at copper_colors is made from copper_colour_count colours at copper_colours (color_line_spacing is the
+/* orig $00530A: the copper list of the level's colours at copper_lists.colors is made from copper_colour_count colours at copper_colours (color_line_spacing is the
  * spacing of the lines): each colour is a move to COLOR01 (the colour doubled: the original's colours are ST 3-bit ones) and a wait for
  * the line, with, between the colours, a move of the colour half way between them; the list ends with the three moves the program's
  * copper lists have (copper_move_a and b and $8A0000).  The colours are saved (copper_colors_save) */
 void copper_list_make(void)
 {
-    uint16_t *list = guest.copper_colors;
+    uint16_t *list = guest.copper_lists.colors;
     const uint16_t *source = (const uint16_t *)guest.copper_colours;
     uint16_t spacing = guest.color_line_spacing;
     int16_t count = (int16_t)(guest.copper_colour_count - 1);

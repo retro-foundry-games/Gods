@@ -148,8 +148,8 @@ void memory_map_init(void)
     p += 0x1450;
     guest.work_area = (uint32_t *)p;
     clear_work_area();
-    guest.copper_message_5254[2] = (uint16_t)(uintptr_t)p;          /* the copper list's bitplane pointer for the message: the work area */
-    guest.copper_message_5254[0] = (uint16_t)((uintptr_t)p >> 16);
+    guest.copper_lists.message.plane_low.value = (uint16_t)(uintptr_t)p;          /* the copper list's bitplane pointer for the message: the work area */
+    guest.copper_lists.message.plane_high.value = (uint16_t)((uintptr_t)p >> 16);
     p += 0x140;
     guest.level_map = p;
     p += 0x4000;

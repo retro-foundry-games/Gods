@@ -673,9 +673,42 @@ struct CopperHead {
 };
 LAYOUT_ASSERT(sizeof(struct CopperHead) == 72, "copper head");
 
-/* the program's copper lists ($4D8A, 176 bytes): the list of the first screen (its head and the moves that send the copper on to the tail: COP2LC = $4E26 and the strobe of COPJMP2), the list of the
- * second screen (its head, and the copper goes on into the tail) and the tail both run through: the WAIT for the line $3C, BPLCON0 with the bitplanes on, the two moves that send the copper on to the
- * colour bands (COP2LC = $4E3A) or over them ($5246), which fade_in and fade_out set (move_a and move_b), and the strobe */
+/* a line of the message at the bottom of the screen ($5272, 20 bytes): the colours of its two bitplane colours for the line (a WAIT for the left of the line, COLOR01 and COLOR00 for the text and its
+ * background) and, at the right edge, COLOR00 black again */
+struct CopperMessageLine {
+    struct CopperWait wait;
+    struct CopperMove color01;    /* the colour of the text (message_pairs) */
+    struct CopperMove color00;    /* the colour of its background */
+    struct CopperWait wait_end;
+    struct CopperMove color00_end;
+};
+LAYOUT_ASSERT(sizeof(struct CopperMessageLine) == 20, "copper message line");
+
+/* the last part of the copper program ($5246, 196 bytes): the screen below the picture: the bitplane of the message (the work area, one plane), its display setup and the seven lines of the message with
+ * their colours, then the plane is switched off and the list ends with $FFFF,$FFFE.  The two lists go on here when the colour bands are jumped over */
+struct CopperMessage {
+    struct CopperWait wait;       /* +0: a WAIT for the line $FB */
+    struct CopperMove color01;
+    struct CopperMove bplcon0_off;
+    struct CopperMove plane_high; /* +12: BPL1PTH: the value is the high word of the message's bitplane (work_area; boot sets it) */
+    struct CopperMove plane_low;  /* +16: BPL1PTL */
+    struct CopperMove ddfstrt;
+    struct CopperMove bplcon1;
+    struct CopperMove modulo_odd;
+    struct CopperMove modulo_even;
+    struct CopperWait wait_lines; /* +36: a WAIT for the line $FC */
+    struct CopperMove bplcon0_on; /* +40: one bitplane */
+    struct CopperMessageLine lines[7];   /* +44 */
+    struct CopperWait wait_end;   /* +184: a WAIT for the line 4 (the end of the lines) */
+    struct CopperMove bplcon0_end;
+    struct CopperWait end;        /* +192: $FFFF,$FFFE */
+};
+LAYOUT_ASSERT(sizeof(struct CopperMessage) == 196, "copper message");
+
+/* the program's copper lists ($4D8A, 1408 bytes): the list of the first screen (its head and the moves that send the copper on to the tail: COP2LC = $4E26 and the strobe of COPJMP2), the list of the
+ * second screen (its head, and the copper goes on into the tail), the tail both run through (the WAIT for the line $3C, BPLCON0 with the bitplanes on, the two moves that send the copper on to the colour
+ * bands (COP2LC = $4E3A) or over them ($5246), which fade_in and fade_out set (move_a and move_b), and the strobe), the colour bands of the level (copper_list_make: a move to COLOR01 and a WAIT for each band;
+ * the fades walk them) and the message */
 struct CopperLists {
     struct CopperHead a;          /* +0: the list of the first screen (screen_1) */
     struct CopperMove a_jump_high;/* +72: COP2LCH */
@@ -689,10 +722,14 @@ struct CopperLists {
         struct CopperMove move_b; /* COP2LCL: ... and the low word */
         struct CopperMove strobe; /* COPJMP2 */
     } tail;
+    uint16_t colors[518];         /* +176 ($4E3A): the colour bands: pairs of words, the registers and their values, or the WAITs */
+    struct CopperMessage message; /* +1212 ($5246) */
 };
-LAYOUT_ASSERT(sizeof(struct CopperLists) == 176, "copper lists");
+LAYOUT_ASSERT(sizeof(struct CopperLists) == 1408, "copper lists");
 LAYOUT_ASSERT(offsetof(struct CopperLists, b) == 84, "list b");
 LAYOUT_ASSERT(offsetof(struct CopperLists, tail.move_a) == 0xA4, "move a");
+LAYOUT_ASSERT(offsetof(struct CopperLists, colors) == 0xB0, "colors");
+LAYOUT_ASSERT(offsetof(struct CopperLists, message) == 0x4BC, "message");
 
 /* the sound system's variables ($2079E, 14 bytes): the start-up clears them; busy is not 0 while there is something to play (a long to the loader: the first voice's byte is the top one) and voice_ids the sound each of the four voices plays */
 struct SoundState {
@@ -1121,11 +1158,7 @@ struct Gods {
     uint16_t game_nothing_opcode;   /* $03436 */
     PAD(6482)
     struct CopperLists copper_lists;   /* $04D8A */
-    uint16_t copper_colors[518];   /* $04E3A */
-    uint16_t copper_list_end[1];   /* $05246 */
-    PAD(12)
-    uint16_t copper_message_5254[3];   /* $05254 */
-    PAD(404)
+    PAD(228)
     uint16_t message_words[16];   /* $053EE */
     PAD(10)
     uint16_t unused_5418;   /* $05418 */
@@ -1679,9 +1712,6 @@ LAYOUT_ASSERT(offsetof(struct Gods, level_text) == 0x28f8, "level_text");
 LAYOUT_ASSERT(offsetof(struct Gods, game_loop_jump) == 0x2c20, "game_loop_jump");
 LAYOUT_ASSERT(offsetof(struct Gods, game_nothing_opcode) == 0x3436, "game_nothing_opcode");
 LAYOUT_ASSERT(offsetof(struct Gods, copper_lists) == 0x4d8a, "copper_lists");
-LAYOUT_ASSERT(offsetof(struct Gods, copper_colors) == 0x4e3a, "copper_colors");
-LAYOUT_ASSERT(offsetof(struct Gods, copper_list_end) == 0x5246, "copper_list_end");
-LAYOUT_ASSERT(offsetof(struct Gods, copper_message_5254) == 0x5254, "copper_message_5254");
 LAYOUT_ASSERT(offsetof(struct Gods, message_words) == 0x53ee, "message_words");
 LAYOUT_ASSERT(offsetof(struct Gods, unused_5418) == 0x5418, "unused_5418");
 LAYOUT_ASSERT(offsetof(struct Gods, digit_font) == 0x58f0, "digit_font");

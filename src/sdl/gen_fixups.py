@@ -31,7 +31,7 @@ STRUCTS = {
     "LevelData": (7160, [(6000 + 2 * i, 2) for i in range(90)] + [(6180 + 2 * i, 2) for i in range(60)]),   # (the teleport gems and the pick-ups: words)
     "ShotList": (146, [(2 * i, 2) for i in range(73)]),   # (the number of the object and 18 shots of four words)
     "SoundState": (14, [(2, 4)]),   # (busy: the long the loader writes)
-    "CopperLists": (176, [(6, 2), (90, 2)]),   # (the COLOR01 words of the two lists; the moves of the tail are words made native with the lists)
+    "CopperLists": (1408, [(6, 2), (90, 2), (176, 2), (0x4BC, 2), (0x4CA, 2), (0x4CC, 2), (0x4CE, 2)]),   # (the COLOR01 words of the two lists, the first of the bands, and the words of the message that the program writes: its WAIT and its bitplane pointer; the rest of the lists is made native by guest_load.c)
     "Monster": (428, [(0, 2), (2, 5), (6, 2), (20, 2), (22, 2)] + [(24 + 2 * i, 2) for i in range(200)] + [(424, 2)]),
     "Bolt": (22, [(0, 4)] + [(4 + 2 * i, 2) for i in range(9)]),
     "Unit": (24, [(0, 2), (4, 2), (10, 4), (14, 2), (16, 2), (18, 4)]),

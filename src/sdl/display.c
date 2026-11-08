@@ -36,7 +36,7 @@ const uint16_t *find_color01_move(const uint16_t *list)
     do {
         if (*list++ == 0x0182)
             return list;
-    } while ((int32_t)(uintptr_t)list < (int32_t)(uintptr_t)((uint8_t *)guest.copper_colors + (0x5246 - 0x4e3a)));
+    } while ((int32_t)(uintptr_t)list < (int32_t)(uintptr_t)&guest.copper_lists.message);
     return (const uint16_t *)(intptr_t)-1;
 }
 
@@ -135,7 +135,7 @@ void copper_fade_up(void)
 {
     const uint16_t *target = guest.copper_save;
 
-    for (uint16_t *colour = next_color(guest.copper_colors); colour; colour = next_color(colour)) {
+    for (uint16_t *colour = next_color(guest.copper_lists.colors); colour; colour = next_color(colour)) {
         uint16_t want = *target++;
         uint16_t now = *colour;
 
@@ -151,7 +151,7 @@ void copper_fade_up(void)
 /* orig $01D1C2: every colour of the copper list a step towards black: each component that is not 0 goes down by one */
 void copper_fade_down(void)
 {
-    for (uint16_t *colour = next_color(guest.copper_colors); colour; colour = next_color(colour)) {
+    for (uint16_t *colour = next_color(guest.copper_lists.colors); colour; colour = next_color(colour)) {
         uint16_t now = *colour;
 
         if (now & 0x00f)
@@ -169,7 +169,7 @@ void copper_colors_save(uint16_t mask)
 {
     uint16_t *to = guest.copper_save;
 
-    for (uint16_t *colour = next_color(guest.copper_colors); colour; colour = next_color(colour)) {
+    for (uint16_t *colour = next_color(guest.copper_lists.colors); colour; colour = next_color(colour)) {
         *to++ = *colour;
         *colour &= mask;
     }
@@ -180,7 +180,7 @@ void copper_colors_restore(void)
 {
     const uint16_t *from = guest.copper_save;
 
-    for (uint16_t *colour = next_color(guest.copper_colors); colour; colour = next_color(colour))
+    for (uint16_t *colour = next_color(guest.copper_lists.colors); colour; colour = next_color(colour))
         *colour = *from++;
 }
 
