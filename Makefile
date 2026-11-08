@@ -33,7 +33,7 @@ else
 
 COMMON := -m68000 -ffreestanding -fno-tree-loop-distribute-patterns -fno-tree-forwprop -fno-ivopts -nostdlib -fdata-sections
 INTRO_CFLAGS := $(GODS_CFLAGS) $(COMMON) $(GODS_OPT)
-MENU_CFLAGS := $(COMMON) -O2 -ffunction-sections $(if $(PIRATED),-DPIRATED)
+MENU_CFLAGS := $(COMMON) -O2 -ffunction-sections -DMATCH_MEMORY_LAYOUT $(if $(PIRATED),-DPIRATED)
 WARN := -Wall -Wextra
 
 # the menu program: one object for each module (the sources are split by what the code does, see src/menu.h)

@@ -26,7 +26,7 @@ else
 
 WEB_OPT := -O2
 COMMON := -std=gnu11 $(WEB_OPT) -pthread -fno-strict-aliasing -Wall -Wno-unused-function -I$(SRC) -I$(HERE) -I$(W) -I$(SDL3_PREFIX)/include
-GAME_CFLAGS := $(COMMON) -fpack-struct=2 -DGODS_SDL -DGODS_HEAP_IN_GUEST $(if $(PIRATED),-DPIRATED)
+GAME_CFLAGS := $(COMMON) -fpack-struct=2 -DGODS_SDL -DGODS_HEAP_IN_GUEST -DMATCH_MEMORY_LAYOUT $(if $(PIRATED),-DPIRATED)
 HOST_CFLAGS := $(COMMON)
 
 MENU_MODULES := menu disk alloc decrunch input draw message file boot game data
