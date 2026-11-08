@@ -8,9 +8,7 @@
 struct Guest;
 extern struct Guest guest;   /* guest_struct.h */
 
-/* an address of the original's memory (a value in a table, an address of a record that the image brings) as a pointer's value */
-#define GUEST(address) ((uintptr_t)guest_resolve((uint32_t)(address)))
-void *guest_resolve(uint32_t address);   /* guest.c: where the original's address is here: the table that has it, else the block */
+uint32_t guest_address(uint32_t address);   /* guest.c: an address of the original's memory (a pointer in an imported RAM) as this program's pointer: into a table that has it, else into the block */
 
 void host_blitter_not_emulated(void);   /* display.c: the chip's blitter is not emulated: the program's routines that program its registers are replaced by C (said once on stderr if one is reached) */
 
@@ -95,7 +93,7 @@ static inline void file_pointers(void *p, uint32_t count)
     file_longs(p, count);
     for (uint32_t i = 0; i < count; i++)
         if (w[i] != 0 && w[i] < GODS_GUEST_END)
-            w[i] = (uint32_t)GUEST(w[i]);
+            w[i] = guest_address(w[i]);
 }
 
 #endif

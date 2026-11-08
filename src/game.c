@@ -2080,7 +2080,7 @@ static void level_end_effects(const struct LevelEnd *record)
             }
             break;
         case 0x1366E:   /* the list of the teleport gems goes on where the level end says */
-            guest.ptr_0b76 = (const uint8_t *)GUEST(table_1077a[(int16_t)(guest.param_index - 1)]) + record->list_offset;
+            guest.ptr_0b76 = table_1077a[(int16_t)(guest.param_index - 1)] + record->list_offset;
             break;
         case 0x135C6:   /* the records of the world that is left are cleared */
             world_records_clear();
@@ -13441,7 +13441,7 @@ void level_state_init(void)
     guest.word_17e9c = 0x4E75;
     guest.word_4a2 = 0;
     guest.code_c374 = 0x4E75;
-    guest.ptr_0bc6 = (const struct LevelEnd *)GUEST(table_143b8[(int16_t)(guest.param_index - 1)]);
+    guest.ptr_0bc6 = (const struct LevelEnd *)table_143b8[(int16_t)(guest.param_index - 1)];
     guest.word_2aa = guest.scroll_y;
     mark_cells_19170();
     place_pickups();
@@ -13510,7 +13510,7 @@ void level_state_init(void)
     guest.code_9ae6 = 0x4E71;
     guest.code_6ed0 = 0x4E71;
     stop_game_sounds();
-    guest.ptr_0b76 = (const uint8_t *)GUEST(table_1077a[(int16_t)(guest.param_index - 1)]);
+    guest.ptr_0b76 = table_1077a[(int16_t)(guest.param_index - 1)];
     set_pickup_glyph();
     for (int i = 0; i < 20; i++)
         guest.records_3a0a6[i * 6] = -1;
@@ -14059,10 +14059,10 @@ static void reload_sprites(void)
 /* orig $001C65E: the two longs of table_1c678 that the level names (8 bytes each) go to ptr_0b7e and ptr_0b82 */
 static void set_level_pointers(void)
 {
-    const uint32_t *from = &table_1c678[(int16_t)((guest.param_index - 1) * 2)];
+    const ByteP *from = &table_1c678[(int16_t)((guest.param_index - 1) * 2)];
 
-    guest.ptr_0b7e = (uint8_t *)GUEST(from[0]);
-    guest.ptr_0b82 = (uint8_t *)GUEST(from[1]);
+    guest.ptr_0b7e = (uint8_t *)from[0];
+    guest.ptr_0b82 = (uint8_t *)from[1];
 }
 
 /* orig $00651E and $002452 to $002C08 (the rts at $016E3E that it calls is not written): Begin Quest.  The level is set up from the files of the disk: the level's names are made from

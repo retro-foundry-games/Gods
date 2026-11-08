@@ -75,13 +75,8 @@ void guest_load_image(const uint8_t *image, uint32_t size)
     apply_fixups(IMAGE_BASE + size);
     swap16_range(0x4d8a, 0xa8);  /* the two copper lists (the program changes their words, the display reads them as words) */
 
-    /* What the original's start-up writes that is not in the unpacked image: the name of the first asset set and the lists of
-     * file names of the asset sets (the table asset_names points at them; the names are on the disks' directories) */
+    /* What the original's start-up writes that is not in the unpacked image: the name of the first asset set */
     memcpy(guest_ptr(0x196d6), "always", 7);
-    static const char names[] =
-           "always1\0always2\0always3\0godfont\0\0obj1\0obj2\0\0smlfnt\0\0shopspr\0shopfnt\0\0level1a\0level1b\0\0guard11\0guard12\0\0"
-           "level2a\0level2b\0\0amdragn\0\0level3a\0level3b\0\0guard31\0guard32\0\0level4a\0level4b\0\0guard41\0guard42\0\0";
-    memcpy(guest_ptr(0x1ed72), names, sizeof names);
 
     /* message_pairs (a table of longs, in the executable): the addresses of the copper colour moves the message fades */
 #ifndef __EMSCRIPTEN__

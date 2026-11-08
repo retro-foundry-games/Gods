@@ -47,11 +47,14 @@ struct SoundRecord {
 };
 _Static_assert(sizeof(struct SoundRecord) == 6, "sound record");
 
+/* a pointer to bytes of the tables: the data holds them where the original has addresses */
+typedef const uint8_t *ByteP;
+
 struct SoundInstrument {
     int16_t flags;            /* negative: the sample loops */
     uint16_t loop_start;      /* where the loop starts (bytes of the sample) */
     uint16_t length;          /* in words */
-    uint32_t sample;          /* the address of the 8 bit sample */
+    const uint8_t *sample;    /* the 8 bit sample (in guest.sound_sample_data) */
     uint32_t period_table;    /* the low byte picks one of the three tables of 48 periods (sound_periods): 0, 1, or the third (the data holds the tables' addresses: always the third) */
 };
 _Static_assert(sizeof(struct SoundInstrument) == 14, "sound instrument");

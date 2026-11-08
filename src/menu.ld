@@ -74,6 +74,8 @@ SECTIONS {
         . = 0x1e5ae; *(.rodata.keymap) *(.data.keymap)
         . = 0x1e7f4; *(.rodata.font_8x8) *(.data.font_8x8)
         . = 0x1ecec; *(.rodata.asset_names) *(.data.asset_names)
+        . = 0x1ed42; *(.rodata.asset_list_pointers) *(.data.asset_list_pointers)
+        . = 0x1ed72; *(.rodata.asset_lists) *(.data.asset_lists)
         . = 0x2080e; *(.rodata.sound_periods) *(.data.sound_periods)
         . = 0x20bce; *(.rodata.sound_records) *(.data.sound_records)
         . = 0x21c3a; *(.rodata.sound_tracks) *(.data.sound_tracks)
@@ -667,3 +669,6 @@ _irq_vectors = 0x68;
 _copper_message_5254 = 0x5254;
 _sound_silence = 0x21e5e;
 _sound_state_2079e = 0x2079e;
+_lists_1078a = 0x1078a;
+_sound_track_data = 0x20f74;
+_sound_sample_data = 0x21e5e;

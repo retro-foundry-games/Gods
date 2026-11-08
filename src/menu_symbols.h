@@ -92,7 +92,9 @@ extern const char text_game_over[11];   /* $100A9  "GAME  OVER" */
 extern const uint8_t key_table[40];   /* $06CE0  the keys of the grid in the order of its cells (a to z, full stop, space, 0 to 9, backspace), ended by $FF */
 extern const char tocache_name[12];   /* $196FE  "tocache.bin": the file with the directory of the disks (loaded at start) */
 extern const uint8_t asset_extensions[11];   /* $00D2E  the endings of a picture file name (.pi1) and of its table (.dat, 6 bytes on) */
-extern const uint8_t asset_names[134];   /* $1ECEC  the names assets_load knows (each ended by 0, ended by $FF), and from byte 86 on a long for each: the address of its list of file names */
+extern const uint8_t asset_names[84];   /* $1ECEC  the names assets_load knows (each ended by 0, ended by $FF) */
+extern const ByteP asset_list_pointers[12];   /* $1ED42  for each name of asset_names the list of its file names */
+extern const uint8_t asset_lists[198];   /* $1ED72  the lists of file names of the asset sets (each ended by 0, the list by another 0) */
 extern const uint8_t keymap[128];   /* $1E5AE  the character a raw key code gives (0 when none) */
 extern const char background_name[12];   /* $026D2  "backscr.pi1": the file of the menu's background picture */
 extern const char small_font_name[9];   /* $03232  "smallfnt": the asset set of the small font */
@@ -138,17 +140,17 @@ extern const uint32_t level_starts[4];   /* $028DA  where the player starts each
 extern const uint32_t shift_tables[40];   /* $02A0A  for each level (ten longs): the first is the shift register's start, the others its source */
 extern const uint16_t table_17a6e[8];   /* $17A6E  for each level two words (by word_0266): how many 32 by 16 pixel blocks its background tiles have */
 extern const uint16_t table_fa5c[4];   /* $0FA5C  the glyph of the pick-ups of each level (word_26a) */
-extern const uint32_t table_143b8[4];   /* $143B8  for each level the list of spots that ptr_0bc6 points to */
+extern const ByteP table_143b8[4];   /* $143B8  for each level the list of spots that ptr_0bc6 points to */
 extern const struct LevelEnds level_ends[1];   /* $143D8  the lists of the four levels' ends (struct LevelEnd, 34 bytes each: 4, 5, 3 and 5; two bytes before the second list, which the original has at $14462): the first level's is three spots, six, eight and twelve, the second's six, ten, eleven (the guardian's), fifteen and the level's end ($144E8 in the original, here 2 bytes later) */
 extern const uint16_t table_1527a[4];   /* $1527A  for each level the value word_272 takes */
-extern const uint32_t table_1077a[4];   /* $1077A  for each level the list that ptr_0b76 points to */
+extern const ByteP table_1077a[4];   /* $1077A  for each level the list that ptr_0b76 points to */
 extern const uint32_t table_5b9e[4];   /* $05B9E  for each level the first high score */
 extern const uint32_t table_5bb2[4];   /* $05BB2  ... and the second */
-extern const uint32_t table_1c678[8];   /* $1C678  for each level two pointers (ptr_0b7e, ptr_0b82) */
+extern const ByteP table_1c678[8];   /* $1C678  for each level two pointers (ptr_0b7e, ptr_0b82) */
 extern const char sound1_name[11];   /* $1D3D2  "sound1.bin" */
 extern const struct SoundRecord sound_records[67];   /* $20BCE  the sounds: for each, its voices' tracks (the second byte names its voice entry) */
 extern const uint16_t sound_periods[480];   /* $2080E  the period tables: an instrument names where its table starts (word 0, 48 or 96); a note indexes it by 4 words, so they run into each other up to the sounds table */
-extern const uint32_t sound_tracks[137];   /* $21C3A  the address of the track (the commands of the sequencer) of each track number, 0 for none */
+extern const ByteP sound_tracks[137];   /* $21C3A  the address of the track (the commands of the sequencer) of each track number, 0 for none */
 extern const struct SoundInstrument sound_instruments[53];   /* $3A38A  the instruments: the sample, its loop, and the period table */
 extern const char objects_name[8];   /* $196DE  "objects": the asset set of the objects */
 extern const uint16_t death_steps[14];   /* $00096  the seven pieces of the player's death: the steps (x, y) each starts with */

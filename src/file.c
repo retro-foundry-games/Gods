@@ -73,11 +73,7 @@ static const uint8_t *asset_list(const uint8_t *name)
             if (*n++ != *k++)
                 goto mismatch;
         }
-        {
-            const uint8_t *entry = asset_names + 86 + 4 * index;   /* the long of the table, big endian */
-
-            return (const uint8_t *)GUEST(((uint32_t)entry[0] << 24) | (entry[1] << 16) | (entry[2] << 8) | entry[3]);   /* (an address of the original's memory) */
-        }
+        return asset_list_pointers[index];
 mismatch:
         for (;;) {
             uint8_t c = *k++;

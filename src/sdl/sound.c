@@ -21,7 +21,6 @@
 #define STACK 16
 
 /* an address of the program's memory as a pointer (the guest memory is mapped at the Amiga's addresses, the first 64 KiB apart: the tracks and samples are all above) */
-#define ADDRESS(a) ((const void *)GUEST(a))   /* (an address of the original's memory) */
 
 struct SoundVoice {
     int active;
@@ -52,7 +51,7 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 /* the track of a sound number: the address in sound_tracks ($21C3A) */
 static const uint8_t *track_of(unsigned number)
 {
-    return number < sizeof sound_tracks / sizeof sound_tracks[0] ? (const uint8_t *)ADDRESS(sound_tracks[number]) : 0;
+    return number < sizeof sound_tracks / sizeof sound_tracks[0] ? sound_tracks[number] : 0;
 }
 
 static void note_on(struct SoundVoice *v, unsigned note)
@@ -77,7 +76,7 @@ static void set_instrument(struct SoundVoice *v, unsigned n)
     v->looping = record->flags < 0;
     v->loop_start = record->loop_start;
     v->length = record->length * 2u;
-    v->sample = record->sample ? (const int8_t *)ADDRESS(record->sample) : 0;
+    v->sample = (const int8_t *)record->sample;
     /* orig $020300 (select_period_table): the low byte of the long picks the table: 0 the first, 1 the second, anything else the third (the data holds the tables' addresses there,
      * whose low bytes are not 0 or 1: the original plays every instrument with the third table) */
     unsigned which = record->period_table & 0xff;
