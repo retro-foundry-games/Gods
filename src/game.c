@@ -13081,6 +13081,7 @@ void load_background_tiles(const uint8_t *name)
     blocks = (int16_t)table_17a6e[(int16_t)((guest.param_index - 1) * 2) + guest.world_b_files];
     guest.background = top - ((uint32_t)(uint16_t)blocks << 8);
     guest.background_tile_graphics = guest.background - 256;
+    guest.background_loaded = 0;
     load_picture_to_screen(name);
     count = (int16_t)(blocks - 1);
     if (count >= 119)
@@ -13385,10 +13386,12 @@ void level_state_init(void)
     guest.visited_spots_count = 0;
     guest.level_ended = 0;
     guest.fall_distance = 0;
+    guest.effects[50] = 0;   /* ($3A1FA) */
     guest.hint_scrolling = 0;
     guest.unused_238 = 0;
     guest.boss_load_request = 0;
     guest.shop_door_index = 0;
+    guest.glyph_plane_size = 0;
     guest.creature_hit_flag = 0;
     guest.freeze_timer = 0;
     guest.unused_25c = 1;
@@ -14152,6 +14155,7 @@ static void level_begin(void)
     copper_colors_restore();
     hud_digits_load();
     clear_entry_table();
+    guest.background_loaded = 0;
     guest.message_shown = 0;
     guest.tick_hold_26c = 0;
     clear_work_area();
@@ -14201,6 +14205,7 @@ static void level_begin(void)
     level_next_fade = 0;
     fade_in(guest.palette_words, 1);
     guest.draw_routine_index = 1;
+    guest.image_draw_flags = 0;
     guest.image_draw_flags |= 8;
     guest.image_draw_flags |= 2;
     guest.tick_hold_26c = 0;

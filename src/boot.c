@@ -152,6 +152,7 @@ void memory_map_init(void)
     p += 0x140;
     guest.level_map = p;
     p += 0x4000;
+    guest.bytes_dest = p;   /* (the 0x200 bytes after the map: narrow_words_to_bytes makes its bytes there) */
     p += 0x200;
     guest.copper_colours = p;
     p += 0xc0;
