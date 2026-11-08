@@ -14184,8 +14184,8 @@ static void level_begin(void)
     clear_work_area();
     guest.demo_mode = 0;
     reload_sprites();
-    guest.game_stick_word = 0;
-    guest.game_buttons_word = 0;
+    guest.game_stick = 0;
+    guest.game_buttons = 0;
     guest.message_shown = 0;
     guest.message_arg = 0;
     level_state_init();

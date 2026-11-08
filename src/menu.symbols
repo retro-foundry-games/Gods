@@ -97,7 +97,6 @@ title_y           0x000003bc  int16_t %s
 password_slots    0x00000d12  uint32_t %s[3]   the three saved codes (the first byte of each is 0 when there is none)
 password_line     0x00006a0e  uint8_t %s[]    "pass N :" and then room for the three code characters (a line of text in the code that is changed)
 record_text       0x000003c2  uint8_t %s[216]   ten records of 20 bytes (sixteen characters and four bytes) and the three saved codes, 16 bytes in all, scrambled
-key_held          0x00000228  uint16_t %s     non-zero: the button is still down since it picked a cell of the grid
 scores_changed    0x0000ffbf  uint8_t %s      1: the high scores have changed (the disk layer reads it when the write fails)
 disk_digit        0x0001d487  uint8_t %s      the digit of the disk's name ("godsd2": the disk the loader asks for)
 has_continue      0x0000027a  uint16_t %s     non-zero: there is a game to continue (the menu has a third line)
@@ -227,7 +226,7 @@ hit_list_last          0x0000020e  int16_t %s
 hit_list_offset         0x00000c6c  uint32_t %s
 game_record_ptr   0x00000bd2  uint8_t *%s    where the input of this frame is recorded when demo_mode is positive
 onscreen_count    0x000002b8  uint16_t %s     how many things were counted as on the screen this frame
-game_buttons      0x00000228  uint8_t %s     the button bits of this frame (bit 0 fire); the byte at $228 (the menu uses the word there)
+game_buttons      0x00000228  uint8_t %s     the button bits of this frame (bit 0 fire); the menu uses it as "the button is still down since it picked a cell of the grid"
 stone_records      0x0000113c  struct Slot12 %s[10]   ten records of 12 bytes (the second word is not 0 for one in use)
 pickup_spots     0x00019334  struct Slot8 %s[20]    twenty records of 8 bytes (the third word is not negative for one that is in use)
 thing_records     0x00019b14  struct Slot8 %s[200]   two hundred records of 8 bytes (the second word is negative for one that is free)
@@ -547,8 +546,6 @@ start_x           0x0000021a  int16_t %s      where the player starts the level
 start_y           0x0000021c  int16_t %s
 copylock_seed          0x00000282  uint32_t %s     a seed set at the start of the game
 level_files_read          0x00000286  int16_t %s      -1: the level's files were read
-game_stick_word          0x00000226  uint16_t %s     the word game_stick is the high byte of
-game_buttons_word          0x00000228  uint16_t %s     the word game_buttons is the high byte of
 copper_colour_count          0x000001ec  uint16_t %s     how many colours the level's copper list has
 color_line_spacing          0x000001ee  uint16_t %s     the spacing of the lines of the level's colours
 unused_1f2          0x000001f2  uint16_t %s

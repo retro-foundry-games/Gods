@@ -448,7 +448,7 @@ void password_screen(void)
     draw_line_text();
     screens_flip();
     guest.cursor_pos = 0;
-    guest.key_held = 0;
+    guest.game_buttons = 0;
     host_flip_late(1);
     host_cpu_frames(5);   /* (the original's copy of the screen and the drawing of the grid and the line take about 5 frames before the colours fade in) */
     fade_in((const uint16_t *)(guest.background + 2), 1);
@@ -489,8 +489,8 @@ void password_screen(void)
                 pick = 28;
             }
         } else if (guest.button_bits[0] & 1) {
-            if (!guest.key_held) {
-                guest.key_held = 1;
+            if (!guest.game_buttons) {
+                guest.game_buttons = 1;
                 play_sound(33, 2);
 
                 int16_t cell = guest.cursor_pos;
@@ -507,7 +507,7 @@ void password_screen(void)
                 }
             }
         } else {
-            guest.key_held = 0;
+            guest.game_buttons = 0;
             if (guest.joystick != 0) {
                 if (guest.joystick & 8) {
                     guest.cursor_pos++;

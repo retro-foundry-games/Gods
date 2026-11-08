@@ -81,17 +81,10 @@ struct Gods {
     volatile uint16_t jump_boost_timer;   /* $00220 */
     int16_t fire_latch;   /* $00222 */
     int16_t item_count;   /* $00224 */
-    union {   /* the variables that overlap */
-        struct { uint8_t game_stick; };   /* $00226 */
-        struct { uint16_t game_stick_word; };   /* $00226 */
-        uint8_t bytes_00226[2];
-    };
-    union {   /* the variables that overlap */
-        struct { uint8_t game_buttons; };   /* $00228 */
-        struct { uint16_t game_buttons_word; };   /* $00228 */
-        struct { uint16_t key_held; };   /* $00228 */
-        uint8_t bytes_00228[2];
-    };
+    uint8_t game_stick;   /* $00226 */
+    PAD(1)
+    uint8_t game_buttons;   /* $00228 */
+    PAD(1)
     int16_t demo_mode;   /* $0022A */
     uint16_t text_index;   /* $0022C */
     uint16_t visited_spots_count;   /* $0022E */
@@ -770,10 +763,7 @@ _Static_assert(offsetof(struct Gods, jump_boost_timer) == 0x220, "jump_boost_tim
 _Static_assert(offsetof(struct Gods, fire_latch) == 0x222, "fire_latch");
 _Static_assert(offsetof(struct Gods, item_count) == 0x224, "item_count");
 _Static_assert(offsetof(struct Gods, game_stick) == 0x226, "game_stick");
-_Static_assert(offsetof(struct Gods, game_stick_word) == 0x226, "game_stick_word");
 _Static_assert(offsetof(struct Gods, game_buttons) == 0x228, "game_buttons");
-_Static_assert(offsetof(struct Gods, game_buttons_word) == 0x228, "game_buttons_word");
-_Static_assert(offsetof(struct Gods, key_held) == 0x228, "key_held");
 _Static_assert(offsetof(struct Gods, demo_mode) == 0x22a, "demo_mode");
 _Static_assert(offsetof(struct Gods, text_index) == 0x22c, "text_index");
 _Static_assert(offsetof(struct Gods, visited_spots_count) == 0x22e, "visited_spots_count");
