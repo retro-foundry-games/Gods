@@ -654,10 +654,11 @@ LAYOUT_ASSERT(sizeof(((struct Guardian *)0)->boss4) == 390, "boss4");
 
 /* the part of a copper list that sets the screen up (72 bytes: pairs of words, a register of the chip and its value): both lists have it, the first for the screen_1 and the second for screen_2.  set_scroll
  * writes the low bytes of some of the values (the fetch start, BPLCON1, the modulos and the bitplane pointers' low words) */
-struct CopperMove { uint16_t reg, value; };
+struct CopperMove { uint16_t reg, value; };       /* a MOVE of the copper: a register of the chip and the value */
+struct CopperWait { uint16_t position, mask; };  /* a WAIT of the copper: the beam position to wait for (the vertical position in the high byte, bit 0 set) and the mask of the compare */
 struct CopperPlane { struct CopperMove high, low; };   /* the bitplane pointer: BPLxPTH and BPLxPTL */
 struct CopperHead {
-    uint16_t wait[2];             /* +0: a WAIT for the line 8 */
+    struct CopperWait wait;       /* +0: a WAIT for the line 8 */
     uint16_t color01_register;    /* +4: $0182 */
     uint16_t color01;             /* +6: the value of the move to COLOR01 (the frame tick puts shadow_table[1] there) */
     struct CopperMove diwstrt;    /* +8 */
@@ -682,7 +683,7 @@ struct CopperLists {
     struct CopperMove a_strobe;   /* +80: COPJMP2 */
     struct CopperHead b;          /* +84: the list of the second screen (screen_2) */
     struct {                      /* +156: the tail */
-        uint16_t wait[2];         /* a WAIT for the line $3C */
+        struct CopperWait wait;   /* a WAIT for the line $3C */
         struct CopperMove bplcon0;
         struct CopperMove move_a; /* COP2LCH: where the copper goes on (the high word): a register move that fade_in and fade_out set */
         struct CopperMove move_b; /* COP2LCL: ... and the low word */
