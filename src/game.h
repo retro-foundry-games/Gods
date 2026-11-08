@@ -684,8 +684,8 @@ struct CopperLists {
     struct {                      /* +156: the tail */
         uint16_t wait[2];         /* a WAIT for the line $3C */
         struct CopperMove bplcon0;
-        uint32_t move_a;          /* COP2LCH: two words of the list (a register move) */
-        uint32_t move_b;          /* COP2LCL */
+        struct CopperMove move_a; /* COP2LCH: where the copper goes on (the high word): a register move that fade_in and fade_out set */
+        struct CopperMove move_b; /* COP2LCL: ... and the low word */
         struct CopperMove strobe; /* COPJMP2 */
     } tail;
 };

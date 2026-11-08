@@ -55,8 +55,8 @@ void display_reset(void)
     guest.x_offset = 0;
     set_scroll(&guest.copper_lists.b, 0);
     set_scroll(&guest.copper_lists.b, 0);
-    guest.copper_lists.tail.move_a = 0x00840000;
-    guest.copper_lists.tail.move_b = 0x00865246;
+    guest.copper_lists.tail.move_a = (struct CopperMove){ 0x0084, 0x0000 };
+    guest.copper_lists.tail.move_b = (struct CopperMove){ 0x0086, 0x5246 };
 }
 
 /* orig $01ECA8: the list of file names for an asset name (assets_load).  The name is compared with the names of

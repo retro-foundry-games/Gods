@@ -12977,8 +12977,8 @@ void copper_list_make(void)
     uint16_t line;
 
     wait_vblank();
-    guest.copper_lists.tail.move_a = 0x00840000;
-    guest.copper_lists.tail.move_b = 0x00865246;
+    guest.copper_lists.tail.move_a = (struct CopperMove){ 0x0084, 0x0000 };
+    guest.copper_lists.tail.move_b = (struct CopperMove){ 0x0086, 0x5246 };
     if (count >= 0) {
         int16_t half = (int16_t)(spacing + 1) >> 1;
 

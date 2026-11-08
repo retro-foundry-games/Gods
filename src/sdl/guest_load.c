@@ -73,7 +73,7 @@ void guest_load_image(const uint8_t *image, uint32_t size)
 
     /* the variables the image has: their words and longs are made native (what the types of menu.symbols say) */
     apply_fixups(IMAGE_BASE + size);
-    swap16_range(0x4d8a, 0xa8);  /* the two copper lists (the program changes their words, the display reads them as words) */
+    swap16_range(0x4d8a, 0xac);  /* the two copper lists (the program changes their words, the display reads them as words) */
 
     /* What the original's start-up writes that is not in the unpacked image: the name of the first asset set */
     memcpy(guest_ptr(0x196d6), "always", 7);
@@ -191,7 +191,7 @@ static int load_ram_image_held(const char *path, int slots)
         swap16_range(first, bytes);
     }
     swap16_range(guest_offset(guest.memory_base), 0x8500);      /* the background */
-    swap16_range(0x4d8a, 0xa8);   /* the two copper lists (as guest_load_image does: the program changes their words, the display reads them as words) */
+    swap16_range(0x4d8a, 0xac);   /* the two copper lists (as guest_load_image does: the program changes their words, the display reads them as words) */
     swap16_range(0x4e3c, 0x530a - 0x4e3c);   /* (the first word, copper_colors, has its fixup) the colour bands of the level's copper list (copper_list_make) and the list at $5246 that the two lists go on at, up to its end ($FFFFFFFE) */
     if (slots) {
         swap_entry_list();

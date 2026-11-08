@@ -215,8 +215,8 @@ void fade_in(const uint16_t *target, uint16_t delay)
     copper_colors_save(0);
     if (guest.copper_setup_done == 0) {
         wait_vblank();
-        guest.copper_lists.tail.move_a = 0x00840000;
-        guest.copper_lists.tail.move_b = 0x00864e3a;
+        guest.copper_lists.tail.move_a = (struct CopperMove){ 0x0084, 0x0000 };
+        guest.copper_lists.tail.move_b = (struct CopperMove){ 0x0086, 0x4e3a };
     }
     for (int step = 0; step < 15; step++) {
         for (int i = 15; i >= 0; i--) {
@@ -308,8 +308,8 @@ void fade_out(uint16_t delay, uint16_t arg)
     if (!fade_keep_screens)
         clear_both_screens();
     wait_vblank();
-    guest.copper_lists.tail.move_a = 0x00840000;
-    guest.copper_lists.tail.move_b = 0x00865246;
+    guest.copper_lists.tail.move_a = (struct CopperMove){ 0x0084, 0x0000 };
+    guest.copper_lists.tail.move_b = (struct CopperMove){ 0x0086, 0x5246 };
     copper_colors_restore();
     guest.palette_lit = 0;
     display_fresh_tail = effective_lag() != 0;
@@ -879,11 +879,8 @@ static void line_palettes(uint16_t colors[][16], int lines)
             first = (uint16_t)(first >> 8 | first << 8);
             second = (uint16_t)(second >> 8 | second << 8);
         }
-        /* the three moves that end each of the program's two lists are the longs copper_move_a and copper_move_b (a long is stored the machine's way: its
-         * halves are the other way round) and the strobe the image has (its words are not made native) */
-        if (base + 2 * (uint32_t)i == 0x4e2e || base + 2 * (uint32_t)i == 0x4e32)
-            first = (uint16_t)(list[i + 1]), second = list[i];
-        else if (base + 2 * (uint32_t)i == 0x4e36)
+        /* the strobe that ends each of the program's two lists is the image's (its words are not made native) */
+        if (base + 2 * (uint32_t)i == 0x4e36)
             first = 0x008a, second = 0;
         if (first == 0xffff && second == 0xfffe)
             break;   /* the end of the list */

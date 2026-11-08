@@ -147,8 +147,8 @@ void fade_in(const uint16_t *target, uint16_t delay)
     copper_colors_save(0);
     if (guest.copper_setup_done == 0) {
         wait_vblank();
-        guest.copper_lists.tail.move_a = 0x00840000;
-        guest.copper_lists.tail.move_b = 0x00864e3a;
+        guest.copper_lists.tail.move_a = (struct CopperMove){ 0x0084, 0x0000 };
+        guest.copper_lists.tail.move_b = (struct CopperMove){ 0x0086, 0x4e3a };
     }
     for (int step = 0; step < 15; step++) {
         for (int i = 15; i >= 0; i--) {
@@ -234,8 +234,8 @@ void fade_out(uint16_t delay, uint16_t arg)
     if (!fade_keep_screens)
         clear_both_screens();
     wait_vblank();
-    guest.copper_lists.tail.move_a = 0x00840000;
-    guest.copper_lists.tail.move_b = 0x00865246;
+    guest.copper_lists.tail.move_a = (struct CopperMove){ 0x0084, 0x0000 };
+    guest.copper_lists.tail.move_b = (struct CopperMove){ 0x0086, 0x5246 };
     copper_colors_restore();
     guest.palette_lit = 0;
 }
