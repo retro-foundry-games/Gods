@@ -54,16 +54,12 @@ buffer_state      0x00000de4  struct Rec6 %s[2]   what is kept for each of the t
 vbl_saturating    0x0001d058  volatile uint16_t %s     frames since the last flip, stops at $7FFF
 vbl_count         0x0001d05a  volatile uint16_t %s     frames, wraps
 copper_colors     0x00004e3a  uint16_t %s[]   the part of the copper list that has the moves to COLOR01 (the colour of each band)
-copper_list_a     0x00004d8a  uint8_t %s[]    the copper list of one screen
-copper_list_b     0x00004dde  uint8_t %s[]    ... and of the other
+copper_list_a     0x00004d8a  struct CopperListA %s   the copper list of one screen
+copper_list_b     0x00004dde  struct CopperListB %s   ... and of the other
 screen_1          0x0006f800  uint8_t %s[]    the two screens
 screen_2          0x00077c00  uint8_t %s[]
 copper_setup_done 0x000002f2  uint16_t %s     non-zero: the copper list's two moves at copper_move_a / copper_move_b are set already
-copper_move_a     0x00004e2e  uint32_t %s     two words of the copper list (a register move) that fade_in and fade_out set
-copper_move_b     0x00004e32  uint32_t %s
 palette_lit       0x0001d3f3  uint8_t %s      $FF after fade_in (the screen has its colours), 0 after fade_out
-copper_a_color01  0x00004d90  uint16_t %s     the COLOR01 value in the first copper list (the frame tick puts shadow_table[1] there)
-copper_b_color01   0x00004de4  uint16_t %s     ... and in the second
 sound_enabled     0x000002f6  uint16_t %s     non-zero: the frame tick runs the sound
 tick_count        0x00000ce2  volatile uint32_t %s     frames the tick has run
 jump_boost_timer     0x00000220  volatile uint16_t %s     counted down to 0 by the frame tick
@@ -145,7 +141,6 @@ creature_entries          0x00000d0e  struct CreatureEntry *%s
 monster_types          0x00000ce6  uint8_t *%s
 path_description_base          0x00000c9a  const struct PathDescription *%s
 hint_list          0x00000cf2  uint8_t *%s
-restart_address   0x00000e48  uint8_t *%s
 program_end       0x0003a670  uint8_t %s[]      the end of the program as the loader reads it: the memory map begins here
 voice             0x0002034c  struct Voice %s[4]   the four voices of the sound system (the state of the sound system goes on after them)
 voice_buffers     0x0002061c  uint8_t %s[]      a buffer of 128 bytes for each voice

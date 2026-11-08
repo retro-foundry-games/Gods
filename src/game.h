@@ -614,6 +614,28 @@ _Static_assert(offsetof(struct Guardian, tail) - offsetof(struct Guardian, x) ==
 _Static_assert(offsetof(struct Guardian, picture) - offsetof(struct Guardian, x) == 0x508 - 0x4E8, "picture");
 _Static_assert(offsetof(struct Guardian, restore) - offsetof(struct Guardian, x) == 0x514 - 0x4E8, "restore");
 
+/* the copper list of the first screen ($4D8A, 84 bytes): the words the frame tick sets in it are COLOR01 (the shadow of the colour 1) at +6 */
+struct CopperListA {
+    uint16_t head[3];
+    uint16_t color01;          /* +6: the value of the move to COLOR01 */
+    uint16_t rest[38];
+};
+_Static_assert(sizeof(struct CopperListA) == 84, "copper list a");
+
+/* ... and of the second ($4DDE, 92 bytes): COLOR01 at +6 too and, at +$50, the two moves that fade_in and fade_out set */
+struct CopperListB {
+    uint16_t head[3];
+    uint16_t color01;          /* +6 */
+    uint16_t middle[36];
+    uint32_t move_a;           /* +$50: two words of the list (a register move) */
+    uint32_t move_b;           /* +$54 */
+    uint16_t end[2];
+};
+_Static_assert(sizeof(struct CopperListB) == 92, "copper list b");
+
+#define COPPER_LIST_A ((uint8_t *)&guest.copper_list_a)
+#define COPPER_LIST_B ((uint8_t *)&guest.copper_list_b)
+
 /* The members of struct Gods are at the offsets of the original's addresses when MATCH_MEMORY_LAYOUT is defined (the Amiga build, where the struct is the memory at address 0, and
  * the SDL builds that read the original's RAM images and states).  Without it PAD() is nothing: the struct is just the variables, packed, and the variables that overlap in the
  * original (a word and the byte in it) share their first byte only. */
@@ -994,11 +1016,7 @@ struct Gods {
     struct Image *image_table;   /* $00E3C */
     uint8_t *asset_memory;   /* $00E40 */
     uint8_t *scratch_buffer;   /* $00E44 */
-    union {   /* the variables that overlap */
-        struct { uint16_t *mask_buffer; };   /* $00E48 */
-        struct { uint8_t *restart_address; };   /* $00E48 */
-        uint8_t bytes_00e48[4];
-    };
+    uint16_t *mask_buffer;   /* $00E48 */
     uint8_t *copper_save_first;   /* $00E4C */
     uint16_t *copper_save;   /* $00E50 */
     PAD(4)
@@ -1041,15 +1059,8 @@ struct Gods {
     PAD(2064)
     uint16_t game_nothing_opcode;   /* $03436 */
     PAD(6482)
-    union {   /* the variables that overlap */
-        struct { uint8_t copper_list_a[176]; };   /* $04D8A */
-        struct { PAD(6) uint16_t copper_a_color01; };   /* $04D90 */
-        struct { PAD(84) uint8_t copper_list_b[92]; };   /* $04DDE */
-        struct { PAD(90) uint16_t copper_b_color01; };   /* $04DE4 */
-        struct { PAD(164) uint32_t copper_move_a; };   /* $04E2E */
-        struct { PAD(168) uint32_t copper_move_b; };   /* $04E32 */
-        uint8_t bytes_04d8a[176];
-    };
+    struct CopperListA copper_list_a;   /* $04D8A */
+    struct CopperListB copper_list_b;   /* $04DDE */
     uint16_t copper_colors[518];   /* $04E3A */
     uint16_t copper_list_end[1];   /* $05246 */
     PAD(12)
@@ -1612,7 +1623,6 @@ _Static_assert(offsetof(struct Gods, image_table) == 0xe3c, "image_table");
 _Static_assert(offsetof(struct Gods, asset_memory) == 0xe40, "asset_memory");
 _Static_assert(offsetof(struct Gods, scratch_buffer) == 0xe44, "scratch_buffer");
 _Static_assert(offsetof(struct Gods, mask_buffer) == 0xe48, "mask_buffer");
-_Static_assert(offsetof(struct Gods, restart_address) == 0xe48, "restart_address");
 _Static_assert(offsetof(struct Gods, copper_save_first) == 0xe4c, "copper_save_first");
 _Static_assert(offsetof(struct Gods, copper_save) == 0xe50, "copper_save");
 _Static_assert(offsetof(struct Gods, copper_save_second) == 0xe58, "copper_save_second");
@@ -1644,11 +1654,7 @@ _Static_assert(offsetof(struct Gods, level_text) == 0x28f8, "level_text");
 _Static_assert(offsetof(struct Gods, game_loop_jump) == 0x2c20, "game_loop_jump");
 _Static_assert(offsetof(struct Gods, game_nothing_opcode) == 0x3436, "game_nothing_opcode");
 _Static_assert(offsetof(struct Gods, copper_list_a) == 0x4d8a, "copper_list_a");
-_Static_assert(offsetof(struct Gods, copper_a_color01) == 0x4d90, "copper_a_color01");
 _Static_assert(offsetof(struct Gods, copper_list_b) == 0x4dde, "copper_list_b");
-_Static_assert(offsetof(struct Gods, copper_b_color01) == 0x4de4, "copper_b_color01");
-_Static_assert(offsetof(struct Gods, copper_move_a) == 0x4e2e, "copper_move_a");
-_Static_assert(offsetof(struct Gods, copper_move_b) == 0x4e32, "copper_move_b");
 _Static_assert(offsetof(struct Gods, copper_colors) == 0x4e3a, "copper_colors");
 _Static_assert(offsetof(struct Gods, copper_list_end) == 0x5246, "copper_list_end");
 _Static_assert(offsetof(struct Gods, copper_message_5254) == 0x5254, "copper_message_5254");

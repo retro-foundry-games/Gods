@@ -174,7 +174,7 @@ void memory_map_init(void)
     guest.message_text_block = p;
     data_pointers_init();
     guest.hint_list = guest.hint_data;
-    guest.restart_address = (uint8_t *)(uintptr_t)menu_boot;
+    guest.mask_buffer = (uint16_t *)(uintptr_t)0x39E50;   /* orig $03A180: the original stores the address of its own boot routine here ($39E50: the code is not needed after the start-up, the area is the mask buffer from now on; the SDL host gives it a buffer of its own) */
 }
 
 /* orig $01F5C4: the state of the two screens starts again: the first has the saved colours' buffer, the second the buffer e58 points to */
