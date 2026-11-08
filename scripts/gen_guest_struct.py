@@ -60,7 +60,7 @@ def sizes(variables):
         c = Path(tmp) / "probe.c"
         c.write_text("\n".join(lines))
         exe = Path(tmp) / "probe"
-        subprocess.run(["gcc", "-m32", "-fpack-struct=2", "-I", str(SRC), str(c), "-o", str(exe)], check=True)
+        subprocess.run(["gcc", "-m32", "-fpack-struct=2", "-DMATCH_MEMORY_LAYOUT", "-DGODS_GEN_PROBE", "-I", str(SRC), str(c), "-o", str(exe)], check=True)
         out = subprocess.run([str(exe)], check=True, capture_output=True, text=True).stdout
     return {n: int(s) for n, s in (l.split() for l in out.splitlines())}
 
@@ -125,10 +125,8 @@ def main() -> None:
     out.append("#endif")
     out.append("};")
     out.append("")
-    out.append("#ifdef MATCH_MEMORY_LAYOUT")
     for name, addr in checks:
-        out.append(f'_Static_assert(offsetof(struct Gods, {name}) == 0x{addr:x}, "{name}");')
-    out.append("#endif")
+        out.append(f'LAYOUT_ASSERT(offsetof(struct Gods, {name}) == 0x{addr:x}, "{name}");')
     out += ["", "extern struct Gods guest;"]
     header = SRC / "game.h"
     text = header.read_text()
