@@ -33,6 +33,7 @@ def main() -> None:
             p.write_text(t)
     subprocess.run([sys.executable, str(ROOT / "scripts/gen_menu_symbols.py")], check=True)
     subprocess.run([sys.executable, str(ROOT / "scripts/gen_guest_struct.py")], check=True)
+    print("also run (needs capstone): uv run python projects/gods/scripts/gen_menu_amiga_asm.py   (native/src/amiga/amiga.asm names the variables)")
 
 
 if __name__ == "__main__":
