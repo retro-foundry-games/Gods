@@ -221,3 +221,9 @@ void dev_game_init(void)
         sscanf(quick_text, "%u:%u", &test_save, &test_load);
     host_iteration_hook = dev_iteration;
 }
+
+/* `tick DELTA` of the lockstep driver: tick_count goes up by DELTA (the original's count includes the frames of its disk loading) */
+void dev_tick_add(uint32_t delta)
+{
+    guest.tick_count += delta;
+}

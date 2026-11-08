@@ -267,7 +267,7 @@ static void player_respawn(void)
 
     int16_t x = (int16_t)((guest.previous_player_pos[0] + 0x10) & -32);
     int16_t y = (int16_t)((guest.previous_player_pos[1] + 8) & -16);
-    const uint8_t *cell = guest.level_map + 0x2000 + (x >> 5) + (int16_t)(y << 3);
+    const uint8_t *cell = guest.level_map->walls + (x >> 5) + (int16_t)(y << 3);
     int16_t dx = 0, dy = 0;
 
     for (int i = 0; i < 15; i++) {
@@ -1287,7 +1287,7 @@ void draw_shutter(void)
 
     const uint8_t *image = (const uint8_t *)guest.image_table[115].data;
     uint8_t *buffer = guest.scratch_buffer;
-    uint8_t *screen = guest.screen_buffer + 7492 + (((guest.x_offset & 31) & -16) >> 3);
+    uint8_t *screen = guest.screen_buffer + SCREEN_POS(0, 170, 12) + (((guest.x_offset & 31) & -16) >> 3);
     int16_t shift = (guest.x_offset & 31) & 15;
 
     if (guest.shutter_row == 12) {
@@ -1357,7 +1357,7 @@ void move_shards(void)
             continue;
         y = (int16_t)(shard->y + 2);
         shard->y = y;
-        if (guest.level_map[0x2000 + (((int16_t)(x & 0xFFE0)) >> 5) + (((int16_t)((y + 8) & 0xFFF0)) << 3)] == 1) {
+        if (guest.level_map->walls[(((int16_t)(x & 0xFFE0)) >> 5) + (((int16_t)((y + 8) & 0xFFF0)) << 3)] == 1) {
             y = (int16_t)(y - 2);
             shard->y = y;
         }
@@ -1455,7 +1455,7 @@ void face_bolts_move(void)
             if (r[3] != 0)
                 r[3] = (int16_t)(r[3] < 0 ? r[3] + 1 : r[3] - 1);
         }
-        if (guest.level_map[0x2000 + 0x80 + (((int16_t)(x + 8)) >> 5) + ((((int16_t)(y + 4)) & 0xFFF0) << 3)] == 1) {
+        if (guest.level_map->walls[0x80 + (((int16_t)(x + 8)) >> 5) + ((((int16_t)(y + 4)) & 0xFFF0) << 3)] == 1) {
             stop_sound(0x3A);
             play_sound(0x3B, 3);
             bolt_records_put(12, 30, 3, (int16_t)(x + 2), (int16_t)(y + 2), &bolt_speeds_76e8[4]);
@@ -1505,7 +1505,7 @@ void face_bolt_pieces_move(void)
                 r[2] = (int16_t)((r[2] + 1) & 3);
                 r[4]++;
             }
-            burst = guest.level_map[0x2000 + (((int16_t)(x + 5)) >> 5) + ((((int16_t)(y - 2)) & 0xFFF0) << 3)] == 1;
+            burst = guest.level_map->walls[(((int16_t)(x + 5)) >> 5) + ((((int16_t)(y - 2)) & 0xFFF0) << 3)] == 1;
             if (!burst) {
                 aimed_bolt_hits_player((uint32_t *)&r[2], (int16_t)(sx + 2), (int16_t)(sy + 2));
                 continue;
@@ -1627,7 +1627,7 @@ uint8_t *map_cell(int16_t x, int16_t y)
     int16_t across = (int16_t)(x & -32) >> 5;
     int16_t down = (int16_t)((y & -16) << 3);
 
-    return guest.level_map + 8192 + across + down;
+    return guest.level_map->walls + across + down;
 }
 
 /* the BCD add (abcd) of two bytes of two decimal digits, with the carry */
@@ -1825,7 +1825,7 @@ static void draw_level_end_number(int16_t x, int16_t y, int32_t value, int clear
  * each plane after the other) and back */
 static void level_end_save_rect(void)
 {
-    const uint8_t *from = guest.screen_buffer + 0x1774;
+    const uint8_t *from = guest.screen_buffer + SCREEN_POS(0, 136, 20);
     uint32_t *to = (uint32_t *)(uintptr_t)guest.line_text;
 
     for (int row = 0; row < 16; row++, from += 44)
@@ -1836,7 +1836,7 @@ static void level_end_save_rect(void)
 
 static void level_end_restore_rect(void)
 {
-    uint8_t *to = guest.screen_buffer + 0x1774;
+    uint8_t *to = guest.screen_buffer + SCREEN_POS(0, 136, 20);
     const uint32_t *from = (const uint32_t *)(uintptr_t)guest.line_text;
 
     for (int row = 0; row < 16; row++, to += 44)
@@ -2357,7 +2357,7 @@ void draw_energy_bar(void)
 
     int16_t back = (int16_t)((4 - guest.energy_bar_phase) * 384);
     const uint8_t *src = (const uint8_t *)guest.image_table[126].data;
-    uint8_t *dst = guest.screen_buffer + 7042 + ((guest.x_offset & -16) >> 3);
+    uint8_t *dst = guest.screen_buffer + SCREEN_POS(0, 160, 2) + ((guest.x_offset & -16) >> 3);
     int16_t shift = guest.x_offset & 15;
     int16_t energy = guest.energy_shown;
 
@@ -2417,7 +2417,7 @@ static int16_t walk_pace(const uint8_t *type, int16_t *obj, int16_t *x_io, int16
         if (type[18] == 0)
             goto done;
         /* the original goes on at $7C5A: the walker turns when it comes to the player's cell */
-        const uint8_t *player_cell = guest.level_map + 8192 + ((int16_t)(guest.player_x & -32) >> 5) +
+        const uint8_t *player_cell = guest.level_map->walls + ((int16_t)(guest.player_x & -32) >> 5) +
                                      (int16_t)(((guest.player_y & -16) + 16) << 3);
 
         cell--;
@@ -3116,7 +3116,7 @@ void bolts_update(void)
         int16_t cell = (int16_t)(((x + 3) & 0xFFE0) >> 5);
 
         cell = (int16_t)(cell + (int16_t)(((y + 3) & 0xFFF0) << 3));
-        if (guest.level_map[0x2000 + cell] == 1) {
+        if (guest.level_map->walls[cell] == 1) {
             bolt->routine = 0xFFFFFFFF;
             start_debris_at((int16_t)(x - 3 - guest.scroll_x), (int16_t)(y - 3 - guest.scroll_y));
             continue;
@@ -3281,7 +3281,7 @@ void draw_background(void)
     guest.x_offset = guest.scroll_x & 31;
     blitter_setup_copy();
 
-    const uint8_t *map = guest.level_map + ((int16_t)(guest.scroll_x & -16) >> 5) + (int16_t)((guest.scroll_y & -16) << 3);
+    const uint8_t *map = guest.level_map->tiles + ((int16_t)(guest.scroll_x & -16) >> 5) + (int16_t)((guest.scroll_y & -16) << 3);
     uint8_t *dst = (uint8_t *)guest.screen_buffer;
     int16_t y = 0;
     int16_t into = guest.scroll_y & 15;
@@ -3358,7 +3358,7 @@ struct SavedByte *mark_record_cells(int16_t x, int16_t y, const struct PathDescr
         return list;
     int16_t col = (int16_t)(x + 16) & -32;
     int16_t row = (int16_t)(y + 8) & -16;
-    uint8_t *cell = guest.level_map + 8192 + (col >> 5) + (int16_t)(row << 3);
+    uint8_t *cell = guest.level_map->walls + (col >> 5) + (int16_t)(row << 3);
     uint8_t *line = cell;
     int16_t lines = a2->rows;
 
@@ -3499,7 +3499,7 @@ void spawn_debris_at_cell(int16_t x, int16_t y, const uint8_t *record, int16_t *
     }
     int16_t col = (int16_t)(x + guest.scroll_x + 8) & -32;
     int16_t row = (int16_t)(y + guest.scroll_y + 8) & -16;
-    const uint8_t *cell = guest.level_map + 8192 + (col >> 5) + (int16_t)(row << 3);
+    const uint8_t *cell = guest.level_map->walls + (col >> 5) + (int16_t)(row << 3);
 
     if (*cell != 1) {
         mark_shot_cells(x, y, flag);
@@ -4048,7 +4048,7 @@ static void kind_set_tiles(const struct ScriptRecord *a1)
 {
     int16_t x = (int16_t)(((a1->x & 0xFFE0) + 12) & 0xFFE0);
     int16_t y = (int16_t)((a1->y + 8) & 0xFFF0);
-    uint8_t *cell = guest.level_map + (int16_t)(x >> 5) + (int16_t)(y << 3);
+    uint8_t *cell = guest.level_map->tiles + (int16_t)(x >> 5) + (int16_t)(y << 3);
     uint8_t base = (uint8_t)(guest.param_a >> 16);   /* the byte at $24D: the long param_a is the machine's, its second byte from the top is not the one at that address here */
 
     cell[0] = base;
@@ -4071,7 +4071,7 @@ static void kind_close_tiles(const struct ScriptRecord *a1)
 {
     int16_t x = (int16_t)(((a1->x & 0xFFE0) + 12) & 0xFFE0);
     int16_t y = (int16_t)((a1->y + 8) & 0xFFF0);
-    uint8_t *cell = guest.level_map + (int16_t)(x >> 5) + (int16_t)(y << 3);
+    uint8_t *cell = guest.level_map->tiles + (int16_t)(x >> 5) + (int16_t)(y << 3);
     uint8_t tile = (uint8_t)guest.param_a;
     uint8_t other = (uint8_t)guest.param_c;
 
@@ -4108,7 +4108,7 @@ static void kind_set_entry(const struct ScriptRecord *a1, int on)
         return;
     entry[2] = on ? 1 : 0;
 
-    uint8_t *cell = guest.level_map + (int16_t)(a1->x >> 5) + (int16_t)(a1->y << 3);
+    uint8_t *cell = guest.level_map->tiles + (int16_t)(a1->x >> 5) + (int16_t)(a1->y << 3);
 
     cell[0] = on ? (uint8_t)(guest.param_b >> 16) : (uint8_t)guest.param_b;   /* ($251 and $253: bytes of the long at $250) */
     cell[0x2000] = on ? 0 : 1;
@@ -4317,7 +4317,7 @@ uint8_t *player_tile_ptr(void)
 {
     int16_t x = guest.player_x & -32;
     int16_t y = guest.player_y & -16;
-    uint8_t *tile = guest.level_map + 8192;
+    uint8_t *tile = guest.level_map->walls;
 
     tile += x >> 5;
     tile += (int16_t)(y << 3);
@@ -4475,7 +4475,7 @@ void shot_hit_tile(const struct Object *object, struct Shot *shot, int16_t x, in
 
     int16_t tx = (int16_t)((x + guest.scroll_x + 8) & -32);
     int16_t ty = (int16_t)((y + guest.scroll_y + 8) & -16);
-    uint8_t *tile = guest.level_map + 8192;
+    uint8_t *tile = guest.level_map->walls;
 
     tile += tx >> 5;
     tile += (int16_t)(ty << 3);
@@ -4596,7 +4596,7 @@ static int16_t *axe_table(void)
 /* orig $016592, $0165C6 and $0165FA: the cell of the second map (32 by 16, a 1 is a wall) that the point (x, y) is in, as the three tests of the axe look at it */
 static const uint8_t *axe_cell(int16_t x, int16_t y)
 {
-    return guest.level_map + 0x2000 + ((int16_t)(x & 0xFFE0) >> 5) + (int16_t)(uint16_t)((y & 0xFFF0) << 3);
+    return guest.level_map->walls + ((int16_t)(x & 0xFFE0) >> 5) + (int16_t)(uint16_t)((y & 0xFFF0) << 3);
 }
 
 /* orig $016592 (the wall to the right: the cell next to it, and the one under that when the point is not on a row's line) and $0165C6 (to the left) */
@@ -4739,7 +4739,7 @@ struct BallPillar {
 /* the collision map's cell (level_map + 8192) under (x, y) */
 static uint8_t *ball_cell(int16_t x, int16_t y)
 {
-    return guest.level_map + 0x2000 + (int16_t)((int16_t)(x & 0xFFE0) >> 5) + (int16_t)((int16_t)(y & 0xFFF0) << 3);
+    return guest.level_map->walls + (int16_t)((int16_t)(x & 0xFFE0) >> 5) + (int16_t)((int16_t)(y & 0xFFF0) << 3);
 }
 
 /* orig $0160FC: the ball is at (x, y): the shot's x is kept, its life counts down and it is drawn as the glyph 339 + the low two bits of the count it had */
@@ -5369,7 +5369,7 @@ static void draw_guardian_bar(void)
     int idx = (guest.param_index - 1) & 3;
     int16_t back = (int16_t)((4 - guest.energy_bar_phase) * 384);
     const uint8_t *src = (const uint8_t *)guest.image_table[bar_table[idx * 2] + 4].data;
-    uint8_t *dst = guest.screen_buffer + 7074 + ((guest.x_offset & -16) >> 3);
+    uint8_t *dst = guest.screen_buffer + SCREEN_POS(0, 160, 34) + ((guest.x_offset & -16) >> 3);
     int16_t shift = guest.x_offset & 15;
     int32_t scaled = (int32_t)(int16_t)guest.guardian.boss1.energy_low * 24;
     int32_t acc = 0;
@@ -5398,7 +5398,7 @@ void draw_score_panel(void)
         return;
     }
 
-    uint8_t *dst = guest.screen_buffer + 7420;
+    uint8_t *dst = guest.screen_buffer + SCREEN_POS(0, 168, 28);
     const uint8_t *src = (const uint8_t *)guest.image_table[121].data;
     uint16_t x = (uint16_t)guest.x_offset;
 
@@ -5911,7 +5911,7 @@ static void thing_fall(struct Slot8 *record, uint8_t *flag)
     }
 
     int16_t x = record->w[0], y = record->w[1];
-    const uint8_t *map = guest.level_map + 8192;
+    const uint8_t *map = guest.level_map->walls;
     int16_t row = (int16_t)(((y + 16) & -16) << 3);
     int16_t left = (int16_t)(((x & -32) >> 5) + row);
     int16_t right = (int16_t)(((((int16_t)(x + 15)) & -32) >> 5) + row);
@@ -6657,7 +6657,7 @@ static int crumble_hit_existing(uint16_t x, uint16_t y, const int16_t *slot)
  * the state -1) and the routine at $17CC0 is switched on */
 static void crumble_start(const uint8_t *cell, const int16_t *slot)
 {
-    uint32_t index = (uint32_t)(cell - 0x2000 - guest.level_map);
+    uint32_t index = (uint32_t)(cell - guest.level_map->walls);
     uint16_t x = (uint16_t)((index & 0x7F) << 5);
     uint16_t y = (uint16_t)((index & 0xFFFF80) >> 3);
 
@@ -6683,7 +6683,7 @@ static void crumble_remove(const uint16_t *entry)
 {
     int16_t x = (int16_t)(entry[0] & 0xFFE0);
     int16_t y = (int16_t)(entry[1] & 0xFFF0);
-    uint8_t *cell = guest.level_map + 0x2000 + (x >> 5) + (int16_t)(y << 3);
+    uint8_t *cell = guest.level_map->walls + (x >> 5) + (int16_t)(y << 3);
 
     for (int i = 0; i < 100; i++) {
         if ((int32_t)guest.marker_table[i] < 0) {
@@ -6747,7 +6747,7 @@ static void update_falling_slots(void)
             if (slot[3] > 0x10)
                 slot[3] = 0x10;
         }
-        const uint8_t *cell = guest.level_map + (int16_t)(((x + 5) & 0xFFE0) >> 5) + (int16_t)((y & 0xFFF0) << 3) + 0x100;
+        const uint8_t *cell = guest.level_map->tiles + (int16_t)(((x + 5) & 0xFFE0) >> 5) + (int16_t)((y & 0xFFF0) << 3) + 0x100;
 
         if (*cell == 0x6D) {
             slot[4] = 0xFA;
@@ -6824,7 +6824,7 @@ static void spawn_stone_enemy(int16_t *entry)
 
     int16_t x = (int16_t)(entry[0] << 5);
     int16_t y = (int16_t)(entry[1] << 4);
-    uint8_t *cell = guest.level_map + (int16_t)(entry[1] << 7) + entry[0];
+    uint8_t *cell = guest.level_map->tiles + (int16_t)(entry[1] << 7) + entry[0];
     uint8_t old = cell[0];
 
     cell[0] = 0x0D;
@@ -6937,7 +6937,7 @@ static void update_stone_records(void)
 /* orig $00E2CC: the cell of the second half of the map at (x, y) (the cells are 32 wide and 16 high) */
 static const uint8_t *map_cell_at(int16_t x, int16_t y)
 {
-    return guest.level_map + 0x2000 + (int16_t)((int16_t)(x & 0xFFE0) >> 5) + (int16_t)((int16_t)(y & 0xFFF0) << 3);
+    return guest.level_map->walls + (int16_t)((int16_t)(x & 0xFFE0) >> 5) + (int16_t)((int16_t)(y & 0xFFF0) << 3);
 }
 
 /* orig $004B36 (a thing of kind 4 with the glyph 285, the archer in the map; $DDD8 and $DDF6): in world 2 the thing is taken from the map and, when one of the ten
@@ -10489,7 +10489,7 @@ static void player_cell_entries(void)
 {
     int16_t x = (int16_t)((guest.player_x + 16) & -32);
     int16_t y = (int16_t)(guest.player_y & -16);
-    const uint8_t *cell = guest.level_map + 8192;
+    const uint8_t *cell = guest.level_map->walls;
 
     cell += x >> 5;
     cell += (int16_t)(y << 3);
@@ -12231,7 +12231,7 @@ static int bolt_in_wall(const struct Slot8 *bolt)
 {
     int16_t x = bolt->w[0];
     int16_t y = (int16_t)(bolt->w[1] + 2);
-    const uint8_t *tile = guest.level_map + 8192;
+    const uint8_t *tile = guest.level_map->walls;
 
     tile += (int16_t)((x & -32) >> 5);
     tile += (int16_t)((y & -16) << 3);
@@ -12595,8 +12595,8 @@ void sort_records_by_kind(void)
 
                 if (d2 < 0 || d2 >= 192)
                     continue;
-                const uint8_t *a2 = (const uint8_t *)guest.thing_kinds + d1 * 10;
-                const uint8_t *a3 = (const uint8_t *)guest.thing_kinds + d2 * 10;
+                const uint8_t *a2 = (const uint8_t *)&guest.thing_kinds[d1];
+                const uint8_t *a3 = (const uint8_t *)&guest.thing_kinds[d2];
                 int16_t k1 = *(const int16_t *)(a2 + 4);
                 int16_t k2 = *(const int16_t *)(a3 + 4);
 
@@ -12922,7 +12922,7 @@ void place_pickups(void)
         to += 3;
         if (x < 0)
             continue;
-        uint8_t *cell = guest.level_map + (int16_t)(x >> 5) + (int16_t)(y << 3);
+        uint8_t *cell = guest.level_map->tiles + (int16_t)(x >> 5) + (int16_t)(y << 3);
 
         if (kind == 0)
             *cell = (uint8_t)guest.param_b;
@@ -13119,7 +13119,7 @@ void mark_pickup_cells(void)
     uint8_t wanted_a = (uint8_t)(guest.param_a >> 16);
     uint8_t wanted_b = (uint8_t)guest.param_a;
     uint8_t other = (uint8_t)guest.param_c;
-    uint8_t *cell = guest.level_map;
+    uint8_t *cell = guest.level_map->tiles;
 
     for (int i = 0; i < 10; i++) {
         guest.pickup_spots[i].w[0] = -1;
@@ -13825,7 +13825,7 @@ void player_tile_scan(void)
 {
     int16_t x = (int16_t)((guest.player_x + 16) & -32);
     int16_t y = (int16_t)(guest.player_y & -16);
-    const uint8_t *base = guest.level_map + 8192 + (x >> 5) + (int16_t)(y << 3);
+    const uint8_t *base = guest.level_map->walls + (x >> 5) + (int16_t)(y << 3);
     const uint8_t *cell = base;
 
     for (int row = 0; row < 3; row++, cell += 128)
@@ -14086,8 +14086,8 @@ static void load_level_files(void)
         guest.target_map = guest.target_map_default;
         guest.asset_directory = guest.asset_directory_default;
         if (guest.param_index == 4) {
-            guest.line_text = guest.file_buffer + (0x373BC - 0x31FDE);   /* (the text buffers lie in the picture buffer) */
-            guest.target_map = guest.file_buffer + (0x379FC - 0x31FDE);
+            guest.line_text = guest.file_buffer + FILE_BUFFER_LINE_TEXT;   /* (the text buffers lie in the picture buffer) */
+            guest.target_map = guest.file_buffer + FILE_BUFFER_TARGET_MAP;
             guest.asset_directory = (uint8_t *)guest.entry_list + 2820;
         }
         guest.asset_mem_end = guest.asset_end_28ec;
@@ -14314,7 +14314,7 @@ static int shop_door(void)
         int16_t edge = x & 0x1F;
 
         if (edge <= 4 || edge >= 0x1C) {
-            const uint8_t *cell = guest.level_map + 0x2000 + ((int16_t)(y & 0xFFF0) << 3) + ((int16_t)(x & 0xFFE0) >> 5) + way;
+            const uint8_t *cell = guest.level_map->walls + ((int16_t)(y & 0xFFF0) << 3) + ((int16_t)(x & 0xFFE0) >> 5) + way;
 
             if (cell[0] == 1 || cell[0x80] == 1 || cell[0x100] == 1 || cell[0x180] != 1)
                 guest.shop_door_way = (uint16_t)-(int16_t)guest.shop_door_way;
@@ -14484,7 +14484,7 @@ static void boss_spark_pixel(int16_t x, int16_t y)
 {
     int16_t px = (int16_t)(x + guest.x_offset);
     int shift = px & 0xE;
-    uint8_t *row = guest.screen_buffer + (uint16_t)(y * 44) + (((int16_t)(px & 0xFFF0)) >> 3);
+    uint8_t *row = guest.screen_buffer + (uint16_t)(y * SCREEN_ROW) + (((int16_t)(px & 0xFFF0)) >> 3);
     uint16_t set = (uint16_t)(0xC000u >> shift);
     uint16_t keep = (uint16_t)((0x3FFFu >> shift) | (0x3FFFu << (16 - shift)));
 
@@ -14546,7 +14546,7 @@ static void boss_shots_move(void)
 
         shot->speed_y++;
         if (shot->speed_y >= 0) {
-            const uint8_t *cell = guest.level_map + 0x2000 + (x >> 5) + (int16_t)(uint16_t)((y & 0xFFF0) << 3);
+            const uint8_t *cell = guest.level_map->walls + (x >> 5) + (int16_t)(uint16_t)((y & 0xFFF0) << 3);
 
             if (cell[0] == 1) {
                 start_debris_moving((int16_t)(x - guest.scroll_x), (int16_t)(y - guest.scroll_y), shot->speed_x, shot->speed_y);
@@ -15813,7 +15813,7 @@ static void boss4_514(void)
 /* orig $00B9B8 and $00BAAE: the 96 by 112 pixels of the screen at row 80, byte 4 (four planes) are copied to the buffer behind the sprites (asset_mem_end, planes $FC0 apart), or back (`restore`) */
 static void boss4_screen_copy(int restore)
 {
-    uint8_t *screen = guest.screen_buffer + 0xDC4;
+    uint8_t *screen = guest.screen_buffer + SCREEN_POS(0, 80, 4);
     uint8_t *saved = guest.asset_mem_end;
 
     for (int plane = 0; plane < 4; plane++)
@@ -16015,8 +16015,8 @@ static void game_won_screen(void)
     host_disk_wait();
     guest.screen_buffer = shown;
     guest.screen_other = other;
-    *(uint16_t *)(guest.screen_buffer + 0x4200) = 0xFFFF;
-    *(uint16_t *)(guest.screen_buffer + 0x6300) = 0xFFFF;
+    *(uint16_t *)(guest.screen_buffer + SCREEN_POS(2, 0, 0)) = 0xFFFF;
+    *(uint16_t *)(guest.screen_buffer + SCREEN_POS(3, 0, 0)) = 0xFFFF;
     screens_flip();
     guest.copper_setup_done = 1;
     fade_in(palette, 1);
@@ -16271,8 +16271,8 @@ static void load_guardian_assets(void)
         return;   /* goes on at $2C20: they are there */
     draw_loading_screen();
     if (guest.param_index == 3) {   /* $30EC: the level 3 changes two pointers of the text */
-        guest.line_text = guest.file_buffer + (0x373BC - 0x31FDE);
-        guest.target_map = guest.file_buffer + (0x379FC - 0x31FDE);
+        guest.line_text = guest.file_buffer + FILE_BUFFER_LINE_TEXT;
+        guest.target_map = guest.file_buffer + FILE_BUFFER_TARGET_MAP;
     }
     play_sound(0, 0);
     uint8_t *saved_directory = guest.asset_directory;
@@ -16324,7 +16324,7 @@ static int strip_shown_valid;
 
 static void shop_strip_draw(const uint16_t *from)
 {
-    uint8_t *to = guest.screen_other + 0x1E22;
+    uint8_t *to = guest.screen_other + SCREEN_POS(0, 175, 14);
 
     for (int row = 0; row < 9; row++) {
         for (int column = 0; column < 8; column++) {
@@ -16567,7 +16567,7 @@ static void shop_score(void)
     }
 
     uint32_t number = guest.shop_score_shown;
-    uint8_t *to = guest.screen_buffer + 0x1E48;
+    uint8_t *to = guest.screen_buffer + SCREEN_POS(0, 176, 8);
 
     for (int i = 0; i < 7; i++) {
         uint32_t digit_word = number;   /* d2 after the division */

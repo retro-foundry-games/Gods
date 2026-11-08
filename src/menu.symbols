@@ -121,7 +121,7 @@ asset_directory_default          0x00000b52  uint8_t *%s
 copper_save_first          0x00000e4c  uint8_t *%s
 monster_part_blocks          0x00000cee  uint8_t *%s
 random_words          0x00000cc6  uint8_t *%s
-level_map          0x00000b86  uint8_t *%s
+level_map          0x00000b86  struct LevelMap *%s
 copper_colours          0x00000cda  uint8_t *%s
 unit_member_blocks         0x00000cfa  uint8_t *%s[5]   five pointers, 200 bytes apart (the first is set by memory_map_init)
 message_offsets          0x00000cba  uint8_t *%s

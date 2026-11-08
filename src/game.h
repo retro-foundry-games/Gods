@@ -15,8 +15,22 @@
 #define PAD(n)
 #endif
 /* A field nothing names needs a name all the same; the line it is on gives each one its own (two steps, so __LINE__ is expanded before it is pasted) */
+/* the padding of a record whose layout is fixed from outside (a record of a level file, of the original's tables or of the image): it is there whatever the layout of struct Gods */
+#define RECORD_PAD(n) uint8_t PAD_NAME(__LINE__)[n];
 #define PAD_NAME(line) PAD_NAME_(line)
 #define PAD_NAME_(line) pad_##line
+
+/* the screens: 44 bytes a row (352 pixels), 192 rows, four bitplanes one after the other */
+#define SCREEN_ROW 44
+#define SCREEN_PLANE 8448   /* the bytes of a bitplane: 192 rows */
+#define SCREEN_POS(plane, row, byte) ((plane) * SCREEN_PLANE + (row) * SCREEN_ROW + (byte))
+
+/* where the guardian of the level 3 leaves its text buffers (line_text and target_map) in file_buffer: after the picture the level 4 loads there */
+#define FILE_BUFFER_LINE_TEXT 0x53DE
+#define FILE_BUFFER_TARGET_MAP 0x5A1E
+
+/* the stack of the program is the first bytes of the block the memory map divides: stack_top is after them */
+#define MEMORY_MAP_STACK_SIZE 0x300
 
 /* the checks of the layout (sizes of the records and offsets of their fields) hold only when the padding is there */
 #if defined(MATCH_MEMORY_LAYOUT) && !defined(GODS_GEN_PROBE)   /* (the generator of struct Gods compiles this header to measure the types: its own checks wait) */
@@ -126,9 +140,9 @@ struct Object {
     uint8_t name1[16];      /* +32 */
     uint8_t name2[24];      /* +48 */
     uint8_t hits_tiles;     /* +72 */
-    PAD(1)
+    RECORD_PAD(1)
     int16_t w74;            /* +74 */
-    PAD(4)
+    RECORD_PAD(4)
 };
 struct Shot { int16_t active; int16_t x; int16_t y; int16_t direction; };
 struct ShotList { int16_t object; struct Shot shot[18]; };   /* 146 bytes: the number of the object (negative: none) and its shots */
@@ -190,7 +204,7 @@ struct __attribute__((packed)) Unit {
     int16_t box_height;   /* +16 */
     uint32_t step;        /* +18 the template's step routine */
     uint8_t drop;         /* +22 */
-    PAD(1)   /* +23 */
+    RECORD_PAD(1)   /* +23 */
 };
 LAYOUT_ASSERT(sizeof(struct Unit) == 24, "unit");
 
@@ -215,9 +229,9 @@ LAYOUT_ASSERT(sizeof(struct WalkMember) == 24, "walk member");
 struct WalkGroup {
     uint16_t state;          /* +0 */
     struct MonsterType *type;   /* +2 */
-    PAD(10)   /* +6 */
+    RECORD_PAD(10)   /* +6 */
     uint8_t dropped;         /* +16 the group has dropped what it carries */
-    PAD(1)
+    RECORD_PAD(1)
 };
 LAYOUT_ASSERT(sizeof(struct WalkGroup) == 18, "walk group");
 
@@ -297,7 +311,7 @@ struct CreatureType {
     int16_t box_height;           /* +28 */
     uint32_t step_routine;        /* +30 */
     uint8_t drop;                 /* +34 what the group drops when it is all gone ($FF none) */
-    PAD(1)
+    RECORD_PAD(1)
 };
 
 LAYOUT_ASSERT(sizeof(struct CreatureType) == 36, "creature type record");
@@ -423,7 +437,7 @@ LAYOUT_ASSERT(sizeof(struct ScriptRecord) == 24, "script record");
 struct MonsterType {
     int8_t count;         /* +0 how many monsters */
     uint8_t life;         /* +1 hit points of one (doubled for the one the record picked), and its score */
-    PAD(2)
+    RECORD_PAD(2)
     uint16_t flags;       /* +4 bits 0 to 3: who takes objects up (by the kind of object), 4 and 5: how it shoots (0 sideways, 1 aimed at a place near the player, 2 and 3 aimed), 6 and 7: how the chain
                            * follows (0 the places, 2 a circle, 1 and 3 turned), 8: the first to leave is chosen by chance */
     uint8_t fire;         /* +6 low nibble: how often it shoots, high: the speed of the shot */
@@ -439,7 +453,7 @@ struct MonsterType {
     int16_t item;         /* +16 what it drops when all are gone, negative none */
     uint16_t start;       /* +18 the cell it starts in: x in the high byte, y in the low (32 by 16 pixels) */
     uint8_t spacing;      /* +20 the delay between one monster and the next */
-    PAD(1)
+    RECORD_PAD(1)
 };
 LAYOUT_ASSERT(sizeof(struct MonsterType) == 22, "monster type");
 
@@ -475,7 +489,7 @@ struct Monster {
     uint16_t state;       /* +0 0 free, 1 running, 2 to start */
     struct MonsterType *type;   /* +2 */
     int16_t field_6;      /* +6 */
-    PAD(8)   /* +8 */
+    RECORD_PAD(8)   /* +8 */
     uint8_t dropped;      /* +16 the drop of the group has been made */
     int8_t special;       /* +17 the monster that is picked (negative none) */
     int8_t chain;         /* +18 how many are in the chain (0 none) */
@@ -485,7 +499,7 @@ struct Monster {
     struct { int16_t x, y; } history[100];   /* +24 where the first has been */
     uint16_t index;       /* +424 where the next goes (in bytes) */
     uint8_t phase;        /* +426 */
-    PAD(1)
+    RECORD_PAD(1)
 };
 LAYOUT_ASSERT(sizeof(struct Monster) == 428, "monster record");
 
@@ -757,6 +771,14 @@ LAYOUT_ASSERT(sizeof(struct LevelData) == 7160, "level data");
 LAYOUT_ASSERT(offsetof(struct LevelData, lever_flags) == 5616, "lever flags");
 LAYOUT_ASSERT(offsetof(struct LevelData, hint_data) == 7000, "hint data");
 
+
+/* the map of the level (the file brings it as 8192 words, after the copper colours): the first map is the tiles to draw, a byte for each block of 32 by 16 pixels, 128 to a row; the second is the collision map
+ * of the same blocks (1 is a wall) */
+struct LevelMap {
+    uint8_t tiles[0x2000];
+    uint8_t walls[0x2000];
+};
+LAYOUT_ASSERT(sizeof(struct LevelMap) == 0x4000, "level map");
 
 /* BEGIN struct Gods (generated by scripts/gen_guest_struct.py from menu.symbols; do not edit) */
 struct Gods {
@@ -1036,7 +1058,7 @@ struct Gods {
     PAD(4)
     uint8_t *level_creature_templates;   /* $00B7E */
     uint8_t *level_walker_templates;   /* $00B82 */
-    uint8_t *level_map;   /* $00B86 */
+    struct LevelMap *level_map;   /* $00B86 */
     uint8_t *map_file_name;   /* $00B8A */
     PAD(4)
     uint16_t *claimed_entries[3];   /* $00B92 */

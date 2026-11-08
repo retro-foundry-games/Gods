@@ -38,7 +38,7 @@ WARN := -Wall -Wextra
 
 # the menu program: one object for each module (the sources are split by what the code does, see src/menu.h)
 MENU_MODULES := menu disk alloc decrunch input draw message file boot game data
-MENU_OBJS := $(MENU_MODULES:%=$(BUILD)/menu_%.o) $(BUILD)/menu_display.o $(BUILD)/menu_amiga.o
+MENU_OBJS := $(MENU_MODULES:%=$(BUILD)/menu_%.o) $(BUILD)/menu_display.o $(BUILD)/menu_memory.o $(BUILD)/menu_amiga.o
 INTRO_OBJS := $(BUILD)/intro.o $(BUILD)/intro_amiga.o $(BUILD)/intro_data.o
 
 .PHONY: all intro menu menu-blob adf regen clean sdl sdl-run
@@ -66,6 +66,8 @@ $(BUILD)/menu_data.o: $(SRC)/data.c | $(BUILD)
 $(BUILD)/menu_%.o: $(SRC)/%.c | $(BUILD)
 	$(CC) $(MENU_CFLAGS) $(WARN) -MMD -MP -c $< -o $@
 $(BUILD)/menu_display.o: $(AMIGA)/display.c | $(BUILD)
+	$(CC) $(MENU_CFLAGS) $(WARN) -MMD -MP -c $< -o $@
+$(BUILD)/menu_memory.o: $(AMIGA)/memory.c | $(BUILD)
 	$(CC) $(MENU_CFLAGS) $(WARN) -MMD -MP -c $< -o $@
 $(BUILD)/menu_amiga.o: $(AMIGA)/amiga.asm | $(BUILD)
 	$(AS) -Fhunk -no-opt -quiet -nowarn=62 -I$(AMIGA) -o $@ $<

@@ -206,7 +206,7 @@ void password_screen_setup(void)
     guest.drives_present &= ~0x40;
     guest.screen_prepared = 1;
 
-    uint8_t *buffer = guest.screen_buffer + 18048;
+    uint8_t *buffer = guest.screen_buffer + SCREEN_POS(2, 26, 8);
 
     guest.disk_digit = '2';
     file_read((const char *)(screen_texts + 51), buffer);

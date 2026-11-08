@@ -5,7 +5,6 @@
 extern void (*host_draw_hook)(int kind, int16_t x, int16_t y, uint16_t index);   /* sdl/devmain.c: none in the regular program */
 #endif
 
-#define SCREEN_ROW 44
 #define SCREEN_LAST_ROW 191
 
 /* the part both the one and the two word wide draw have: where on the screen, which rows of the image, and the shift.

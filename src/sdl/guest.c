@@ -18,33 +18,74 @@ volatile uint8_t video_address_low = 0xFF;
 volatile uint8_t host_custom_raw[0x1000] __attribute__((aligned(4)));
 volatile uint8_t host_cia_raw[0x2000];   /* from $BFD000 */
 
-uint8_t *guest_ptr(uint32_t address)
+#include "guest_members.h"
+
+/* the variable of the program (the member of struct Gods) that has an address of the original's memory: where it is here, 0 when none has it */
+uint8_t *guest_member_ptr(uint32_t address)
 {
+    unsigned low = 0, high = sizeof guest_members / sizeof guest_members[0];
+
+    while (low < high) {   /* the members are sorted by address and do not overlap */
+        unsigned mid = (low + high) / 2;
+
+        if (address < guest_members[mid].address)
+            high = mid;
+        else if (address >= guest_members[mid].address + guest_members[mid].size)
+            low = mid + 1;
+        else
+            return (uint8_t *)guest_members[mid].dst + (address - guest_members[mid].address);
+    }
+#ifdef MATCH_MEMORY_LAYOUT
     return (uint8_t *)&guest + address;
+#else
+    return 0;
+#endif
 }
 
-uint32_t guest_offset(const void *p)
-{
-    return (uint32_t)((const uint8_t *)p - (const uint8_t *)&guest);
-}
-
-void guest_set_heap(void)
-{
-    guest.heap_base = guest_address(0x80400);
-}
-
-void guest_set_mask_buffer(void)
-{
-    guest.mask_buffer = (uint16_t *)guest_ptr(0x39e50);
-}
-
-/* where an address of the original's memory is here: in a table (the constant data of data.c: it is not in the block) or in the block, at the offset of the address */
+/* where an address of the original's memory is here: in a table (the constant data of data.c: it is not in the block) or in the member of struct Gods that has it, at its offset in it; 0 when no object
+ * of the port has it (the original's memory that nothing names).  With the layout of the original (MATCH_MEMORY_LAYOUT) the rest of the block is the original's memory too, at its address. */
 void *guest_resolve(uint32_t address)
 {
     for (unsigned i = 0; i < sizeof guest_tables / sizeof guest_tables[0]; i++)
         if (address >= guest_tables[i].address && address < guest_tables[i].address + guest_tables[i].size)
             return (void *)(guest_tables[i].data + (address - guest_tables[i].address));
-    return (uint8_t *)&guest + address;
+    return guest_member_ptr(address);
+}
+
+uint8_t *guest_ptr(uint32_t address)
+{
+    return guest_resolve(address);
+}
+
+/* the address of the original's memory that a pointer into struct Gods (or a table) is: the reverse of guest_resolve */
+uint32_t guest_offset(const void *p)
+{
+    const uint8_t *q = p;
+
+    for (unsigned i = 0; i < sizeof guest_members / sizeof guest_members[0]; i++)
+        if (q >= (const uint8_t *)guest_members[i].dst && q < (const uint8_t *)guest_members[i].dst + guest_members[i].size)
+            return guest_members[i].address + (uint32_t)(q - (const uint8_t *)guest_members[i].dst);
+    for (unsigned i = 0; i < sizeof guest_tables / sizeof guest_tables[0]; i++)
+        if (q >= guest_tables[i].data && q < guest_tables[i].data + guest_tables[i].size)
+            return guest_tables[i].address + (uint32_t)(q - guest_tables[i].data);
+#ifdef MATCH_MEMORY_LAYOUT
+    return (uint32_t)(q - (const uint8_t *)&guest);
+#else
+    return 0;
+#endif
+}
+
+/* the buffer the blits make their masks in: the original keeps it in the area of its boot code (a buffer of its own is taken off the start of the heap here) */
+#define MASK_BUFFER_SIZE 0x1000
+
+void guest_set_heap(void)
+{
+    guest.heap_base = (uint32_t)(uintptr_t)(guest.heap + MASK_BUFFER_SIZE);   /* (the program's heap goes on after the mask buffer) */
+}
+
+void guest_set_mask_buffer(void)
+{
+    guest.mask_buffer = (uint16_t *)guest.heap;
 }
 
 /* the same as a pointer's value (32 bits) */
@@ -53,9 +94,25 @@ uint32_t guest_address(uint32_t address)
     return (uint32_t)(uintptr_t)guest_resolve(address);
 }
 
+static void dump_members_at_exit(void)
+{
+    FILE *f = fopen(getenv("GODS_DUMP_MEMBERS"), "wb");
+
+    if (!f)
+        return;
+    for (unsigned i = 0; i < sizeof guest_members / sizeof guest_members[0]; i++) {
+        fwrite(&guest_members[i].address, 4, 1, f);
+        fwrite(&guest_members[i].size, 4, 1, f);
+        fwrite(guest_members[i].dst, 1, guest_members[i].size, f);
+    }
+    fclose(f);
+}
+
 void guest_init(void)
 {
     guest_reset();
+    if (getenv("GODS_DUMP_MEMBERS"))
+        atexit(dump_members_at_exit);   /* (a test: the members at the end, to compare two layouts) */
 }
 
 /* what the loader leaves when a program is loaded over the other: the memory and the chips' registers cleared, the tables in */

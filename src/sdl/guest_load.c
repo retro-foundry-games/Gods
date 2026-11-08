@@ -18,7 +18,7 @@
 /* words of the image that the program reads as native words */
 static void swap16_range(uint32_t address, uint32_t bytes)
 {
-    uint16_t *p = (uint16_t *)guest_ptr(address);
+    uint16_t *p = (uint16_t *)guest_member_ptr(address);
 
     for (uint32_t i = 0; i < bytes / 2; i++)
         p[i] = (uint16_t)((p[i] << 8) | (p[i] >> 8));
@@ -26,7 +26,7 @@ static void swap16_range(uint32_t address, uint32_t bytes)
 
 static void swap32_range(uint32_t address, uint32_t bytes)
 {
-    uint32_t *p = (uint32_t *)guest_ptr(address);
+    uint32_t *p = (uint32_t *)guest_member_ptr(address);
 
     for (uint32_t i = 0; i < bytes / 4; i++)
         p[i] = __builtin_bswap32(p[i]);
@@ -53,7 +53,7 @@ static void apply_fixups(long size)
             if (width == 2) {
                 swap16_range(at, 2);
             } else {
-                uint32_t *p = (uint32_t *)guest_ptr(at);
+                uint32_t *p = (uint32_t *)guest_member_ptr(at);
 
                 swap32_range(at, 4);
                 if (guest_fixups[i].width == 5 && *p != 0 && *p < GUEST_END)
@@ -68,15 +68,20 @@ void guest_load_image(const uint8_t *image, uint32_t size)
 {
     uint32_t *pairs = (uint32_t *)(uintptr_t)message_pairs;   /* (the table list declares it as bytes) */
 
-    for (uint32_t i = 0; i < size; i++)
-        *guest_ptr(IMAGE_BASE + i) = image[i];
+    /* each variable the image has is copied to its member of struct Gods (what the image has where no variable of the program is stays out: the program's code and what it does not name) */
+    for (uint32_t i = 0; i < size; i++) {
+        uint8_t *to = guest_member_ptr(IMAGE_BASE + i);
+
+        if (to)
+            *to = image[i];
+    }
 
     /* the variables the image has: their words and longs are made native (what the types of menu.symbols say) */
     apply_fixups(IMAGE_BASE + size);
     swap16_range(0x4d8a, 0xac);  /* the two copper lists (the program changes their words, the display reads them as words) */
 
     /* What the original's start-up writes that is not in the unpacked image: the name of the first asset set */
-    memcpy(guest_ptr(0x196d6), "always", 7);
+    memcpy(guest.first_asset_name, "always", 7);
 
     /* message_pairs (a table of longs, in the executable): the addresses of the copper colour moves the message fades */
 #ifndef __EMSCRIPTEN__
@@ -103,7 +108,7 @@ static void swap_image_table(void)
     for (unsigned i = 0; i < 0x1450 / 8; i++, at += 8) {
         swap16_range(at, 4);
         swap32_range(at + 4, 4);
-        uint32_t *data = (uint32_t *)guest_ptr(at + 4);   /* the image's data: an address of the original's memory */
+        uint32_t *data = (uint32_t *)guest_member_ptr(at + 4);   /* the image's data: an address of the original's memory */
 
         if (*data != 0 && *data < GUEST_END)
             *data = guest_address(*data);
@@ -129,7 +134,7 @@ static void swap_entry_list(void)
         if (entry[1] < 6)
             continue;
         swap16_range(path, 4);   /* (two words: swap16_range counts bytes) */
-        if (*(uint16_t *)guest_ptr(path) == 0x2345)
+        if (*(uint16_t *)guest_member_ptr(path) == 0x2345)
             swap16_range(path + 4, 2);   /* ... and the third */
     }
 }
@@ -169,9 +174,9 @@ static int load_ram_image_held(const char *path, int slots)
     }
     fclose(f);
     for (uint32_t i = IMAGE_BASE; i < (uint32_t)size; i++)
-        *guest_ptr(i) = image[i];
+        *guest_member_ptr(i) = image[i];
     if (slots && size >= 0x16bb4 + 24) {   /* shot_block: the words of how the shots move, which the power-ups change (a table of the host's own, so the loop above skipped it): the original's, as words of the host */
-        uint16_t *block = (uint16_t *)guest_ptr(0x16bb4);
+        uint16_t *block = (uint16_t *)guest.shot_block;
 
         for (int i = 0; i < 12; i++)
             block[i] = (uint16_t)((image[0x16bb4 + 2 * i] << 8) | image[0x16bb4 + 2 * i + 1]);

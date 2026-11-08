@@ -19,6 +19,7 @@ extern volatile int host_quick_request;   /* dev_game.c: F5 1, F9 2 */
 extern const char *host_quicksave_file;   /* dev_game.c: --quicksave */
 extern const char *host_quickload_file;   /* shims.c: --quickload */
 extern int host_lockstep_level;   /* shims.c: --lockstep-level */
+extern void dev_tick_add(uint32_t delta);   /* dev_game.c: tick_count goes up by delta */
 extern const char *host_level_image;  /* shims.c: --level1-image */
 extern volatile int gods_waiting;    /* shims.c: the program waits for the original (GODS_FOLLOW) */
 
@@ -209,7 +210,7 @@ static int lockstep_commands(const uint32_t *pixels, int phase)
         } else if (sscanf(line, "poke16 %x %x", (unsigned *)&a, (unsigned *)&b) == 2) {   /* `poke16 ADDR VALUE`: a word of the program's memory (the lockstep gives the per-frame counters the phase the original's loading gave them) */
             *(volatile uint16_t *)guest_ptr((uint32_t)a) = (uint16_t)b;
         } else if (sscanf(line, "tick %d", &a) == 1) {   /* `tick DELTA`: tick_count goes up by DELTA (the original's count includes the frames of its disk loading, which the port does not wait for; the lockstep driver gives the port the original's count) */
-            *(volatile uint32_t *)guest_ptr(0xce2) += (uint32_t)a;   /* tick_count */
+            dev_tick_add((uint32_t)a);
         } else if (sscanf(line, "flipsync %d", &a) == 1) {   /* `flipsync OFFSET`: the port's flips wait for the original's (host_flip_wait) */
             extern volatile int host_flip_sync, host_flips_offset;
 

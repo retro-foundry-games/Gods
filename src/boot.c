@@ -1,6 +1,8 @@
 /* Gods, the menu program: the start (the loader enters it at $84 with the stack at $78000): the chips, the memory map, the
  * sound, the first asset set.  What follows (the part at $2400 that loads the copy protection's stub and the code it
  * releases) is not here. */
+#include <string.h>
+
 #include "menu.h"
 
 /* amiga.asm: the status register (a value of $2000 is the supervisor state with all interrupts enabled) */
@@ -27,7 +29,6 @@ void display_setup(void)
  * four audio channels are set to play a short silent buffer; then the sound DMA is off until a sound is played */
 void sound_init(void)
 {
-    uint32_t *state = (uint32_t *)guest.voice;
     uint8_t *silence = guest.sound_sample_data;   /* the silent sample, in the data the loader brings */
 
     guest.sound_lock = 0xff;
@@ -41,8 +42,10 @@ void sound_init(void)
     custom->intena = 0x0780;
     custom->intreq = 0x0780;
     custom->adkcon = 0x00ff;
-    for (int i = 0; i < 277; i++)   /* the voices and the state after them */
-        state[i] = 0;
+    /* the voices and the state after them: the original clears 277 longs from the first voice (the voices, their buffers and the word of the sound lock); the members are cleared by name */
+    memset(guest.voice, 0, sizeof guest.voice);
+    memset(guest.voice_buffers, 0, sizeof guest.voice_buffers);
+    guest.sound_lock = 0;
     for (int i = 0; i < 4; i++)
         guest.voice[i].number = i;
     for (int i = 0; i < 4; i++) {
@@ -66,7 +69,7 @@ void sound_init(void)
         guest.voice[i].int_bit = 0x80 << i;
         guest.voice[i].int_on = 0x8000 | (0x80 << i);
     }
-    *(uint16_t *)&guest.sound_lock = 0;
+    guest.sound_lock = 0;
 }
 
 /* orig $039FDC: the colours are black, the interrupt vectors are set (keyboard, vertical blank, audio), the sound is set up,
@@ -115,7 +118,7 @@ void data_pointers_init(void)
  * after the other, and the pointers are kept in these variables */
 void memory_map_init(void)
 {
-    uint8_t *p = guest.program_end + 0x300;
+    uint8_t *p = guest.program_end + MEMORY_MAP_STACK_SIZE;
 
     guest.stack_top = p;
     p += 0x32;
@@ -151,7 +154,7 @@ void memory_map_init(void)
     guest.copper_lists.message.plane_low.value = (uint16_t)(uintptr_t)p;          /* the copper list's bitplane pointer for the message: the work area */
     guest.copper_lists.message.plane_high.value = (uint16_t)((uintptr_t)p >> 16);
     p += 0x140;
-    guest.level_map = p;
+    guest.level_map = (struct LevelMap *)p;
     p += 0x4000;
     guest.bytes_dest = p;   /* (the 0x200 bytes after the map: narrow_words_to_bytes makes its bytes there) */
     p += 0x200;
@@ -175,7 +178,9 @@ void memory_map_init(void)
     guest.message_text_block = p;
     data_pointers_init();
     guest.hint_list = guest.level_data.hint_data;
+#ifndef GODS_SDL   /* (the SDL host gives the mask buffer a place of its own: guest_set_mask_buffer) */
     guest.mask_buffer = (uint16_t *)(uintptr_t)0x39E50;   /* orig $03A180: the original stores the address of its own boot routine here ($39E50: the code is not needed after the start-up, the area is the mask buffer from now on; the SDL host gives it a buffer of its own) */
+#endif
 }
 
 /* orig $01F5C4: the state of the two screens starts again: the first has the saved colours' buffer, the second the buffer e58 points to */

@@ -270,6 +270,14 @@ int files_load_menu_image(void)
     out = malloc(0x80000);
     unpack_swaps = 0;   /* the loader's unpacker leaves bytes */
     end = unpack(out, packed);
+    if (getenv("GODS_DUMP_MENU_IMAGE")) {   /* (a tool: scripts/gen_guest_init.py reads the image the loader leaves, from $84 on) */
+        FILE *f = fopen(getenv("GODS_DUMP_MENU_IMAGE"), "wb");
+
+        if (f) {
+            fwrite(out, 1, (size_t)(end - out), f);
+            fclose(f);
+        }
+    }
     guest_load_image(out, (uint32_t)(end - out));
     free(out);
     return 0;

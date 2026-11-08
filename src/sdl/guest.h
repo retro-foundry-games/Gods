@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 uint8_t *guest_ptr(uint32_t address);
+uint8_t *guest_member_ptr(uint32_t address);                  /* the member of struct Gods that has an address of the original's memory (0: none; never a table) */
 int guest_state_write(FILE *f);                              /* the port's own save state: the block of the program and the chips' registers (0 when done) */
 int guest_state_read(FILE *f);
 void guest_set_heap(void);                                   /* heap_base: the heap of the block (the loader leaves it in a vector slot) */
