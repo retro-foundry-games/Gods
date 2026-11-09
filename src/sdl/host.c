@@ -164,11 +164,17 @@ static void web_frame(void)
     SDL_Event event;
     int16_t samples[882 * 2];
 
-    if (next_phase >= 0) {   /* the program on asked for the next one */
-        pthread_join(program_thread, 0);
-        web.phase = next_phase;
-        next_phase = -1;
-        start_phase(web.phase);
+    static int settle;
+
+    if (next_phase >= 0) {   /* the program on asked for the next one; the browser's main thread must not block on the old thread's exit */
+        if (settle == 0)
+            pthread_detach(program_thread);
+        if (++settle > 3) {
+            settle = 0;
+            web.phase = next_phase;
+            next_phase = -1;
+            start_phase(web.phase);
+        }
     }
     while (SDL_PollEvent(&event)) {
         if ((event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_KEY_UP) && !event.key.repeat) {
