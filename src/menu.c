@@ -127,8 +127,8 @@ void build_thing_kinds(void)
     int i;
 
     for (i = 0; i < 132; i++) {
-        guest.thing_kinds[i].w[0] = count;
-        guest.thing_kinds[i].w[2] = (uint16_t)(int16_t)(int8_t)offsets_4cba[i];
+        guest.thing_kinds[i].glyph = count;
+        guest.thing_kinds[i].kind = (uint16_t)(int16_t)(int8_t)offsets_4cba[i];
         count++;
     }
 }

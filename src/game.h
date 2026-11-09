@@ -72,7 +72,7 @@ struct Voice {
     const uint8_t *sample_a;  /* +0x1c */
     const uint8_t *sample_b;  /* +0x20 */
     PAD(4)
-    uint16_t field_28;
+    uint16_t length;          /* +40 the words of the sample the channel plays (AUDxLEN) */
     PAD(104)
     uint16_t number;          /* +0x92 */
 };
@@ -98,14 +98,19 @@ struct SoundInstrument {
 LAYOUT_ASSERT(sizeof(struct SoundInstrument) == 14, "sound instrument");
 
 /* a record of 8 bytes of the game's tables, a record of 12 bytes */
-struct Slot8 { int16_t w[4]; };
-struct Slot12 { int16_t w[6]; };
+/* a bolt flying sideways (20 of them at bolt_slots): where, its speed across and its state (negative free; otherwise the step of its picture) */
+struct SideBolt { int16_t x, y, dx, state; };
+/* something in the level (pickup_spots, thing_records): where, what it is (an index of thing_kinds; negative free) and its state */
+struct ThingRecord { int16_t x, y, kind, state; };
+/* a stone creature (10 of them): where, its hit points (0 free, negative dying), its step and its speed across and down */
+struct StoneRecord { int16_t x, y, hp, frame, vx, vy; };
 /* an entry of a list of bytes to put back: where, and the value */
 struct __attribute__((packed)) SavedByte { uint8_t *address; uint16_t value; };
 
 /* records of the tables the program keeps: their size is what the loops step by */
 struct Rec6 { uint16_t w[3]; };
-struct Rec10 { uint16_t w[5]; };
+/* an item of the game (the file objects.001, 10 bytes): its picture, what it is (0 and 1 picked up, 3 a lever, 4 a burst; 2 and more only touched), its price and the offset of its name from message_base (-1 none) */
+struct ThingKind { uint16_t glyph; uint16_t unused_2; uint16_t kind; uint16_t price; uint16_t name; };
 struct Rec80 {
     uint8_t before[12];
     uint16_t value_c;      /* +$0C */
@@ -144,7 +149,7 @@ struct Object {
     uint8_t name2[24];      /* +48 */
     uint8_t hits_tiles;     /* +72 */
     RECORD_PAD(1)
-    int16_t w74;            /* +74 */
+    int16_t price;            /* +74 what it costs in the shop, and the "Value" of its message */
     RECORD_PAD(4)
 };
 struct Shot { int16_t active; int16_t x; int16_t y; int16_t direction; };
@@ -161,7 +166,7 @@ struct CreatureEntry {
     uint8_t number;
     uint8_t value;         /* the hit points of one, and the score it gives */
     uint16_t template_index;   /* which CreatureTemplate */
-    uint8_t flag_18;
+    uint8_t shoots;
     uint8_t speed;
     uint8_t drop;          /* what the group drops when it is all gone ($FF none) */
     RECORD_PAD(1)
@@ -306,7 +311,7 @@ struct CreatureType {
     int16_t delay_step;           /* +14 */
     uint8_t number;               /* +16 */
     uint8_t value;                /* +17 its hit points, and the score it gives */
-    uint8_t flag_18;              /* +18 */
+    uint8_t shoots;               /* +18 not 0: it shoots at the player */
     uint8_t speed;                /* +19 */
     uint16_t draw_kind;           /* +20 index of the table of draw routines at $6EA8 */
     uint32_t move_routine;        /* +22 */
@@ -490,7 +495,7 @@ LAYOUT_ASSERT(sizeof(struct MonsterPart) == 40, "monster part");
 struct Monster {
     uint16_t state;       /* +0 0 free, 1 running, 2 to start */
     struct MonsterType *type;   /* +2 */
-    int16_t field_6;      /* +6 */
+    int16_t delay;        /* +6 frames to go before it starts (the type's delay) */
     RECORD_PAD(8)   /* +8 */
     uint8_t dropped;      /* +16 the drop of the group has been made */
     int8_t special;       /* +17 the monster that is picked (negative none) */
@@ -1066,7 +1071,7 @@ struct Gods {
     uint16_t *claimed_entries[3];   /* $00B92 */
     PAD(4)
     uint16_t *lever_entry_ptr;   /* $00BA2 */
-    struct Slot8 *viewed_record;   /* $00BA6 */
+    struct ThingRecord *viewed_record;   /* $00BA6 */
     int32_t high_score_baa;   /* $00BAA */
     int32_t high_score_bae;   /* $00BAE */
     uint8_t *unused_scratch_alias;   /* $00BB2 */
@@ -1156,7 +1161,7 @@ struct Gods {
     uint8_t spore_records[120];   /* $01036 */
     uint16_t spore_count;   /* $010AE */
     uint8_t bat_records[140];   /* $010B0 */
-    struct Slot12 stone_records[10];   /* $0113C */
+    struct StoneRecord stone_records[10];   /* $0113C */
     int16_t falling_things[50];   /* $011B4 */
     uint16_t falling_things_count;   /* $01218 */
     uint16_t bat_count;   /* $0121A */
@@ -1306,7 +1311,7 @@ struct Gods {
     uint16_t saved_slot_words[22];   /* $148E8 */
     PAD(116)
     struct Rec80 object_slots[11];   /* $14988 */
-    struct Rec10 thing_kinds[132];   /* $14CF8 */
+    struct ThingKind thing_kinds[132];   /* $14CF8 */
     PAD(6548)
     uint8_t shot_block[24];   /* $16BB4 */
     PAD(4340)
@@ -1322,7 +1327,7 @@ struct Gods {
     PAD(1004)
     void (*finished_record_dispatch[15])(void);   /* $18BA4 */
     void (*record_kind_dispatch[469])(void);   /* $18BE0 */
-    struct Slot8 pickup_spots[20];   /* $19334 */
+    struct ThingRecord pickup_spots[20];   /* $19334 */
     PAD(130)
     uint16_t pickup_entries[60];   /* $19456 */
     PAD(520)
@@ -1332,7 +1337,7 @@ struct Gods {
     struct PlanItem plan_queue[32];   /* $1971C */
     struct PlanItem plan_list[50];   /* $1981C */
     uint8_t creature_types[360];   /* $199AC */
-    struct Slot8 thing_records[200];   /* $19B14 */
+    struct ThingRecord thing_records[200];   /* $19B14 */
     struct Bolt bolt_records[20];   /* $1A154 */
     uint16_t crumble_table[120];   /* $1A30C */
     uint32_t marker_table[100];   /* $1A3FC */
@@ -2030,9 +2035,9 @@ extern const uint16_t respawn_search[45];   /* $03864  fifteen records of three 
 void game_read_input(void);                      /* orig $00363A */
 void count_if_visible(int16_t x, int16_t y);     /* orig $004952 */
 
-struct Slot12 *find_used_stone_record(void);                     /* orig $00D314 */
-struct Slot8 *find_used_pickup_record(void);                     /* orig $01924C */
-struct Slot8 *find_free_thing_record(void);                /* orig $018EF6 */
+struct StoneRecord *find_used_stone_record(void);                     /* orig $00D314 */
+struct ThingRecord *find_used_pickup_record(void);                     /* orig $01924C */
+struct ThingRecord *find_free_thing_record(void);                /* orig $018EF6 */
 int words_all_zero(const uint16_t *record);                /* orig $00FF1E */
 struct SavedByte *restore_saved_bytes(struct SavedByte *list, int16_t count);   /* orig $017DDC */
 void call_by_kind(int16_t kind, int16_t arg, int16_t *result);                          /* orig $018A10 */
@@ -2175,7 +2180,7 @@ void spawn_player_shots(void);                              /* orig $0153A2 */
 
 
 void update_records(void);                                                 /* orig $00417C */
-int16_t player_touch_record(int16_t x, int16_t y, struct Slot8 *record, int16_t counter);   /* orig $0044D2 */
+int16_t player_touch_record(int16_t x, int16_t y, struct ThingRecord *record, int16_t counter);   /* orig $0044D2 */
 int16_t record_check_walls(int16_t x, int16_t y, int16_t *record);         /* orig $007EAE */
 void draw_score_panel(void);                                               /* orig $0057FC */
 void draw_pickups(void);                                             /* orig $01924C (all of it; find_used_pickup_record is its first part) */

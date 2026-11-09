@@ -25,7 +25,7 @@ bytes_dest        0x00000cc2  uint8_t *%s     ... and where the bytes go
 script_records        0x00000cb6  struct ScriptRecord *%s     a buffer of 2400 bytes that load_script_records fills
 saved_slot_words  0x000148e8  uint16_t %s[22]   two words of each of the eleven slots, put away by save_slot_words
 object_slots      0x00014988  struct Rec80 %s[11]   eleven records of 80 bytes
-thing_kinds       0x00014cf8  struct Rec10 %s[132]   built by build_thing_kinds
+thing_kinds       0x00014cf8  struct ThingKind %s[132]   built by build_thing_kinds
 marker_table      0x0001a3fc  uint32_t %s[100]   set to -1 by reset_marker_table
 record_table      0x0001a58c  struct Rec6 %s[200]   copied in by copy_record_table
 entry_table       0x0003a25e  struct Rec6 %s[50]   cleared by clear_entry_table
@@ -209,9 +209,9 @@ hit_list_offset         0x00000c6c  uint32_t %s
 game_record_ptr   0x00000bd2  uint8_t *%s    where the input of this frame is recorded when demo_mode is positive
 onscreen_count    0x000002b8  uint16_t %s     how many things were counted as on the screen this frame
 game_buttons      0x00000228  uint8_t %s     the button bits of this frame (bit 0 fire); the menu uses it as "the button is still down since it picked a cell of the grid"
-stone_records      0x0000113c  struct Slot12 %s[10]   ten records of 12 bytes (the second word is not 0 for one in use)
-pickup_spots     0x00019334  struct Slot8 %s[20]    twenty records of 8 bytes (the third word is not negative for one that is in use)
-thing_records     0x00019b14  struct Slot8 %s[200]   two hundred records of 8 bytes (the second word is negative for one that is free)
+stone_records      0x0000113c  struct StoneRecord %s[10]   ten records of 12 bytes (the second word is not 0 for one in use)
+pickup_spots     0x00019334  struct ThingRecord %s[20]    twenty records of 8 bytes (the third word is not negative for one that is in use)
+thing_records     0x00019b14  struct ThingRecord %s[200]   two hundred records of 8 bytes (the second word is negative for one that is free)
 record_kind_dispatch    0x00018be0  void (*%s[])(void)     the routines a record's kind (0, 1, ...) names
 message_slots     0x00012be6  uint8_t %s[]           the first of the lines of text the messages are made of (88 bytes each)
 message_hold      0x00000264  int16_t %s     frames a message stays once it is in (counted down by the frame tick)
@@ -436,7 +436,7 @@ glyph_frame       0x000002b4  uint16_t %s    game_d: counts 0 to 3 each frame wh
 anim_cycle_5       0x0000024a  uint16_t %s    game_d: counts 0 to 4 each frame while frame_toggle is clear
 anim_cycle_6       0x00000262  uint16_t %s    game_d: counts 0 to 5 each frame
 anim_cycle_8       0x00000260  uint16_t %s    game_d: counts 0 to 7 each frame
-viewed_record          0x00000ba6  struct Slot8 *%s   game_d: the record of thing_records that is being looked at
+viewed_record          0x00000ba6  struct ThingRecord *%s   game_d: the record of thing_records that is being looked at
 lever_entry_ptr          0x00000ba2  uint16_t *%s   game_d: a record whose third word the thing of kinds 232, 288, 290 and 292 toggles
 near_flags_byte          0x000002b6  uint8_t %s    game_d: the byte of near_flags of the record that is being looked at
 touched_thing_id          0x000002b2  uint16_t %s    game_d: the id of the thing the player touched

@@ -55,7 +55,7 @@ void sound_init(void)
         guest.voice[i].sample_a = silence;
         guest.voice[i].sample_b = silence;
         custom->aud[i].lc = ADDR(silence);
-        guest.voice[i].field_28 = 8;
+        guest.voice[i].length = 8;
         custom->aud[i].len = 8;
         guest.voice[i].field_e = 2;
         custom->aud[i].per = 0x100;

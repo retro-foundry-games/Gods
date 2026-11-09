@@ -8,7 +8,7 @@
 static void update_falling_slots(void);
 static void update_archers(void);
 static void update_thrown(void);
-static void archer_thing(struct Slot8 *record, int16_t x, int16_t y, int16_t glyph);
+static void archer_thing(struct ThingRecord *record, int16_t x, int16_t y, int16_t glyph);
 static int bat_spawn(int16_t x, int16_t y);
 static void score_add_packed(uint8_t packed);
 static void pod_spawn(int16_t x, int16_t y);
@@ -45,28 +45,28 @@ void count_if_visible(int16_t x, int16_t y)
 }
 
 /* orig $00D314: the first of the ten records of 12 bytes at $113C whose third word is not 0, or 0 (the original goes on at $D32A) */
-struct Slot12 *find_used_stone_record(void)
+struct StoneRecord *find_used_stone_record(void)
 {
     for (int i = 0; i < 10; i++)
-        if (guest.stone_records[i].w[2] != 0)
+        if (guest.stone_records[i].hp != 0)
             return &guest.stone_records[i];
     return 0;
 }
 
 /* orig $01924C: the first of the ten records of 8 bytes at $19334 whose third word is not negative, or 0 (the original goes on at $19262) */
-struct Slot8 *find_used_pickup_record(void)
+struct ThingRecord *find_used_pickup_record(void)
 {
     for (int i = 0; i < 10; i++)
-        if (guest.pickup_spots[i].w[2] >= 0)
+        if (guest.pickup_spots[i].kind >= 0)
             return &guest.pickup_spots[i];
     return 0;
 }
 
 /* orig $018EF6: the first free (third word negative) of the two hundred records of 8 bytes at $19B14, or 0 when all are in use */
-struct Slot8 *find_free_thing_record(void)
+struct ThingRecord *find_free_thing_record(void)
 {
     for (int i = 0; i < 200; i++)
-        if (guest.thing_records[i].w[2] < 0)
+        if (guest.thing_records[i].kind < 0)
             return &guest.thing_records[i];
     return 0;
 }
@@ -754,14 +754,14 @@ void activate_records_now(void)
     int16_t y1 = (guest.scroll_y & -16) + 240;
 
     for (int i = 0; i < 200; i++) {
-        struct Slot8 *record = &guest.thing_records[i];
+        struct ThingRecord *record = &guest.thing_records[i];
 
-        if (record->w[2] < 0 || record->w[0] < x0 || record->w[0] > x1 || record->w[1] < y0 || record->w[1] > y1) {
-            record->w[3] = 0;
+        if (record->kind < 0 || record->x < x0 || record->x > x1 || record->y < y0 || record->y > y1) {
+            record->state = 0;
             continue;
         }
-        if (!(record->w[3] & 1)) {
-            record->w[3] |= 1;
+        if (!(record->state & 1)) {
+            record->state |= 1;
             guest.near_flags[i] = 0xff;
         }
     }
@@ -1078,15 +1078,15 @@ void check_pickups(void)
     int16_t x0 = guest.player_x - 16, y0 = guest.player_y - 8, x1 = guest.player_x + 16, y1 = guest.player_y + 8;
 
     for (int i = 0; i < 20; i++) {
-        struct Slot8 *record = &guest.pickup_spots[i];
+        struct ThingRecord *record = &guest.pickup_spots[i];
 
-        if (record->w[2] <= 0)
+        if (record->kind <= 0)
             continue;
-        if (record->w[0] < x0 || record->w[0] > x1 || record->w[1] < y0 || record->w[1] > y1)
+        if (record->x < x0 || record->x > x1 || record->y < y0 || record->y > y1)
             continue;
         guest.door_entered = 1;
-        guest.exit_kind = record->w[2];
-        guest.exit_target = record->w[3];
+        guest.exit_kind = record->kind;
+        guest.exit_target = record->state;
         play_sound(5, 25);
         return;
     }
@@ -1160,11 +1160,11 @@ static int16_t *chest_pieces(void)
 
 /* orig $00401A (the record: x, y and the number of an open chest): ten pieces start at the chest's place, each with a sideways speed of 1 to 8 (left when bit 7 of the random number is set)
  * and a fall speed of -3 to -10 (the glyph from words_3fde, 16 bytes on for each chest); chest_pieces_active is 1 */
-static void chest_burst(const struct Slot8 *record)
+static void chest_burst(const struct ThingRecord *record)
 {
-    int16_t chest = (int16_t)(((record->w[2] - 12) >> 1) << 3);   /* (the original: 16 bytes for each chest of two numbers) */
+    int16_t chest = (int16_t)(((record->kind - 12) >> 1) << 3);   /* (the original: 16 bytes for each chest of two numbers) */
 
-    chest_burst_at(record->w[0], record->w[1], words_3fde + chest);
+    chest_burst_at(record->x, record->y, words_3fde + chest);
 }
 
 /* orig $004034 (inside chest_burst): the ten pieces start at (x, y) with the glyphs `sprites` */
@@ -1221,14 +1221,14 @@ void chest_pieces_move(void)
                 sideways = 0;
         }
         if (fall == 4 && sideways == 0) {
-            struct Slot8 *record = find_free_thing_record();
+            struct ThingRecord *record = find_free_thing_record();
 
             if (record == 0)
                 continue;
-            record->w[0] = x;
-            record->w[1] = y;
-            record->w[2] = piece[4];
-            record->w[3] = 1;
+            record->x = x;
+            record->y = y;
+            record->kind = piece[4];
+            record->state = 1;
             piece[4] = -1;
             guest.near_flags[record - guest.thing_records] = 0xff;
             continue;
@@ -1591,7 +1591,7 @@ void panel_slot_plain(uint8_t *to, int16_t item)
     panel_blank(to);
     if ((int16_t)(item << 1) < 0)
         return;
-    panel_item(to, (int16_t)guest.thing_kinds[item].w[0]);
+    panel_item(to, (int16_t)guest.thing_kinds[item].glyph);
 }
 
 /* orig $0056D8: the same with the slot picture's part cut away first (the words at +96+12 and on, 18 rows: all but the three top bits of the
@@ -1605,7 +1605,7 @@ void panel_slot_cut(uint8_t *to, int16_t item)
     }
     if ((int16_t)(item << 1) < 0)
         return;
-    panel_item(to, (int16_t)guest.thing_kinds[item].w[0]);
+    panel_item(to, (int16_t)guest.thing_kinds[item].glyph);
 }
 
 /* orig $005608 (with $0056BE, $0056D8, $00570A and $0057E0 inlined): when the slot that is chosen (item_chosen) is another than the one
@@ -2042,7 +2042,7 @@ static void level_end_effects(const struct LevelEnd *record)
             for (int i = 0; i < 4; i++) {
                 int16_t item = guest.item_slots[i];
 
-                if (item >= 0 && guest.thing_kinds[item].w[2] != 0)
+                if (item >= 0 && guest.thing_kinds[item].kind != 0)
                     guest.item_slots[i] = -1;
             }
             break;
@@ -2246,17 +2246,17 @@ void spawn_puff(int16_t *object)
  * codes; nothing uses it */
 static void drop_record(int16_t x, int16_t y, int16_t kind)
 {
-    struct Slot8 *record = find_free_thing_record();
+    struct ThingRecord *record = find_free_thing_record();
 
     if (record == 0)
         return;
-    record->w[0] = x;
-    record->w[1] = y;
+    record->x = x;
+    record->y = y;
     if (kind < 11)
-        record->w[2] = kind + 0xC0;   /* $8088 */
+        record->kind = kind + 0xC0;   /* $8088 */
     else
-        record->w[2] = kind - 11;
-    record->w[3] = 1;
+        record->kind = kind - 11;
+    record->state = 1;
     guest.near_flags[record - guest.thing_records] = 0xff;
 }
 
@@ -2296,7 +2296,7 @@ void update_falling_thing(void)
         guest.fall_y = y;
         glyph_draw(x - guest.scroll_x, y - guest.scroll_y, glyph);
     } else {
-        glyph = (int16_t)guest.thing_kinds[kind - 11].w[0];
+        glyph = (int16_t)guest.thing_kinds[kind - 11].glyph;
         guest.fall_y = y;
         if (glyph == 279 || glyph == 280)
             sprite_draw(x - guest.scroll_x, y - guest.scroll_y - 8, glyph);
@@ -3115,7 +3115,7 @@ void dropped_sparkle_update(void)
     if (number >= 0xC0)
         glyph = ((const struct Object *)guest.object_slots)[number - 0xC0].base_frame;
     else
-        glyph = (int16_t)guest.thing_kinds[number].w[0];
+        glyph = (int16_t)guest.thing_kinds[number].glyph;
 
     const struct Image *image = &guest.image_table[glyph];
     int16_t across = (int16_t)((16 + image->neg_width) >> 1);
@@ -3369,7 +3369,7 @@ void take_creature_entry(struct EntryRef *a0)
     type->delay_step = entry->delay_step;
     type->number = entry->number;
     type->value = entry->value;
-    type->flag_18 = entry->flag_18;
+    type->shoots = entry->shoots;
     type->speed = entry->speed;
     type->draw_kind = template->draw_kind;
     type->move_routine = template->move_routine;
@@ -3910,7 +3910,7 @@ static void empty_slots_of_flagged_record(const struct ScriptRecord *a1)
         if (a1->condition[p].kind != 1)
             continue;
         int16_t item = a1->condition[p].argument;
-        uint16_t state = guest.thing_kinds[item].w[2];
+        uint16_t state = guest.thing_kinds[item].kind;
 
         if (state != 2 && state != 0)
             continue;
@@ -3921,10 +3921,10 @@ static void empty_slots_of_flagged_record(const struct ScriptRecord *a1)
 }
 
 /* the first of the `count` records of 8 bytes in `list` whose word +4 is negative (free), or 0 */
-static struct Slot8 *first_free_slot8(struct Slot8 *list, int count)
+static struct ThingRecord *first_free_slot8(struct ThingRecord *list, int count)
 {
     for (int i = 0; i < count; i++)
-        if (list[i].w[2] < 0)
+        if (list[i].kind < 0)
             return &list[i];
     return 0;
 }
@@ -3936,14 +3936,14 @@ static struct Slot8 *first_free_slot8(struct Slot8 *list, int count)
 static void kind_drop_item(const struct ScriptRecord *a1)
 {
     int16_t x = (int16_t)a1->x, y = (int16_t)a1->y, number = (int16_t)a1->effect_argument;
-    struct Slot8 *record = first_free_slot8(guest.thing_records, 200);
+    struct ThingRecord *record = first_free_slot8(guest.thing_records, 200);
 
     if (record == 0)
         return;
-    record->w[0] = x;
-    record->w[1] = y;
-    record->w[2] = number;
-    record->w[3] = 1;
+    record->x = x;
+    record->y = y;
+    record->kind = number;
+    record->state = 1;
     guest.near_flags[record - guest.thing_records] = 0xFF;
     if (number >= 0x40 && number <= 0x44)
         return;
@@ -3961,14 +3961,14 @@ static void kind_drop_item(const struct ScriptRecord *a1)
 static void kind_drop_192(const struct ScriptRecord *a1)
 {
     int16_t x = (int16_t)a1->x, y = (int16_t)a1->y, number = (int16_t)(a1->effect_argument + 0xC0);
-    struct Slot8 *record = first_free_slot8(guest.thing_records, 200);
+    struct ThingRecord *record = first_free_slot8(guest.thing_records, 200);
 
     if (record == 0)
         return;
-    record->w[0] = x;
-    record->w[1] = y;
-    record->w[2] = number;
-    record->w[3] = 1;
+    record->x = x;
+    record->y = y;
+    record->kind = number;
+    record->state = 1;
     guest.near_flags[record - guest.thing_records] = 0xFF;
     guest.last_drop[0] = x;
     guest.last_drop[1] = y;
@@ -3980,7 +3980,7 @@ static void kind_drop_192(const struct ScriptRecord *a1)
 static int record_19334_at(int16_t x, int16_t y)
 {
     for (int i = 0; i < 10; i++)
-        if (guest.pickup_spots[i].w[0] == x && guest.pickup_spots[i].w[1] == y)
+        if (guest.pickup_spots[i].x == x && guest.pickup_spots[i].y == y)
             return 1;
     return 0;
 }
@@ -3991,7 +3991,7 @@ static int record_19334_at(int16_t x, int16_t y)
  * position already ($019280) nothing is done */
 static void kind_place_pickup(const struct ScriptRecord *a1, int twenty)
 {
-    struct Slot8 *record = first_free_slot8(guest.pickup_spots, twenty ? 20 : 10);
+    struct ThingRecord *record = first_free_slot8(guest.pickup_spots, twenty ? 20 : 10);
 
     if (record == 0)
         return;
@@ -4000,10 +4000,10 @@ static void kind_place_pickup(const struct ScriptRecord *a1, int twenty)
 
     if (record_19334_at(x, y))
         return;
-    record->w[0] = x;
-    record->w[1] = y;
-    record->w[2] = twenty ? 1 : 3;
-    record->w[3] = (int16_t)a1->effect_argument;
+    record->x = x;
+    record->y = y;
+    record->kind = twenty ? 1 : 3;
+    record->state = (int16_t)a1->effect_argument;
     if (twenty)
         play_sound(7, 5);
 }
@@ -4097,20 +4097,20 @@ static void thing_burst_box(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
     if (mark >= guest.burst_marks + 12)
         mark = guest.burst_marks + 9;
     for (int i = 0; i < 200; i++) {
-        struct Slot8 *record = &guest.thing_records[i];
+        struct ThingRecord *record = &guest.thing_records[i];
 
-        if (record->w[2] < 0)
+        if (record->kind < 0)
             continue;
-        if (guest.thing_kinds[record->w[2]].w[2] != 4)
+        if (guest.thing_kinds[record->kind].kind != 4)
             continue;
-        int16_t x = record->w[0], y = record->w[1];
+        int16_t x = record->x, y = record->y;
 
         if (x0 > x || x1 < x || y0 > y || y1 < y)
             continue;
-        int is_96 = record->w[2] == 0x60;
+        int is_96 = record->kind == 0x60;
 
-        record->w[2] = -1;
-        record->w[3] = 0;
+        record->kind = -1;
+        record->state = 0;
         mark[0] = 0;
         mark[1] = (int16_t)(x - 8);
         mark[2] = is_96 ? (int16_t)(y - 8) : y;
@@ -5465,7 +5465,7 @@ static void energy_pickup(int16_t amount, int16_t sound)
  * teleport_list_cursor is taken (the list goes on by two bytes).  door_entered and exit_kind are set and sound 5 is played (priority 25) */
 static void teleport_gem(void)
 {
-    int16_t x = guest.viewed_record->w[0];
+    int16_t x = guest.viewed_record->x;
     int found = 0;
 
     if (guest.param_index == 2 && guest.world_b_files == 0 && x >= 0x5c0 && x <= 0x640) {
@@ -5624,7 +5624,7 @@ static int16_t pickup_handler(int16_t index, int16_t counter)
  * the record is freed, and kind 1 gives points (and a message) and kind 0 runs its handler; ids from 192 on start an object.
  * Returns the original's N flag at its rtr (the result is on the stack): 1 when the thing is touched and not picked up, 0 otherwise.
  * The things that did not run are marked: the handlers other than 11 and 18, the keys (ids 12 to 17, $45DC) and the gem ($4676) */
-int16_t player_touch_record(int16_t x, int16_t y, struct Slot8 *record, int16_t counter)
+int16_t player_touch_record(int16_t x, int16_t y, struct ThingRecord *record, int16_t counter)
 {
     if (guest.energy_shown < 0)
         return 0;
@@ -5642,11 +5642,11 @@ int16_t player_touch_record(int16_t x, int16_t y, struct Slot8 *record, int16_t 
     if (py < top || py > bottom)
         return 0;
 
-    int16_t id = record->w[2];
+    int16_t id = record->kind;
 
     if (id >= 192) {
-        record->w[2] = -1;
-        record->w[3] = 0;
+        record->kind = -1;
+        record->state = 0;
         id -= 192;
         guest.touched_thing_id = id;
         pick_up_object(id);
@@ -5656,15 +5656,15 @@ int16_t player_touch_record(int16_t x, int16_t y, struct Slot8 *record, int16_t 
     }
     guest.touched_thing_id = id;
 
-    const struct Rec10 *info = &guest.thing_kinds[id];
-    int16_t kind = (int16_t)info->w[2];
+    const struct ThingKind *info = &guest.thing_kinds[id];
+    int16_t kind = (int16_t)info->kind;
 
     if (kind > 1)
         return 1;
     if (kind == 1) {
         if (id >= 12 && id < 18) {   /* $45D6: the keys (even) and the chests they open (odd: open) */
             if (id & 1) {
-                record->w[3] = 1;
+                record->state = 1;
                 return 0;
             }
 
@@ -5675,10 +5675,10 @@ int16_t player_touch_record(int16_t x, int16_t y, struct Slot8 *record, int16_t 
                     continue;
                 play_sound(0x20, 5);   /* $4676 */
                 guest.item_slots[i] = -1;
-                record->w[2] = (int16_t)(id | 1);
-                record->w[3] = 1;
+                record->kind = (int16_t)(id | 1);
+                record->state = 1;
                 item_message(id);
-                int16_t points = (int16_t)info->w[3];
+                int16_t points = (int16_t)info->price;
 
                 guest.score_total_1fc += points;
                 score_add_carry(points >> 3, (points >> 2) & 1);
@@ -5688,10 +5688,10 @@ int16_t player_touch_record(int16_t x, int16_t y, struct Slot8 *record, int16_t 
             return 0;
         }
         play_sound(6, 6);
-        record->w[2] = -1;
-        record->w[3] = 0;
+        record->kind = -1;
+        record->state = 0;
         item_message(id);
-        int16_t points = (int16_t)info->w[3];
+        int16_t points = (int16_t)info->price;
 
         guest.score_total_1fc += points;
         score_add_carry(points >> 3, (points >> 2) & 1);   /* asr.w #3 leaves the last bit out in X */
@@ -5701,8 +5701,8 @@ int16_t player_touch_record(int16_t x, int16_t y, struct Slot8 *record, int16_t 
 
     /* kind 0 */
     play_sound(6, 6);
-    record->w[2] = -1;
-    record->w[3] = 0;
+    record->kind = -1;
+    record->state = 0;
 
     int16_t index = 0;
 
@@ -5860,7 +5860,7 @@ static void draw_kind5(int16_t x, int16_t y, int16_t glyph)
  * which did not run).  One with a negative flag byte looks at the map cells under its two halves: where there is ground (cell 1) it
  * stays (y + 4, then to a multiple of 4; flag -1; from y 1024 on the record is freed), otherwise it lands (flag 0, sound 24) when
  * y is a multiple of 4 */
-static void thing_fall(struct Slot8 *record, uint8_t *flag)
+static void thing_fall(struct ThingRecord *record, uint8_t *flag)
 {
     int8_t state = (int8_t)*flag;
 
@@ -5869,7 +5869,7 @@ static void thing_fall(struct Slot8 *record, uint8_t *flag)
 
         if (fall_steps_f2[24 + state] != 0)
             play_sound((uint16_t)((int8_t)fall_steps_f2[24 + state] + 24), 5);
-        record->w[1] += step;
+        record->y += step;
         state++;
         if (state >= 37)
             state = 37;
@@ -5877,7 +5877,7 @@ static void thing_fall(struct Slot8 *record, uint8_t *flag)
         return;
     }
 
-    int16_t x = record->w[0], y = record->w[1];
+    int16_t x = record->x, y = record->y;
     const uint8_t *map = guest.level_map->walls;
     int16_t row = (int16_t)(((y + 16) & -16) << 3);
     int16_t left = (int16_t)(((x & -32) >> 5) + row);
@@ -5888,36 +5888,36 @@ static void thing_fall(struct Slot8 *record, uint8_t *flag)
         ground = map[(int16_t)(left - 128)] == 1 || map[(int16_t)(right - 128)] == 1;
     else
         ground = map[right] != 1 || map[(int16_t)(right - 128)] == 1;
-    if (!ground && ((record->w[1] & 12) <= 0)) {
-        record->w[1] &= -4;
+    if (!ground && ((record->y & 12) <= 0)) {
+        record->y &= -4;
         if (*flag != 24) {
             *flag = 0;
             play_sound(24, 5);
         }
         return;
     }
-    record->w[1] += 4;
+    record->y += 4;
     *flag = 0xff;
-    record->w[1] &= -4;
-    if (record->w[1] >= 1024) {
-        record->w[2] = -1;
-        record->w[3] = 0;
+    record->y &= -4;
+    if (record->y >= 1024) {
+        record->kind = -1;
+        record->state = 0;
     }
 }
 
 /* orig $00424E: one thing of the two hundred: it falls or stands (thing_fall), is drawn and tested against the player.  `counter` is
  * the loop counter (d7 in the original) */
-static void record_update(struct Slot8 *record, uint8_t *flag, int16_t counter)
+static void record_update(struct ThingRecord *record, uint8_t *flag, int16_t counter)
 {
     guest.viewed_record = record;
-    int16_t y0 = record->w[1];
-    int16_t id = record->w[2];
+    int16_t y0 = record->y;
+    int16_t id = record->kind;
 
     guest.near_flags_byte = *flag;
     thing_fall(record, flag);
 
-    int16_t x = (int16_t)(record->w[0] - guest.scroll_x);
-    int16_t y = record->w[1];
+    int16_t x = (int16_t)(record->x - guest.scroll_x);
+    int16_t y = record->y;
 
     if (id >= 192) {
         /* $4C66: an object (the list is filled, and drawn as the glyph id + 110) */
@@ -5936,12 +5936,12 @@ static void record_update(struct Slot8 *record, uint8_t *flag, int16_t counter)
         return;
     }
 
-    const struct Rec10 *info = &guest.thing_kinds[id];
-    int16_t kind = (int16_t)info->w[2];
-    int16_t glyph = (int16_t)info->w[0];
+    const struct ThingKind *info = &guest.thing_kinds[id];
+    int16_t kind = (int16_t)info->kind;
+    int16_t glyph = (int16_t)info->glyph;
 
     if (kind >= 3) {
-        record->w[1] = y0;
+        record->y = y0;
         y = y0;
         if (kind == 4) {
             if (glyph == 300)
@@ -5952,10 +5952,10 @@ static void record_update(struct Slot8 *record, uint8_t *flag, int16_t counter)
                 archer_thing(record, x, y, glyph);
             else if (glyph == 266) {
                 pod_spawn(x, y);   /* ($4B1C: the thing is taken from the map: a pod) */
-                record->w[2] = 0xFFFF, record->w[3] = 0;
+                record->kind = 0xFFFF, record->state = 0;
             }
             else if (bat_spawn(x, y))
-                record->w[2] = 0xFFFF, record->w[3] = 0;   /* ($4B7C: the thing is taken from the map and a bat is made) */
+                record->kind = 0xFFFF, record->state = 0;   /* ($4B7C: the thing is taken from the map and a bat is made) */
             else
                 sprite_draw((int16_t)(x - guest.scroll_x), (int16_t)(y - guest.scroll_y), (uint16_t)glyph);   /* ($4B8A: with no bat free) */
         } else if (kind > 4) {
@@ -6025,9 +6025,9 @@ void update_records(void)
     guest.anim_cycle_8 = (guest.anim_cycle_8 + 1) & 7;
 
     for (int i = 0; i < 200; i++) {
-        struct Slot8 *record = &guest.thing_records[i];
+        struct ThingRecord *record = &guest.thing_records[i];
 
-        if (record->w[3] == 0 || record->w[2] < 0)
+        if (record->state == 0 || record->kind < 0)
             continue;
         record_update(record, &guest.near_flags[i], (int16_t)(199 - i));
     }
@@ -6045,10 +6045,10 @@ void update_records(void)
 void draw_pickups(void)
 {
     for (int i = 0; i < 10; i++) {
-        const struct Slot8 *record = &guest.pickup_spots[i];
+        const struct ThingRecord *record = &guest.pickup_spots[i];
 
-        if (record->w[2] >= 0)
-            sprite_draw(record->w[0] - guest.scroll_x, record->w[1] - guest.scroll_y, guest.pickup_glyph);
+        if (record->kind >= 0)
+            sprite_draw(record->x - guest.scroll_x, record->y - guest.scroll_y, guest.pickup_glyph);
     }
 }
 
@@ -6322,14 +6322,14 @@ static void enemy_shot(int16_t x, int16_t y, int right)
     if (right ? (sx > 312 || sx < -8) : (sx < 8 || sx > 328))
         return;
 
-    struct Slot8 *record = (struct Slot8 *)guest.bolt_slots;
+    struct SideBolt *record = (struct SideBolt *)guest.bolt_slots;
 
     for (int i = 0; i < 20; i++, record++) {
-        if (record->w[3] < 0) {
-            record->w[0] = x;
-            record->w[1] = y;
-            record->w[2] = guest.shot_speed;
-            record->w[3] = 0;
+        if (record->state < 0) {
+            record->x = x;
+            record->y = y;
+            record->dx = guest.shot_speed;
+            record->state = 0;
             return;
         }
     }
@@ -6347,7 +6347,7 @@ static void shooting_creature_step(const struct CreatureType *type, struct Creat
     if (creature->timer != 0)
         return;
     creature->timer = (int16_t)((int16_t)(int8_t)(16 - type->speed) << 2);
-    if (type->flag_18 != 0) {   /* $7154: a shot aimed at the player, from 16 to the right, of the speed half of the type's plus 2 (the kind 1) */
+    if (type->shoots != 0) {   /* $7154: a shot aimed at the player, from 16 to the right, of the speed half of the type's plus 2 (the kind 1) */
         aimed_shot((int16_t)(creature->x + 0x10), creature->y, (int16_t)(((int16_t)(int8_t)type->speed >> 1) + 2), 1);
         return;
     }
@@ -6377,7 +6377,7 @@ static void standing_shooter_step(const struct CreatureType *type, struct Creatu
     if (guest.param_index == 4)
         creature->state++;
     creature->timer = (int16_t)((int16_t)(int8_t)(16 - type->speed) << 2);
-    if (type->flag_18 != 0) {
+    if (type->shoots != 0) {
         int16_t x = (int16_t)(creature->x + 0x16);
 
         if (creature->direction != 1)
@@ -6778,10 +6778,10 @@ static void spawn_stone_enemy(int16_t *entry)
     if ((uint16_t)random_word() > 0x3E80)
         return;
 
-    struct Slot12 *record = 0;
+    struct StoneRecord *record = 0;
 
     for (int i = 0; i < 10; i++) {
-        if (guest.stone_records[i].w[2] == 0) {
+        if (guest.stone_records[i].hp == 0) {
             record = &guest.stone_records[i];
             break;
         }
@@ -6798,19 +6798,19 @@ static void spawn_stone_enemy(int16_t *entry)
     cell[0x80] = 0x0D;
     entry[2] = -1;
     if (old != 0x23) {
-        record->w[0] = (int16_t)(x + 1);
-        record->w[1] = y;
-        record->w[2] = 0x20;
-        record->w[3] = 2;
-        record->w[4] = 4;
-        record->w[5] = 0;
+        record->x = (int16_t)(x + 1);
+        record->y = y;
+        record->hp = 0x20;
+        record->frame = 2;
+        record->vx = 4;
+        record->vy = 0;
     } else {
-        record->w[0] = x;
-        record->w[1] = y;
-        record->w[2] = 0x20;
-        record->w[3] = 0;
-        record->w[4] = -4;
-        record->w[5] = 0;
+        record->x = x;
+        record->y = y;
+        record->hp = 0x20;
+        record->frame = 0;
+        record->vx = -4;
+        record->vy = 0;
     }
 }
 
@@ -6822,23 +6822,23 @@ static void spawn_stone_enemy(int16_t *entry)
 static void update_stone_records(void)
 {
     for (int i = 0; i < 10; i++) {
-        struct Slot12 *r = &guest.stone_records[i];
+        struct StoneRecord *r = &guest.stone_records[i];
 
-        if (r->w[2] == 0)
+        if (r->hp == 0)
             continue;
 
-        int16_t x = r->w[0], y = r->w[1], hp = r->w[2], frame = r->w[3], vx = r->w[4], vy = r->w[5];
+        int16_t x = r->x, y = r->y, hp = r->hp, frame = r->frame, vx = r->vx, vy = r->vy;
         int16_t picture;
 
         if (hp < 0) {   /* $D3B8 */
             x = (int16_t)(x + vx);
             y = (int16_t)(y + vy);
-            r->w[0] = x;
-            r->w[1] = y;
+            r->x = x;
+            r->y = y;
             sprite_draw((int16_t)(x - guest.scroll_x), (int16_t)(y - guest.scroll_y), (uint16_t)(0x5B + frame));
-            if (++r->w[3] >= 0x11) {
-                r->w[2] = 0;
-                r->w[3] = 0;
+            if (++r->frame >= 0x11) {
+                r->hp = 0;
+                r->frame = 0;
             }
             continue;
         }
@@ -6863,16 +6863,16 @@ static void update_stone_records(void)
             }
             x = (int16_t)(x + vx);
             y = (int16_t)(y + vy);
-            r->w[4] = vx;
-            r->w[5] = vy;
+            r->vx = vx;
+            r->vy = vy;
         }
-        r->w[0] = x;
-        r->w[1] = y;
+        r->x = x;
+        r->y = y;
 
         /* $D3F8: the picture */
         if (guest.frame_toggle != 0) {
             if (hp > 4)
-                r->w[2]--;
+                r->hp--;
             else
                 frame = (int16_t)((frame + 1) & 3);
         }
@@ -6881,7 +6881,7 @@ static void update_stone_records(void)
             picture = (int16_t)(picture + 3);
 
         /* $D426: the hit */
-        int16_t strength = r->w[2];
+        int16_t strength = r->hp;
 
         guest.hit_box_extra_width = 0x20;
         guest.hit_box_extra_height = 0x20;
@@ -6889,13 +6889,13 @@ static void update_stone_records(void)
         strength = check_hit_and_walls(x, y, strength);
         guest.creature_hit_flag = 0;
         if (strength >= 0) {
-            r->w[2] = strength;
-            r->w[3] = frame;
+            r->hp = strength;
+            r->frame = frame;
         } else {
             drop_thing(x, y, 0x10);
-            r->w[2] = -1;
+            r->hp = -1;
             score_add_packed(5);
-            r->w[3] = (int16_t)guest.score_words[3];   /* (the original's d3 has been loaded with the score's last word by then: its step of dying begins at that) */
+            r->frame = (int16_t)guest.score_words[3];   /* (the original's d3 has been loaded with the score's last word by then: its step of dying begins at that) */
         }
         sprite_draw((int16_t)(x - guest.scroll_x), (int16_t)(y - guest.scroll_y), (uint16_t)picture);
     }
@@ -6910,7 +6910,7 @@ static const uint8_t *map_cell_at(int16_t x, int16_t y)
 /* orig $004B36 (a thing of kind 4 with the glyph 285, the archer in the map; $DDD8 and $DDF6): in world 2 the thing is taken from the map and, when one of the ten
  * records of falling_things is free, an archer is made there (three to the right of the thing, 24 above it: waiting, state -4, 60 hit points, a timer of 40 and up to 15 more), and
  * the routine at $DE54 is switched on; in world 1 the thing is drawn as a sprite; in the others it is taken from the map */
-static void archer_thing(struct Slot8 *record, int16_t x, int16_t y, int16_t glyph)
+static void archer_thing(struct ThingRecord *record, int16_t x, int16_t y, int16_t glyph)
 {
     if ((int16_t)guest.param_index < 2) {
         sprite_draw(x, (int16_t)(y - guest.scroll_y), (uint16_t)glyph);
@@ -6932,8 +6932,8 @@ static void archer_thing(struct Slot8 *record, int16_t x, int16_t y, int16_t gly
             }
         }
     }
-    record->w[2] = -1;
-    record->w[3] = 0;
+    record->kind = -1;
+    record->state = 0;
 }
 
 /* orig $00DFE0: the body of the archer (the sprite 285) under its head */
@@ -7128,13 +7128,13 @@ dying:
         if (x < 0x158 && x > -0x30 && y > -0x30 && y < 0xD8)
             return;
 
-        struct Slot8 *record = find_free_thing_record();
+        struct ThingRecord *record = find_free_thing_record();
 
         if (record != 0) {
-            record->w[0] = (int16_t)(x + guest.scroll_x);
-            record->w[1] = (int16_t)(y + guest.scroll_y);
-            record->w[2] = 0x6C - 11;
-            record->w[3] = 0;   /* ($8058 sets 1; the clr.w -(a5) after it clears it) */
+            record->x = (int16_t)(x + guest.scroll_x);
+            record->y = (int16_t)(y + guest.scroll_y);
+            record->kind = 0x6C - 11;
+            record->state = 0;   /* ($8058 sets 1; the clr.w -(a5) after it clears it) */
             guest.near_flags[record - guest.thing_records] = 0xff;
         }
         bat->energy = -1;
@@ -7824,17 +7824,17 @@ static void monster_recruit(struct Monster *rec, const struct MonsterType *type,
 static void monster_take(struct MonsterPart *m, int16_t x, int16_t y, int16_t kind)
 {
     for (int i = 199; i >= 0; i--) {
-        struct Slot8 *record = &guest.thing_records[i];
+        struct ThingRecord *record = &guest.thing_records[i];
 
-        if (record->w[3] == 0 || record->w[2] < 0)
+        if (record->state == 0 || record->kind < 0)
             continue;
-        if (record->w[2] != kind || record->w[0] != x || record->w[1] != y)
+        if (record->kind != kind || record->x != x || record->y != y)
             continue;
         m->item_x = x;
         m->item_y = y;
         m->item = kind;
-        record->w[2] = -1;
-        record->w[3] = 0;
+        record->kind = -1;
+        record->state = 0;
         return;
     }
 }
@@ -8386,7 +8386,7 @@ static void monster_start(struct Monster *rec, struct MonsterPart *block)
     rec->chain = 0;
     rec->mask = 0;
     rec->phase = 0;
-    rec->field_6 = type->delay;
+    rec->delay = type->delay;
 }
 
 /* orig $008A98: a record that runs (state 1): its monsters one after the other (monster_index counts them on): free ones (hit points 0) are counted (free_monster_count), the ones that are not there
@@ -9333,17 +9333,17 @@ static void walker_pickup(const struct MonsterType *type, struct WalkMember *m)
         ox = (int16_t)(list[0] + guest.scroll_x);
         oy = (int16_t)(list[1] + guest.scroll_y);
         for (int i = 199; i >= 0; i--) {   /* the records of the things are looked at from the last one */
-            struct Slot8 *record = &guest.thing_records[i];
+            struct ThingRecord *record = &guest.thing_records[i];
 
-            if (record->w[3] == 0 || record->w[2] < 0)
+            if (record->state == 0 || record->kind < 0)
                 continue;
-            if (record->w[2] != list[2] || record->w[0] != ox || record->w[1] != oy)
+            if (record->kind != list[2] || record->x != ox || record->y != oy)
                 continue;
             m->item_x = ox;
             m->item_y = oy;
             m->item = list[2];
-            record->w[2] = -1;
-            record->w[3] = 0;
+            record->kind = -1;
+            record->state = 0;
             return;
         }
         return;
@@ -10087,8 +10087,8 @@ void item_message(int16_t item)
     if (item < 0)
         return;
 
-    const struct Rec10 *record = &guest.thing_kinds[item];
-    const uint8_t *text = guest.message_base + (int16_t)record->w[4];
+    const struct ThingKind *record = &guest.thing_kinds[item];
+    const uint8_t *text = guest.message_base + (int16_t)record->name;
 
     *out++ = 17;
     *out++ = 32;
@@ -10109,10 +10109,10 @@ void item_message(int16_t item)
         *out++ = 17;
         *out++ = 32;
     }
-    if (record->w[3] != 0) {
+    if (record->price != 0) {
         out = copy_text(out, (const uint8_t *)(text_power + 6), &count);
         *out++ = 32;
-        out = put_digits5(out, (int16_t)record->w[3]);
+        out = put_digits5(out, (int16_t)record->price);
         *out++ = 32;
         *out++ = 32;
         *out++ = 17;
@@ -10124,7 +10124,7 @@ void item_message(int16_t item)
 }
 
 /* orig $012A9C: the message of an object (a record of object_slots, a1): its names (name1, name2 when it has one), "Power" with
- * its first_value (up to three digits, no leading zeros) and "Value" with w74 (five digits).  The priority is 30 */
+ * its first_value (up to three digits, no leading zeros) and "Value" with price (five digits).  The priority is 30 */
 void object_message(const struct Object *object)
 {
     uint8_t *start = next_message_slot();
@@ -10167,7 +10167,7 @@ void object_message(const struct Object *object)
     *out++ = 32;
     out = copy_text(out, (const uint8_t *)(text_power + 6), &count);
     *out++ = 32;
-    out = put_digits5(out, object->w74);
+    out = put_digits5(out, object->price);
     *out++ = 32;
     *out++ = 17;
     *out++ = 0;
@@ -10528,17 +10528,17 @@ static void player_after(int16_t d7)
 /* orig $01221C: the first of the 200 records at $19B14 that is in use (third word not negative, fourth not 0) and whose place is near the
  * player's (a box from 4 to the left and 20 to the right, 12 above and 16 below the record, against the player's place 16 to the right and
  * 40 down), or 0.  The original returns it in the condition codes (N set: found) and the record in a0 */
-static struct Slot8 *record_near_player(void)
+static struct ThingRecord *record_near_player(void)
 {
     int16_t x = guest.player_x + 16;
     int16_t y = guest.player_y + 40;
 
     for (int i = 0; i < 200; i++) {
-        struct Slot8 *record = &guest.thing_records[i];
+        struct ThingRecord *record = &guest.thing_records[i];
 
-        if (record->w[2] < 0 || record->w[3] == 0)
+        if (record->kind < 0 || record->state == 0)
             continue;
-        if (x < record->w[0] - 4 || x > record->w[0] + 20 || y < record->w[1] - 12 || y > record->w[1] + 16)
+        if (x < record->x - 4 || x > record->x + 20 || y < record->y - 12 || y > record->y + 16)
             continue;
         return record;
     }
@@ -10680,10 +10680,10 @@ static void panel_shutter_refresh(void)
 
 /* orig $003D48: 1 when the record at (x, y) (a thing of 16 by 16) and the player (his box from 12 to the right and 0 down, 8 more across and
  * 48 down) touch; the original returns it in the condition codes (N set: no) */
-static int record_touches_player(const struct Slot8 *record)
+static int record_touches_player(const struct ThingRecord *record)
 {
-    int16_t x = record->w[0];
-    int16_t y = record->w[1];
+    int16_t x = record->x;
+    int16_t y = record->y;
     int16_t d4 = guest.player_x + 12;
     int16_t d5 = guest.player_y;
 
@@ -10710,17 +10710,17 @@ static void use_lever(void)
         return;
     guest.lever_pressed = 1;
     for (int i = 0; i < 200; i++) {
-        struct Slot8 *record = &guest.thing_records[i];
+        struct ThingRecord *record = &guest.thing_records[i];
 
-        if (record->w[3] == 0 || record->w[2] < 0)
+        if (record->state == 0 || record->kind < 0)
             continue;
 
-        const struct Rec10 *kind = &guest.thing_kinds[(uint16_t)record->w[2]];
+        const struct ThingKind *kind = &guest.thing_kinds[(uint16_t)record->kind];
 
-        if (kind->w[2] != 3)
+        if (kind->kind != 3)
             continue;
 
-        uint32_t place = ((uint32_t)(uint16_t)record->w[0] << 16) | (uint16_t)record->w[1];
+        uint32_t place = ((uint32_t)(uint16_t)record->x << 16) | (uint16_t)record->y;
         struct LeverFlag *entry = 0;
 
         for (int e = 0; e < 64; e++) {
@@ -10735,11 +10735,11 @@ static void use_lever(void)
             continue;
         if (!record_touches_player(record))
             continue;
-        if (kind->w[0] == 288 || kind->w[0] == 290 || kind->w[0] == 292 || kind->w[0] == 232) {
+        if (kind->glyph == 288 || kind->glyph == 290 || kind->glyph == 292 || kind->glyph == 232) {
             guest.lever_entry_ptr = &entry->x;
             guest.lever_step = 0;
         } else {
-            record->w[2] ^= 1;
+            record->kind ^= 1;
             entry->state ^= 1;
         }
         play_sound(10, 6);
@@ -11603,12 +11603,12 @@ static void item_button_step(int16_t d7)
 
 /* orig $010A48: the thing `record` (kind `kind`) is near: without the button it is put back, with it the kind is put in the chosen slot,
  * whose picture is made, and its message is shown */
-static void pickup_take_record(struct Slot8 *record, int16_t kind, int16_t d7)
+static void pickup_take_record(struct ThingRecord *record, int16_t kind, int16_t d7)
 {
     if (!(guest.game_buttons & 1)) {
         guest.pickup_active = 0;
-        record->w[2] = kind;
-        record->w[3] = 1;
+        record->kind = kind;
+        record->state = 1;
         player_end(d7);
         return;
     }
@@ -11629,23 +11629,23 @@ static void pickup_find_near(int16_t d7)
     int16_t y = guest.player_y + 40;
 
     for (int i = 0; i < 200; i++) {
-        struct Slot8 *record = &guest.thing_records[i];
+        struct ThingRecord *record = &guest.thing_records[i];
 
-        if (record->w[2] < 0 || record->w[3] == 0)
+        if (record->kind < 0 || record->state == 0)
             continue;
-        if (x < record->w[0] - 4 || x > record->w[0] + 20 || y < record->w[1] - 12 || y > record->w[1] + 16)
+        if (x < record->x - 4 || x > record->x + 20 || y < record->y - 12 || y > record->y + 16)
             continue;
-        if (record->w[2] >= 192) {
+        if (record->kind >= 192) {
             player_end(d7);
             return;
         }
-        if (((const uint8_t *)offsets_4cba)[record->w[2]] != 2)
+        if (((const uint8_t *)offsets_4cba)[record->kind] != 2)
             continue;
 
-        int16_t kind = record->w[2];
+        int16_t kind = record->kind;
 
-        record->w[2] = -1;
-        record->w[3] = 0;
+        record->kind = -1;
+        record->state = 0;
         pickup_take_record(record, kind, d7);
         return;
     }
@@ -12194,10 +12194,10 @@ static void start_debris_at(int16_t x, int16_t y)
 
 /* orig $006200: whether the bolt at (w[0], w[1]) is in a wall: the tile of the second map under (x, y + 2) is type 1, or the bolt is more than
  * 24 pixels into its tile and the next tile is type 1 */
-static int bolt_in_wall(const struct Slot8 *bolt)
+static int bolt_in_wall(const struct SideBolt *bolt)
 {
-    int16_t x = bolt->w[0];
-    int16_t y = (int16_t)(bolt->w[1] + 2);
+    int16_t x = bolt->x;
+    int16_t y = (int16_t)(bolt->y + 2);
     const uint8_t *tile = guest.level_map->walls;
 
     tile += (int16_t)((x & -32) >> 5);
@@ -12212,7 +12212,7 @@ static int bolt_in_wall(const struct Slot8 *bolt)
 /* orig $006276: the bolt at the screen place (x, y) hits the player when its point (x + 10, y + 4 in the level, 4 more if the player is ducking
  * in state 18 or 19) lies in the player's box (32 wide, 48 high) and player_invulnerable is 0: the player loses 2 energy, the bolt is freed and a
  * debris starts at (x, y) */
-static void bolt_hits_player(struct Slot8 *bolt, int16_t x, int16_t y)
+static void bolt_hits_player(struct SideBolt *bolt, int16_t x, int16_t y)
 {
     int16_t px = (int16_t)(x + 8 + guest.scroll_x + 2);
     int16_t py = (int16_t)(y + 4 + guest.scroll_y);
@@ -12227,7 +12227,7 @@ static void bolt_hits_player(struct Slot8 *bolt, int16_t x, int16_t y)
     if (guest.player_invulnerable != 0)
         return;
     guest.player_energy -= 2;
-    bolt->w[3] = -1;
+    bolt->state = -1;
     start_debris_at(x, y);
 }
 
@@ -12238,41 +12238,41 @@ static void bolt_hits_player(struct Slot8 *bolt, int16_t x, int16_t y)
  * 69 (left) */
 void update_bolts(void)
 {
-    struct Slot8 *bolt = (struct Slot8 *)guest.bolt_slots;
+    struct SideBolt *bolt = (struct SideBolt *)guest.bolt_slots;
 
     for (int i = 0; i < 20; i++, bolt++) {
-        if (bolt->w[3] < 0)
+        if (bolt->state < 0)
             continue;
-        int16_t x = bolt->w[0];
-        int16_t y = bolt->w[1];
-        int16_t dx = bolt->w[2];
+        int16_t x = bolt->x;
+        int16_t y = bolt->y;
+        int16_t dx = bolt->dx;
 
         x += dx;
         if (dx == 0) {
-            bolt->w[3]++;
-            if (bolt->w[3] == 3 || bolt->w[3] == 6) {
-                bolt->w[3] = -1;
+            bolt->state++;
+            if (bolt->state == 3 || bolt->state == 6) {
+                bolt->state = -1;
                 continue;
             }
-            glyph_draw(x - guest.scroll_x, y - guest.scroll_y, 69 + bolt->w[3]);
+            glyph_draw(x - guest.scroll_x, y - guest.scroll_y, 69 + bolt->state);
             continue;
         }
-        bolt->w[0] = x;
+        bolt->x = x;
         x -= guest.scroll_x;
         y -= guest.scroll_y;
         if (dx > 0) {
             if (x >= 320) {
-                bolt->w[3] = -1;
+                bolt->state = -1;
                 continue;
             }
         } else if (x <= -16) {
-            bolt->w[3] = -1;
+            bolt->state = -1;
             continue;
         }
         if (bolt_in_wall(bolt)) {
-            bolt->w[3] = dx < 0 ? 1 : 4;
-            bolt->w[2] = 0;
-            glyph_draw(x, y, 69 + bolt->w[3]);
+            bolt->state = dx < 0 ? 1 : 4;
+            bolt->dx = 0;
+            glyph_draw(x, y, 69 + bolt->state);
             continue;
         }
         bolt_hits_player(bolt, x, y);
@@ -12329,7 +12329,7 @@ void clear_monsters(void)
 void clear_stone_records(void)
 {
     for (int i = 0; i < 10; i++)
-        guest.stone_records[i].w[2] = 0;
+        guest.stone_records[i].hp = 0;
 }
 
 /* orig $00D87E: spore_count is cleared and so is the byte at +9 of the ten records (12 bytes) at spore_records */
@@ -13089,9 +13089,9 @@ void mark_pickup_cells(void)
     uint8_t *cell = guest.level_map->tiles;
 
     for (int i = 0; i < 10; i++) {
-        guest.pickup_spots[i].w[0] = -1;
-        guest.pickup_spots[i].w[1] = -1;
-        guest.pickup_spots[i].w[2] = -1;
+        guest.pickup_spots[i].x = -1;
+        guest.pickup_spots[i].y = -1;
+        guest.pickup_spots[i].kind = -1;
     }
     for (int n = 0; n < 8192; n++, cell++) {
         if (*cell != wanted_a && *cell != wanted_b)
@@ -13158,7 +13158,7 @@ void link_levers_to_flags(void)
 
         if (kind < 0 || kind >= 192)
             continue;
-        if ((int16_t)guest.thing_kinds[kind].w[2] != 3)
+        if ((int16_t)guest.thing_kinds[kind].kind != 3)
             continue;
         struct LeverFlag *entry = find_flag_entry((int16_t)record->w[0], (int16_t)record->w[1]);
 
@@ -13481,19 +13481,19 @@ void records_from_table(void)
 {
     find_duplicate_records();
     for (int i = 0; i < 200; i++) {
-        struct Slot8 *to = &guest.thing_records[i];
+        struct ThingRecord *to = &guest.thing_records[i];
         const struct Rec6 *from = &guest.record_table[i];
 
         if ((int16_t)from->w[2] < 0) {
-            to->w[0] = 0xFFFF;
-            to->w[1] = 0xFFFF;
-            to->w[2] = 0xFFFF;
+            to->x = 0xFFFF;
+            to->y = 0xFFFF;
+            to->kind = 0xFFFF;
         } else {
-            to->w[0] = from->w[0];
-            to->w[1] = from->w[1];
-            to->w[2] = from->w[2];
+            to->x = from->w[0];
+            to->y = from->w[1];
+            to->kind = from->w[2];
         }
-        to->w[3] = 0;
+        to->state = 0;
     }
     link_levers_to_flags();
     activate_records_now();
@@ -16619,8 +16619,8 @@ static void shop_score(void)
 static uint32_t shop_item_value(uint16_t id)
 {
     if ((int16_t)id < 0xC0)
-        return guest.thing_kinds[id].w[3];
-    return (uint16_t)((struct Object *)guest.object_slots)[id - 0xC0].w74;
+        return guest.thing_kinds[id].price;
+    return (uint16_t)((struct Object *)guest.object_slots)[id - 0xC0].price;
 }
 
 /* orig $0140A4 and what it calls ($01413C, $01415C, $0141F8): the list is filtered: an item is left out when its kind of pick-up has been bought, when (no weapon in any slot) it is item 2 or 3, when
@@ -16777,7 +16777,7 @@ static int shop_press_work(void)
 
     if (id < 0xC0) {   /* a pick-up */
         play_sound(0x21, 3);
-        uint32_t price = guest.thing_kinds[id].w[3];
+        uint32_t price = guest.thing_kinds[id].price;
 
         guest.score_total_1fc -= price;
         int16_t kind = 0;
@@ -16826,12 +16826,12 @@ static int shop_press_work(void)
     slot = shop_object_slot(item);
     if (*slot >= 0 && item != *slot) {   /* what the weapon is worth is given back, half of it */
         const struct Object *old = &((const struct Object *)guest.object_slots)[*slot];
-        uint32_t value = (uint32_t)(uint16_t)(old->last_value - old->first_value) * (uint16_t)old->w74;
+        uint32_t value = (uint32_t)(uint16_t)(old->last_value - old->first_value) * (uint16_t)old->price;
 
-        value += (uint32_t)(int32_t)(int16_t)old->w74;
+        value += (uint32_t)(int32_t)(int16_t)old->price;
         guest.score_total_1fc = (uint32_t)((int32_t)guest.score_total_1fc + ((int32_t)value >> 1));
     }
-    guest.score_total_1fc -= (uint16_t)((const struct Object *)guest.object_slots)[item].w74;
+    guest.score_total_1fc -= (uint16_t)((const struct Object *)guest.object_slots)[item].price;
 
     uint16_t saved = guest.message_arg;
 
