@@ -37,14 +37,14 @@ void reset_marker_table(void)
 }
 
 /* orig $00F474: copy 200 records of 6 bytes into the record table */
-void copy_record_table(const struct Rec6 *from)
+void copy_record_table(const struct PlacedThing *from)
 {
     int i;
 
     for (i = 0; i < 200; i++) {
-        guest.record_table[i].w[0] = file_word(&from[i].w[0]);
-        guest.record_table[i].w[1] = file_word(&from[i].w[1]);
-        guest.record_table[i].w[2] = file_word(&from[i].w[2]);
+        guest.record_table[i].x = file_word(&from[i].x);
+        guest.record_table[i].y = file_word(&from[i].y);
+        guest.record_table[i].kind = file_word(&from[i].kind);
     }
 }
 

@@ -66,7 +66,7 @@ struct Voice {
     uint16_t int_bit;
     struct AudioChannel *channel;   /* +8 the channel's registers */
     PAD(2)
-    uint16_t field_e;
+    uint16_t interrupts_left;   /* +14 the audio interrupts to go before the channel is stopped (orig $1FC60: counted down in each; $1FD24 sets 2) */
     PAD(8)
     uint8_t *buffer;          /* +0x18 */
     const uint8_t *sample_a;  /* +0x1c */
@@ -108,6 +108,11 @@ struct StoneRecord { int16_t x, y, hp, frame, vx, vy; };
 struct __attribute__((packed)) SavedByte { uint8_t *address; uint16_t value; };
 
 /* records of the tables the program keeps: their size is what the loops step by */
+/* a thing of the level as the file places it (record_table, 200 of them; the level's things are made from it): where and what it is (an index of thing_kinds; negative none) */
+struct PlacedThing { uint16_t x, y, kind; };
+/* what is kept for a screen: the address of its saved colours' buffer (high and low word) */
+struct ScreenSave { uint16_t buffer_high, buffer_low, unused_4; };
+/* the bytes mark_record_cells saves (entry_table: a list of struct SavedByte) */
 struct Rec6 { uint16_t w[3]; };
 /* an item of the game (the file objects.001, 10 bytes): its picture, what it is (0 and 1 picked up, 3 a lever, 4 a burst; 2 and more only touched), its price and the offset of its name from message_base (-1 none) */
 struct ThingKind { uint16_t glyph; uint16_t unused_2; uint16_t kind; uint16_t price; uint16_t name; };
@@ -132,7 +137,7 @@ struct Image {
 
 /* game_c.c: the records of the objects (80 bytes each, eleven at 0x14988) and of the lists of shots they own */
 struct Object {
-    int16_t w0;             /* +0 */
+    int16_t extra;          /* +0 0: the weapon goes in the first slot; not 0: in one of the other two (pick_slot) */
     int16_t draw_type;      /* +2 how a shot is drawn (0 a glyph, 1 a sprite, 2 and 3 two of them) */
     int16_t frame;          /* +4 */
     int16_t first_value;    /* +6 */
@@ -826,7 +831,7 @@ struct Gods {
     uint16_t copper_colour_count;   /* $001EC */
     uint16_t color_line_spacing;   /* $001EE */
     uint16_t door_entered;   /* $001F0 */
-    uint16_t unused_1f2;   /* $001F2 */
+    uint16_t ready_frames;   /* $001F2 */
     int16_t shot_prev_x;   /* $001F4 */
     int16_t shot_prev_y;   /* $001F6 */
     uint16_t unused_1f8;   /* $001F8 */
@@ -1081,7 +1086,7 @@ struct Gods {
     PAD(4)
     const struct LevelEnd *level_end_record;   /* $00BC6 */
     PAD(4)
-    uint8_t *unused_buffer_10;   /* $00BCE */
+    uint8_t *game_record_start;   /* $00BCE */
     uint8_t *game_record_ptr;   /* $00BD2 */
     int16_t hit_list[75];   /* $00BD6 */
     uint32_t hit_list_offset;   /* $00C6C */
@@ -1136,7 +1141,7 @@ struct Gods {
     uint8_t image_draw_flags;   /* $00DDD */
     uint16_t draw_routine_index;   /* $00DDE */
     const int16_t *clip_rect_list;   /* $00DE0 */
-    struct Rec6 buffer_state[2];   /* $00DE4 */
+    struct ScreenSave buffer_state[2];   /* $00DE4 */
     PAD(30)
     uint16_t palette_dirty;   /* $00E0E */
     uint16_t shadow_table[16];   /* $00E10 */
@@ -1341,7 +1346,7 @@ struct Gods {
     struct Bolt bolt_records[20];   /* $1A154 */
     uint16_t crumble_table[120];   /* $1A30C */
     uint32_t marker_table[100];   /* $1A3FC */
-    struct Rec6 record_table[200];   /* $1A58C */
+    struct PlacedThing record_table[200];   /* $1A58C */
     PAD(42)
     struct LevelData level_data;   /* $1AA66 */
     PAD(902)
@@ -1428,7 +1433,7 @@ LAYOUT_ASSERT(offsetof(struct Gods, entry_table_index) == 0x1ea, "entry_table_in
 LAYOUT_ASSERT(offsetof(struct Gods, copper_colour_count) == 0x1ec, "copper_colour_count");
 LAYOUT_ASSERT(offsetof(struct Gods, color_line_spacing) == 0x1ee, "color_line_spacing");
 LAYOUT_ASSERT(offsetof(struct Gods, door_entered) == 0x1f0, "door_entered");
-LAYOUT_ASSERT(offsetof(struct Gods, unused_1f2) == 0x1f2, "unused_1f2");
+LAYOUT_ASSERT(offsetof(struct Gods, ready_frames) == 0x1f2, "ready_frames");
 LAYOUT_ASSERT(offsetof(struct Gods, shot_prev_x) == 0x1f4, "shot_prev_x");
 LAYOUT_ASSERT(offsetof(struct Gods, shot_prev_y) == 0x1f6, "shot_prev_y");
 LAYOUT_ASSERT(offsetof(struct Gods, unused_1f8) == 0x1f8, "unused_1f8");
@@ -1656,7 +1661,7 @@ LAYOUT_ASSERT(offsetof(struct Gods, current_record_block) == 0xbb6, "current_rec
 LAYOUT_ASSERT(offsetof(struct Gods, shift_bits) == 0xbba, "shift_bits");
 LAYOUT_ASSERT(offsetof(struct Gods, shift_source) == 0xbbe, "shift_source");
 LAYOUT_ASSERT(offsetof(struct Gods, level_end_record) == 0xbc6, "level_end_record");
-LAYOUT_ASSERT(offsetof(struct Gods, unused_buffer_10) == 0xbce, "unused_buffer_10");
+LAYOUT_ASSERT(offsetof(struct Gods, game_record_start) == 0xbce, "game_record_start");
 LAYOUT_ASSERT(offsetof(struct Gods, game_record_ptr) == 0xbd2, "game_record_ptr");
 LAYOUT_ASSERT(offsetof(struct Gods, hit_list) == 0xbd6, "hit_list");
 LAYOUT_ASSERT(offsetof(struct Gods, hit_list_offset) == 0xc6c, "hit_list_offset");

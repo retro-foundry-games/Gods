@@ -57,7 +57,7 @@ void sound_init(void)
         custom->aud[i].lc = ADDR(silence);
         guest.voice[i].length = 8;
         custom->aud[i].len = 8;
-        guest.voice[i].field_e = 2;
+        guest.voice[i].interrupts_left = 2;
         custom->aud[i].per = 0x100;
     }
     custom->dmacon = 0x000f;
@@ -166,7 +166,7 @@ void memory_map_init(void)
     p += 0x960;
     guest.message_offsets = p;
     p += 0x50;
-    guest.unused_buffer_10 = p;
+    guest.game_record_start = p;
     p += 0xa;
     guest.bolt_slots = p;
     p += 0xa0;
@@ -189,12 +189,12 @@ void display_state_reset(void)
     uint32_t first = (uint32_t)(uintptr_t)guest.copper_save;
     uint32_t second = (uint32_t)(uintptr_t)guest.copper_save_second;
 
-    guest.buffer_state[0].w[2] = 0;
-    guest.buffer_state[0].w[0] = first >> 16;
-    guest.buffer_state[0].w[1] = (uint16_t)first;
-    guest.buffer_state[1].w[2] = 0;
-    guest.buffer_state[1].w[0] = second >> 16;
-    guest.buffer_state[1].w[1] = (uint16_t)second;
+    guest.buffer_state[0].unused_4 = 0;
+    guest.buffer_state[0].buffer_high = first >> 16;
+    guest.buffer_state[0].buffer_low = (uint16_t)first;
+    guest.buffer_state[1].unused_4 = 0;
+    guest.buffer_state[1].buffer_high = second >> 16;
+    guest.buffer_state[1].buffer_low = (uint16_t)second;
 }
 
 /* orig $039E50: the start.  The chips, the memory map and the sound are set up (the original moves the stack to stack_top here;

@@ -21,6 +21,8 @@ STRUCTS = {
     "ThingRecord": (8, [(0, 2), (2, 2), (4, 2), (6, 2)]),
     "StoneRecord": (12, [(2 * i, 2) for i in range(6)]),
     "Rec6": (6, [(0, 2), (2, 2), (4, 2)]),
+    "PlacedThing": (6, [(0, 2), (2, 2), (4, 2)]),
+    "ScreenSave": (6, [(0, 2), (2, 2), (4, 2)]),
     "ThingKind": (10, [(2 * i, 2) for i in range(5)]),
     # struct Rec80 is used as struct Object (80 bytes)
     "Rec80": (80, [(0, 2), (2, 2), (4, 2), (6, 2), (8, 2), (10, 2), (12, 2), (14, 2), (20, 4), (24, 4), (28, 2), (30, 2), (74, 2)]),

@@ -27,7 +27,7 @@ saved_slot_words  0x000148e8  uint16_t %s[22]   two words of each of the eleven 
 object_slots      0x00014988  struct Rec80 %s[11]   eleven records of 80 bytes
 thing_kinds       0x00014cf8  struct ThingKind %s[132]   built by build_thing_kinds
 marker_table      0x0001a3fc  uint32_t %s[100]   set to -1 by reset_marker_table
-record_table      0x0001a58c  struct Rec6 %s[200]   copied in by copy_record_table
+record_table      0x0001a58c  struct PlacedThing %s[200]   copied in by copy_record_table
 entry_table       0x0003a25e  struct Rec6 %s[50]   cleared by clear_entry_table
 table creature_templates 0x0001c698 struct CreatureTemplate 51   what a group is: its draw kind, move and step routines and its box (the pointers of table_1c678 point into it)
 table clip_rectangles 0x00000128 uint16_t 6   the clip rectangles of image_draw_clipped (x0, x1, y0, y1: the whole screen; a negative x0 ends the list)
@@ -48,7 +48,7 @@ repeat_delay      0x0000049c  int16_t %s      frames before next_request repeats
 screen_other      0x00000e64  uint8_t *%s     the other screen: the one that is shown while screen_buffer is drawn on
 copper_save       0x00000e50  uint16_t *%s    where copper_colors_save puts the colours of the copper list, and the fades take their target from
 palette_dirty     0x00000e0e  uint16_t %s     non-zero: the vertical blank copies the shadow table to the colour registers
-buffer_state      0x00000de4  struct Rec6 %s[2]   what is kept for each of the two screens; swapped when they are
+buffer_state      0x00000de4  struct ScreenSave %s[2]   what is kept for each of the two screens; swapped when they are
 vbl_saturating    0x0001d058  volatile uint16_t %s     frames since the last flip, stops at $7FFF
 vbl_count         0x0001d05a  volatile uint16_t %s     frames, wraps
 copper_lists      0x00004d8a  struct CopperLists %s   the copper program: the lists of the two screens, the tail they share, the colour bands of the level and the message
@@ -125,7 +125,7 @@ level_map          0x00000b86  struct LevelMap *%s
 copper_colours          0x00000cda  uint8_t *%s
 unit_member_blocks         0x00000cfa  uint8_t *%s[5]   five pointers, 200 bytes apart (the first is set by memory_map_init)
 message_offsets          0x00000cba  uint8_t *%s
-unused_buffer_10          0x00000bce  uint8_t *%s
+game_record_start          0x00000bce  uint8_t *%s   where game_record_ptr starts (orig $3690 and $36AA reset it to this); the ten bytes of the buffer the start-up cuts out
 bolt_slots          0x00000cce  uint8_t *%s
 path_records          0x00000c9e  struct PathRecord *%s
 unused_scratch_alias          0x00000bb2  uint8_t *%s
@@ -518,7 +518,7 @@ start_y           0x0000021c  int16_t %s
 level_files_read          0x00000286  int16_t %s      -1: the level's files were read
 copper_colour_count          0x000001ec  uint16_t %s     how many colours the level's copper list has
 color_line_spacing          0x000001ee  uint16_t %s     the spacing of the lines of the level's colours
-unused_1f2          0x000001f2  uint16_t %s
+ready_frames          0x000001f2  uint16_t %s   frames to go (negative: none) of the text "PLAYER ONE" and "READY" that orig $3BD2 draws; the port does not draw it
 unused_1f8          0x000001f8  uint16_t %s
 unused_1ba          0x000001ba  uint16_t %s
 unused_1de          0x000001de  uint16_t %s

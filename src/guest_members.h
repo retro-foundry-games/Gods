@@ -26,7 +26,7 @@ static const struct GuestMember { uint32_t address, size; void *dst; } guest_mem
     { 0x1ec, 2, &guest.copper_colour_count },   /* copper_colour_count */
     { 0x1ee, 2, &guest.color_line_spacing },   /* color_line_spacing */
     { 0x1f0, 2, &guest.door_entered },   /* door_entered */
-    { 0x1f2, 2, &guest.unused_1f2 },   /* unused_1f2 */
+    { 0x1f2, 2, &guest.ready_frames },   /* ready_frames */
     { 0x1f4, 2, &guest.shot_prev_x },   /* shot_prev_x */
     { 0x1f6, 2, &guest.shot_prev_y },   /* shot_prev_y */
     { 0x1f8, 2, &guest.unused_1f8 },   /* unused_1f8 */
@@ -254,7 +254,7 @@ static const struct GuestMember { uint32_t address, size; void *dst; } guest_mem
     { 0xbba, 4, &guest.shift_bits },   /* shift_bits */
     { 0xbbe, 4, &guest.shift_source },   /* shift_source */
     { 0xbc6, 4, &guest.level_end_record },   /* level_end_record */
-    { 0xbce, 4, &guest.unused_buffer_10 },   /* unused_buffer_10 */
+    { 0xbce, 4, &guest.game_record_start },   /* game_record_start */
     { 0xbd2, 4, &guest.game_record_ptr },   /* game_record_ptr */
     { 0xbd6, 150, &guest.hit_list },   /* hit_list */
     { 0xc6c, 4, &guest.hit_list_offset },   /* hit_list_offset */

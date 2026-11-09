@@ -301,7 +301,7 @@ static void player_respawn(void)
     guest.player_frame = 0;
     guest.fall_distance = 0;
     guest.ladder_side = 0;
-    guest.unused_1f2 = 3;
+    guest.ready_frames = 3;
     activate_records_now();
     host_iteration_mark();
     host_cpu_frames(2);   /* (the original's drawing of that frame: its sounds are started two frames in; the flip comes then or a frame later, by what is on the screen: in the lockstep it waits for the original's) */
@@ -10302,7 +10302,7 @@ int16_t hint_message(void)
 }
 
 /* orig $015328 (inlined: the item is d2, the object's record a1): which of the three slots (slot_ref_6b6, 748, 7da) a new object
- * goes in: the first for one whose first word is 0, else the second when it is free, else the third when it is free, else the one
+ * goes in: the first for one whose extra is 0, else the second when it is free, else the third when it is free, else the one
  * whose object has the smaller last_value; the item 2 goes in the third at once (and shot_id_bias becomes 18).  Returns the number of the slot */
 static int pick_slot(int16_t item, const struct Object *object)
 {
@@ -10310,7 +10310,7 @@ static int pick_slot(int16_t item, const struct Object *object)
         guest.shot_id_bias = 18;
         return 2;
     }
-    if (object->w0 == 0)
+    if (object->extra == 0)
         return 0;
     if (guest.shot_lists[1].object < 0)
         return 1;
@@ -12924,7 +12924,7 @@ void load_level_map(void)
     to = (uint16_t *)guest.level_map;
     for (int i = 0; i < 8192; i++)
         *to++ = *p++;
-    copy_record_table((const struct Rec6 *)p);
+    copy_record_table((const struct PlacedThing *)p);
     p += 600;
     p = (const uint16_t *)read_text_table_long_offsets((const uint8_t *)p);
     load_script_records((const uint8_t *)p);
@@ -13151,21 +13151,21 @@ struct LeverFlag *find_flag_entry(int16_t x, int16_t y)
  * entry in lever_flags (found by its place), or -1 when it has none; lever_step becomes -1 */
 void link_levers_to_flags(void)
 {
-    struct Rec6 *record = guest.record_table;
+    struct PlacedThing *record = guest.record_table;
 
     for (int i = 0; i < 200; i++, record++) {
-        int16_t kind = (int16_t)record->w[2];
+        int16_t kind = (int16_t)record->kind;
 
         if (kind < 0 || kind >= 192)
             continue;
         if ((int16_t)guest.thing_kinds[kind].kind != 3)
             continue;
-        struct LeverFlag *entry = find_flag_entry((int16_t)record->w[0], (int16_t)record->w[1]);
+        struct LeverFlag *entry = find_flag_entry((int16_t)record->x, (int16_t)record->y);
 
         if (entry == 0)
-            record->w[2] = 0xFFFF;
+            record->kind = 0xFFFF;
         else
-            entry->state = record->w[2];
+            entry->state = record->kind;
     }
     guest.lever_step = -1;
 }
@@ -13175,14 +13175,14 @@ void link_levers_to_flags(void)
 void find_duplicate_records(void)
 {
     uint32_t seen[64];
-    struct Rec6 *record = guest.record_table;
+    struct PlacedThing *record = guest.record_table;
 
     for (int i = 0; i < 64; i++)
         seen[i] = 0xFFFFFFFF;
     for (int i = 0; i < 200; i++, record++) {
-        int16_t x = (int16_t)record->w[0];
-        int16_t y = (int16_t)record->w[1];
-        int16_t kind = (int16_t)record->w[2];
+        int16_t x = (int16_t)record->x;
+        int16_t y = (int16_t)record->y;
+        int16_t kind = (int16_t)record->kind;
 
         if (kind >= 192)
             continue;
@@ -13193,7 +13193,7 @@ void find_duplicate_records(void)
         if (*(int16_t *)((uint8_t *)guest.thing_kinds + (int16_t)offset + 4) != 3)
             continue;
         if (find_flag_entry(x, y) == 0) {
-            record->w[2] = 0xFFFF;
+            record->kind = 0xFFFF;
             continue;
         }
         uint32_t key = ((uint32_t)(uint16_t)x << 16) | (uint16_t)y;
@@ -13206,7 +13206,7 @@ void find_duplicate_records(void)
             }
         }
         if (found) {
-            record->w[2] = 0xFFFF;
+            record->kind = 0xFFFF;
             continue;
         }
         for (int k = 0; k < 64; k++) {
@@ -13446,7 +13446,7 @@ void level_state_init(void)
     guest.particle_burst_active = 0;
     guest.particle_glyph_step = 0;
     guest.particle_burst_counter = 0;
-    guest.unused_1f2 = 4;
+    guest.ready_frames = 4;
     guest.last_drop_frame = -1;
     guest.burst_marks[0] = -1;
     guest.burst_marks[3] = -1;
@@ -13482,16 +13482,16 @@ void records_from_table(void)
     find_duplicate_records();
     for (int i = 0; i < 200; i++) {
         struct ThingRecord *to = &guest.thing_records[i];
-        const struct Rec6 *from = &guest.record_table[i];
+        const struct PlacedThing *from = &guest.record_table[i];
 
-        if ((int16_t)from->w[2] < 0) {
+        if ((int16_t)from->kind < 0) {
             to->x = 0xFFFF;
             to->y = 0xFFFF;
             to->kind = 0xFFFF;
         } else {
-            to->x = from->w[0];
-            to->y = from->w[1];
-            to->kind = from->w[2];
+            to->x = from->x;
+            to->y = from->y;
+            to->kind = from->kind;
         }
         to->state = 0;
     }

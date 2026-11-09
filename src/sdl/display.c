@@ -91,7 +91,7 @@ extern void shop_flip_strip(void);
 
 void screens_flip(void)
 {
-    struct Rec6 state = guest.buffer_state[0];
+    struct ScreenSave state = guest.buffer_state[0];
     struct CopperHead *list;
     uint8_t *swap;
     extern void host_flip_wait(void);
