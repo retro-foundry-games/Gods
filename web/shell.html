@@ -3,40 +3,69 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
 <title>Gods</title>
 <style>
-  html, body { margin: 0; height: 100%; background: #05070a; color: #d8dee9; font: 15px/1.4 system-ui, sans-serif; }
-  main { max-width: 34rem; margin: 8vh auto 0; padding: 1.5rem; background: #10151c; border: 1px solid #263140; border-radius: 6px; }
-  h1 { margin: 0 0 .5rem; font-size: 1.6rem; letter-spacing: .08em; }
-  small { display: block; margin: .6rem 0; color: #8d9db0; }
-  button { font: inherit; padding: .45rem 1rem; margin-right: .5rem; background: #1d2733; color: inherit; border: 1px solid #3b4a5e; border-radius: 4px; cursor: pointer; }
-  button:disabled { opacity: .45; cursor: default; }
-  #status { min-height: 1.4em; margin-top: .8rem; color: #e5c07b; }
-  #game { display: none; height: 100%; align-items: center; justify-content: center; }
-  canvas { max-width: 100vw; max-height: 100vh; width: 100vw; height: calc(100vw * 5 / 6 * 0.8333); image-rendering: pixelated; outline: none; background: #000; }
-  @media (min-aspect-ratio: 6/5) { canvas { width: calc(100vh * 6 / 5); height: 100vh; } }
+  :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  body { align-items: center; background: #080b10; color: #e9eef7; display: flex; justify-content: center; margin: 0; height: 100vh; overflow: hidden; }
+  #launcher { background: #111722; border: 2px dashed #63728a; border-radius: 12px; max-width: 44rem; max-height: calc(100vh - 2rem); overflow-y: auto; padding: 2.25rem; text-align: center; width: calc(100% - 2rem); }
+  .brand-logo { display: block; width: min(100%, 22rem); height: 10rem; object-fit: cover; margin: 0 auto 1.5rem; border-radius: 6px; }
+  #launcher.drag { background: #15233a; border-color: #8db9ff; }
+  #launcher.error { border-color: #ef6d78; }
+  #status { min-height: 1.5em; }
+  .actions { display: flex; flex-wrap: wrap; gap: .75rem; justify-content: center; margin-top: 1rem; }
+  button { background: #d7e6ff; border: 0; border-radius: 6px; color: #09101a; cursor: pointer; font: inherit; font-weight: 700; padding: .75rem 1rem; }
+  button:disabled { cursor: not-allowed; opacity: .45; }
+  small { color: #aeb9c9; display: block; margin-top: 1rem; }
+  .credit-overlay { position: fixed; top: 12px; right: 12px; z-index: 3; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; background: rgba(18,18,22,.85); box-shadow: 0 4px 20px rgba(0,0,0,.35); }
+  .credit-overlay a { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border-radius: 10px; color: #a0a0a8; transition: color .2s, background .2s, transform .15s; }
+  .credit-overlay a:focus-visible, .credit-overlay a:hover { color: #fff; background: rgba(255,255,255,.1); outline: 0; transform: scale(1.08); }
+  .credit-overlay a:active { transform: scale(.98); }
+  .credit-overlay .icon { width: 28px; height: 28px; fill: currentColor; }
+  .credit-overlay a:focus-visible .icon-discord, .credit-overlay a:hover .icon-discord { color: #5865f2; }
+  .credit-overlay a:focus-visible .icon-patreon, .credit-overlay a:hover .icon-patreon { color: #ff424d; }
+  @media (max-width: 520px) { .credit-overlay { top: 6px; right: 6px; gap: 4px; padding: 6px; } .credit-overlay a { width: 38px; height: 38px; } .credit-overlay .icon { width: 24px; height: 24px; } }
+  #game { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; overflow: hidden; }
+  canvas { border: 0; display: block; image-rendering: pixelated; outline: none; background: #000; }
 </style>
 </head>
 <body>
 <main id="launcher">
-  <h1>GODS</h1>
-  <p>The Bitmap Brothers' Gods (Amiga, 1991) as a WebAssembly build of the C port. It needs your own copy of the two disks.</p>
-  <div>
-    <button id="choose" type="button">Choose the two ADF files</button>
-    <button id="start" type="button" disabled>Start game</button>
+  <img alt="Retro Foundry" class="brand-logo" height="5000" src="retro-foundry.png" width="5000">
+  <h1>Gods</h1>
+  <p>Drop your <strong>Gods disk 1 and disk 2 .adf</strong> files here.</p>
+  <p id="status" role="status" aria-live="polite">Loading the browser runtime&hellip;</p>
+  <div class="actions">
+    <button type="button" id="choose">Choose ADFs</button>
+    <button type="button" id="start" disabled>Start Game</button>
   </div>
-  <input id="files" type="file" accept=".adf,application/octet-stream" multiple hidden>
+  <input accept=".adf,application/octet-stream" hidden id="files" type="file" multiple>
   <small id="picked">Disk 1 of 2: not chosen &middot; Disk 2 of 2: not chosen</small>
-  <small>The disks stay in this tab and are never uploaded. The high scores and the level codes are kept in this browser.
-    Arrows and Space (fire); Esc leaves a game for the menu; letters, Return and Backspace type a level code.</small>
-  <div id="status" role="status">Loading...</div>
+  <small>The disks stay in memory for this tab and are never uploaded. High scores and level codes persist in this browser.</small>
+  <small>Arrows and Space (fire); letters, Return and Backspace type a level code. Esc leaves a game for the menu. F11 or Alt+Enter toggles fullscreen.</small>
 </main>
 <div id="game"><canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas></div>
+<nav aria-label="Retro Foundry links" class="credit-overlay">
+  <a href="https://discord.gg/gXYDaaaKbm" rel="noopener noreferrer" target="_blank" aria-label="Retro Foundry Discord" title="Discord - Retro Foundry"><svg aria-hidden="true" class="icon icon-discord" viewBox="0 0 24 24"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg></a>
+  <a href="https://www.patreon.com/cw/retrofoundry" rel="noopener noreferrer" target="_blank" aria-label="Support Retro Foundry on Patreon" title="Patreon - Retro Foundry"><svg aria-hidden="true" class="icon icon-patreon" viewBox="0 0 1080 1080"><path d="M1033.05 324.45c-.19-137.9-107.59-250.92-233.6-291.7-156.48-50.64-362.86-43.3-512.28 27.2C106.07 145.41 49.18 332.61 47.06 519.31c-1.74 153.5 13.58 557.79 241.62 560.67 169.44 2.15 194.67-216.18 273.07-321.33 55.78-74.81 127.6-95.94 216.01-117.82 151.95-37.61 255.51-157.53 255.29-316.38z"/></svg></a>
+</nav>
 <script>
   const status = document.getElementById('status');
   const chooser = document.getElementById('files');
   const startButton = document.getElementById('start');
   const picked = document.getElementById('picked');
+  const launcher = document.getElementById('launcher');
+  let launching = false;
+  const canvas = document.getElementById('canvas');
+  function fitCanvas() {   // the Amiga's shape: 6:5
+    const width = Math.min(window.innerWidth, window.innerHeight * 6 / 5);
+    canvas.style.width = Math.floor(width) + 'px';
+    canvas.style.height = Math.floor(width * 5 / 6) + 'px';
+  }
+  window.addEventListener('resize', fitCanvas);
+  document.addEventListener('fullscreenchange', fitCanvas);
+  fitCanvas();
   const disks = [null, null];
   var Module = {
     canvas: document.getElementById('canvas'),
@@ -50,23 +79,45 @@
     picked.innerHTML = 'Disk 1 of 2: ' + (disks[0] ? disks[0].name : 'not chosen') + ' &middot; Disk 2 of 2: ' + (disks[1] ? disks[1].name : 'not chosen');
     const ready = runtimeReady && disks[0] && disks[1];
     startButton.disabled = !ready;
-    status.textContent = !runtimeReady ? 'Loading...' : ready ? 'Ready.' : 'Choose the two disk images (gods-disk1.adf and gods-disk2.adf).';
+    launcher.classList.remove('error');
+    status.textContent = !runtimeReady ? 'Loading the browser runtime\u2026' : ready ? 'Ready.' : 'Choose or drop the two disk images (disk 1 and disk 2).';
   }
   document.getElementById('choose').addEventListener('click', () => chooser.click());
-  chooser.addEventListener('change', async () => {
-    const list = [...chooser.files];
+  async function importFiles(files) {
     // the disk's number: the name says it ("Disk 1 of 2", "gods-disk2.adf"); else the order they were chosen in
-    for (const [i, file] of list.entries()) {
+    for (const [i, file] of [...files].entries()) {
       const bytes = new Uint8Array(await file.arrayBuffer());
       const named = /(?:disk|d)\s*([12])/i.exec(file.name);
       const slot = named ? Number(named[1]) - 1 : i;
       if (slot < 2) disks[slot] = { name: file.name, bytes };
     }
     refresh();
+  }
+  function fail(message) {
+    launcher.classList.add('error');
+    status.textContent = message;
+  }
+  chooser.addEventListener('change', () => importFiles(chooser.files));
+  document.addEventListener('dragover', (e) => { e.preventDefault(); if (!launching) launcher.classList.add('drag'); });
+  document.addEventListener('dragleave', () => launcher.classList.remove('drag'));
+  document.addEventListener('drop', (e) => {
+    e.preventDefault();
+    launcher.classList.remove('drag');
+    if (!launching && e.dataTransfer.files.length) importFiles(e.dataTransfer.files);
   });
+  document.addEventListener('keydown', (e) => {
+    if (launching && (e.code === 'F11' || (e.code === 'Enter' && e.altKey))) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (e.repeat) return;
+      (document.fullscreenElement ? document.exitFullscreen() : document.getElementById('game').requestFullscreen())
+        .catch((err) => fail('Could not toggle fullscreen: ' + (err.message || err)));
+    }
+  }, true);
   startButton.addEventListener('click', async () => {
     startButton.disabled = true;
-    status.textContent = 'Starting...';
+    launching = true;
+    status.textContent = 'Starting\u2026';
     const FS = Module.FS;
     FS.writeFile('/gods-disk1.adf', disks[0].bytes);
     FS.writeFile('/gods-disk2.adf', disks[1].bytes);

@@ -39,7 +39,7 @@
           '';
           installPhase = ''
             mkdir -p $out
-            cp build/web/gods.html build/web/gods.js build/web/gods.wasm $out/
+            cp build/web/gods.html build/web/gods.js build/web/gods.wasm build/web/retro-foundry.png $out/
             if [ -f build/web/gods.worker.js ]; then cp build/web/gods.worker.js $out/; fi
             cp scripts/serve_web.py $out/
           '';

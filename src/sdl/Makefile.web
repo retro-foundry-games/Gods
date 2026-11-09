@@ -103,8 +103,9 @@ LINK := -Wl,--allow-multiple-definition -pthread -sPTHREAD_POOL_SIZE=3 -sINITIAL
         -sSTACK_SIZE=1048576 -sDEFAULT_PTHREAD_STACK_SIZE=4194304 -sENVIRONMENT=web,worker -sFORCE_FILESYSTEM=1 -sINVOKE_RUN=0 \
         "-sEXPORTED_RUNTIME_METHODS=['FS','callMain']" -lidbfs.js --shell-file=$(NATIVE)/web/shell.html
 
-$(W)/gods.html: $(HOST_OBJS) $(INTRO_OBJS) $(GAME_OBJS) $(NATIVE)/web/shell.html
+$(W)/gods.html: $(HOST_OBJS) $(INTRO_OBJS) $(GAME_OBJS) $(NATIVE)/web/shell.html $(NATIVE)/web/retro-foundry.png
 	$(EMCC) $(LINK) -o $@ $(HOST_OBJS) $(INTRO_OBJS) $(GAME_OBJS) -L$(SDL3_PREFIX)/lib -lSDL3 -lm
+	cp $(NATIVE)/web/retro-foundry.png $(W)/
 
 serve: $(W)/gods.html
 	$(PYTHON) $(NATIVE)/scripts/serve_web.py $(W)
