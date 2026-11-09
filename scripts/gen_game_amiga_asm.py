@@ -65,8 +65,8 @@ LABELS.update({
     0x1E23A: "timer_start", 0x1E252: "timer_done", 0x1E300: "keyboard_irq_exit",
 })
 LABELS.update({t: f"cmd_{0x80 + 4 * n:02x}" for n, t in enumerate(COMMAND_TARGETS)})
-SIZES = {"char": 1, "uint8_t": 1, "int8_t": 1, "uint16_t": 2, "int16_t": 2, "uint32_t": 4, "int32_t": 4, "struct Rec6": 6, "struct Rec10": 10,
-         "struct Rec80": 80, "struct Entry8": 8, "struct MemLists": 20, "struct Image": 8, "struct AssetEntry": 8, "struct Voice": 148, "void": 2, "struct Slot8": 8, "struct Slot12": 12, "struct SavedByte": 6, "struct PathDescription": 28, "struct LeverFlag": 6, "struct LevelEnd": 34, "struct LevelEnds": 580, "struct Unit": 24, "struct Guardian": 398, "struct LevelData": 7160, "struct ShotList": 146, "struct SoundState": 14, "struct CopperLists": 1408, "struct Monster": 428, "struct Bolt": 22, "struct Planner": 34, "struct PlanItem": 8, "struct WalkGroup": 18, "struct WalkMode": 8}
+SIZES = {"char": 1, "uint8_t": 1, "int8_t": 1, "uint16_t": 2, "int16_t": 2, "uint32_t": 4, "int32_t": 4, "struct Rec6": 6, "struct ThingKind": 10,
+         "struct Rec80": 80, "struct Entry8": 8, "struct MemLists": 20, "struct Image": 8, "struct AssetEntry": 8, "struct Voice": 148, "void": 2, "struct ThingRecord": 8, "struct StoneRecord": 12, "struct SavedByte": 6, "struct PathDescription": 28, "struct LeverFlag": 6, "struct LevelEnd": 34, "struct LevelEnds": 580, "struct Unit": 24, "struct Guardian": 398, "struct LevelData": 7160, "struct ShotList": 146, "struct SoundState": 14, "struct CopperLists": 1408, "struct Monster": 428, "struct Bolt": 22, "struct Planner": 34, "struct PlanItem": 8, "struct WalkGroup": 18, "struct WalkMode": 8}
 
 
 def size_of(decl: str) -> int:
