@@ -10621,8 +10621,8 @@ static void spawn_player_shots_left(void)
         }
 
         struct Object *object = OBJECT(guest.shot_lists[i].object);
-        uint32_t kind = ((uint32_t)object->pad_16[0] << 24) | ((uint32_t)object->pad_16[1] << 16) | ((uint32_t)object->pad_16[2] << 8) |
-                        object->pad_16[3];
+        uint32_t kind = ((uint32_t)object->shot_kind[0] << 24) | ((uint32_t)object->shot_kind[1] << 16) | ((uint32_t)object->shot_kind[2] << 8) |
+                        object->shot_kind[3];
 
         play_sound(2, 4);
         switch (kind) {

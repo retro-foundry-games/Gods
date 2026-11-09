@@ -73,7 +73,7 @@ struct Voice {
     const uint8_t *sample_b;  /* +0x20 */
     PAD(4)
     uint16_t field_28;
-    PAD(0x68)
+    PAD(104)
     uint16_t number;          /* +0x92 */
 };
 
@@ -135,7 +135,7 @@ struct Object {
     int16_t w10;
     int16_t base_frame;     /* +12 */
     int16_t anim_mode;      /* +14 negative: no animation */
-    uint8_t pad_16[4];
+    uint8_t shot_kind[4];   /* +16 big-endian: which shot routine fires it */
     uint32_t fire_kind;     /* +20 which routine of the table at $15220 the object calls */
     uint32_t handler;       /* +24 which routine of the table at $15260 runs its list */
     int16_t max_frame;      /* +28 */
@@ -164,7 +164,7 @@ struct CreatureEntry {
     uint8_t flag_18;
     uint8_t speed;
     uint8_t drop;          /* what the group drops when it is all gone ($FF none) */
-    uint8_t pad_15;
+    RECORD_PAD(1)
 };
 LAYOUT_ASSERT(sizeof(struct CreatureEntry) == 16, "creature entry");
 
@@ -379,7 +379,7 @@ LAYOUT_ASSERT(sizeof(struct LevelEndShort) == 32, "short level end");
 
 struct __attribute__((packed)) LevelEnds {
     struct LevelEnd l1[4];
-    uint16_t pad_14460;
+    RECORD_PAD(2)   /* $14460 */
     struct LevelEnd l2[3];
     struct LevelEndShort l2_3;   /* $144C8: its list offset is the next record's spots */
     struct LevelEnd l2_4;        /* $144E8: the level's end (the guardian's) */
@@ -566,7 +566,7 @@ struct Guardian {
             uint16_t path_low;                /* $512 */
             void (*restore)(void);            /* $514: the routine that makes the guardian's state again (boss_restore_run) */
             struct BossShot shots[15];        /* $518 */
-            PAD(0x668 - 0x5AE)
+            PAD(186)
             uint16_t path_count;              /* $668 */
             PAD(4)
         } boss1;
@@ -606,7 +606,7 @@ struct Guardian {
             struct Boss2Box boxes[7];         /* $5BA: the jaw 1.. see boss2_draw */
             PAD(24)
             int16_t points[10][2];            /* $60A: the places of the neck's pieces (screen) */
-            PAD(0x66E - 0x632)
+            PAD(60)
         } boss2;
         struct {   /* the level 3 guardian */
             uint16_t x;                       /* $4E8 */
@@ -624,7 +624,7 @@ struct Guardian {
             uint16_t can_shoot;               /* $5B2 */
             PAD(4)
             uint16_t fall;                    /* $5B8 */
-            PAD(0x66E - 0x5BA)
+            PAD(180)
         } boss3;
         struct {   /* the level 4 guardian */
             uint16_t x;                       /* $4E8 */
@@ -646,10 +646,10 @@ struct Guardian {
             int16_t fire_y;                   /* $51A */
             int16_t fire_picture;             /* $51C */
             int16_t fire_life;                /* $51E */
-            PAD(0x5AE - 0x520)
+            PAD(142)
             int16_t last_x;                   /* $5AE: the place of the piece that was run last */
             int16_t last_y;                   /* $5B0 */
-            PAD(0x65A - 0x5B2)
+            PAD(168)
             int16_t throne_y;                 /* $65A: the throne's y (the guardian sits on it): $180 and it rises to $B0 */
             int16_t done;                     /* $65C: the count of the pieces that are at the end of their path (+1) or burst (-1) */
             int16_t word_65e;                 /* $65E: set to 6 when the pieces start again */
