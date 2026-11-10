@@ -76,6 +76,8 @@ $(BUILD)/g_display.o: $(HERE)/display.c $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/g_sound.o: $(HERE)/sound.c $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
+$(BUILD)/g_sound_dev.o: $(HERE)/sound.c $(FLAGS_STAMP) | $(BUILD)   # (the development program's: the voices' log, GODS_SOUNDLOG)
+	$(CC) $(GAME_CFLAGS) -DGODS_DEV -MMD -MP -c $< -o $@
 $(BUILD)/g_guest.o: $(HERE)/guest.c $(BUILD)/guest_tables.h $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -I$(BUILD) -MMD -MP -c $< -o $@
 $(BUILD)/g_guest_load.o: $(HERE)/guest_load.c $(BUILD)/guest_tables.h $(BUILD)/guest_fixups.h $(FLAGS_STAMP) | $(BUILD)
@@ -117,8 +119,9 @@ $(BUILD)/intro_program.o: $(INTRO_OBJS)
 COMMON_OBJS := $(HOST_OBJS) $(BUILD)/h_intro_view.o $(BUILD)/intro_program.o $(GAME_OBJS)
 $(BUILD)/gods-sdl: $(BUILD)/h_main.o $(COMMON_OBJS)
 	$(CC) -m32 -no-pie -Wl,--allow-multiple-definition -o $@ $(BUILD)/h_main.o $(COMMON_OBJS) $(HOST_LIBS)
-$(BUILD)/gods-sdl-dev: $(BUILD)/h_devmain.o $(BUILD)/g_dev_game.o $(COMMON_OBJS)
-	$(CC) -m32 -no-pie -Wl,--allow-multiple-definition -o $@ $(BUILD)/h_devmain.o $(BUILD)/g_dev_game.o $(COMMON_OBJS) $(HOST_LIBS)
+DEV_OBJS := $(filter-out $(BUILD)/g_sound.o,$(COMMON_OBJS)) $(BUILD)/g_sound_dev.o
+$(BUILD)/gods-sdl-dev: $(BUILD)/h_devmain.o $(BUILD)/g_dev_game.o $(DEV_OBJS)
+	$(CC) -m32 -no-pie -Wl,--allow-multiple-definition -o $@ $(BUILD)/h_devmain.o $(BUILD)/g_dev_game.o $(DEV_OBJS) $(HOST_LIBS)
 
 run: $(BUILD)/gods-sdl
 	$(BUILD)/gods-sdl --disks $(GODS_DISKS)

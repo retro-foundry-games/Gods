@@ -336,6 +336,26 @@ static void dev_after_blank(void)
 static void dev_after_frame(int frame, int phase, uint32_t *pixels, const int16_t *samples)
 {
     (void)samples;
+    {   /* GODS_STATELOG=FILE: the player's variables at the end of each tick: tick x y state fall_distance stick frame_phase */
+        static FILE *log;
+        static int opened;
+
+        if (!opened) {
+            opened = 1;
+            log = getenv("GODS_STATELOG") ? fopen(getenv("GODS_STATELOG"), "w") : 0;
+        }
+        if (log && phase != PHASE_INTRO) {
+            static const unsigned addresses[] = { 0x1e0, 0x1e2, 0x19c, 0x1e8, 0x226, 0x1e4 };   /* player_x, player_y, player_state, fall_distance, game_stick (a byte), frame_phase */
+
+            fprintf(log, "%d", frame);
+            for (int i = 0; i < 6; i++) {
+                const uint8_t *p = guest_member_ptr(addresses[i]);
+
+                fprintf(log, " %d", !p ? -1 : i == 4 ? *p : *(const int16_t *)p);
+            }
+            fprintf(log, "\n");
+        }
+    }
     if (lockstep) {
         lockstep_ticks++;
         {   /* GODS_TRACE=FIRST-LAST: the draws near the top of the screen of those ticks go to stderr (blitter.c) */
