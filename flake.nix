@@ -21,7 +21,7 @@
         # SDL3 compiled once for Emscripten (nixpkgs' source), so rebuilds of the game reuse it.
         sdl3-emscripten = import ./sdl3-emscripten.nix { inherit pkgs; };
 
-        # The browser build: gods.html, gods.js and gods.wasm (src/sdl/Makefile.web).  The page asks for the two disk images; serve it with scripts/serve_web.py
+        # The browser build, the folder to publish: index.html (the same as gods.html), gods.js and gods.wasm (src/sdl/Makefile.web).  The page asks for the two disk images; serve it with scripts/serve_web.py
         # (the game runs on a thread: the page needs cross-origin isolation).
         web = pkgs.stdenv.mkDerivation {
           pname = "gods-web";
@@ -41,7 +41,7 @@
             mkdir -p $out
             cp build/web/gods.html build/web/gods.js build/web/gods.wasm build/web/retro-foundry.png $out/
             if [ -f build/web/gods.worker.js ]; then cp build/web/gods.worker.js $out/; fi
-            cp scripts/serve_web.py $out/
+            cp build/web/gods.html $out/index.html
           '';
         };
         default = self.packages.${pkgs.system}.web;
