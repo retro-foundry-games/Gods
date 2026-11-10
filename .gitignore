@@ -4,3 +4,6 @@ native/.direnv/
 # a symlink named like these (made in a worktree) must not be committed either
 /captures
 /local
+
+# direnv cache
+.direnv/
