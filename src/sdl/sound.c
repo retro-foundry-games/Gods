@@ -281,6 +281,8 @@ void play_sound(uint16_t id, uint16_t priority)
 
     if (id >= sizeof sound_records / sizeof sound_records[0] || sound_tracks[1] == 0)
         return;   /* no such sound, or no tracks: the sound data is not in memory */
+    if (id == 16)
+        stop_sound(23);   /* orig $01FAFC: the landing stops the falling whistle (a looped track) */
     pthread_mutex_lock(&lock);
     flags = record->flags;
     count = (flags & 0x7f) + 1;
