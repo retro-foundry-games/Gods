@@ -10,6 +10,7 @@ const uint16_t *ih_shown_screen(void);                     /* the screen on show
 uint16_t ih_color(int index);                              /* the colour registers */
 void ih_music_mix(int16_t *out, int frames, int rate);     /* the music: stereo, signed 16 bit */
 void ih_start_menu(void);                                  /* main.c: the intro is over: the menu program is next (does not return) */
+int ih_load_assets(void);                                  /* intro_assets.c: the music and the pictures from bm.1 of disk 1 (0 when done) */
 void game_main(void);                                      /* intro.c: the program (never returns) */
 
 #endif

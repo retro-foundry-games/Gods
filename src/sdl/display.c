@@ -404,11 +404,11 @@ extern volatile int gods_trace;
 
 void blit_tile(int16_t src_step, int16_t dst_step, int16_t rows, const uint8_t *src, uint8_t *dst)
 {
-    if (gods_trace && (long)(dst - guest.screen_buffer) < 44 * 4)
-        fprintf(stderr, "trace blit_tile row %ld col %ld rows %d src %p\n", (long)(dst - guest.screen_buffer) / 44, (long)(dst - guest.screen_buffer) % 44, rows, (const void *)src);
+    if (gods_trace && (long)(dst - guest.screen_buffer) < SCREEN_ROW * 4)
+        fprintf(stderr, "trace blit_tile row %ld col %ld rows %d src %p\n", (long)(dst - guest.screen_buffer) / SCREEN_ROW, (long)(dst - guest.screen_buffer) % SCREEN_ROW, rows, (const void *)src);
     for (int pass = 0; pass < 4; pass++) {
         for (int row = 0; row <= rows; row++)
-            memcpy(dst + row * 44, src + row * 4, 4);
+            memcpy(dst + row * SCREEN_ROW, src + row * 4, 4);
         dst += dst_step;
         src += src_step;
     }
@@ -417,7 +417,7 @@ void blit_tile(int16_t src_step, int16_t dst_step, int16_t rows, const uint8_t *
 /* orig $017814: the whole screen (4 planes of 192 rows of 44 bytes) is copied */
 void copy_screen(const uint8_t *from, uint8_t *to)
 {
-    memcpy(to, from, 4 * 192 * 44);
+    memcpy(to, from, SCREEN_ROW * SCREEN_HEIGHT * SCREEN_PLANES);
 }
 
 /* orig $017100: an image five words wide, drawn with the mask of its planes (the host does it as blit_image_wide does: sdl/blitter.c) */
@@ -435,15 +435,15 @@ void blit_masked(const uint8_t *source, uint8_t *dest, int16_t modulo_ab, uint16
 {
     unsigned source_row = words * 2u + (unsigned)(int)modulo_ab, dest_row = words * 2u + (unsigned)(int)modulo_cd;
 
-    if (gods_trace && (long)(dest - guest.screen_buffer) < 44 * 6)
-        fprintf(stderr, "trace blit_masked row %ld col %ld words %u rows %u\n", (long)(dest - guest.screen_buffer) / 44, (long)(dest - guest.screen_buffer) % 44, words, rows);
+    if (gods_trace && (long)(dest - guest.screen_buffer) < SCREEN_ROW * 6)
+        fprintf(stderr, "trace blit_masked row %ld col %ld words %u rows %u\n", (long)(dest - guest.screen_buffer) / SCREEN_ROW, (long)(dest - guest.screen_buffer) % SCREEN_ROW, words, rows);
 
     for (unsigned plane = 0; plane < 4; plane++) {
         for (unsigned row = 0; row < rows; row++) {
             for (unsigned word = 0; word < words; word++) {
                 unsigned at = row * source_row + 2 * word;
                 uint16_t mask = 0;
-                uint16_t *to = (uint16_t *)(dest + plane * 8448u + row * dest_row + 2 * word);
+                uint16_t *to = (uint16_t *)(dest + plane * SCREEN_ROW * SCREEN_HEIGHT + row * dest_row + 2 * word);
 
                 for (unsigned i = 0; i < 4; i++)
                     mask |= *(const uint16_t *)(source + i * plane_size + at);
@@ -461,7 +461,7 @@ static void blit_plain(const uint8_t *source, uint8_t *dest, int16_t modulo_ab, 
     for (unsigned plane = 0; plane < 4; plane++)
         for (unsigned row = 0; row < rows; row++)
             for (unsigned word = 0; word < words; word++)
-                *(uint16_t *)(dest + plane * 8448u + row * dest_row + 2 * word) = *(const uint16_t *)(source + plane * plane_size + row * source_row + 2 * word);
+                *(uint16_t *)(dest + plane * SCREEN_ROW * SCREEN_HEIGHT + row * dest_row + 2 * word) = *(const uint16_t *)(source + plane * plane_size + row * source_row + 2 * word);
 }
 
 /* the clipped draw of an image whose x is not on a word's line (image_x_shift not 0: image_draw_flags bit 1): the original shifts the image into a work area ($1F1E6) and blits it with the shift; the host draws it pixel by pixel:
@@ -470,11 +470,11 @@ static void blit_shifted(int16_t x, int16_t y, int16_t width, int16_t height, co
 {
     unsigned bytes = ((uint16_t)width + 1u) >> 3;
     uint32_t plane_size = guest.image_plane_bytes;
-    const int16_t plane_stride = 8448;
+    const int16_t plane_stride = SCREEN_ROW * SCREEN_HEIGHT;
 
     for (int r = 0; r <= height; r++) {
         unsigned source_row = (unsigned)guest.image_clip_skip_rows + (unsigned)r;
-        uint16_t *screen_row = (uint16_t *)(guest.screen_buffer + (long)(int16_t)(y + r) * 44);
+        uint16_t *screen_row = (uint16_t *)(guest.screen_buffer + (long)(int16_t)(y + r) * SCREEN_ROW);
 
         for (int px = 0; px <= width; px++) {
             int16_t dx = (int16_t)(x + px);
@@ -573,7 +573,7 @@ void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uin
     modulo_cd = (int16_t)(((uint16_t)(guest.screen_row_bytes - 8 - rest)) >> 2);
     x = (int16_t)((uint16_t)x & 0xFFF0);
     x = (int16_t)((uint16_t)x >> 3);
-    x = (int16_t)(x + (uint16_t)((uint16_t)y * 44));
+    x = (int16_t)(x + (uint16_t)((uint16_t)y * SCREEN_ROW));
     if (guest.image_x_shift != 0)
         return;   /* goes on at $01F1BE */
     if (guest.image_draw_flags & 4)
@@ -629,8 +629,8 @@ void blit_masked_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_
     unsigned blit_shift = shift & 0xff;
     int16_t plane_stride = (int16_t)guest.blit_plane_stride;
 
-    if (gods_trace && (long)(dst - guest.screen_buffer) < 44 * 6)
-        fprintf(stderr, "trace blit_masked_image row %ld col %ld words %u rows %u shift %u src %p first %04x last %04x\n", (long)(dst - guest.screen_buffer) / 44, (long)(dst - guest.screen_buffer) % 44, words, rows, shift, (const void *)src, first_mask, last_mask);
+    if (gods_trace && (long)(dst - guest.screen_buffer) < SCREEN_ROW * 6)
+        fprintf(stderr, "trace blit_masked_image row %ld col %ld words %u rows %u shift %u src %p first %04x last %04x\n", (long)(dst - guest.screen_buffer) / SCREEN_ROW, (long)(dst - guest.screen_buffer) % SCREEN_ROW, words, rows, shift, (const void *)src, first_mask, last_mask);
     if (src == 0)
         return;   /* an image the table has no data for: on the Amiga the vectors at address 0 are drawn */
     guest.blit_extra_modulo = extra_modulo;
@@ -688,9 +688,9 @@ void blit_image_wide(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_t 
 
 #define FIRST_LINE 44   /* the first line of the picture on the screen (PAL) */
 #define SCREEN_TOP 60   /* the program's screen starts here */
-#define SCREEN_ROWS 192
+#define SCREEN_ROWS SCREEN_HEIGHT
 #define MESSAGE_TOP 253
-#define PLANE_SIZE 8448
+#define PLANE_SIZE (SCREEN_ROW * SCREEN_HEIGHT)
 
 extern const uint32_t message_pairs[8];
 
@@ -978,7 +978,7 @@ void display_render(uint32_t *pixels)
             palette[i] = argb(colors[SCREEN_TOP + row][i]);
         for (int x = 0; x < SCREEN_W; x++) {
             int bx = x + scroll;
-            const uint8_t *word = screen + row * 44 + (bx >> 4) * 2;
+            const uint8_t *word = screen + row * SCREEN_ROW + (bx >> 4) * 2;
             int bit = 15 - (bx & 15), index = 0;
 
             for (int plane = 0; plane < 4; plane++)

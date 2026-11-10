@@ -255,6 +255,22 @@ uint8_t *unpack(uint8_t *to, const uint8_t *from)
     return to;
 }
 
+/* a file of a disk unpacked with the program's packer, as bytes: malloc'ed, *size its length (0 when there is no such file) */
+uint8_t *files_unpack_file(const char *name, int disk, uint32_t *size)
+{
+    uint32_t packed_size;
+    const uint8_t *packed = files_find(name, disk, &packed_size);
+    uint8_t *out;
+
+    *size = 0;
+    if (!packed)
+        return 0;
+    out = malloc(0x80000);
+    unpack_swaps = 0;
+    *size = (uint32_t)(unpack(out, packed) - out);
+    return out;
+}
+
 /* the menu program's image: the file bm.2 of disk 1, unpacked to the guest memory at $84 (what the original loader does) */
 int files_load_menu_image(void)
 {

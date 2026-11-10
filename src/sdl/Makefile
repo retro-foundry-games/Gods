@@ -99,12 +99,14 @@ $(BUILD)/g_dev_game.o: $(HERE)/dev_game.c $(FLAGS_STAMP) | $(BUILD)
 
 # the intro: its C and its data are compiled with the program's flags and linked into one object, in which every symbol but the few entry
 # points is made local (the intro's names are those of the menu program's: glyph_draw, screens_flip, blit_image ...)
-INTRO_OBJS := $(BUILD)/g_intro_host.o $(BUILD)/g_intro.o $(BUILD)/g_intro_data.o
-INTRO_EXPORTS := game_main ih_vbl ih_set_fire ih_shown_screen ih_color ih_music_mix
+INTRO_OBJS := $(BUILD)/g_intro_host.o $(BUILD)/g_intro.o $(BUILD)/g_intro_data.o $(BUILD)/g_intro_assets.o
+INTRO_EXPORTS := game_main ih_vbl ih_set_fire ih_shown_screen ih_color ih_music_mix ih_load_assets
 $(BUILD)/g_intro_host.o: $(HERE)/intro_host.c $(HERE)/intro_host.h $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/g_intro_data.o: $(SRC)/intro_data.c $(FLAGS_STAMP) | $(BUILD)
 	$(CC) $(GAME_CFLAGS) -w -MMD -MP -c $< -o $@
+$(BUILD)/g_intro_assets.o: $(HERE)/intro_assets.c $(HERE)/intro_host.h $(FLAGS_STAMP) | $(BUILD)
+	$(CC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
 $(BUILD)/intro_program.o: $(INTRO_OBJS)
 	ld -m elf_i386 -r -o $(BUILD)/intro_all.o $(INTRO_OBJS)
 	nm --defined-only -g $(BUILD)/intro_all.o | awk '{print $$3}' | grep -v '^__x86' $(foreach s,$(INTRO_EXPORTS),| grep -vx $(s)) > $(BUILD)/intro_local.txt

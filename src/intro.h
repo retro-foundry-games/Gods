@@ -84,17 +84,17 @@ struct Sample {
     uint16_t loop_length;  /* in words */
 };
 
-struct Module {
+struct MusicModule {
     uint8_t title[20];
     struct Sample sample[31];
     uint8_t song_length;
     uint8_t restart;
     uint8_t order[128];
     uint8_t tag[4];
-    uint8_t data[];        /* the patterns (1024 bytes each: 64 rows of four 4-byte cells), then the sample data */
+    uint8_t data[318960];  /* the patterns (1024 bytes each: 64 rows of four 4-byte cells), then the sample data */
 };
-_Static_assert(offsetof(struct Module, order) == 0x3b8, "module layout");
-_Static_assert(offsetof(struct Module, data) == 0x43c, "module layout");
+_Static_assert(offsetof(struct MusicModule, order) == 0x3b8, "music module layout");
+_Static_assert(offsetof(struct MusicModule, data) == 0x43c, "music module layout");
 
 struct Channel {
     uint8_t cell[4];       /* +00 the current pattern cell: sample/period high, period low, sample low/effect, parameter */
@@ -113,7 +113,7 @@ struct Channel {
 };
 _Static_assert(sizeof(struct Channel) == 0x1c, "channel layout");
 
-extern struct Module module;           /* the music: the header, then the patterns and the sample data */
+extern struct MusicModule music_module;           /* the music: the header, then the patterns and the sample data */
 extern struct Channel channel[4];      /* $28D0 */
 extern uint32_t sample_start[31];           /* $2854  start of each sample's data, set by music_init */
 extern const uint16_t period_table[38];       /* $2800  the 36 periods of the ProTracker table, three octaves, and a zero */

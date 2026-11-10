@@ -90,9 +90,9 @@ const uint16_t blank_plane[513] = { 0 };   /* zeros, up to the table at $3888 */
 
 uint16_t font_offset;
 
-struct Graphics graphics;
+struct Graphics graphics;   /* the pictures and the table of images: bm.1 of the disk */
 
-struct Module module;
+struct MusicModule music_module;   /* the music: bm.1 of the disk */
 
 struct Screen screen_b;
 

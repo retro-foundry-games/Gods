@@ -29,7 +29,7 @@ OFFSET(DisplayData_blit_plane_stride, struct DisplayData, blit.plane_stride)
 OFFSET(DisplayData_blit_extra_modulo, struct DisplayData, blit.extra_modulo)
 OFFSET(DisplayData_blit_mask, struct DisplayData, blit.mask)
 
-OFFSET(Module_song_length, struct Module, song_length)
+OFFSET(MusicModule_song_length, struct MusicModule, song_length)
 
 OFFSET(Channel_cell, struct Channel, cell)
 OFFSET(Channel_sample, struct Channel, sample)

@@ -24,7 +24,7 @@ void guest_load_image(const uint8_t *image, uint32_t size);  /* the menu program
 int files_open(const char *folder);                          /* 0 when both disks are there */
 uint8_t *files_find(const char *name, int disk, uint32_t *size);   /* a file of a disk (0 or 1) by name: points into the disk image */
 int files_read(const char *name, int prefer_disk, uint8_t *dest);  /* copy a file (whole sectors) to dest; -1 if missing */
-uint8_t *files_unpack(const uint8_t *packed, uint32_t *size);      /* the program's packer: malloc'ed output */
+uint8_t *files_unpack_file(const char *name, int disk, uint32_t *size);   /* a file of a disk unpacked, as bytes: malloc'ed (0 when there is none) */
 int files_load_menu_image(void);                             /* bm.2 of disk 1 unpacked into the guest memory */
 
 /* the chips: custom registers and CIA as the program sees them */

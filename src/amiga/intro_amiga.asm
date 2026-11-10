@@ -2,7 +2,7 @@
 ; The instruction sequences are the original's (the program's timing depends on how long they take, and each
 ; instruction is checked against the original bytes); the C calling convention (arguments on the stack,
 ; d2-d7/a2-a6 preserved) is added around them where C calls them.
-        xref _copper_a, _copper_b, _glyph_plane_size, _scroll, _palette_ptr, _flags, _game_clock, _vibrato_table, _period_table, _music, _sample_start, _channel, _screen_front, _screen_back, _display, _draw_flag, _vblank, _blank_plane, _font_offset, _graphics, _module, _screen_b, _screen_a
+        xref _copper_a, _copper_b, _glyph_plane_size, _scroll, _palette_ptr, _flags, _game_clock, _vibrato_table, _period_table, _music, _sample_start, _channel, _screen_front, _screen_back, _display, _draw_flag, _vblank, _blank_plane, _font_offset, _graphics, _screen_b, _screen_a
         xdef _blitter_wait, _blit_copy, _blit_copy_right, _screen_clear, _screen_restore, _plane5_set, _plane5_clear
         xdef _blit_image, _blit_image_wide, _delay, _startup_delay, _interrupts_on, _load_next_stage, _vbl_wait, _irq_level3, _music_init
         section .text,code
@@ -398,7 +398,7 @@ irq_housekeeping:
 ; void music_init(void), orig $002242: find the sample data, record each sample's address, silence the channels
 _music_init:
         movem.l d2-d7/a2-a6,-(sp)
-        lea.l (_module).l,a0
+        lea.l $1b6f2.l,a0
         movea.l a0,a1
         adda.l #$3b8,a1
         moveq #$7f,d0
@@ -450,7 +450,7 @@ music_stop:
 ; orig $0022E6: advance the music by one tick (called by the interrupt)
 music_step:
         movem.l d0-d4/a0-a3/a5-a6,-(a7)
-        lea.l (_module).l,a0
+        lea.l $1b6f2.l,a0
         addq.b #$1,(_music+MusicState_tick).l
         move.b (_music+MusicState_tick).l,d0
         cmp.b (_music+MusicState_speed).l,d0
@@ -509,7 +509,7 @@ arpeggio:
         move.w d2,AudioChannel_per(a5)
         rts 
 new_row:
-        lea.l (_module).l,a0
+        lea.l $1b6f2.l,a0
         movea.l a0,a3
         movea.l a0,a2
         adda.l #$c,a3
@@ -632,7 +632,7 @@ next_order:
         addq.b #$1,(_music+MusicState_order).l
         andi.b #$7f,(_music+MusicState_order).l
         move.b (_music+MusicState_order).l,d1
-        cmp.b (_module+Module_song_length).l,d1
+        cmp.b $1baa8.l,d1
         bne.b step_done
         clr.b (_music+MusicState_order).l
 step_done:

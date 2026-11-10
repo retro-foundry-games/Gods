@@ -60,7 +60,7 @@ void copy_other_screen(void)
  * copper list; its scroll is set for x_offset and the copper is told to use it, then the next vertical blank is waited for */
 void screens_flip(void)
 {
-    struct Rec6 state = guest.buffer_state[0];
+    struct ScreenSave state = guest.buffer_state[0];
     struct CopperHead *list;
     uint8_t *swap;
 

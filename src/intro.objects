@@ -19,6 +19,6 @@ vblank 2cc2
 blank_plane 3486
 font_offset 394a
 graphics 3a62
-module 1b6f2
+music_module 1b6f2
 screen_b 6c780
 screen_a 763c0

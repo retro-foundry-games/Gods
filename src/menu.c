@@ -184,7 +184,7 @@ void background_draw(void)
         for (int col = 0; col < 20; col++) {
             dst[0] = *src++;
             dst[4224] = *src++;
-            dst[8448] = *src++;
+            dst[SCREEN_ROW * SCREEN_HEIGHT] = *src++;
             dst[12672] = *src++;
             dst++;
         }

@@ -32,7 +32,7 @@ HOST_CFLAGS := $(COMMON)
 MENU_MODULES := menu disk alloc decrunch input draw message file boot game data
 GAME_OBJS := $(W)/g_shims.o $(W)/g_display.o $(W)/g_sound.o $(W)/g_guest.o $(W)/g_guest_load.o $(W)/g_irq.o $(W)/g_files.o $(MENU_MODULES:%=$(W)/g_%.o) $(W)/g_stubs.o
 HOST_OBJS := $(W)/h_host.o $(W)/h_intro_view.o $(W)/h_main.o
-INTRO_OBJS := $(W)/i_intro_host.o $(W)/i_intro.o $(W)/i_intro_data.o
+INTRO_OBJS := $(W)/i_intro_host.o $(W)/i_intro.o $(W)/i_intro_data.o $(W)/i_intro_assets.o
 
 .PHONY: all serve clean
 all: $(W)/gods.html
@@ -80,7 +80,7 @@ $(W)/h_%.o: $(HERE)/%.c $(GENERATED)
 	$(EMCC) $(HOST_CFLAGS) -MMD -MP -c $< -o $@
 
 # the intro: its names are those of the menu program's (glyph_draw, screens_flip, blit_image ...): all but the entry points are renamed (a first compile lists them, a second renames them)
-INTRO_EXPORTS := game_main ih_vbl ih_set_fire ih_shown_screen ih_color ih_music_mix
+INTRO_EXPORTS := game_main ih_vbl ih_set_fire ih_shown_screen ih_color ih_music_mix ih_load_assets
 LLVM_NM ?= $(shell em-config LLVM_ROOT)/llvm-nm
 $(W)/p1/intro_host.o: $(HERE)/intro_host.c $(GENERATED) | $(W)
 	$(EMCC) $(GAME_CFLAGS) -c $< -o $@
@@ -88,7 +88,9 @@ $(W)/p1/intro.o: $(SRC)/intro.c $(GENERATED) | $(W)
 	$(EMCC) $(GAME_CFLAGS) -c $< -o $@
 $(W)/p1/intro_data.o: $(SRC)/intro_data.c $(GENERATED) | $(W)
 	$(EMCC) $(GAME_CFLAGS) -w -c $< -o $@
-$(W)/intro_rename.h: $(W)/p1/intro_host.o $(W)/p1/intro.o $(W)/p1/intro_data.o
+$(W)/p1/intro_assets.o: $(HERE)/intro_assets.c $(GENERATED) | $(W)
+	$(EMCC) $(GAME_CFLAGS) -c $< -o $@
+$(W)/intro_rename.h: $(W)/p1/intro_host.o $(W)/p1/intro.o $(W)/p1/intro_data.o $(W)/p1/intro_assets.o
 	$(LLVM_NM) --defined-only -g $^ | awk 'NF == 3 { print $$3 }' | sort -u $(foreach s,$(INTRO_EXPORTS),| grep -vx $(s)) | awk '{ print "#define " $$1 " intro__" $$1 }' > $@.tmp
 	test -s $@.tmp
 	mv $@.tmp $@
@@ -98,6 +100,8 @@ $(W)/i_intro.o: $(SRC)/intro.c $(W)/intro_rename.h $(GENERATED)
 	$(EMCC) $(GAME_CFLAGS) -include $(W)/intro_rename.h -MMD -MP -c $< -o $@
 $(W)/i_intro_data.o: $(SRC)/intro_data.c $(W)/intro_rename.h $(GENERATED)
 	$(EMCC) $(GAME_CFLAGS) -w -include $(W)/intro_rename.h -MMD -MP -c $< -o $@
+$(W)/i_intro_assets.o: $(HERE)/intro_assets.c $(W)/intro_rename.h $(GENERATED)
+	$(EMCC) $(GAME_CFLAGS) -include $(W)/intro_rename.h -MMD -MP -c $< -o $@
 
 LINK := -Wl,--allow-multiple-definition -pthread -sPTHREAD_POOL_SIZE=3 -sINITIAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=0  \
         -sSTACK_SIZE=1048576 -sDEFAULT_PTHREAD_STACK_SIZE=4194304 -sENVIRONMENT=web,worker -sFORCE_FILESYSTEM=1 -sINVOKE_RUN=0 \

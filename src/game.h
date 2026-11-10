@@ -20,10 +20,12 @@
 #define PAD_NAME(line) PAD_NAME_(line)
 #define PAD_NAME_(line) pad_##line
 
-/* the screens: 44 bytes a row (352 pixels), 192 rows, four bitplanes one after the other */
-#define SCREEN_ROW 44
-#define SCREEN_PLANE 8448   /* the bytes of a bitplane: 192 rows */
-#define SCREEN_POS(plane, row, byte) ((plane) * SCREEN_PLANE + (row) * SCREEN_ROW + (byte))
+/* the screens: 352 pixels (the 320 shown and 32 for the scroll) by 192 rows, four bitplanes one after the other */
+#define SCREEN_WIDTH 352
+#define SCREEN_HEIGHT 192
+#define SCREEN_PLANES 4
+#define SCREEN_ROW (SCREEN_WIDTH / 8)               /* the bytes of a row */
+#define SCREEN_POS(plane, row, byte) ((plane) * SCREEN_ROW * SCREEN_HEIGHT + (row) * SCREEN_ROW + (byte))
 
 /* where the guardian of the level 3 leaves its text buffers (line_text and target_map) in file_buffer: after the picture the level 4 loads there */
 #define FILE_BUFFER_LINE_TEXT 0x53DE
@@ -1400,8 +1402,8 @@ struct Gods {
     struct Rec6 entry_table[50];   /* $3A25E */
     PAD(742)
     uint8_t program_end[217488];   /* $3A670 */
-    uint8_t screen_1[33792];   /* $6F800 */
-    uint8_t screen_2[33792];   /* $77C00 */
+    uint8_t screen_1[SCREEN_ROW * SCREEN_HEIGHT * SCREEN_PLANES];   /* $6F800 */
+    uint8_t screen_2[SCREEN_ROW * SCREEN_HEIGHT * SCREEN_PLANES];   /* $77C00 */
     PAD(1024)
 #ifdef GODS_HEAP_IN_GUEST   /* the host's builds: the program's heap is the end of the block */
     uint8_t heap[1571840];   /* $80400 */

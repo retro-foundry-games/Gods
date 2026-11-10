@@ -73,6 +73,8 @@ static void start_phase(int phase)
     sr_set(0x2700);
     sound_reset();
     ih_set_fire(0);
+    if (phase == PHASE_INTRO && ih_load_assets() != 0)
+        exit(1);
     if (phase != PHASE_INTRO) {
         if (files_load_menu_image() != 0)
             exit(1);

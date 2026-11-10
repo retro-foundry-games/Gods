@@ -1833,7 +1833,7 @@ static void level_end_save_rect(void)
     for (int row = 0; row < 16; row++, from += 44)
         for (int i = 0; i < 6; i++)
             for (int plane = 0; plane < 4; plane++)
-                *to++ = *(const uint32_t *)(from + i * 4 + plane * 8448);
+                *to++ = *(const uint32_t *)(from + i * 4 + plane * SCREEN_ROW * SCREEN_HEIGHT);
 }
 
 static void level_end_restore_rect(void)
@@ -1844,7 +1844,7 @@ static void level_end_restore_rect(void)
     for (int row = 0; row < 16; row++, to += 44)
         for (int i = 0; i < 6; i++)
             for (int plane = 0; plane < 4; plane++)
-                *(uint32_t *)(to + i * 4 + plane * 8448) = *from++;
+                *(uint32_t *)(to + i * 4 + plane * SCREEN_ROW * SCREEN_HEIGHT) = *from++;
 }
 
 /* orig $013186: the picture under the bonus is put back and the bonus counted so far is drawn over it */
@@ -13290,7 +13290,7 @@ void hud_digits_load(void)
         for (int half = 0; half < 2; half++) {
             for (int row = 0; row < 8; row++, from += 44) {
                 out[0] = plane_byte(from);
-                out[1] = plane_byte(from + 8448);
+                out[1] = plane_byte(from + SCREEN_ROW * SCREEN_HEIGHT);
                 out[2] = plane_byte(from + 16896);
                 out[3] = plane_byte(from + 25344);
                 out += 4;

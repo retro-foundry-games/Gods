@@ -52,8 +52,8 @@ buffer_state      0x00000de4  struct ScreenSave %s[2]   what is kept for each of
 vbl_saturating    0x0001d058  volatile uint16_t %s     frames since the last flip, stops at $7FFF
 vbl_count         0x0001d05a  volatile uint16_t %s     frames, wraps
 copper_lists      0x00004d8a  struct CopperLists %s   the copper program: the lists of the two screens, the tail they share, the colour bands of the level and the message
-screen_1          0x0006f800  uint8_t %s[]    the two screens
-screen_2          0x00077c00  uint8_t %s[]
+screen_1          0x0006f800  uint8_t %s[SCREEN_ROW * SCREEN_HEIGHT * SCREEN_PLANES]    the two screens
+screen_2          0x00077c00  uint8_t %s[SCREEN_ROW * SCREEN_HEIGHT * SCREEN_PLANES]
 copper_setup_done 0x000002f2  uint16_t %s     non-zero: the copper list's two moves at copper_move_a / copper_move_b are set already
 palette_lit       0x0001d3f3  uint8_t %s      $FF after fade_in (the screen has its colours), 0 after fade_out
 sound_enabled     0x000002f6  uint16_t %s     non-zero: the frame tick runs the sound

@@ -27,7 +27,7 @@ SECTIONS {
         . = 0x3486; *(.data.blank_plane) *(.rodata.blank_plane) *(.bss.blank_plane)
         . = 0x394a; *(.data.font_offset) *(.rodata.font_offset) *(.bss.font_offset)
         . = 0x3a62; *(.data.graphics) *(.rodata.graphics) *(.bss.graphics)
-        . = 0x1b6f2; *(.data.module) *(.rodata.module) *(.bss.module)
+        . = 0x1b6f2; *(.data.music_module) *(.rodata.music_module) *(.bss.music_module)
         . = 0x6c780; *(.data.screen_b) *(.rodata.screen_b) *(.bss.screen_b)
         . = 0x763c0; *(.data.screen_a) *(.rodata.screen_a) *(.bss.screen_a)
     }

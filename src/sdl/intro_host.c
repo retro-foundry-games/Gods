@@ -3,8 +3,9 @@
  * Compiled with the program's headers and flags (the structs have the 68000's layout), without SDL: intro_sdl.c is the machine around it.
  * The blitter is not emulated: the copies, the clears and the masked image draw are done directly.  The music is a ProTracker player that
  * runs from the vertical blank (50 ticks a second, as the original's replayer does) and mixes the four channels to stereo (the Amiga's
- * left, right, right, left); it plays `module` and does not use the chip's audio registers.  Effects: arpeggio, slides, tone portamento,
+ * left, right, right, left); it plays `music_module` and does not use the chip's audio registers.  Effects: arpeggio, slides, tone portamento,
  * vibrato, sample offset, volume slide, position jump, volume, pattern break, speed; the E effects are ignored. */
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -169,6 +170,7 @@ struct Voice {
     int porta_target, porta_speed, vibrato_speed, vibrato_depth, vibrato_pos, arpeggio_note;
     uint8_t cell[4];
     unsigned offset_memory;
+    unsigned triggers;
 };
 
 static struct Voice voice[4];
@@ -196,16 +198,16 @@ static unsigned note_period(unsigned period, int semitones)
 void music_init(void)
 {
     unsigned patterns = 0;
-    const uint8_t *data = module.data;
+    const uint8_t *data = music_module.data;
 
     memset(voice, 0, sizeof voice);
-    for (unsigned i = 0; i < module.song_length && i < 128; i++)
-        if (module.order[i] >= patterns)
-            patterns = module.order[i] + 1u;
+    for (unsigned i = 0; i < music_module.song_length && i < 128; i++)
+        if (music_module.order[i] >= patterns)
+            patterns = music_module.order[i] + 1u;
     data += patterns * 1024u;
     for (unsigned s = 0; s < 31; s++) {
         sample_data[s] = (const int8_t *)data;
-        sample_bytes[s] = module.sample[s].length * 2u;
+        sample_bytes[s] = music_module.sample[s].length * 2u;
         data += sample_bytes[s];
     }
     pt_speed = 6;
@@ -222,15 +224,16 @@ static void start_note(struct Voice *v, unsigned sample, unsigned period)
     v->sample = sample;
     v->data = sample_data[sample - 1];
     v->length = sample_bytes[sample - 1];
-    v->loop_start = module.sample[sample - 1].loop_start * 2u;
-    v->loop_length = module.sample[sample - 1].loop_length * 2u;
+    v->loop_start = music_module.sample[sample - 1].loop_start * 2u;
+    v->loop_length = music_module.sample[sample - 1].loop_length * 2u;
     v->period = period;
     v->position = 0;
+    v->triggers++;
 }
 
 static void read_row(void)
 {
-    const uint8_t *pattern = module.data + module.order[pt_order] * 1024u + pt_row * 16u;
+    const uint8_t *pattern = music_module.data + music_module.order[pt_order] * 1024u + pt_row * 16u;
 
     for (unsigned c = 0; c < 4; c++) {
         struct Voice *v = &voice[c];
@@ -242,7 +245,7 @@ static void read_row(void)
         memcpy(v->cell, cell, 4);
         if (sample != 0 && sample <= 31) {
             v->sample = sample;
-            v->volume = module.sample[sample - 1].volume & 0xff;
+            v->volume = music_module.sample[sample - 1].volume & 0xff;
             if (v->volume > 64)
                 v->volume = 64;
         }
@@ -373,8 +376,8 @@ static void music_step(void)
             pt_row = pt_break_row;
             pt_break_row = 0;
             pt_jump_order = -1;
-            if (pt_order >= module.song_length)
-                pt_order = module.restart < module.song_length ? module.restart : 0;
+            if (pt_order >= music_module.song_length)
+                pt_order = music_module.restart < music_module.song_length ? music_module.restart : 0;
         }
     } else {
         run_effects();
@@ -453,6 +456,25 @@ void irq_level3(void)
 /* the main thread raises the vertical blank */
 void ih_vbl(void)
 {
+    static FILE *audio_log;
+    static unsigned audio_frame;
+
     if (interrupts_enabled)
         irq_level3();
+    if (!audio_log && getenv("GODS_AUDIOLOG"))
+        audio_log = fopen(getenv("GODS_AUDIOLOG"), "w");
+    if (audio_log) {
+        for (unsigned c = 0; c < 4; c++) {
+            const struct Voice *v = &voice[c];
+            unsigned period = v->period;
+
+            if ((v->vibrato_speed || v->vibrato_depth) && ((v->cell[2] & 0x0f) == 4 || (v->cell[2] & 0x0f) == 6))
+                period = (unsigned)((int)period + (sine[v->vibrato_pos & 31] * v->vibrato_depth >> 7) * ((v->vibrato_pos & 32) ? -1 : 1));
+            if (v->arpeggio_note)
+                period = note_period(period, v->arpeggio_note);
+            fprintf(audio_log, "%u %u %u %u %u %u %u\n", audio_frame, c, v->data ? v->sample : 0, period, v->data ? v->volume : 0, v->triggers, v->data ? v->loop_length : 0);
+        }
+        fflush(audio_log);
+    }
+    audio_frame++;
 }
