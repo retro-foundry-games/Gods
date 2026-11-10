@@ -98,33 +98,10 @@ for i in range(4):
     ch.append("    { " + ", ".join(init) + " }," if init else "    { 0 },")
 add("channel", 0x28d0, "struct Channel channel[4] = {\n" + "\n".join(ch) + "\n};")
 
-# ---- the module ----------------------------------------------------------------------------------------------------
-M = 0x1b6f2
-order = list(ram[M + 952:M + 1080])
-lens = [u16(M + 20 + 30 * i + 22) for i in range(31)]
-total = 0x43c + (max(order) + 1) * 1024 + sum(lens) * 2
-samples = []
-for i in range(31):
-    b = M + 20 + 30 * i
-    name_bytes = ", ".join(f"{x:#04x}" for x in ram[b:b + 22])
-    samples.append("        { .name = {%s}, .length = %d, .volume = %#x, .loop_start = %d, .loop_length = %d },"
-                   % (name_bytes, u16(b + 22), u16(b + 24), u16(b + 26), u16(b + 28)))
-body = list(ram[M + 0x43c:M + total])
-add("module", M, "struct Module module = {\n    .title = {" + ", ".join(f"{x:#04x}" for x in ram[M:M + 20]) + "},\n    .sample = {\n"
-    + "\n".join(samples) + f"\n    }},\n    .song_length = {ram[M + 950]},\n    .restart = {ram[M + 951]},\n    .order = {{\n"
-    + lines(order, 16, "%d", "        ") + "\n    },\n    .tag = {" + ", ".join(f"'{chr(x)}'" for x in ram[M + 1080:M + 1084])
-    + "},\n    /* the patterns, then the sample data */\n    .data = {\n" + lines(body, 24, "%d", "        ") + "\n    },\n};")
+# ---- the module and the pictures: not initialised, the program reads them from bm.1 of the disk ---------------------------------
+add("music_module", 0x1b6f2, "struct MusicModule music_module;   /* the music: bm.1 of the disk */")
 
-# ---- pictures and the image table: one block ------------------------------------------------------------------------------
-def picture_init(addr):
-    pal_ = [u16(addr + 2 + 2 * i) for i in range(16)]
-    words = [u16(addr + 34 + 2 * i) for i in range(16000)]
-    return ("{\n        .header = %#x,\n        .palette = {\n" % u16(addr) + lines(pal_, 8, "%#06x", "            ")
-            + "\n        },\n        .data = {\n" + lines(words, 12, "%#06x", "            ") + "\n        },\n    }")
-
-add("graphics", 0x3a62, "struct Graphics graphics = {\n    .title = " + picture_init(0x3a62) + ",\n    .glyph_sheet = "
-    + picture_init(0xb784) + ",\n    .background = " + picture_init(0x134a6) + ",\n    /* the table: how to find each image on the glyph sheet; the program turns it into the images' sizes and addresses */\n    .images = { .source = { .count = %d, .entry = {\n%s\n    } } },\n};" % (u16(0x1b1c8), "\n".join(
-        "        { %d, %d, %d, %d, %d }," % tuple(u16(0x1b1ca + 10 * i + 2 * k) for k in range(5)) for i in range(u16(0x1b1c8)))))
+add("graphics", 0x3a62, "struct Graphics graphics;   /* the pictures and the table of images: bm.1 of the disk */")
 
 # ---- copper lists, the vectors, the screens and the image table -------------------------------------------------------
 def copper(name, addr):

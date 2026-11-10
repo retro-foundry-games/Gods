@@ -100,7 +100,7 @@ OBJECTS = objects()
 # which struct each pinned object is; the fields and their offsets come from the compiler (scripts/intro_offsets.py), so they
 # follow intro.h and the assembly names them as `_flags+Flags_fire_pressed`
 OBJECT_STRUCT = {"flags": "Flags", "game_clock": "GameClock", "vblank": "Vblank", "music": "MusicState",
-                 "display": "DisplayData", "module": "Module"}
+                 "display": "DisplayData", "music_module": "MusicModule"}
 OFFSETS = intro_offsets.write()
 
 
