@@ -39,9 +39,6 @@ struct SoundVoice {
     int looping;
     int finished;                  /* a sample that is not looped has played to its end: it sounds again with the next note (note_on), the pointer stays */
     unsigned period, play_volume;
-#ifdef GODS_DEV
-    unsigned triggers;   /* notes started (GODS_SOUNDLOG) */
-#endif
     uint32_t position;             /* 16.16 */
     const uint16_t *period_table;
     const struct SoundInstrument *instrument;
@@ -50,22 +47,6 @@ struct SoundVoice {
 static struct SoundVoice sound_voice[VOICES];
 static unsigned tempo = 1;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-#ifdef GODS_DEV
-static unsigned long sound_ticks;
-static FILE *sound_log_file(void)
-{
-    static FILE *log;
-    static int opened;
-
-    if (!opened) {
-        const char *path = getenv("GODS_SOUNDLOG");
-
-        opened = 1;
-        log = path ? fopen(path, "w") : 0;
-    }
-    return log;
-}
-#endif
 
 /* the track of a sound number: the address in sound_tracks ($21C3A) */
 static const uint8_t *track_of(unsigned number)
@@ -83,9 +64,6 @@ static void note_on(struct SoundVoice *v, unsigned note)
     v->play_volume = v->volume;
     v->position = 0;
     v->finished = 0;
-#ifdef GODS_DEV
-    v->triggers++;
-#endif
 }
 
 static void set_instrument(struct SoundVoice *v, unsigned n)
@@ -305,12 +283,6 @@ void play_sound(uint16_t id, uint16_t priority)
         return;   /* no such sound, or no tracks: the sound data is not in memory */
     if (id == 16)
         stop_sound(23);   /* orig $01FAFC: the landing stops the falling whistle (a looped track) */
-#ifdef GODS_DEV
-    if (sound_log_file()) {
-        fprintf(sound_log_file(), "%lu play %u %u\n", sound_ticks, id, priority);
-        fflush(sound_log_file());
-    }
-#endif
     pthread_mutex_lock(&lock);
     flags = record->flags;
     count = (flags & 0x7f) + 1;
@@ -411,12 +383,6 @@ void voice_start(uint16_t sound, uint16_t index)
 {
     if (sound != 22 || index >= VOICES)
         return;
-#ifdef GODS_DEV
-    if (sound_log_file()) {
-        fprintf(sound_log_file(), "%lu stop voice %u\n", sound_ticks, index);
-        fflush(sound_log_file());
-    }
-#endif
     pthread_mutex_lock(&lock);
     struct SoundVoice *v = &sound_voice[index];
 
@@ -438,33 +404,6 @@ void audio_irq(void)
 {
 }
 
-#ifdef GODS_DEV
-/* GODS_SOUNDLOG=FILE: what a voice would write to Paula, by 50 Hz tick: a line `tick voice active triggers period volume sample length-in-words looped finished id track transposition` whenever one of them changes */
-static void trace_voices(void)
-{
-    static struct { unsigned active, triggers, period, volume, finished; const int8_t *sample; } last[VOICES];
-    FILE *log = sound_log_file();
-
-    for (int i = 0; log && i < VOICES; i++) {
-        struct SoundVoice *v = &sound_voice[i];
-
-        if (last[i].active != (unsigned)v->active || last[i].triggers != v->triggers || last[i].period != v->period || last[i].volume != v->play_volume
-            || last[i].finished != (unsigned)v->finished || last[i].sample != v->sample) {
-            fprintf(log, "%lu %d %d %u %u %u %08x %u %d %d id %u track %u transposition %d\n", sound_ticks, i, v->active, v->triggers, v->period, v->play_volume, (unsigned)((uintptr_t)v->sample - ((uintptr_t)&guest.sound_state.busy - 0x207a0)), v->length / 2,
-                    v->looping, v->finished, v->id, v->number, v->transposition);
-            fflush(log);
-            last[i].active = (unsigned)v->active;
-            last[i].triggers = v->triggers;
-            last[i].period = v->period;
-            last[i].volume = v->play_volume;
-            last[i].finished = (unsigned)v->finished;
-            last[i].sample = v->sample;
-        }
-    }
-    sound_ticks++;
-}
-#endif
-
 /* orig $01FCB8: once a frame: every voice goes on in its track */
 void sound_tick(void)
 {
@@ -480,9 +419,6 @@ void sound_tick(void)
             v->wait--;
     }
     sync_busy();
-#ifdef GODS_DEV
-    trace_voices();
-#endif
     pthread_mutex_unlock(&lock);
 }
 

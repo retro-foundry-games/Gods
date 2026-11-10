@@ -286,8 +286,6 @@ int host_run(const struct HostOptions *options)
 
     int vsync = !headless && renderer && !(hooks && hooks->no_vsync) && SDL_SetRenderVSync(renderer, 1);   /* presented at the display's refresh */
     uint64_t next = SDL_GetTicksNS();
-    unsigned long ticks = 0;   /* the 50 Hz frames of the machine run so far: the time of a key in GODS_KEYLOG */
-    const char *keylog = getenv("GODS_KEYLOG");
     for (int frame = 0; !options->frames || frame < options->frames; frame++) {
         SDL_Event event;
         int16_t samples[882 * 2];
@@ -310,17 +308,8 @@ int host_run(const struct HostOptions *options)
                     continue;
                 if (event.key.scancode == SDL_SCANCODE_LCTRL && phase == PHASE_INTRO)
                     code = 0x40;
-                if (code >= 0 && !(hooks && hooks->no_keyboard)) {
+                if (code >= 0 && !(hooks && hooks->no_keyboard))
                     host_key(phase, code, event.type == SDL_EVENT_KEY_DOWN);
-                    if (keylog) {   /* the --keys list that plays this run again without a window */
-                        FILE *f = fopen(keylog, "a");
-
-                        if (f) {
-                            fprintf(f, "%lu:%x:%d,", ticks, code, event.type == SDL_EVENT_KEY_DOWN);
-                            fclose(f);
-                        }
-                    }
-                }
             }
         }
         if (hooks && hooks->frame_start && !hooks->frame_start(frame, pixels, phase))
@@ -351,7 +340,7 @@ int host_run(const struct HostOptions *options)
             while (host_irq_hold)   /* the program's thread is loading memory (quickload): the frame waits, it would read half of it */
                 SDL_DelayNS(200000);
         }
-        for (int tick = 0; tick < due; tick++, ticks++) {
+        for (int tick = 0; tick < due; tick++) {
             if (phase == PHASE_INTRO) {
                 ih_vbl();
                 ih_music_mix(samples, 882, 44100);
