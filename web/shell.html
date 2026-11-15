@@ -37,6 +37,7 @@
   <h1>Gods</h1>
   <p>Drop your <strong>Gods disk 1 and disk 2 .adf</strong> files here.</p>
   <p id="status" role="status" aria-live="polite">Loading the browser runtime&hellip;</p>
+  <p><label><input id="interpolate" type="checkbox"> Smooth motion (interpolated, display refresh rate)</label></p>
   <div class="actions">
     <button type="button" id="choose">Choose ADFs</button>
     <button type="button" id="start" disabled>Start Game</button>
@@ -132,7 +133,9 @@
     const game = document.getElementById('game');
     game.style.display = 'flex';
     Module.canvas.focus();
-    Module.callMain(['--disks', '/']);
+    const args = ['--disks', '/'];
+    if (document.getElementById('interpolate').checked) args.push('--interpolate');
+    Module.callMain(args);
   });
 </script>
 {{{ SCRIPT }}}

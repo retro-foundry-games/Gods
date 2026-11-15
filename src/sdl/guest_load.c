@@ -10,6 +10,7 @@
 
 #include "game.h"
 #include "guest.h"
+#include "presentation.h"
 #include "guest_tables.h"
 #include "guest_fixups.h"
 
@@ -220,6 +221,7 @@ int host_quick_state_load(const char *path) __attribute__((weak));   /* dev_game
 
 int guest_load_quick(const char *path)
 {
+    presentation_reset();
     FILE *f = fopen(path, "rb");
     uint32_t magic = 0;
 

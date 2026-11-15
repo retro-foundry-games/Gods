@@ -10,6 +10,7 @@
 #include "game.h"
 #include "guest.h"
 #include "guest_tables.h"
+#include "presentation.h"
 
 struct Gods guest __attribute__((aligned(16)));
 /* the Atari ST's video address registers that the program reads as the seed of its random numbers: what the emulated Amiga gives */
@@ -148,6 +149,7 @@ int guest_state_read(FILE *f)
     int ok = block && chips && fread(block, 1, sizeof guest, f) == sizeof guest && fread(chips, 1, sizeof host_custom_raw, f) == sizeof host_custom_raw;
 
     if (ok) {
+        presentation_reset();
         uint32_t was = header[2], now = (uint32_t)(uintptr_t)&guest, delta = now - was;
 
         if (delta != 0)

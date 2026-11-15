@@ -21,6 +21,7 @@
 #include "guest.h"
 #include "host.h"
 #include "intro_host.h"
+#include "presentation.h"
 
 extern void menu_boot(void);    /* boot.c: the start-up (orig $039E50) */
 extern void menu_start(void);   /* menu.c: the menu (orig $006388) */
@@ -69,6 +70,7 @@ static void start_phase(int phase)
 {
     void *(*entry)(void *) = intro_program;
 
+    presentation_reset();
     guest_reset();
     sr_set(0x2700);
     sound_reset();
@@ -144,6 +146,122 @@ void host_key(int phase, int code, int down)
     }
 }
 
+/* Input and a machine tick have the same owners in both presentation modes.
+ * In particular, rendering an extra frame never raises another interrupt or
+ * advances the mixer. */
+static void host_events(const struct HostOptions *options, int phase)
+{
+    SDL_Event event;
+    const struct HostHooks *hooks = options->hooks;
+    while (!options->headless && SDL_PollEvent(&event)) {
+        if (event.type == SDL_EVENT_QUIT)
+            exit(0);
+        if ((event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_KEY_UP) && !event.key.repeat) {
+            int code = raw_code(event.key.scancode);
+            if (event.type == SDL_EVENT_KEY_DOWN && event.key.scancode == SDL_SCANCODE_F10)
+                exit(0);
+            if (hooks && hooks->key && hooks->key(event.key.scancode, event.type == SDL_EVENT_KEY_DOWN))
+                continue;
+            if (event.key.scancode == SDL_SCANCODE_LCTRL && phase == PHASE_INTRO)
+                code = 0x40;
+            if (code >= 0 && !(hooks && hooks->no_keyboard))
+                host_key(phase, code, event.type == SDL_EVENT_KEY_DOWN);
+        }
+    }
+}
+
+static void machine_tick(int phase, const struct HostHooks *hooks, int16_t *samples)
+{
+    extern volatile int host_irq_hold;
+    extern void host_blank_begin(void);
+    extern void display_latch_fresh(void);
+    extern void display_latch_late(void);
+    if (phase == PHASE_INTRO) {
+        ih_vbl();
+        ih_music_mix(samples, 882, 44100);
+    } else {
+        display_latch();
+        host_blank_begin();
+        if (!host_irq_hold)
+            irq_vbl();
+        display_latch_fresh();
+        if (hooks && hooks->after_blank)
+            hooks->after_blank();
+        display_latch_late();
+        sound_mix(samples);
+    }
+}
+
+#ifndef __EMSCRIPTEN__
+static int interpolated_loop(const struct HostOptions *options, int phase, SDL_Renderer *renderer,
+                             SDL_Texture *texture, SDL_AudioStream *audio, uint32_t *pixels)
+{
+    const struct HostHooks *hooks = options->hooks;
+    uint64_t next = SDL_GetTicksNS();
+    int frame = 0;
+    while (!options->frames || frame < options->frames) {
+        extern volatile int host_irq_hold;
+        if (next_phase >= 0) {
+            pthread_join(program_thread, 0);
+            phase = next_phase;
+            next_phase = -1;
+            start_phase(phase);
+            next = SDL_GetTicksNS();
+        }
+        host_events(options, phase);
+        if (hooks && hooks->hold && hooks->hold(phase)) {
+            next = SDL_GetTicksNS();
+            SDL_DelayNS(500000);
+            continue;
+        }
+        while (host_irq_hold)
+            SDL_DelayNS(200000);
+        uint64_t now = SDL_GetTicksNS();
+        if (now > next + 100000000ull) {
+            next = now;
+            presentation_discard_history();
+        }
+        for (int due = 0; next <= now && due < 3 && (!options->frames || frame < options->frames); due++) {
+            int16_t samples[882 * 2];
+            if (hooks && hooks->frame_start && !hooks->frame_start(frame, pixels, phase))
+                return 0;
+            machine_tick(phase, hooks, samples);
+            if (audio && SDL_GetAudioStreamQueued(audio) < 44100 / 5 * 4)
+                SDL_PutAudioStreamData(audio, samples, sizeof samples);
+            if (hooks && hooks->after_frame) {
+                if (phase == PHASE_INTRO)
+                    intro_render(pixels);
+                else
+                    display_render(pixels);
+                hooks->after_frame(frame, phase, pixels, samples);
+            }
+            if (options->wav) {
+                FILE *f = fopen(options->wav, "ab");
+                if (f) {
+                    fwrite(samples, 1, sizeof samples, f);
+                    fclose(f);
+                }
+            }
+            frame++;
+            next += 20000000ull;
+        }
+        while (host_irq_hold)
+            SDL_DelayNS(200000);
+        if (phase == PHASE_INTRO)
+            intro_render(pixels);
+        else
+            display_render_interpolated(pixels, SDL_GetTicksNS());
+        SDL_UpdateTexture(texture, 0, pixels, SCREEN_W * 4);
+        SDL_RenderClear(renderer);
+        SDL_RenderTexture(renderer, texture, 0, 0);
+        SDL_RenderPresent(renderer);
+    }
+    if (hooks && hooks->finish)
+        hooks->finish(pixels);
+    return 0;
+}
+#endif
+
 #ifdef __EMSCRIPTEN__
 /* The browser build: the machine's loop is a function the browser calls at the display's refresh (requestAnimationFrame); the program runs on a thread of its own (a web worker),
  * as it does on the desktop.  Nothing of the tests: no hooks, no window without the canvas. */
@@ -157,6 +275,7 @@ static struct {
     SDL_Texture *texture;
     SDL_AudioStream *audio;
     int phase;
+    int interpolate;
     uint64_t next;
 } web;
 
@@ -192,32 +311,23 @@ static void web_frame(void)
     uint64_t now = SDL_GetTicksNS();
     int due = 0;
 
-    if (now > web.next + 100000000ull)
+    if (now > web.next + 100000000ull) {
         web.next = now;   /* far behind (the tab was hidden): start again */
+        presentation_discard_history();
+    }
     while (web.next <= now && due < 3) {
         due++;
         web.next += 20000000ull;
     }
     for (int tick = 0; tick < due; tick++) {
-        extern volatile int host_irq_hold;
-
-        if (web.phase == PHASE_INTRO) {
-            ih_vbl();
-            ih_music_mix(samples, 882, 44100);
-        } else {
-            display_latch();
-            host_blank_begin();
-            if (!host_irq_hold)
-                irq_vbl();
-            display_latch_fresh();
-            display_latch_late();
-            sound_mix(samples);
-        }
+        machine_tick(web.phase, 0, samples);
         if (web.audio && SDL_GetAudioStreamQueued(web.audio) < 44100 / 5 * 4)
             SDL_PutAudioStreamData(web.audio, samples, sizeof samples);
     }
     if (web.phase == PHASE_INTRO)
         intro_render(pixels);
+    else if (web.interpolate)
+        display_render_interpolated(pixels, now);
     else
         display_render(pixels);
     SDL_UpdateTexture(web.texture, 0, pixels, SCREEN_W * 4);
@@ -240,6 +350,12 @@ int host_run(const struct HostOptions *options)
     SDL_Renderer *renderer = 0;
     SDL_Texture *texture = 0;
     SDL_AudioStream *audio = 0;
+
+    if (options->interpolate && headless) {
+        fprintf(stderr, "gods-sdl: --interpolate requires a window\n");
+        return 2;
+    }
+    presentation_enable(options->interpolate);
 
 #ifndef __EMSCRIPTEN__
     sigaction(SIGSEGV, &sa, 0);
@@ -279,15 +395,25 @@ int host_run(const struct HostOptions *options)
     web.texture = texture;
     web.audio = audio;
     web.phase = phase;
+    web.interpolate = options->interpolate;
     web.next = SDL_GetTicksNS();
     emscripten_set_main_loop(web_frame, 0, 1);   /* (does not return) */
     return 0;
 #endif
 
+#ifndef __EMSCRIPTEN__
+    if (options->interpolate) {
+        if (!SDL_SetRenderVSync(renderer, 0)) {
+            fprintf(stderr, "gods-sdl: cannot disable VSync for --interpolate: %s\n", SDL_GetError());
+            return 1;
+        }
+        return interpolated_loop(options, phase, renderer, texture, audio, pixels);
+    }
+#endif
+
     int vsync = !headless && renderer && !(hooks && hooks->no_vsync) && SDL_SetRenderVSync(renderer, 1);   /* presented at the display's refresh */
     uint64_t next = SDL_GetTicksNS();
     for (int frame = 0; !options->frames || frame < options->frames; frame++) {
-        SDL_Event event;
         int16_t samples[882 * 2];
 
         if (next_phase >= 0) {   /* the program on asked for the next one */
@@ -296,22 +422,7 @@ int host_run(const struct HostOptions *options)
             next_phase = -1;
             start_phase(phase);
         }
-        while (!headless && SDL_PollEvent(&event)) {
-            if (event.type == SDL_EVENT_QUIT)
-                exit(0);
-            if ((event.type == SDL_EVENT_KEY_DOWN || event.type == SDL_EVENT_KEY_UP) && !event.key.repeat) {
-                int code = raw_code(event.key.scancode);
-
-                if (event.type == SDL_EVENT_KEY_DOWN && event.key.scancode == SDL_SCANCODE_F10)
-                    exit(0);
-                if (hooks && hooks->key && hooks->key(event.key.scancode, event.type == SDL_EVENT_KEY_DOWN))
-                    continue;
-                if (event.key.scancode == SDL_SCANCODE_LCTRL && phase == PHASE_INTRO)
-                    code = 0x40;
-                if (code >= 0 && !(hooks && hooks->no_keyboard))
-                    host_key(phase, code, event.type == SDL_EVENT_KEY_DOWN);
-            }
-        }
+        host_events(options, phase);
         if (hooks && hooks->frame_start && !hooks->frame_start(frame, pixels, phase))
             return 0;
         /* In a window the screen is presented at the display's refresh (vsync) and the 50 Hz frames of the machine are counted from the clock: a refresh
@@ -341,34 +452,7 @@ int host_run(const struct HostOptions *options)
                 SDL_DelayNS(200000);
         }
         for (int tick = 0; tick < due; tick++) {
-            if (phase == PHASE_INTRO) {
-                ih_vbl();
-                ih_music_mix(samples, 882, 44100);
-            } else {
-                extern volatile int host_irq_hold;
-
-                display_latch();
-                {
-                    extern void host_blank_begin(void);
-
-                    host_blank_begin();
-                }
-                if (!host_irq_hold)   /* (the quickload or the quick load of the program's thread is writing the memory: the interrupt would run on half of it) */
-                    irq_vbl();
-                {
-                    extern void display_latch_fresh(void);
-
-                    display_latch_fresh();
-                }
-                if (hooks && hooks->after_blank)
-                    hooks->after_blank();   /* (the lockstep: the program's thread flips the screens right after the blank it waited for: a moment for that before the frame is drawn) */
-                {
-                    extern void display_latch_late(void);
-
-                    display_latch_late();
-                }
-                sound_mix(samples);
-            }
+            machine_tick(phase, hooks, samples);
             if (vsync && audio && SDL_GetAudioStreamQueued(audio) < 44100 / 5 * 4)
                 SDL_PutAudioStreamData(audio, samples, sizeof samples);
         }

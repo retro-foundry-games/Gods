@@ -9,8 +9,9 @@
 
 static void usage(FILE *out)
 {
-    fprintf(out, "usage: gods-sdl [--disks DIR]\n"
+    fprintf(out, "usage: gods-sdl [--disks DIR] [--interpolate]\n"
                  "  --disks DIR   the folder with gods-disk1.adf and gods-disk2.adf (default: the working folder)\n"
+                 "  --interpolate smooth gameplay motion; uncapped rendering (browser: display refresh)\n"
                  "  --help        this text\n"
                  "hiscores.bin (the scores and the level codes) is kept in the working folder; F10 quits.\n");
 }
@@ -26,6 +27,10 @@ int main(int argc, char **argv)
         }
         if (!strcmp(argv[i], "--disks") && i + 1 < argc) {
             options.disks = argv[++i];
+            continue;
+        }
+        if (!strcmp(argv[i], "--interpolate")) {
+            options.interpolate = 1;
             continue;
         }
         fprintf(stderr, "gods-sdl: unknown option %s\n", argv[i]);
