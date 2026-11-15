@@ -34,6 +34,26 @@ int host_dev;
 
 static volatile int next_phase = -1;   /* set by a program that asks for the next one */
 static pthread_t program_thread;
+static int wide_mode;
+static uint32_t wide_pixels[WIDE_WIDTH * WIDE_HEIGHT];
+
+/* Development hooks keep the original raster and coordinate system. Only
+ * the displayed surface changes; intro/menu artwork remains centred. */
+static void render_frame(int phase, int interpolate, uint32_t *pixels)
+{
+    uint64_t now = interpolate ? SDL_GetTicksNS() : 0;
+    if (phase == PHASE_INTRO) {
+        intro_render(pixels);
+        if (wide_mode)
+            presentation_fit_wide(wide_pixels, pixels);
+    } else if (wide_mode) {
+        display_render_widescreen(pixels, wide_pixels, now);
+    } else if (interpolate) {
+        display_render_interpolated(pixels, now);
+    } else {
+        display_render(pixels);
+    }
+}
 
 static void *intro_program(void *unused)
 {
@@ -195,11 +215,14 @@ static void machine_tick(int phase, const struct HostHooks *hooks, int16_t *samp
 
 static int host_present(PixelScale *scale, SDL_Texture *texture, const uint32_t *pixels)
 {
+    int width = wide_mode ? WIDE_WIDTH : SCREEN_W;
+    if (wide_mode)
+        pixels = wide_pixels;
     const char *operation = "SDL_UpdateTexture";
-    if (!SDL_UpdateTexture(texture, 0, pixels, SCREEN_W * 4))
+    if (!SDL_UpdateTexture(texture, 0, pixels, width * 4))
         goto error;
     operation = "pixel upscaling";
-    if (!pixel_scale_draw(scale, texture, SCREEN_W))
+    if (!pixel_scale_draw(scale, texture, width))
         goto error;
     operation = "SDL_RenderPresent";
     if (!SDL_RenderPresent(scale->renderer))
@@ -265,10 +288,7 @@ static int interpolated_loop(const struct HostOptions *options, int phase, Pixel
         }
         while (host_irq_hold)
             SDL_DelayNS(200000);
-        if (phase == PHASE_INTRO)
-            intro_render(pixels);
-        else
-            display_render_interpolated(pixels, SDL_GetTicksNS());
+        render_frame(phase, 1, pixels);
         if (!host_present(scale, texture, pixels))
             return 1;
     }
@@ -369,12 +389,7 @@ static void web_frame(void)
         if (web.audio && SDL_GetAudioStreamQueued(web.audio) < 44100 / 5 * 4)
             SDL_PutAudioStreamData(web.audio, samples, sizeof samples);
     }
-    if (web.phase == PHASE_INTRO)
-        intro_render(pixels);
-    else if (web.interpolate)
-        display_render_interpolated(pixels, now);
-    else
-        display_render(pixels);
+    render_frame(web.phase, web.interpolate, pixels);
     if (!host_present(&web.scale, web.texture, pixels))
         exit(1);
 }
@@ -399,7 +414,12 @@ int host_run(const struct HostOptions *options)
         fprintf(stderr, "gods-sdl: --interpolate requires a window\n");
         return 2;
     }
-    presentation_enable(options->interpolate);
+    wide_mode = options->widescreen;
+    presentation_widescreen(wide_mode);
+    presentation_enable(options->interpolate || wide_mode);
+    const int output_width = wide_mode ? WIDE_WIDTH : SCREEN_W;
+    const int output_height = wide_mode ? WIDE_HEIGHT : SCREEN_H;
+    const int logical_height = wide_mode ? 225 : SCREEN_H * 5 / 6;
 
 #ifndef __EMSCRIPTEN__
     sigaction(SIGSEGV, &sa, 0);
@@ -419,7 +439,7 @@ int host_run(const struct HostOptions *options)
 #ifndef __EMSCRIPTEN__
         flags |= SDL_WINDOW_HIGH_PIXEL_DENSITY;
 #endif
-        window = SDL_CreateWindow("Gods", SCREEN_W * scale, SCREEN_H * scale, flags);
+        window = SDL_CreateWindow("Gods", output_width * scale, (wide_mode ? logical_height : SCREEN_H) * scale, flags);
 #ifdef __EMSCRIPTEN__
         if (window && !web_update_window(window)) {
             fprintf(stderr, "gods-sdl: browser display size: %s\n", SDL_GetError());
@@ -427,14 +447,14 @@ int host_run(const struct HostOptions *options)
         }
 #endif
         renderer = window ? SDL_CreateRenderer(window, 0) : 0;
-        texture = renderer ? SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_W, SCREEN_H) : 0;
+        texture = renderer ? SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, output_width, output_height) : 0;
         if (!texture) {
             fprintf(stderr, "SDL window: %s\n", SDL_GetError());
             return 1;
         }
-        if (!SDL_SetRenderLogicalPresentation(renderer, SCREEN_W, SCREEN_H * 5 / 6, SDL_LOGICAL_PRESENTATION_LETTERBOX) ||
-            !SDL_UpdateTexture(texture, 0, pixels, SCREEN_W * 4) ||
-            !pixel_scale_open(&pixel_scale, renderer, texture, SCREEN_W, SCREEN_H)) {
+        if (!SDL_SetRenderLogicalPresentation(renderer, output_width, logical_height, SDL_LOGICAL_PRESENTATION_LETTERBOX) ||
+            !SDL_UpdateTexture(texture, 0, wide_mode ? wide_pixels : pixels, output_width * 4) ||
+            !pixel_scale_open(&pixel_scale, renderer, texture, output_width, output_height)) {
             fprintf(stderr, "gods-sdl: pixel upscaling setup: %s\n", SDL_GetError());
             return 1;
         }
@@ -523,10 +543,7 @@ int host_run(const struct HostOptions *options)
             while (host_irq_hold)
                 SDL_DelayNS(200000);
         }
-        if (phase == PHASE_INTRO)
-            intro_render(pixels);
-        else
-            display_render(pixels);
+        render_frame(phase, 0, pixels);
         if (hooks && hooks->after_frame)
             hooks->after_frame(frame, phase, pixels, samples);
         if (options->wav) {   /* a test: the sound as raw signed 16 bit stereo 44100 Hz */

@@ -520,6 +520,14 @@ static void blit_shifted(int16_t x, int16_t y, int16_t width, int16_t height, co
  * (image_mirrored negative), the shift in the bits of x (image_x_shift) and the other draw routines of the table at $0D9A are not */
 void blit_clipped(int16_t x, int16_t y, int16_t width, int16_t height, const uint8_t *source, const int16_t *clip)
 {
+    if (!(guest.image_draw_flags & 0x24) &&
+        (guest.image_x_shift || ((guest.image_mirrored & 0x8000) && guest.draw_routine_index <= 1))) {
+        int image_x = guest.image_x_shift ? x : x & -16;
+        presentation_image(image_x - guest.x_offset, y, width + 1, height + 1,
+                           source + guest.image_clip_skip_rows * ((width + 1) / 8),
+                           guest.image_plane_bytes, guest.x_offset & 31, SCREEN_HEIGHT - 1,
+                           clip, !guest.image_x_shift && !guest.draw_routine_index);
+    }
     int16_t low = clip[2];
     int16_t high = clip[3];
     int16_t rest;
@@ -928,7 +936,7 @@ static uint16_t previous_list[1024];
 static int fade_in_edits;   /* (the edits seen in the shop's fade-in so far: the first is not shown in part) */
 static int previous_list_valid;
 
-static void display_render_frame(uint32_t *pixels, uint64_t now)
+static void display_render_frame(uint32_t *pixels, uint64_t now, uint32_t *wide)
 {
     static uint16_t colors[320][16];
     static uint16_t colors_before[320][16];
@@ -1017,16 +1025,23 @@ static void display_render_frame(uint32_t *pixels, uint64_t now)
     }
     if (now)
         presentation_render(pixels, colors, (const void *)first_list == (const void *)&guest.copper_lists.a ? 0 : 1, now);
+    if (wide)
+        presentation_render_wide(wide, pixels, colors, (const void *)first_list == (const void *)&guest.copper_lists.a ? 0 : 1, now);
 }
 
 void display_render(uint32_t *pixels)
 {
-    display_render_frame(pixels, 0);
+    display_render_frame(pixels, 0, 0);
 }
 
 void display_render_interpolated(uint32_t *pixels, uint64_t now)
 {
-    display_render_frame(pixels, now);
+    display_render_frame(pixels, now, 0);
+}
+
+void display_render_widescreen(uint32_t *original, uint32_t *wide, uint64_t now)
+{
+    display_render_frame(original, now, wide);
 }
 
 /* the chip's blitter is not emulated (the program's routines that programmed its registers are replaced above): said once if one is reached */

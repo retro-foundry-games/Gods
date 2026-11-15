@@ -25,6 +25,10 @@ starting to interpolate at the display's refresh rate.
 Desktop and browser output also use F/A-18 Interceptor's pixel resampler for
 sharp integer and fractional upscaling, including high-DPI displays.
 
+Add `--widescreen` for an optional **16:9** view showing more of the level.
+In the browser, tick **Widescreen (16:9)** before starting. It works with or
+without Smooth motion and retains the original gameplay boundaries and timing.
+
 ## Layout
 
 - `src/` the C of the game (`game.c`, `menu.c`, `boot.c`, ...), the generated `game.h`, `data.c` and `game.ld`, the intro's data

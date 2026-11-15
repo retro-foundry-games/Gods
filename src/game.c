@@ -339,6 +339,9 @@ static int player_came_back;   /* the death frame ends in $39EE: the player has 
  * flip and the other screen is copied again; the original's copy of a screen takes about a frame) */
 static void game_over_message(const char *text)
 {
+#ifdef GODS_SDL
+    presentation_begin(0, 0, 0, 0);
+#endif
     guest.text_y = 70;
     stop_game_sounds();
     copy_other_screen();
@@ -676,10 +679,6 @@ void game_frame(void)
     if (guest.scroll_push_frames)
         scroll_push();
     draw_background();
-#ifdef GODS_SDL
-    presentation_begin(guest.screen_buffer, guest.scroll_x, guest.scroll_y,
-                       (uintptr_t)guest.level_map ^ ((uintptr_t)guest.param_index << 24));
-#endif
     draw_pickups();
     do_nothing_b();   /* $194D0 */
     update_crumbles();   /* $17CC0 */
@@ -2002,6 +2001,9 @@ static void password_text(const char *text, int16_t y)
  * are saved ($0067FE).  The frames it takes are not counted in the level's tick ($CE2) */
 static void level_password_screen(void)
 {
+#ifdef GODS_SDL
+    presentation_begin(0, 0, 0, 0);
+#endif
     uint32_t saved_ticks = guest.tick_count;
     int level = (int16_t)guest.param_index;
 
@@ -2128,6 +2130,9 @@ static void level_end_screen(void)
     host_iteration_cpu(2);   /* (the work of the frame, which took the original two frames, as before the loop's own flip) */
     screens_flip();
     level_end_copy();
+#ifdef GODS_SDL
+    presentation_begin(0, 0, 0, 0);
+#endif
     if (record->bonus == 0) {
         level_end_effects(record);
         return;
@@ -3261,7 +3266,7 @@ const uint8_t *draw_background_tile(const uint8_t *map, const uint8_t *tiles, ui
  * tiles of 32 pixels across and up to twelve rows of 16 lines, from the scroll position (blitter_setup_copy first; the steps
  * between the four blits of a tile are 64 and $2100).  Does nothing more when scroll_ease_phase is above 2 (the original goes on at $17814 then) and the original goes on at $1785C
  * when it is 2 (neither ran) */
-void draw_background(void)
+static void draw_background_pixels(void)
 {
     if (guest.scroll_ease_phase > 2) {   /* the background is kept: it is copied to the screen */
         copy_screen(guest.background, guest.screen_buffer);
@@ -3298,6 +3303,19 @@ void draw_background(void)
     guest.background = guest.memory_base + 256;   /* the screen drawn is kept to be copied the next times */
     copy_screen(guest.screen_buffer, guest.background);
     guest.scroll_ease_phase = 4;
+}
+
+void draw_background(void)
+{
+    int frozen = guest.scroll_ease_phase > 2;
+    draw_background_pixels();
+#ifdef GODS_SDL
+    presentation_begin(guest.screen_buffer, guest.scroll_x, guest.scroll_y,
+                       (uintptr_t)guest.level_map ^ ((uintptr_t)guest.param_index << 24));
+    presentation_world(guest.level_map->tiles, guest.background_tile_graphics, frozen);
+#else
+    (void)frozen;
+#endif
 }
 
 /* orig $018072: the entry a2 is looked at (path_steps_left gets its byte at +5, plus one); when the record a1 has its byte at +5
@@ -13050,6 +13068,9 @@ void copper_list_make(void)
 /* orig $017A7E: the picture file `name` is read to file_buffer (32034 bytes) and copied to 34 bytes before the screen buffer */
 void load_picture_to_screen(const uint8_t *name)
 {
+#ifdef GODS_SDL
+    presentation_begin(0, 0, 0, 0);
+#endif
     const uint16_t *from;
     uint16_t *to = (uint16_t *)(guest.screen_buffer - 34);
 
@@ -16057,6 +16078,9 @@ static void boss4_quickload(void)
  * shown (the second until a button is pressed), and the game begins again at the level 1 with more armour (armour_level from 2 to 4 more) and the items and score made again; the original goes on at $2452 */
 static void game_won_screen(void)
 {
+#ifdef GODS_SDL
+    presentation_begin(0, 0, 0, 0);
+#endif
     static uint8_t text_one[] = " The way to mount olympus lies open...  You may now claim your place among the gods...  Enjoy your life, it will last forever. ";
     static uint8_t text_two[] = " So what will you do with this gift?     journey again to the city if you dare... this time your task will be harder. ";
 
@@ -16960,6 +16984,9 @@ void shop_flip_strip(void)
  * (cell 17) fades the screen out, draws a frame of the game, and the game goes on from the start of a frame ($2BD6) */
 static void shop_run(void)
 {
+#ifdef GODS_SDL
+    presentation_begin(0, 0, 0, 0);
+#endif
     uint32_t saved_ticks = shop_from_password ? 0 : guest.tick_count;
 
     guest.shop_score_shown = guest.score_total_1fc;
