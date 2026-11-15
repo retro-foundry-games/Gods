@@ -54,7 +54,7 @@ MENU_MODULES := menu disk alloc decrunch input draw message file boot game data
 GAME_OBJS := $(BUILD)/g_shims.o $(BUILD)/g_display.o $(BUILD)/g_sound.o $(BUILD)/g_guest.o $(BUILD)/g_guest_load.o $(BUILD)/g_irq.o $(BUILD)/g_files.o $(MENU_MODULES:%=$(BUILD)/g_%.o) $(BUILD)/g_stubs.o
 HOST_OBJS := $(BUILD)/h_host.o $(BUILD)/h_presentation.o $(BUILD)/h_pixel_scale.o
 
-.PHONY: all run clean test-presentation test-pixel-scale
+.PHONY: all run clean test-presentation test-pixel-scale test-widescreen test-widescreen-gameplay
 all: $(BUILD)/gods-sdl $(BUILD)/gods-sdl-dev
 
 test-presentation: | $(BUILD)
@@ -64,6 +64,13 @@ test-presentation: | $(BUILD)
 test-pixel-scale: | $(BUILD)
 	$(CC) $(HOST_CFLAGS) -Wextra -Werror -I$(HERE) $(HERE)/tests/pixel_scale_test.c $(HERE)/pixel_scale.c $(HOST_LIBS) -o $(BUILD)/test-pixel-scale
 	$(BUILD)/test-pixel-scale
+
+test-widescreen: | $(BUILD)
+	$(CC) $(HOST_CFLAGS) -Wextra -Werror -I$(HERE) $(HERE)/tests/widescreen_test.c $(HERE)/presentation.c -lpthread -lm -o $(BUILD)/test-widescreen
+	$(BUILD)/test-widescreen
+
+test-widescreen-gameplay: all
+	$(PYTHON) $(HERE)/tests/widescreen_gameplay_test.py --game $(BUILD)/gods-sdl-dev --disks "$(GODS_DISKS)"
 
 $(BUILD):
 	mkdir -p $@

@@ -38,6 +38,7 @@
   <p>Drop your <strong>Gods disk 1 and disk 2 .adf</strong> files here.</p>
   <p id="status" role="status" aria-live="polite">Loading the browser runtime&hellip;</p>
   <p><label><input id="interpolate" type="checkbox"> Smooth motion (interpolated, display refresh rate)</label></p>
+  <p><label><input id="widescreen" type="checkbox"> Widescreen (16:9)</label></p>
   <div class="actions">
     <button type="button" id="choose">Choose ADFs</button>
     <button type="button" id="start" disabled>Start Game</button>
@@ -61,7 +62,7 @@
   let launching = false;
   const canvas = document.getElementById('canvas');
   const gameViewport = document.getElementById('game');
-  function fitCanvas() {   // the Amiga's shape: 6:5
+  function fitCanvas() {
     // F/A-18's browser scaling: resample once at physical display resolution,
     // including browser zoom, and snap both size and origin to that grid.
     const visible = window.visualViewport;
@@ -73,10 +74,11 @@
     gameViewport.style.top = top + 'px';
     gameViewport.style.right = Math.max(0, window.innerWidth - viewportWidth - left) + 'px';
     gameViewport.style.bottom = Math.max(0, window.innerHeight - viewportHeight - top) + 'px';
-    const scale = Math.min(viewportWidth / 6, viewportHeight / 5);
+    const aspect = document.getElementById('widescreen').checked ? 16 / 9 : 6 / 5;
+    const scale = Math.min(viewportWidth / aspect, viewportHeight);
     const density = window.devicePixelRatio * (visible ? visible.scale : 1);
-    const width = Math.max(1, Math.min(Math.floor(viewportWidth * density), Math.round(6 * scale * density)));
-    const height = Math.max(1, Math.min(Math.floor(viewportHeight * density), Math.round(5 * scale * density)));
+    const width = Math.max(1, Math.min(Math.floor(viewportWidth * density), Math.round(aspect * scale * density)));
+    const height = Math.max(1, Math.min(Math.floor(viewportHeight * density), Math.round(scale * density)));
     Module.godsCanvasWidth = width;
     Module.godsCanvasHeight = height;
     Module.godsCanvasDensity = density;
@@ -87,6 +89,7 @@
     canvas.style.transform = `translate(${(Math.floor(x) - x) / density}px, ${(Math.floor(y) - y) / density}px)`;
   }
   window.addEventListener('resize', fitCanvas);
+  document.getElementById('widescreen').addEventListener('change', fitCanvas);
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', fitCanvas);
     window.visualViewport.addEventListener('scroll', fitCanvas);
@@ -161,6 +164,7 @@
     Module.canvas.focus();
     const args = ['--disks', '/'];
     if (document.getElementById('interpolate').checked) args.push('--interpolate');
+    if (document.getElementById('widescreen').checked) args.push('--widescreen');
     Module.callMain(args);
   });
 </script>
