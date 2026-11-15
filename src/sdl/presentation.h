@@ -10,6 +10,7 @@ void presentation_discard_history(void); /* renderer only, after a clock discont
 void presentation_begin(uint8_t *screen, int x, int y, uintptr_t scene);
 int presentation_recording(void);
 uintptr_t presentation_object(const void *object); /* returns the previous drawing owner */
+int presentation_bottom_clip(int bottom); /* fixed base of a revealed image; returns the previous clip */
 void presentation_draw_begin(uintptr_t caller, int kind, int x, int y);
 void presentation_draw_end(void);
 void presentation_overlay_begin(void);

@@ -5807,7 +5807,14 @@ static void draw_thing_flyer(int16_t x, int16_t y, int16_t glyph)
     image->data = (const uint16_t *)((const uint8_t *)image->data + 32);
     y -= guest.scroll_y;
     guest.glyph_plane_size = 64;
+#ifdef GODS_SDL
+    /* $49F8: the spike's changing height reveals its stem above a fixed base. */
+    int saved_bottom = presentation_bottom_clip(y + height);
+#endif
     glyph_draw(x, y, glyph);
+#ifdef GODS_SDL
+    presentation_bottom_clip(saved_bottom);
+#endif
     guest.glyph_plane_size = 0;
     image->data = (const uint16_t *)((const uint8_t *)image->data - 32);
     y -= 16;

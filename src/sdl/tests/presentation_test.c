@@ -38,9 +38,8 @@ static void begin(int slot, int camera_x, int camera_y, uintptr_t scene)
     presentation_begin((uint8_t *)screens[slot], camera_x, camera_y, scene);
 }
 
-static void dot(int slot, uintptr_t caller, int x, int y, int fine, unsigned index)
+static void paint_pixel(int slot, int x, int y, int fine, unsigned index)
 {
-    presentation_draw_begin(caller, 1, x, y);
     int bx = x + fine;
     uint16_t mask = 1u << (15 - (bx & 15));
     for (int plane = 0; plane < 4; plane++) {
@@ -49,6 +48,12 @@ static void dot(int slot, uintptr_t caller, int x, int y, int fine, unsigned ind
         presentation_write(to, mask, value);
         *to = value;
     }
+}
+
+static void dot(int slot, uintptr_t caller, int x, int y, int fine, unsigned index)
+{
+    presentation_draw_begin(caller, 1, x, y);
+    paint_pixel(slot, x, y, fine, index);
     presentation_draw_end();
 }
 
@@ -299,6 +304,31 @@ static void persistent_object_matching_and_draw_order(void)
     assert(at(57, 30) == 0xff000000); /* no interpolation between unrelated records */
 }
 
+static void spike_stem_preserves_fixed_base(void)
+{
+    for (int retracting = 0; retracting < 2; retracting++) {
+        presentation_enable(1);
+        for (int slot = 0; slot < 2; slot++) {
+            int top = slot == retracting ? 150 : 148;
+            begin(slot, 0, 0, 1);
+            /* The grey/green sill beneath the trap is part of the level. */
+            screens[slot][(PLANE + 160 * ROW) / 2 + (120 >> 4)] = 1u << (15 - (120 & 15));
+            int saved_bottom = presentation_bottom_clip(159);
+            presentation_draw_begin(1, 0, 120, top);
+            for (int y = top; y <= 159; y++)
+                paint_pixel(slot, 120, y, 0, 1);
+            presentation_draw_end();
+            presentation_bottom_clip(saved_bottom);
+            publish(slot, 0, 100 + slot * 2);
+            show(slot, 0);
+        }
+        show(1, 20000000);
+        assert(at(120, 149) == 0xffff0000);
+        assert(at(120, 159) == 0xffff0000); /* stem stays connected to its base */
+        assert(at(120, 160) == 0xff00ff00); /* it never paints over the sill */
+    }
+}
+
 int main(void)
 {
     for (int y = 0; y < 320; y++) {
@@ -315,6 +345,7 @@ int main(void)
     batches_and_discontinuities();
     foreground_occlusion_when_batch_changes();
     persistent_object_matching_and_draw_order();
-    puts("presentation: motion, timing, masks, layering, camera, scroll wrap, HUD, foreground occlusion, object identity and discontinuities passed");
+    spike_stem_preserves_fixed_base();
+    puts("presentation: motion, timing, masks, layering, camera, HUD, occlusion, object identity, spike extension/retraction and discontinuities passed");
     return 0;
 }
