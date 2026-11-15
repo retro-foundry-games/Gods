@@ -103,8 +103,10 @@ $(W)/i_intro_data.o: $(SRC)/intro_data.c $(W)/intro_rename.h $(GENERATED)
 $(W)/i_intro_assets.o: $(HERE)/intro_assets.c $(W)/intro_rename.h $(GENERATED)
 	$(EMCC) $(GAME_CFLAGS) -include $(W)/intro_rename.h -MMD -MP -c $< -o $@
 
-# The presentation recorder identifies draw sites with __builtin_return_address.
-LINK := -Wl,--allow-multiple-definition -pthread -sPTHREAD_POOL_SIZE=3 -sINITIAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=0 -sUSE_OFFSET_CONVERTER=1 \
+# __builtin_return_address needs this setting only before Emscripten 4.0.14;
+# that release removed the converter and the setting (upstream changelog #24963).
+OFFSET_CONVERTER := $(shell $(EMCC) -dumpversion | awk -F. '$$1 < 4 || ($$1 == 4 && $$2 == 0 && $$3 < 14) { print "-sUSE_OFFSET_CONVERTER=1" }')
+LINK := -Wl,--allow-multiple-definition -pthread -sPTHREAD_POOL_SIZE=3 -sINITIAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=0 $(OFFSET_CONVERTER) \
         -sSTACK_SIZE=1048576 -sDEFAULT_PTHREAD_STACK_SIZE=4194304 -sENVIRONMENT=web,worker -sFORCE_FILESYSTEM=1 -sINVOKE_RUN=0 \
         "-sEXPORTED_RUNTIME_METHODS=['FS','callMain']" -lidbfs.js --shell-file=$(NATIVE)/web/shell.html
 
