@@ -22,6 +22,7 @@
 #include "host.h"
 #include "intro_host.h"
 #include "presentation.h"
+#include "pixel_scale.h"
 
 extern void menu_boot(void);    /* boot.c: the start-up (orig $039E50) */
 extern void menu_start(void);   /* menu.c: the menu (orig $006388) */
@@ -192,8 +193,25 @@ static void machine_tick(int phase, const struct HostHooks *hooks, int16_t *samp
     }
 }
 
+static int host_present(PixelScale *scale, SDL_Texture *texture, const uint32_t *pixels)
+{
+    const char *operation = "SDL_UpdateTexture";
+    if (!SDL_UpdateTexture(texture, 0, pixels, SCREEN_W * 4))
+        goto error;
+    operation = "pixel upscaling";
+    if (!pixel_scale_draw(scale, texture, SCREEN_W))
+        goto error;
+    operation = "SDL_RenderPresent";
+    if (!SDL_RenderPresent(scale->renderer))
+        goto error;
+    return 1;
+error:
+    fprintf(stderr, "gods-sdl: %s: %s\n", operation, SDL_GetError());
+    return 0;
+}
+
 #ifndef __EMSCRIPTEN__
-static int interpolated_loop(const struct HostOptions *options, int phase, SDL_Renderer *renderer,
+static int interpolated_loop(const struct HostOptions *options, int phase, PixelScale *scale,
                              SDL_Texture *texture, SDL_AudioStream *audio, uint32_t *pixels)
 {
     const struct HostHooks *hooks = options->hooks;
@@ -251,10 +269,8 @@ static int interpolated_loop(const struct HostOptions *options, int phase, SDL_R
             intro_render(pixels);
         else
             display_render_interpolated(pixels, SDL_GetTicksNS());
-        SDL_UpdateTexture(texture, 0, pixels, SCREEN_W * 4);
-        SDL_RenderClear(renderer);
-        SDL_RenderTexture(renderer, texture, 0, 0);
-        SDL_RenderPresent(renderer);
+        if (!host_present(scale, texture, pixels))
+            return 1;
     }
     if (hooks && hooks->finish)
         hooks->finish(pixels);
@@ -269,11 +285,35 @@ extern void host_blank_begin(void);
 extern void display_latch_fresh(void);
 extern void display_latch_late(void);
 
+/* As in F/A-18's browser.c: the shell chooses the physical display size;
+ * SDL resamples directly to that size, with no second CSS enlargement. */
+EM_JS(int, browser_pixel_width, (void), {
+    const visible = window.visualViewport;
+    const density = window.devicePixelRatio * (visible ? visible.scale : 1);
+    if (density !== Module['godsCanvasDensity']) Module['godsFitCanvas']();
+    return Module['godsCanvasWidth'];
+});
+EM_JS(int, browser_pixel_height, (void), { return Module['godsCanvasHeight']; });
+
+static int web_update_window(SDL_Window *window)
+{
+    int current_width, current_height;
+    int width = browser_pixel_width(), height = browser_pixel_height();
+    if (width < 1 || height < 1) {
+        SDL_SetError("Browser display pixel size is invalid");
+        return 0;
+    }
+    if (!SDL_GetWindowSize(window, &current_width, &current_height))
+        return 0;
+    return (width == current_width && height == current_height) || SDL_SetWindowSize(window, width, height);
+}
+
 static struct {
     SDL_Window *window;
     SDL_Renderer *renderer;
     SDL_Texture *texture;
     SDL_AudioStream *audio;
+    PixelScale scale;
     int phase;
     int interpolate;
     uint64_t next;
@@ -286,6 +326,11 @@ static void web_frame(void)
     int16_t samples[882 * 2];
 
     static int settle;
+
+    if (!web_update_window(web.window)) {
+        fprintf(stderr, "gods-sdl: browser display resize: %s\n", SDL_GetError());
+        exit(1);
+    }
 
     if (next_phase >= 0) {   /* the program on asked for the next one; the browser's main thread must not block on the old thread's exit */
         if (settle == 0)
@@ -330,10 +375,8 @@ static void web_frame(void)
         display_render_interpolated(pixels, now);
     else
         display_render(pixels);
-    SDL_UpdateTexture(web.texture, 0, pixels, SCREEN_W * 4);
-    SDL_RenderClear(web.renderer);
-    SDL_RenderTexture(web.renderer, web.texture, 0, 0);
-    SDL_RenderPresent(web.renderer);
+    if (!host_present(&web.scale, web.texture, pixels))
+        exit(1);
 }
 #endif
 
@@ -350,6 +393,7 @@ int host_run(const struct HostOptions *options)
     SDL_Renderer *renderer = 0;
     SDL_Texture *texture = 0;
     SDL_AudioStream *audio = 0;
+    PixelScale pixel_scale = {0};
 
     if (options->interpolate && headless) {
         fprintf(stderr, "gods-sdl: --interpolate requires a window\n");
@@ -371,15 +415,29 @@ int host_run(const struct HostOptions *options)
             fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
             return 1;
         }
-        window = SDL_CreateWindow("Gods", SCREEN_W * scale, SCREEN_H * scale, 0);
+        SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE;
+#ifndef __EMSCRIPTEN__
+        flags |= SDL_WINDOW_HIGH_PIXEL_DENSITY;
+#endif
+        window = SDL_CreateWindow("Gods", SCREEN_W * scale, SCREEN_H * scale, flags);
+#ifdef __EMSCRIPTEN__
+        if (window && !web_update_window(window)) {
+            fprintf(stderr, "gods-sdl: browser display size: %s\n", SDL_GetError());
+            return 1;
+        }
+#endif
         renderer = window ? SDL_CreateRenderer(window, 0) : 0;
         texture = renderer ? SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_W, SCREEN_H) : 0;
         if (!texture) {
             fprintf(stderr, "SDL window: %s\n", SDL_GetError());
             return 1;
         }
-        SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
-        SDL_SetRenderLogicalPresentation(renderer, SCREEN_W, SCREEN_H * 5 / 6, SDL_LOGICAL_PRESENTATION_LETTERBOX);
+        if (!SDL_SetRenderLogicalPresentation(renderer, SCREEN_W, SCREEN_H * 5 / 6, SDL_LOGICAL_PRESENTATION_LETTERBOX) ||
+            !SDL_UpdateTexture(texture, 0, pixels, SCREEN_W * 4) ||
+            !pixel_scale_open(&pixel_scale, renderer, texture, SCREEN_W, SCREEN_H)) {
+            fprintf(stderr, "gods-sdl: pixel upscaling setup: %s\n", SDL_GetError());
+            return 1;
+        }
         if (options->window_x >= 0)
             SDL_SetWindowPosition(window, options->window_x, options->window_y);
         if (hooks && hooks->windows)
@@ -394,6 +452,7 @@ int host_run(const struct HostOptions *options)
     web.renderer = renderer;
     web.texture = texture;
     web.audio = audio;
+    web.scale = pixel_scale;
     web.phase = phase;
     web.interpolate = options->interpolate;
     web.next = SDL_GetTicksNS();
@@ -407,7 +466,9 @@ int host_run(const struct HostOptions *options)
             fprintf(stderr, "gods-sdl: cannot disable VSync for --interpolate: %s\n", SDL_GetError());
             return 1;
         }
-        return interpolated_loop(options, phase, renderer, texture, audio, pixels);
+        int result = interpolated_loop(options, phase, &pixel_scale, texture, audio, pixels);
+        pixel_scale_close(&pixel_scale);
+        return result;
     }
 #endif
 
@@ -484,10 +545,10 @@ int host_run(const struct HostOptions *options)
 
             if (!(hooks && hooks->no_vsync) || now - last_present > 20000000ull) {   /* (following the original: as fast as it goes, shown 50 times a second) */
                 last_present = now;
-                SDL_UpdateTexture(texture, 0, pixels, SCREEN_W * 4);
-                SDL_RenderClear(renderer);
-                SDL_RenderTexture(renderer, texture, 0, 0);
-                SDL_RenderPresent(renderer);
+                if (!host_present(&pixel_scale, texture, pixels)) {
+                    pixel_scale_close(&pixel_scale);
+                    return 1;
+                }
             }
         }
         if (!vsync && (!hooks || !hooks->paced || hooks->paced())) {
@@ -504,5 +565,6 @@ int host_run(const struct HostOptions *options)
     }
     if (hooks && hooks->finish)
         hooks->finish(pixels);
+    pixel_scale_close(&pixel_scale);
     return 0;
 }

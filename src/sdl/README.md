@@ -18,6 +18,31 @@ Two programs are built from the same machine (`host.c`): `gods-sdl` (`main.c`) r
 Fire (space, left control, return) ends the intro as on the Amiga ("LOADING GAME") and the menu comes up in the same window.  Options of `gods-sdl-dev`:
 `--disks FOLDER`, `--scale N` (window size, default 3), `--skip-intro` (or `--start menu`), `--start level` (needs `--level1-image`).  F10 quits.
 
+### Pixel scaling
+
+Desktop and browser output use the pixel resampler from F/A-18 Interceptor's
+`native/src/platform/pixel_scale.c`, adapted in `pixel_scale.c` here. This is
+enabled in both the original and interpolated rendering modes.
+
+It enlarges the original bitmap with nearest sampling, then selects and blends
+box-filtered mip levels for the displayed pixel footprint. Integral pixel
+dimensions use an exact nearest copy; fractional dimensions retain sharp pixel
+interiors and filter their boundaries. Gods keeps its existing pixel aspect,
+palettes and source resolution. The preferred enlargement is 12x, reduced to
+fit the source renderer's texture-size limits and its 256 MiB GPU / 16 MiB
+software texture budget. Targets are prepared before the game clock starts.
+
+Desktop windows support resizing and high DPI. The browser uses F/A-18's
+physical-pixel sizing and snaps the canvas size and origin to the display grid,
+including resize, fullscreen, high DPI and visual-viewport zoom. SDL renders
+directly to those pixels rather than enlarging a fixed canvas through CSS.
+
+The underlying technique comes from ZXSC's `src/speccy/Render.cpp`; its
+[MIT notice](third_party/ZXSC-LICENSE.txt) is retained. To check exact integer
+pixels, fractional boundaries, tiny outputs and the pixel aspect:
+
+    make -C src/sdl test-pixel-scale
+
 ### Interpolated rendering
 
 Both executables accept `--interpolate`:
