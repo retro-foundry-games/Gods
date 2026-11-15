@@ -17,6 +17,14 @@ You need the original disk images `gods-disk1.adf` and `gods-disk2.adf` to play:
 
 `src/sdl/README.md` describes the SDL port.
 
+Run `build/sdl/gods-sdl --disks DIR --interpolate` for uncapped desktop rendering
+with interpolated gameplay motion and scrolling. The original machine clock
+and gameplay speed are preserved. In the browser, tick **Smooth motion** before
+starting to interpolate at the display's refresh rate.
+
+Desktop and browser output also use F/A-18 Interceptor's pixel resampler for
+sharp integer and fractional upscaling, including high-DPI displays.
+
 ## Layout
 
 - `src/` the C of the game (`game.c`, `menu.c`, `boot.c`, ...), the generated `game.h`, `data.c` and `game.ld`, the intro's data

@@ -10,6 +10,7 @@
 #include "menu.h"
 #include "guest.h"
 #include "game.h"
+#include "presentation.h"
 
 /* orig $01CFAC: clear a screen buffer, 8448 longs */
 void clear_screen_buffer(uint32_t *buffer)
@@ -88,6 +89,7 @@ void host_flip_apply(void)
 /* orig $01D302: show the screen that was drawn and draw on the other: the per-screen state, the two screens and so which
  * copper list; its scroll is set for x_offset and the copper is told to use it, then the next vertical blank is waited for */
 extern void shop_flip_strip(void);
+extern volatile int display_fresh;
 
 void screens_flip(void)
 {
@@ -97,6 +99,11 @@ void screens_flip(void)
     extern void host_flip_wait(void);
 
     host_flip_wait();
+
+    if (guest.menu_active || display_fresh)
+        presentation_begin(0, 0, 0, 0);
+    presentation_publish(guest.screen_buffer == guest.screen_1 ? 0 : 1,
+                         guest.screen_buffer, guest.x_offset, guest.vbl_count);
 
     guest.buffer_state[0] = guest.buffer_state[1];
     guest.buffer_state[1] = state;
@@ -447,7 +454,9 @@ void blit_masked(const uint8_t *source, uint8_t *dest, int16_t modulo_ab, uint16
 
                 for (unsigned i = 0; i < 4; i++)
                     mask |= *(const uint16_t *)(source + i * plane_size + at);
-                *to = (uint16_t)((mask & *(const uint16_t *)(source + plane * plane_size + at)) | (~mask & *to));
+                uint16_t value = (uint16_t)((mask & *(const uint16_t *)(source + plane * plane_size + at)) | (~mask & *to));
+                presentation_write(to, mask, value);
+                *to = value;
             }
         }
     }
@@ -460,8 +469,12 @@ static void blit_plain(const uint8_t *source, uint8_t *dest, int16_t modulo_ab, 
 
     for (unsigned plane = 0; plane < 4; plane++)
         for (unsigned row = 0; row < rows; row++)
-            for (unsigned word = 0; word < words; word++)
-                *(uint16_t *)(dest + plane * SCREEN_ROW * SCREEN_HEIGHT + row * dest_row + 2 * word) = *(const uint16_t *)(source + plane * plane_size + row * source_row + 2 * word);
+            for (unsigned word = 0; word < words; word++) {
+                uint16_t *to = (uint16_t *)(dest + plane * SCREEN_ROW * SCREEN_HEIGHT + row * dest_row + 2 * word);
+                uint16_t value = *(const uint16_t *)(source + plane * plane_size + row * source_row + 2 * word);
+                presentation_write(to, 0xffff, value);
+                *to = value;
+            }
 }
 
 /* the clipped draw of an image whose x is not on a word's line (image_x_shift not 0: image_draw_flags bit 1): the original shifts the image into a work area ($1F1E6) and blits it with the shift; the host draws it pixel by pixel:
@@ -494,10 +507,9 @@ static void blit_shifted(int16_t x, int16_t y, int16_t width, int16_t height, co
                 uint16_t *to = (uint16_t *)((uint8_t *)screen_row + i * plane_stride) + (dx >> 4);
                 uint16_t pixel = (uint16_t)(1u << (15 - (dx & 15)));
 
-                if ((*(const uint16_t *)(source + i * plane_size + at) >> bit) & 1)
-                    *to |= pixel;
-                else
-                    *to &= (uint16_t)~pixel;
+                uint16_t value = (*(const uint16_t *)(source + i * plane_size + at) >> bit) & 1 ? *to | pixel : *to & (uint16_t)~pixel;
+                presentation_write(to, pixel, value);
+                *to = value;
             }
         }
     }
@@ -655,7 +667,9 @@ void blit_masked_image(uint8_t *dst, const uint8_t *src, uint16_t plane, uint16_
                 b_shifted = (uint16_t)(((previous_b << 16 | b) >> blit_shift) & 0xffff);
                 previous_a = a;
                 previous_b = b;
-                out[j] = (uint16_t)((a_shifted & b_shifted) | (~a_shifted & out[j]));
+                uint16_t value = (uint16_t)((a_shifted & b_shifted) | (~a_shifted & out[j]));
+                presentation_write(&out[j], a_shifted, value);
+                out[j] = value;
             }
         }
     }
@@ -914,7 +928,7 @@ static uint16_t previous_list[1024];
 static int fade_in_edits;   /* (the edits seen in the shop's fade-in so far: the first is not shown in part) */
 static int previous_list_valid;
 
-void display_render(uint32_t *pixels)
+static void display_render_frame(uint32_t *pixels, uint64_t now)
 {
     static uint16_t colors[320][16];
     static uint16_t colors_before[320][16];
@@ -1001,6 +1015,18 @@ void display_render(uint32_t *pixels)
                 out[x] = (guest.message_shown && (bits[x >> 4] >> (15 - (x & 15)) & 1)) ? argb(*text_color) : argb(message_background[line]);
         }
     }
+    if (now)
+        presentation_render(pixels, colors, (const void *)first_list == (const void *)&guest.copper_lists.a ? 0 : 1, now);
+}
+
+void display_render(uint32_t *pixels)
+{
+    display_render_frame(pixels, 0);
+}
+
+void display_render_interpolated(uint32_t *pixels, uint64_t now)
+{
+    display_render_frame(pixels, now);
 }
 
 /* the chip's blitter is not emulated (the program's routines that programmed its registers are replaced above): said once if one is reached */

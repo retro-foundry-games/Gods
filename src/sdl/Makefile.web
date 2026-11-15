@@ -31,7 +31,7 @@ HOST_CFLAGS := $(COMMON)
 
 MENU_MODULES := menu disk alloc decrunch input draw message file boot game data
 GAME_OBJS := $(W)/g_shims.o $(W)/g_display.o $(W)/g_sound.o $(W)/g_guest.o $(W)/g_guest_load.o $(W)/g_irq.o $(W)/g_files.o $(MENU_MODULES:%=$(W)/g_%.o) $(W)/g_stubs.o
-HOST_OBJS := $(W)/h_host.o $(W)/h_intro_view.o $(W)/h_main.o
+HOST_OBJS := $(W)/h_host.o $(W)/h_presentation.o $(W)/h_pixel_scale.o $(W)/h_intro_view.o $(W)/h_main.o
 INTRO_OBJS := $(W)/i_intro_host.o $(W)/i_intro.o $(W)/i_intro_data.o $(W)/i_intro_assets.o
 
 .PHONY: all serve clean
@@ -103,11 +103,12 @@ $(W)/i_intro_data.o: $(SRC)/intro_data.c $(W)/intro_rename.h $(GENERATED)
 $(W)/i_intro_assets.o: $(HERE)/intro_assets.c $(W)/intro_rename.h $(GENERATED)
 	$(EMCC) $(GAME_CFLAGS) -include $(W)/intro_rename.h -MMD -MP -c $< -o $@
 
-LINK := -Wl,--allow-multiple-definition -pthread -sPTHREAD_POOL_SIZE=3 -sINITIAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=0  \
+# The presentation recorder identifies draw sites with __builtin_return_address.
+LINK := -Wl,--allow-multiple-definition -pthread -sPTHREAD_POOL_SIZE=3 -sINITIAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=0 -sUSE_OFFSET_CONVERTER=1 \
         -sSTACK_SIZE=1048576 -sDEFAULT_PTHREAD_STACK_SIZE=4194304 -sENVIRONMENT=web,worker -sFORCE_FILESYSTEM=1 -sINVOKE_RUN=0 \
         "-sEXPORTED_RUNTIME_METHODS=['FS','callMain']" -lidbfs.js --shell-file=$(NATIVE)/web/shell.html
 
-$(W)/gods.html: $(HOST_OBJS) $(INTRO_OBJS) $(GAME_OBJS) $(NATIVE)/web/shell.html $(NATIVE)/web/retro-foundry.png $(NATIVE)/web/coi-serviceworker.js
+$(W)/gods.html: $(HOST_OBJS) $(INTRO_OBJS) $(GAME_OBJS) $(NATIVE)/web/shell.html $(NATIVE)/web/retro-foundry.png $(NATIVE)/web/coi-serviceworker.js $(HERE)/Makefile.web
 	$(EMCC) $(LINK) -o $@ $(HOST_OBJS) $(INTRO_OBJS) $(GAME_OBJS) -L$(SDL3_PREFIX)/lib -lSDL3 -lm
 	cp $(NATIVE)/web/retro-foundry.png $(NATIVE)/web/coi-serviceworker.js $(W)/
 

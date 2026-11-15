@@ -2,6 +2,7 @@
 #include "draw.h"
 
 #ifdef GODS_SDL
+#include "sdl/presentation.h"
 extern void (*host_draw_hook)(int kind, int16_t x, int16_t y, uint16_t index);   /* sdl/devmain.c: none in the regular program */
 #endif
 
@@ -199,7 +200,7 @@ static void blit_image_left(uint8_t *dst, const uint8_t *src, uint16_t plane, ui
 
 /* orig $017686: draw glyph or image `index` of the table at pixel (x, y), one word wide.  From x = 0 to 336 the blit is the
  * plain one; from 337 to 351 and from -15 to -1 the original has two variants that draw the part that is on the screen */
-void glyph_draw(int16_t x, int16_t y, uint16_t index)
+static void glyph_draw_pixels(int16_t x, int16_t y, uint16_t index)
 {
 #ifdef GODS_SDL
     if (host_draw_hook)
@@ -254,7 +255,7 @@ static const uint8_t *sprite_planes_as_words(const uint8_t *data, unsigned bytes
     return copy;
 }
 
-void sprite_draw(int16_t x, int16_t y, uint16_t index)
+static void sprite_draw_pixels(int16_t x, int16_t y, uint16_t index)
 {
 #ifdef GODS_SDL
     if (host_draw_hook)
@@ -287,6 +288,40 @@ void sprite_draw(int16_t x, int16_t y, uint16_t index)
         blit_image_wide_right(dst, data, plane, x & 15, rows);
     else
         blit_image_wide(dst, data, plane, x & 15, rows);
+}
+
+#ifdef GODS_SDL
+__attribute__((noinline))
+#endif
+void glyph_draw(int16_t x, int16_t y, uint16_t index)
+{
+#ifdef GODS_SDL
+    int recording = presentation_recording();
+    if (recording)
+        presentation_draw_begin((uintptr_t)__builtin_return_address(0), 0, x, y);
+#endif
+    glyph_draw_pixels(x, y, index);
+#ifdef GODS_SDL
+    if (recording)
+        presentation_draw_end();
+#endif
+}
+
+#ifdef GODS_SDL
+__attribute__((noinline))
+#endif
+void sprite_draw(int16_t x, int16_t y, uint16_t index)
+{
+#ifdef GODS_SDL
+    int recording = presentation_recording();
+    if (recording)
+        presentation_draw_begin((uintptr_t)__builtin_return_address(0), 1, x, y);
+#endif
+    sprite_draw_pixels(x, y, index);
+#ifdef GODS_SDL
+    if (recording)
+        presentation_draw_end();
+#endif
 }
 
 /* orig $003BF8: draw `text` in the large font, 16 pixels a character, from pixel column x; the glyph of a character is its

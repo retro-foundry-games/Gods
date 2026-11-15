@@ -52,10 +52,18 @@ $(shell mkdir -p $(BUILD); echo '$(GAME_CFLAGS) | $(HOST_CFLAGS)' | cmp -s - $(F
 # the program's modules (as native/Makefile's MENU_MODULES) and the C that replaces the Amiga parts
 MENU_MODULES := menu disk alloc decrunch input draw message file boot game data
 GAME_OBJS := $(BUILD)/g_shims.o $(BUILD)/g_display.o $(BUILD)/g_sound.o $(BUILD)/g_guest.o $(BUILD)/g_guest_load.o $(BUILD)/g_irq.o $(BUILD)/g_files.o $(MENU_MODULES:%=$(BUILD)/g_%.o) $(BUILD)/g_stubs.o
-HOST_OBJS := $(BUILD)/h_host.o
+HOST_OBJS := $(BUILD)/h_host.o $(BUILD)/h_presentation.o $(BUILD)/h_pixel_scale.o
 
-.PHONY: all run clean
+.PHONY: all run clean test-presentation test-pixel-scale
 all: $(BUILD)/gods-sdl $(BUILD)/gods-sdl-dev
+
+test-presentation: | $(BUILD)
+	$(CC) $(HOST_CFLAGS) -Wextra -Werror -I$(HERE) $(HERE)/tests/presentation_test.c $(HERE)/presentation.c -lpthread -lm -o $(BUILD)/test-presentation
+	$(BUILD)/test-presentation
+
+test-pixel-scale: | $(BUILD)
+	$(CC) $(HOST_CFLAGS) -Wextra -Werror -I$(HERE) $(HERE)/tests/pixel_scale_test.c $(HERE)/pixel_scale.c $(HOST_LIBS) -o $(BUILD)/test-pixel-scale
+	$(BUILD)/test-pixel-scale
 
 $(BUILD):
 	mkdir -p $@

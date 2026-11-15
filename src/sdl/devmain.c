@@ -409,6 +409,8 @@ int main(int argc, char **argv)
             options.disks = argv[++i];
         else if (!strcmp(argv[i], "--scale") && i + 1 < argc)
             options.scale = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--interpolate"))
+            options.interpolate = 1;
         else if (!strcmp(argv[i], "--lockstep")) {
             extern int keys_space_is_fire;
 
@@ -451,12 +453,12 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--dump-every") && i + 1 < argc)
             dump_every = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
-            printf("usage: gods-sdl-dev [--disks FOLDER (default: the working folder)] [--scale N] [--start intro|menu|level] [--skip-intro] [--level1-image FILE]\n"
+            printf("usage: gods-sdl-dev [--disks FOLDER (default: the working folder)] [--scale N] [--interpolate] [--start intro|menu|level] [--skip-intro] [--level1-image FILE]\n"
                    "                    [--headless --frames N [--dump PREFIX] [--dump-every N] [--keys FRAME:RAW:1|0,...]]\n"
                    "                    [--lockstep [--lockstep-level N] [--lockstep-iteration N] [--lockstep-extra N] [--lockstep-menu N]] [--quickload FILE] [--quicksave FILE]\n");
             return 0;
         } else {
-            fprintf(stderr, "usage: gods-sdl-dev [--disks FOLDER] [--scale N] [--start intro|menu|level] [--skip-intro] [--level1-image FILE]\n"
+            fprintf(stderr, "usage: gods-sdl-dev [--disks FOLDER] [--scale N] [--interpolate] [--start intro|menu|level] [--skip-intro] [--level1-image FILE]\n"
                             "                    [--headless --frames N [--dump PREFIX] [--dump-every N] [--keys FRAME:RAW:1|0,...]]\n"
                             "                    [--lockstep [--lockstep-level N] [--lockstep-iteration N] [--lockstep-extra N]] [--quickload FILE] [--quicksave FILE]\n");
             return 2;
@@ -464,6 +466,10 @@ int main(int argc, char **argv)
     }
     if (options.phase == PHASE_LEVEL && !host_level_image) {
         fprintf(stderr, "gods-sdl-dev: --start level needs --level1-image FILE\n");
+        return 2;
+    }
+    if (options.interpolate && (options.headless || follow || lockstep || getenv("GODS_FAST"))) {
+        fprintf(stderr, "gods-sdl-dev: --interpolate requires a window and real-time playback; remove --headless, --lockstep, GODS_FOLLOW and GODS_FAST\n");
         return 2;
     }
     hooks.no_vsync = hooks.no_keyboard = follow;

@@ -40,6 +40,7 @@ extern volatile uint8_t host_cia_raw[0x2000];   /* from $BFD000 */
 void display_latch_colors(void);                              /* ... and the colours, after the vertical blank interrupt has written them */
 void display_latch(void);                                      /* the display registers as the frame starts (before the vertical blank is signalled) */
 void display_render(uint32_t *pixels);                       /* one frame: the copper list and the bitplanes to ARGB pixels */
+void display_render_interpolated(uint32_t *pixels, uint64_t now);
 
 /* irq.c (the game thread runs the program, the main thread the interrupts) */
 void irq_vbl(void);

@@ -1,7 +1,7 @@
 # Gods, SDL3 port (intro, menu, level 1 as a test)
 
 The C of the intro (`intro.c`) and of the menu program and the game (`menu.c` ... `game_*.c`), the same files the Amiga build uses, runs
-on a Linux desktop as one program: `gods-sdl` (the game as it is played: no options) goes intro, menu, level in one process, one window and one audio stream.  The Amiga's
+on a Linux desktop as one program: `gods-sdl` goes intro, menu, level in one process, one window and one audio stream.  The Amiga's
 chips, the disks and the sound are replaced by the C in this folder; nothing of the original's 68000 code runs.
 
 ## Build and run
@@ -11,12 +11,74 @@ You need the original disk images `gods-disk1.adf` and `gods-disk2.adf` in `proj
     make -C projects/gods/native sdl          # build   (the flake's shell with the 32-bit gcc and SDL3 is entered by itself)
     make -C projects/gods/native sdl-run      # run     (builds first; runs build/sdl/gods-sdl, which finds the disks in projects/gods/local)
 
-Two programs are built from the same machine (`host.c`): `gods-sdl` (`main.c`) just runs the game, with no options, no environment variables and no control channel;
+Two programs are built from the same machine (`host.c`): `gods-sdl` (`main.c`) runs the game with `--disks` and `--interpolate`, no environment variables and no control channel;
 `gods-sdl-dev` (`devmain.c`, with `dev_game.c` for the game's thread) has everything the tests need: the options below, the lockstep with the original (`--lockstep`, see
 `projects/gods/host/gods_lockstep.lua`), the quicksave (F5) and quickload (F9), `--quickload FILE` and the `GODS_*` environment variables.
 
 Fire (space, left control, return) ends the intro as on the Amiga ("LOADING GAME") and the menu comes up in the same window.  Options of `gods-sdl-dev`:
 `--disks FOLDER`, `--scale N` (window size, default 3), `--skip-intro` (or `--start menu`), `--start level` (needs `--level1-image`).  F10 quits.
+
+### Pixel scaling
+
+Desktop and browser output use the pixel resampler from F/A-18 Interceptor's
+`native/src/platform/pixel_scale.c`, adapted in `pixel_scale.c` here. This is
+enabled in both the original and interpolated rendering modes.
+
+It enlarges the original bitmap with nearest sampling, then selects and blends
+box-filtered mip levels for the displayed pixel footprint. Integral pixel
+dimensions use an exact nearest copy; fractional dimensions retain sharp pixel
+interiors and filter their boundaries. Gods keeps its existing pixel aspect,
+palettes and source resolution. The preferred enlargement is 12x, reduced to
+fit the source renderer's texture-size limits and its 256 MiB GPU / 16 MiB
+software texture budget. Targets are prepared before the game clock starts.
+
+Desktop windows support resizing and high DPI. The browser uses F/A-18's
+physical-pixel sizing and snaps the canvas size and origin to the display grid,
+including resize, fullscreen, high DPI and visual-viewport zoom. SDL renders
+directly to those pixels rather than enlarging a fixed canvas through CSS.
+
+The underlying technique comes from ZXSC's `src/speccy/Render.cpp`; its
+[MIT notice](third_party/ZXSC-LICENSE.txt) is retained. To check exact integer
+pixels, fractional boundaries, tiny outputs and the pixel aspect:
+
+    make -C src/sdl test-pixel-scale
+
+### Interpolated rendering
+
+Both executables accept `--interpolate`:
+
+    build/sdl/gods-sdl --disks DIR --interpolate
+
+This disables desktop VSync and presents as fast as the renderer can run. The
+machine still raises vertical blanks at 50 Hz; the original gameplay loop
+keeps its existing waits between completed drawings. Extra presentations
+interpolate sprite positions and camera scrolling between those drawings.
+Input is polled every presentation, and sound advances only on machine ticks.
+The default rendering mode is unchanged.
+
+The browser launcher has a **Smooth motion** checkbox for the same interpolation.
+Browser presentation follows `requestAnimationFrame`, so its rate is the
+display's refresh rate rather than an uncapped desktop loop.
+
+`presentation.c` records the original glyph, sprite and clipped-image blits and
+their masks into immutable snapshots at screen flips. It moves the drawings
+over the reconstructed background without rerunning game logic or changing
+guest state. Scenery interpolates across all visible bitmap rows, including
+behind the HUD. The HUD's actual blit masks keep its pixels fixed without
+freezing the scenery in the same rows. The message band and animation poses
+retain their original pixels. Presentation trails gameplay by one completed drawing (40 ms at 25 Hz),
+using the actual interval between flips when a drawing takes longer.
+Scene changes, respawns, teleports, loads and long clock gaps discard history.
+Scenery, moving paths, pickups and creatures match drawings by their persistent
+game records, preserving identity when draw order or visibility changes. A new
+or unmatched drawing keeps its current world position and follows the
+interpolated camera, so foreground masks remain aligned with the scenery.
+
+Development captures and scripted keys still count 50 Hz machine ticks in this
+mode. `--headless`, `--lockstep`, `GODS_FOLLOW` and `GODS_FAST` cannot be combined
+with `--interpolate`. To test the compositor without disk images:
+
+    make -C src/sdl test-presentation
 
 How one program does what the loader does between the Amiga's programs: the intro and the menu program are separate programs with the same
 names (`glyph_draw`, `screens_flip`, `blit_image` ...), so the intro is linked into one object whose symbols are local but a few entry points;

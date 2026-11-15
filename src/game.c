@@ -4,6 +4,9 @@
 
 #include "menu.h"
 #include "sound.h"
+#ifdef GODS_SDL
+#include "sdl/presentation.h"
+#endif
 
 static void update_falling_slots(void);
 static void update_archers(void);
@@ -257,6 +260,9 @@ static void messages_reset(void)
  * does ($2BD6) */
 static void player_respawn(void)
 {
+#ifdef GODS_SDL
+    presentation_reset();
+#endif
     host_fade_lag(4);   /* (the original shows the steps of this fade a frame after the registers have them when its first step began late in a frame, as they are when it began early: host_fade_first) */
     fade_out(0, 0xFFFF);
     guest.player_energy = 0x18;
@@ -452,6 +458,9 @@ static void player_death_frame(void)
  * the screen fades out, a frame is drawn, the screens flip and the screen fades in (delay 1) */
 static void teleport_player(void)
 {
+#ifdef GODS_SDL
+    presentation_reset();
+#endif
     int16_t x = (int16_t)(((guest.exit_target >> 8) << 5) + 0x10);
     int16_t y = (int16_t)((int8_t)(guest.exit_target & 0xFF) << 4);
 
@@ -554,6 +563,9 @@ static void game_frame_tail(void)
     update_bolts();
     bolts_update();
     boss_death_score();
+#ifdef GODS_SDL
+    presentation_overlay_begin();
+#endif
     update_score_display();
     draw_score_panel();
     update_item_panel();
@@ -561,6 +573,9 @@ static void game_frame_tail(void)
     update_energy_display();
     draw_energy_bar();
     draw_item_row();
+#ifdef GODS_SDL
+    presentation_overlay_end();
+#endif
     if (guest.energy_pickup_active) {
         int16_t d = (int16_t)guest.energy_old;
 
@@ -628,6 +643,9 @@ static void game_frame_tail(void)
  * $30DA, $35D2, $2F12) the frame ends here: those are the ends of a level, a death, the pause menu and the like */
 void game_frame(void)
 {
+#ifdef GODS_SDL
+    presentation_begin(0, 0, 0, 0);
+#endif
     host_iteration_mark();
     message_tick();
     host_read_wait();   /* (the lockstep: the original's read of this iteration is done: the keys are there) */
@@ -658,6 +676,10 @@ void game_frame(void)
     if (guest.scroll_push_frames)
         scroll_push();
     draw_background();
+#ifdef GODS_SDL
+    presentation_begin(guest.screen_buffer, guest.scroll_x, guest.scroll_y,
+                       (uintptr_t)guest.level_map ^ ((uintptr_t)guest.param_index << 24));
+#endif
     draw_pickups();
     do_nothing_b();   /* $194D0 */
     update_crumbles();   /* $17CC0 */
@@ -3554,7 +3576,13 @@ void redraw_record_images(void)
         y = a1->y;
 
         list = mark_record_cells(x, y, a2, list);
+#ifdef GODS_SDL
+        uintptr_t drawing_owner = presentation_object(a1);
+#endif
         draw_record_image(x, y, a2);
+#ifdef GODS_SDL
+        presentation_object((const void *)drawing_owner);
+#endif
     }
     if (guest.event_flags & 0x80)
         play_sound(52, 8);
@@ -6029,7 +6057,13 @@ void update_records(void)
 
         if (record->state == 0 || record->kind < 0)
             continue;
+#ifdef GODS_SDL
+        uintptr_t drawing_owner = presentation_object(record);
+#endif
         record_update(record, &guest.near_flags[i], (int16_t)(199 - i));
+#ifdef GODS_SDL
+        presentation_object((const void *)drawing_owner);
+#endif
     }
     if (guest.kind45_seen != 0)
         guest.list_count_1294 = 1;
@@ -6047,8 +6081,15 @@ void draw_pickups(void)
     for (int i = 0; i < 10; i++) {
         const struct ThingRecord *record = &guest.pickup_spots[i];
 
-        if (record->kind >= 0)
+        if (record->kind >= 0) {
+#ifdef GODS_SDL
+            uintptr_t drawing_owner = presentation_object(record);
+#endif
             sprite_draw(record->x - guest.scroll_x, record->y - guest.scroll_y, guest.pickup_glyph);
+#ifdef GODS_SDL
+            presentation_object((const void *)drawing_owner);
+#endif
+        }
     }
 }
 
@@ -6553,12 +6594,18 @@ static void creatures_run(struct CreatureType *type)
 
     guest.dying_count = 0;
     do {
+#ifdef GODS_SDL
+        uintptr_t drawing_owner = presentation_object(creature);
+#endif
         if (creature->hp == 0)
             gone++;
         else if (creature->hp < 0)
             creature_dies(creature);
         else if (creature_runs(type, creature))
             gone++;
+#ifdef GODS_SDL
+        presentation_object((const void *)drawing_owner);
+#endif
         number++;
         creature++;
     } while (number < type->count);
@@ -13229,7 +13276,7 @@ void item_panels_make(void)
 
 /* orig $01EFCC (with $01F5DA inlined: the test of bit 0 of image_draw_flags): image number `image` of the image table is drawn at (x, y) with the clip rectangles clip_rect_list points to (image_draw_flags bit 3).
  * What did not run (bit 0 and bit 5 of image_draw_flags, a negative height, the draw without a clip list) is not written */
-void image_draw_clipped(int16_t x, int16_t y, uint16_t image)
+static void image_draw_clipped_pixels(int16_t x, int16_t y, uint16_t image)
 {
     const struct Image *entry;
     int16_t width;
@@ -13270,6 +13317,23 @@ void image_draw_clipped(int16_t x, int16_t y, uint16_t image)
         guest.image_clip_skip_rows = kept;
         guest.unused_dd6 = 0;
     }
+}
+
+#ifdef GODS_SDL
+__attribute__((noinline))
+#endif
+void image_draw_clipped(int16_t x, int16_t y, uint16_t image)
+{
+#ifdef GODS_SDL
+    int recording = presentation_recording();
+    if (recording)
+        presentation_draw_begin((uintptr_t)__builtin_return_address(0), 2, x - guest.x_offset, y);
+#endif
+    image_draw_clipped_pixels(x, y, image);
+#ifdef GODS_SDL
+    if (recording)
+        presentation_draw_end();
+#endif
 }
 
 /* orig $005E50: the screen is filled with ones, image 127 (the digits) is drawn at (0, 0) and its sixteen... ten digits, 8 rows of four bytes

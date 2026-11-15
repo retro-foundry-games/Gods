@@ -28,7 +28,7 @@
   .credit-overlay a:focus-visible .icon-patreon, .credit-overlay a:hover .icon-patreon { color: #ff424d; }
   @media (max-width: 520px) { .credit-overlay { top: 6px; right: 6px; gap: 4px; padding: 6px; } .credit-overlay a { width: 38px; height: 38px; } .credit-overlay .icon { width: 24px; height: 24px; } }
   #game { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; overflow: hidden; }
-  canvas { border: 0; display: block; image-rendering: pixelated; outline: none; background: #000; }
+  canvas { border: 0; display: block; outline: none; background: #000; }
 </style>
 </head>
 <body>
@@ -37,6 +37,7 @@
   <h1>Gods</h1>
   <p>Drop your <strong>Gods disk 1 and disk 2 .adf</strong> files here.</p>
   <p id="status" role="status" aria-live="polite">Loading the browser runtime&hellip;</p>
+  <p><label><input id="interpolate" type="checkbox"> Smooth motion (interpolated, display refresh rate)</label></p>
   <div class="actions">
     <button type="button" id="choose">Choose ADFs</button>
     <button type="button" id="start" disabled>Start Game</button>
@@ -59,22 +60,48 @@
   const launcher = document.getElementById('launcher');
   let launching = false;
   const canvas = document.getElementById('canvas');
+  const gameViewport = document.getElementById('game');
   function fitCanvas() {   // the Amiga's shape: 6:5
-    const width = Math.min(window.innerWidth, window.innerHeight * 6 / 5);
-    canvas.style.width = Math.floor(width) + 'px';
-    canvas.style.height = Math.floor(width * 5 / 6) + 'px';
+    // F/A-18's browser scaling: resample once at physical display resolution,
+    // including browser zoom, and snap both size and origin to that grid.
+    const visible = window.visualViewport;
+    const viewportWidth = visible ? visible.width : window.innerWidth;
+    const viewportHeight = visible ? visible.height : window.innerHeight;
+    const left = visible ? visible.offsetLeft : 0;
+    const top = visible ? visible.offsetTop : 0;
+    gameViewport.style.left = left + 'px';
+    gameViewport.style.top = top + 'px';
+    gameViewport.style.right = Math.max(0, window.innerWidth - viewportWidth - left) + 'px';
+    gameViewport.style.bottom = Math.max(0, window.innerHeight - viewportHeight - top) + 'px';
+    const scale = Math.min(viewportWidth / 6, viewportHeight / 5);
+    const density = window.devicePixelRatio * (visible ? visible.scale : 1);
+    const width = Math.max(1, Math.min(Math.floor(viewportWidth * density), Math.round(6 * scale * density)));
+    const height = Math.max(1, Math.min(Math.floor(viewportHeight * density), Math.round(5 * scale * density)));
+    Module.godsCanvasWidth = width;
+    Module.godsCanvasHeight = height;
+    Module.godsCanvasDensity = density;
+    canvas.style.setProperty('width', width / density + 'px', 'important');
+    canvas.style.setProperty('height', height / density + 'px', 'important');
+    const x = (viewportWidth * density - width) / 2;
+    const y = (viewportHeight * density - height) / 2;
+    canvas.style.transform = `translate(${(Math.floor(x) - x) / density}px, ${(Math.floor(y) - y) / density}px)`;
   }
   window.addEventListener('resize', fitCanvas);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', fitCanvas);
+    window.visualViewport.addEventListener('scroll', fitCanvas);
+  }
   document.addEventListener('fullscreenchange', fitCanvas);
-  fitCanvas();
   const disks = [null, null];
   var Module = {
     canvas: document.getElementById('canvas'),
+    godsFitCanvas: fitCanvas,
     noInitialRun: true,
     print: (text) => console.log(text),
     printErr: (text) => console.warn(text),
     onRuntimeInitialized: () => { runtimeReady = true; refresh(); },
   };
+  fitCanvas();
   let runtimeReady = false;
   function refresh() {
     picked.innerHTML = 'Disk 1 of 2: ' + (disks[0] ? disks[0].name : 'not chosen') + ' &middot; Disk 2 of 2: ' + (disks[1] ? disks[1].name : 'not chosen');
@@ -132,7 +159,9 @@
     const game = document.getElementById('game');
     game.style.display = 'flex';
     Module.canvas.focus();
-    Module.callMain(['--disks', '/']);
+    const args = ['--disks', '/'];
+    if (document.getElementById('interpolate').checked) args.push('--interpolate');
+    Module.callMain(args);
   });
 </script>
 {{{ SCRIPT }}}
