@@ -73,6 +73,9 @@ Scenery, moving paths, pickups and creatures match drawings by their persistent
 game records, preserving identity when draw order or visibility changes. A new
 or unmatched drawing keeps its current world position and follows the
 interpolated camera, so foreground masks remain aligned with the scenery.
+The retracting spikes (`draw_thing_flyer`, original `$49F8`) retain their fixed
+stem base: interpolation reveals or retracts the stem above that boundary
+without moving its lower pixels through the scenery.
 
 Development captures and scripted keys still count 50 Hz machine ticks in this
 mode. `--headless`, `--lockstep`, `GODS_FOLLOW` and `GODS_FAST` cannot be combined

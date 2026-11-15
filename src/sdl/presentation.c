@@ -6,6 +6,7 @@
  * with the renderer. */
 #include "presentation.h"
 #include <math.h>
+#include <limits.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,7 +22,7 @@ struct Write {
 
 struct Drawing {
     uintptr_t caller, object;
-    int kind, ordinal, group_count, x, y, fixed;
+    int kind, ordinal, group_count, x, y, fixed, bottom;
     size_t first, count;
 };
 
@@ -39,6 +40,7 @@ struct Frame {
 static int enabled, drawing, overlay;
 static uint8_t *capture_screen;
 static uintptr_t capture_object;
+static int capture_bottom = INT_MAX;
 static struct Frame capture, published[2], previous, current;
 static uint64_t serial, shown_at;
 static pthread_mutex_t publication = PTHREAD_MUTEX_INITIALIZER;
@@ -82,6 +84,7 @@ void presentation_reset(void)
 {
     capture_screen = 0;
     capture_object = 0;
+    capture_bottom = INT_MAX;
     drawing = overlay = 0;
     pthread_mutex_lock(&publication);
     /* Only the renderer owns previous/current.  An empty publication tells it
@@ -108,6 +111,7 @@ void presentation_begin(uint8_t *screen, int x, int y, uintptr_t scene)
         return;
     capture_screen = screen;
     capture_object = 0;
+    capture_bottom = INT_MAX;
     drawing = overlay = 0;
     capture.draw_count = capture.write_count = 0;
     capture.x = x;
@@ -126,7 +130,7 @@ void presentation_draw_begin(uintptr_t caller, int kind, int x, int y)
             ordinal++;
     capture.drawings[capture.draw_count++] = (struct Drawing){
         .caller = caller, .object = capture_object, .kind = kind, .ordinal = ordinal,
-        .x = x, .y = y, .first = capture.write_count
+        .x = x, .y = y, .bottom = capture_bottom, .first = capture.write_count
     };
     drawing = 1;
 }
@@ -141,6 +145,13 @@ uintptr_t presentation_object(const void *object)
     uintptr_t previous_object = capture_object;
     capture_object = (uintptr_t)object;
     return previous_object;
+}
+
+int presentation_bottom_clip(int bottom)
+{
+    int previous_bottom = capture_bottom;
+    capture_bottom = bottom;
+    return previous_bottom;
 }
 
 void presentation_draw_end(void)
@@ -285,11 +296,30 @@ void presentation_render(uint32_t *pixels, const uint16_t colors[][16], int slot
          * current screen position separates foreground masks from scenery. */
         int dx = d->fixed ? 0 : old ? (int)lround((old->x - d->x) * (1.0 - alpha)) : -camera_x;
         int dy = d->fixed ? 0 : old ? (int)lround((old->y - d->y) * (1.0 - alpha)) : -camera_y;
-        for (size_t j = d->first; j < d->first + d->count; j++) {
-            const struct Write *w = &current.writes[j];
+        const struct Drawing *source = d;
+        const struct Frame *frame = &current;
+        int bottom = VIEW_HEIGHT - 1;
+        if (d->bottom != INT_MAX) {
+            bottom = d->bottom - camera_y;
+            if (old && old->bottom != INT_MAX) {
+                bottom = d->bottom + (int)lround((old->bottom - d->bottom) * (1.0 - alpha));
+                /* $49F8 reveals a variable-height spike stem above its base.
+                 * On retraction, keep the longer recorded stem and crop it
+                 * at the interpolated base; translating the shorter pose
+                 * would leave a gap above the base. */
+                if (old->bottom - old->y > d->bottom - d->y) {
+                    source = old;
+                    frame = &previous;
+                    dx += d->x - old->x;
+                    dy += d->y - old->y;
+                }
+            }
+        }
+        for (size_t j = source->first; j < source->first + source->count; j++) {
+            const struct Write *w = &frame->writes[j];
             int plane = w->offset / PLANE, at = w->offset % PLANE;
-            int y = at / ROW + dy, x = (at % ROW) * 8 - current.fine + dx;
-            if (y < 0 || y >= VIEW_HEIGHT)
+            int y = at / ROW + dy, x = (at % ROW) * 8 - frame->fine + dx;
+            if (y < 0 || y >= VIEW_HEIGHT || y > bottom)
                 continue;
             for (int bit = 15; bit >= 0; bit--, x++) {
                 if (x >= 0 && x < VIEW_WIDTH && (w->mask & (1u << bit))) {
