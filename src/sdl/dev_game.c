@@ -2,7 +2,7 @@
  * game's loop (shims.c, game_loop) then calls dev_iteration at the top of every iteration.  Compiled with the program's headers and flags.
  *
  *   GODS_ITERKEYS=FILE ("N CODE V" lines: at the top of the Nth iteration the key with the raw code CODE ($4C up, $4D down, $4E right, $4F left, $40 space) is set to V in the keyboard
- *                      interrupt's table) and GODS_ITERDUMP=FILE (the variables $100-$FFF at the top of every iteration, as they are in the host's memory): scripts/lockstep_sdl.py
+ *                      interrupt's table) and GODS_ITERDUMP=FILE (the variables $100-$FFF at the top of every iteration, as they are in the host's memory): tools/lockstep_sdl.py
  *   GODS_RECORD=PREFIX, GODS_FOLLOW=PREFIX, GODS_ITERMAX=N, GODS_ITERREGION=N:ADDR:LEN:PATH, GODS_QUICKTEST=SAVE:LOAD (below) */
 #include <stdio.h>
 #include <stdlib.h>

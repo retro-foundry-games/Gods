@@ -6,14 +6,14 @@ chips, the disks and the sound are replaced by the C in this folder; nothing of 
 
 ## Build and run
 
-You need the original disk images `gods-disk1.adf` and `gods-disk2.adf` in `projects/gods/local/` (or in the folder `--disks` names).
+You need the original disk images `gods-disk1.adf` and `gods-disk2.adf` in `local/` (or in the folder `--disks` names).
 
-    make -C projects/gods/native sdl          # build   (the flake's shell with the 32-bit gcc and SDL3 is entered by itself)
-    make -C projects/gods/native sdl-run      # run     (builds first; runs build/sdl/gods-sdl, which finds the disks in projects/gods/local)
+    make -C native sdl          # build   (the flake's shell with the 32-bit gcc and SDL3 is entered by itself)
+    make -C native sdl-run      # run     (builds first; runs build/sdl/gods-sdl, which finds the disks in local)
 
 Two programs are built from the same machine (`host.c`): `gods-sdl` (`main.c`) runs the game with `--disks`, `--interpolate` and `--widescreen`, no environment variables and no control channel;
 `gods-sdl-dev` (`devmain.c`, with `dev_game.c` for the game's thread) has everything the tests need: the options below, the lockstep with the original (`--lockstep`, see
-`projects/gods/host/gods_lockstep.lua`), the quicksave (F5) and quickload (F9), `--quickload FILE` and the `GODS_*` environment variables.
+`host/gods_lockstep.lua`), the quicksave (F5) and quickload (F9), `--quickload FILE` and the `GODS_*` environment variables.
 
 Fire (space, left control, return) ends the intro as on the Amiga ("LOADING GAME") and the menu comes up in the same window.  Options of `gods-sdl-dev`:
 `--disks FOLDER`, `--scale N` (window size, default 3), `--skip-intro` (or `--start menu`), `--start level` (needs `--level1-image`).  F10 quits.
@@ -131,7 +131,7 @@ they call `host_begin_quest()` (`shims.c`): without more it logs `Begin Quest: t
 takes its place when `original_begin` and the others get one (the hook functions are weak).  To see the level now, start it from a RAM
 image of the original (for testing only: nothing is embedded, it is not the default):
 
-    projects/gods/native/build/sdl/gods-sdl-dev --disks projects/gods/local --level1-image projects/gods/native/build/game-ram.bin --start level
+    native/build/sdl/gods-sdl-dev --disks local --level1-image native/build/game-ram.bin --start level
 
 (or leave `--start level` out and choose Begin Quest in the menu).  The image is the Amiga's big-endian chip RAM: the words and longs of
 the program's variables (from the types of `game.symbols`, `gen_fixups.py`), the two screens, the sprites' planes and the background are
@@ -198,5 +198,5 @@ word (`plane_byte`, `set_plane_byte` in game.c: the high half of a word for an e
 
 ## Debug build
 
-`make sdl DEBUG=1` (or `DEBUG=1 make -C projects/gods/native/src/sdl`) compiles everything with `-O0 -ggdb`; the objects are made again when the flags change, so `make sdl`
+`make sdl DEBUG=1` (or `DEBUG=1 make -C native/src/sdl`) compiles everything with `-O0 -ggdb`; the objects are made again when the flags change, so `make sdl`
 without it goes back.  `gdb build/sdl/gods-sdl` (a 32 bit program; the game's memory is mapped at the Amiga's addresses, the first 64 KiB at `0x01000000`).

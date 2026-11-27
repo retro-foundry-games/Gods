@@ -117,7 +117,7 @@ static void diff_update(const uint32_t *pixels, SDL_Window *window, SDL_Renderer
     SDL_RenderPresent(renderer);
 }
 
-/* ---- the lockstep with the original (tools/ami9000_host/lua/amiga/lockstep.lua, projects/gods/host/gods_lockstep.lua) ----------------
+/* ---- the lockstep with the original (../amiga_porting/ami9000/host/lua/amiga/lockstep.lua, host/gods_lockstep.lua) ----------------
  * --lockstep: no window; the port boots to level 1 by itself (the fire key at frame 300 of the menu), runs the first 128 iterations of the level (the original's saved state is
  * that far in) and --lockstep-extra N more frames (to be in the same phase of the frame as the emulator), and then answers the protocol on stdin/stdout, one line a command: `key CODE DOWN`
  * (CODE is the Amiga raw code), `mouse DX DY` and `button B DOWN` (not used), `step` (one video frame: the vertical blank, and the program's thread given a moment) and `image`; the answer to
@@ -168,7 +168,7 @@ static int lockstep_commands(const uint32_t *pixels, int phase)
             irq_key(code, down);
         else if (sscanf(line, "mouse %d %d", &a, &b) == 2 || sscanf(line, "button %d %d", &a, &b) == 2)
             continue;
-        else if (sscanf(line, "mem %x %x", (unsigned *)&a, (unsigned *)&b) == 2) {   /* `mem ADDR LEN`: `mem LEN` and LEN bytes of the program's memory (a debugging aid: tools/ami9000_host/ctl.py) */
+        else if (sscanf(line, "mem %x %x", (unsigned *)&a, (unsigned *)&b) == 2) {   /* `mem ADDR LEN`: `mem LEN` and LEN bytes of the program's memory (a debugging aid: ../amiga_porting/ami9000/host/ctl.py) */
             printf("mem %d\n", b);
             fwrite(guest_ptr((uint32_t)a), 1, (size_t)b, stdout);
             fflush(stdout);

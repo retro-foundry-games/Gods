@@ -1,4 +1,4 @@
-/* The offsets of the fields of intro.h that intro_amiga.asm uses, from the compiler: scripts/intro_offsets.py compiles this file
+/* The offsets of the fields of intro.h that intro_amiga.asm uses, from the compiler: tools/intro_offsets.py compiles this file
  * and writes native/src/amiga/intro_offsets.i, which intro_amiga.asm includes, so the assembly cannot drift from the structs.
  * Add a line here for every field the assembly names. */
 #include "../intro.h"

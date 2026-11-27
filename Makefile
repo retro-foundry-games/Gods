@@ -1,4 +1,4 @@
-# Gods (projects/gods/native): the C of the intro and of the game, built with m68k-amigaos-gcc.
+# Gods (native): the C of the intro and of the game, built with m68k-amigaos-gcc.
 #
 #   make              both programs linked: build/intro, build/game (with their maps and symbol lists)
 #   make intro | game one of them
@@ -77,16 +77,16 @@ $(BUILD)/game: $(GAME_OBJS) $(SRC)/game.ld
 
 # what is made from the executables: the blob, the disk
 game-blob:
-	$(PYTHON) ../scripts/build_game.py $(GAME_BASE)
+	$(PYTHON) ../tools/build_game.py $(GAME_BASE)
 adf:
-	$(PYTHON) ../scripts/build_adf.py
+	$(PYTHON) ../tools/build_adf.py
 
 # the generated sources (they are kept in src/); their generators read the recordings
 regen:
-	$(PYTHON) ../scripts/intro_offsets.py
-	$(PYTHON) ../scripts/gen_intro_amiga_asm.py
-	$(PYTHON) ../scripts/gen_game_symbols.py
-	$(PYTHON) ../scripts/gen_game_amiga_asm.py
+	$(PYTHON) ../tools/intro_offsets.py
+	$(PYTHON) ../tools/gen_intro_amiga_asm.py
+	$(PYTHON) ../tools/gen_game_symbols.py
+	$(PYTHON) ../tools/gen_game_amiga_asm.py
 
 # the SDL3 port for a Linux desktop (src/sdl/): make sdl builds build/sdl/gods-sdl (the game) and gods-sdl-dev (the tests), make sdl-run runs the game
 sdl:

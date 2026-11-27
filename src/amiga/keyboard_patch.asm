@@ -4,7 +4,7 @@
 ; instruction is replaced by a call of `input` below, which sets the bits of the four cursor keys and of the space bar
 ; (the first fire button) from the table of the keys that are down, which the original's keyboard interrupt keeps at $1E63A by
 ; raw key code; then it does what the replaced instruction did.  `input` is put in the 178 unused bytes at $1E608.
-; The patch is built by scripts/build_keyboard_patch.py and applied by host/gods.lua (flag `keyboard`).
+; The patch is built by tools/build_keyboard_patch.py and applied by host/gods.lua (flag `keyboard`).
 ; It is the same change as the one in input_poll of the C menu (input.c).
 ; (the call is `jsr $1e608.l`: 4EB9 0001E608, written over the 6 bytes of the move at $1E420)
         org $1e608

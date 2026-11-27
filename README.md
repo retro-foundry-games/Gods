@@ -36,8 +36,10 @@ without Smooth motion and retains the original gameplay boundaries and timing.
 - `src/sdl/` the SDL3 port: the machine around the program, the sound mixer, the disks
 - `web/` the page of the browser build
 
-The generators (`../scripts/gen_game_symbols.py`, `gen_guest_struct.py`, `gen_game_amiga_asm.py`) and the tests that compare the port with the original running in an emulator live in the repository this was split from; the files they write are checked in here.
+The generators (`../tools/gen_game_symbols.py`, `gen_guest_struct.py`, `gen_game_amiga_asm.py`) and the tests that compare the port with the original running in an emulator live in the repository this was split from; the files they write are checked in here.
 
 ## License
 
-GNU General Public License, version 2 or (at your option) any later version.  See `COPYING`.
+Gods was written by The Bitmap Brothers and published by Renegade; this repository holds a reconstruction of its code in C. The disks and the Kickstart are not part of it and are not distributed.
+
+The reconstruction is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 2 of the License, or (at your option) any later version. See [LICENSE](LICENSE).

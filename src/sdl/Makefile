@@ -1,9 +1,9 @@
 # Gods, SDL3 port of the C intro and menu program for a Linux desktop.
 #
-#   make -C projects/gods/native/src/sdl            build projects/gods/native/build/sdl/gods-sdl (the game as it is played: intro, menu and levels in one program, no options)
+#   make -C native/src/sdl            build native/build/sdl/gods-sdl (the game as it is played: intro, menu and levels in one program, no options)
 #                                                   and gods-sdl-dev (the same with the options, the lockstep with the original and the tests)
-#   make -C projects/gods/native/src/sdl run        build and run gods-sdl (disks from GODS_DISKS)
-#   make -C projects/gods/native/src/sdl clean
+#   make -C native/src/sdl run        build and run gods-sdl (disks from GODS_DISKS)
+#   make -C native/src/sdl clean
 #
 # It compiles the Amiga program's C unchanged, as a 32-bit executable (the program keeps 32-bit pointers in its data and
 # structs of the 68000's layout) with the chips, the disk layer, the sound and the asm routines replaced by the C in this
