@@ -1,0 +1,624 @@
+# The menu program's data: name, address, C declaration (%s is the name), what it is.  scripts/gen_game_symbols.py writes
+# native/game.h (the declarations) and native/game.ld (the names at their addresses), so the C names no address.
+work_area         0x00000caa  uint32_t *%s    pointer to a buffer of 80 longs that clear_work_area clears
+shadow_table      0x00000e10  uint16_t %s[]   a table of words indexed by shadow_set / shadow_get (colour register shadows)
+mouse_x           0x0001e4fc  uint16_t %s     pointer position, 0 to $200 (moved by input_poll)
+mouse_y           0x0001e4fe  uint16_t %s     pointer position, 0 to $C7
+mouse_x_copy      0x0001e500  uint16_t %s
+mouse_y_copy      0x0001e502  uint16_t %s
+button_bits       0x0001e504  volatile uint8_t %s[2]   bit 0: a button down (either), bit 1: the second; cleared at the start of every poll
+mouse_counter     0x0001e506  volatile uint16_t %s     JOY0DAT as last read: vertical counter in the high byte, horizontal in the low byte
+mouse_counter_old 0x0001e508  volatile uint16_t %s     the value before it
+button_presses    0x0001e50a  volatile uint8_t %s      bits set by input_poll (1 first button, 4 second or the pot lines), cleared by whoever reads them
+pending_request   0x0001e5a8  volatile uint32_t %s     non-zero: something is waiting to be taken (take_pending_request)
+key_down          0x0001e63a  volatile uint8_t %s[128]   $FF for each key (by its raw key code) that is held down, kept by the keyboard interrupt
+joystick          0x0001e5ac  volatile uint8_t %s      bit 0 up, 1 down, 2 left, 3 right, 7 fire
+heap_base         0x0000002c  uint32_t %s     where the program's memory starts (a vector slot the program uses for it)
+mem_lists         0x0001d41c  struct MemLists %s   the allocator's two lists (alloc_init)
+param_index       0x000001d4  uint16_t %s     which row of param_table select_params takes (1 to 4)
+param_a           0x0000024c  uint32_t %s     set by select_params
+param_b           0x00000250  uint32_t %s
+param_c           0x00000254  uint16_t %s
+param_d           0x00000256  uint16_t %s
+entry_list        0x00000cae  struct Entry8 *%s   a list of address/size entries that assign_addresses fills in
+bytes_dest        0x00000cc2  uint8_t *%s     ... and where the bytes go
+script_records        0x00000cb6  struct ScriptRecord *%s     a buffer of 2400 bytes that load_script_records fills
+saved_slot_words  0x000148e8  uint16_t %s[22]   two words of each of the eleven slots, put away by save_slot_words
+object_slots      0x00014988  struct Rec80 %s[11]   eleven records of 80 bytes
+thing_kinds       0x00014cf8  struct ThingKind %s[132]   built by build_thing_kinds
+marker_table      0x0001a3fc  uint32_t %s[100]   set to -1 by reset_marker_table
+record_table      0x0001a58c  struct PlacedThing %s[200]   copied in by copy_record_table
+entry_table       0x0003a25e  struct Rec6 %s[50]   cleared by clear_entry_table
+table creature_templates 0x0001c698 struct CreatureTemplate 51   what a group is: its draw kind, move and step routines and its box (the pointers of table_1c678 point into it)
+table clip_rectangles 0x00000128 uint16_t 6   the clip rectangles of image_draw_clipped (x0, x1, y0, y1: the whole screen; a negative x0 ends the list)
+table param_table  0x000029da uint16_t 24   four rows of 12 bytes (two longs, two words) that select_params takes
+table offsets_4cba 0x00004cba uint8_t 132   signed bytes that build_thing_kinds puts in the table
+table object_slot_image 0x00014988 uint8_t 880  the eleven slots as the original has them before a level is loaded: the words of each that survive the weapons file (the SDL port starts from them)
+blit_extra_modulo 0x000003b4  uint16_t %s     the blitter's extra modulo for the masked blit (0 unless set)
+blit_plane_stride 0x000003b6  uint32_t %s     bytes from one plane of the screen to the next
+mask_buffer       0x00000e48  uint16_t *%s    the buffer the blit makes its mask in
+screen_buffer     0x00000e60  uint8_t *%s     the screen that is drawn to
+image_table       0x00000e3c  struct Image *%s   the images (and glyphs) of the program
+glyph_plane_size  0x00000280  uint16_t %s     non-zero: bytes of one plane of a glyph, otherwise worked out from its height
+x_offset          0x0001d3a4  int16_t %s      added to the x of everything that is drawn
+glyph_base        0x00000270  uint16_t %s     added to the index of what draw_string_small and the digit printer draw (the small font)
+text_y            0x00012d5a  uint16_t %s     the row text_draw_centered draws at (a word in the middle of the code)
+last_request      0x0000049e  uint16_t %s     the request next_request returned last time
+repeat_delay      0x0000049c  int16_t %s      frames before next_request repeats a request that is held; counted down elsewhere
+screen_other      0x00000e64  uint8_t *%s     the other screen: the one that is shown while screen_buffer is drawn on
+copper_save       0x00000e50  uint16_t *%s    where copper_colors_save puts the colours of the copper list, and the fades take their target from
+palette_dirty     0x00000e0e  uint16_t %s     non-zero: the vertical blank copies the shadow table to the colour registers
+buffer_state      0x00000de4  struct ScreenSave %s[2]   what is kept for each of the two screens; swapped when they are
+vbl_saturating    0x0001d058  volatile uint16_t %s     frames since the last flip, stops at $7FFF
+vbl_count         0x0001d05a  volatile uint16_t %s     frames, wraps
+copper_lists      0x00004d8a  struct CopperLists %s   the copper program: the lists of the two screens, the tail they share, the colour bands of the level and the message
+screen_1          0x0006f800  uint8_t %s[SCREEN_ROW * SCREEN_HEIGHT * SCREEN_PLANES]    the two screens
+screen_2          0x00077c00  uint8_t %s[SCREEN_ROW * SCREEN_HEIGHT * SCREEN_PLANES]
+copper_setup_done 0x000002f2  uint16_t %s     non-zero: the copper list's two moves at copper_move_a / copper_move_b are set already
+palette_lit       0x0001d3f3  uint8_t %s      $FF after fade_in (the screen has its colours), 0 after fade_out
+sound_enabled     0x000002f6  uint16_t %s     non-zero: the frame tick runs the sound
+tick_count        0x00000ce2  volatile uint32_t %s     frames the tick has run
+jump_boost_timer     0x00000220  volatile uint16_t %s     counted down to 0 by the frame tick
+tick_hold_38a     0x0000038a  uint16_t %s     the frame tick does its message work only while these three are 0
+tick_hold_296     0x00000296  uint16_t %s
+tick_hold_26c     0x0000026c  uint16_t %s
+message_state     0x00000b2a  int16_t %s      0 none, -1 colours fading in, 1 colours fading out
+message_timer     0x00000b2c  int16_t %s      steps left of the fade
+message_current   0x00000b26  const uint8_t *%s   the text to show (0 none), message_start takes it from message_next
+message_next      0x00000b32  const uint8_t *%s
+message_text      0x00000b2e  const uint8_t *%s   the text that was drawn
+message_x         0x00000b36  int16_t %s      where the text starts (in characters, less 8)
+message_wide      0x00000b38  int16_t %s      -1 text fits, 320 it does not
+message_shown     0x000002f4  uint16_t %s     non-zero: the message is on the screen
+message_arg       0x000002f8  uint16_t %s
+message_words     0x000053ee  uint16_t %s[16]   colours of the message (message_words[8..11] the colours it fades to)
+table message_pairs 0x00016f6e uint32_t 8   four pairs of addresses of the two copper lists' colour moves the message fades
+table font_8x8     0x0001e7f4 uint8_t 1272  the text font (8 bytes a character)
+memory_base       0x00000b56  uint8_t *%s    a block of the program's memory (the background image sits 256 bytes into it)
+background        0x00000182  uint8_t *%s    where the background image is
+background_loaded 0x00000276  uint16_t %s    non-zero: the background image has been loaded
+screen_prepared   0x00000398  uint16_t %s    non-zero: the password screen has been set up
+menu_state_25a    0x0000025a  uint16_t %s
+line_text         0x000003a8  const uint8_t *%s   sixteen characters (in the program's numbering) that draw_line_text draws
+cursor_pos        0x0000038e  uint16_t %s     which cell of the grid the cursor is at (bits 0 to 2 the column, 3 up the row)
+cursor_frame      0x00000aa6  uint16_t %s     0 to 3: the frame of the cursor's animation
+title_text        0x000003be  const char *%s
+title_x           0x000003ba  int16_t %s
+title_y           0x000003bc  int16_t %s
+password_slots    0x00000d12  uint32_t %s[3]   the three saved codes (the first byte of each is 0 when there is none)
+password_line     0x00006a0e  uint8_t %s[]    "pass N :" and then room for the three code characters (a line of text in the code that is changed)
+record_text       0x000003c2  uint8_t %s[216]   ten records of 20 bytes (sixteen characters and four bytes) and the three saved codes, 16 bytes in all, scrambled
+scores_changed    0x0000ffbf  uint8_t %s      1: the high scores have changed (the disk layer reads it when the write fails)
+disk_digit        0x0001d487  uint8_t %s      the digit of the disk's name ("godsd2": the disk the loader asks for)
+has_continue      0x0000027a  uint16_t %s     non-zero: there is a game to continue (the menu has a third line)
+menu_item_count   0x00006384  uint16_t %s     the number of the last line of the menu (1 or 2; a word in the code that is changed)
+table menu_texts      0x0000635a uint8_t 41   the main menu's lines, each ended by a 0: "BEGIN QUEST", "ENTER PASSWORD", "CONTINUE GAME"
+table screen_texts   0x0000689c uint8_t 65   the texts of the password screen and the top ten, each ended by a 0: "ENTER A PASSWORD", "ENTER YOUR NAME HERO" (17 bytes in), "TOP TEN GODS" (38 in) and the name of the high score file ("\hiscores.bin", 51 in)
+table text_game_over 0x000100a9 char 11   "GAME  OVER"
+table key_table      0x00006ce0 uint8_t 40   the keys of the grid in the order of its cells (a to z, full stop, space, 0 to 9, backspace), ended by $FF
+table tocache_name 0x000196fe char 12   "tocache.bin": the file with the directory of the disks (loaded at start)
+asset_name        0x00000d1e  char %s[16]       the file name that assets_load puts together
+picture_header    0x00000d42  uint16_t %s       the first word of the picture file (its resolution)
+asset_directory   0x00000cea  uint8_t *%s       where the table of sprite records of an asset file is read (at +20)
+asset_flag        0x0000023c  int16_t %s        negative: every sprite record is copied; otherwise a bit of shift_bits tells whether
+shift_bits        0x00000bba  uint32_t %s       a shift register of random bits (refilled from shift_source)
+shift_source      0x00000bbe  const uint32_t *%s
+shift_count       0x0000023e  int16_t %s        bits left in shift_bits
+asset_mem_end     0x00000d3e  uint8_t *%s       where assets_load stopped writing sprite data
+asset_table_end   0x00000d3a  struct AssetEntry *%s   ... and where its table of entries ended
+file_buffer       0x00031fde  uint8_t %s[32768]    the buffer files are read to: the pictures, the sound files (whose samples the instruments point into), and the text buffers of a level
+table asset_extensions 0x00000d2e uint8_t 11   the endings of a picture file name (.pi1) and of its table (.dat, 6 bytes on)
+table asset_names 0x0001ecec uint8_t 84   the names assets_load knows (each ended by 0, ended by $FF)
+table asset_list_pointers 0x0001ed42 ByteP 12   for each name of asset_names the list of its file names
+table asset_lists 0x0001ed72 uint8_t 198   the lists of file names of the asset sets (each ended by 0, the list by another 0)
+menu_active      0x00000278  uint16_t %s     set when the menu program's main part has started
+stack_top        0x00000e38  uint8_t *%s
+asset_memory    0x00000e40  uint8_t *%s
+line_text_default          0x00000b5a  uint8_t *%s
+target_map_default          0x00000b5e  uint8_t *%s
+target_map          0x000003ac  uint8_t *%s
+asset_directory_default          0x00000b52  uint8_t *%s
+copper_save_first          0x00000e4c  uint8_t *%s
+monster_part_blocks          0x00000cee  uint8_t *%s
+random_words          0x00000cc6  uint8_t *%s
+level_map          0x00000b86  struct LevelMap *%s
+copper_colours          0x00000cda  uint8_t *%s
+unit_member_blocks         0x00000cfa  uint8_t *%s[5]   five pointers, 200 bytes apart (the first is set by memory_map_init)
+message_offsets          0x00000cba  uint8_t *%s
+game_record_start          0x00000bce  uint8_t *%s   where game_record_ptr starts (orig $3690 and $36AA reset it to this); the ten bytes of the buffer the start-up cuts out
+bolt_slots          0x00000cce  uint8_t *%s
+path_records          0x00000c9e  struct PathRecord *%s
+unused_scratch_alias          0x00000bb2  uint8_t *%s
+scratch_buffer          0x00000e44  uint8_t *%s
+message_text_block          0x00000e5c  uint8_t *%s
+unit_scripts          0x00000cb2  uint8_t *%s
+cell_entry_table          0x00000cbe  struct EntryRef *%s
+creature_entries          0x00000d0e  struct CreatureEntry *%s
+monster_types          0x00000ce6  struct MonsterType *%s
+path_description_base          0x00000c9a  const struct PathDescription *%s
+hint_list          0x00000cf2  uint8_t *%s
+program_end       0x0003a670  uint8_t %s[]      the end of the program as the loader reads it: the memory map begins here
+voice             0x0002034c  struct Voice %s[4]   the four voices of the sound system (the state of the sound system goes on after them)
+voice_buffers     0x0002061c  uint8_t %s[]      a buffer of 128 bytes for each voice
+sound_lock        0x0002079c  uint8_t %s        $FF while the sound system is being set up
+creature_types      0x000199ac  uint8_t %s[]      records of 36 bytes whose first long is a pointer (these are 140 bytes apart)     records of 36 bytes whose first long is a pointer (set up at the start)
+loading_text      0x0001d3f4  uint8_t %s[]      "loading game please wait"
+palette_words     0x00000134  uint16_t %s[16]   the sixteen colours of the picture assets_load read last
+first_asset_name  0x000196d6  char %s[]         "always": the name of the first asset set
+table keymap      0x0001e5ae uint8_t 128   the character a raw key code gives (0 when none)
+copper_save_second          0x00000e58  uint8_t *%s
+random_seed       0x0001d0aa  uint16_t %s       the seed of the program's random numbers (a word in the code)
+scroll_ease_phase         0x0000037c  uint16_t %s
+unused_5418         0x00005418  uint16_t %s
+unused_240         0x00000240  uint16_t %s
+play_starting         0x00000248  uint16_t %s
+asset_end_28ec    0x000028ec  uint8_t *%s       a copy of where assets_load ended
+asset_table_28f0  0x000028f0  uint8_t *%s       ... and of its table's end
+unused_28ea         0x000028ea  uint16_t %s
+asset_end_0ca2    0x00000ca2  uint8_t *%s
+asset_table_0ca6  0x00000ca6  uint8_t *%s
+unused_25c         0x0000025c  uint16_t %s
+world_b_files         0x00000266  uint16_t %s
+world_loading         0x00000384  uint16_t %s
+image_draw_flags        0x00000ddd  uint8_t %s
+original_start    0x0000240c  void %s(void)    the original's start-up after the chips are set up: it loads the copy protection's stub and runs it (not in C)
+original_begin    0x0000651e  void %s(void)    the original's Begin Quest (replaced by begin_quest in game_h.c, no longer called)
+original_continue 0x00006650  void %s(void)    ... and Continue Game
+original_after_password 0x000064c2 void %s(void)   the original's code after the password screen
+menu_start_code   0x00006388  uint8_t %s[6]   the first instruction of the original's menu start: replaced by a jump to menu_start
+table background_name 0x000026d2 char 12   "backscr.pi1": the file of the menu's background picture
+table small_font_name 0x00003232 char 9    "smallfnt": the asset set of the small font
+drives_present   0x0001d48c  uint8_t %s      bit n set: drive n is there (the start finds them)
+# the game's own routines, not decompiled yet: provisional names by address (a name is changed when the routine is written in C)
+orig_scroll_push           0x000030c6  void %s(void)
+orig_update_records           0x0000417c  void %s(void)
+orig_update_creatures           0x00006ed0  void %s(void)
+orig_world_end_auto_walk           0x000033d4  void %s(void)
+orig_boss_sparks_move           0x0000c58e  void %s(void)
+orig_boss2_shots_move           0x0000cb0e  void %s(void)
+orig_boss_shots_move           0x0000c406  void %s(void)
+orig_draw_score_panel           0x000057fc  void %s(void)
+orig_level_end_screen          0x00012e08  void %s(void)
+frame_toggle       0x00000196  uint16_t %s   flipped every frame of the game loop
+frame_phase       0x000001e4  uint16_t %s   0, 1, 0, 1 ...: counts the frames of the loop in twos
+freeze_timer         0x00000306  int16_t %s   counted down to 0 once a frame
+demo_mode         0x0000022a  int16_t %s   0 the player plays; negative a demo is played back; positive the input is recorded
+game_stick        0x00000226  uint8_t %s   the joystick byte of this frame (bit 0 up, 1 down, 2 left, 3 right)
+fire_latch        0x00000222  int16_t %s   cleared while fire is up
+energy_old      0x00000c98  uint16_t %s   the energy of the frame before
+player_energy          0x00000c96  uint16_t %s   the player's energy (0 to 24)
+energy_shown        0x00000216  int16_t %s   the energy as shown (it goes toward player_energy a step a frame); 0 or less: the player is dead (the loop goes on elsewhere)
+scroll_push_frames          0x0000026e  uint16_t %s
+boss_mode          0x0000023a  uint16_t %s
+scroll_x          0x00000358  int16_t %s   the screen's position in the level
+scroll_y          0x0000035a  int16_t %s
+scroll_x_a        0x0000029a  int16_t %s   the scroll position kept while the loop runs
+scroll_y_a        0x0000029c  int16_t %s
+scroll_x_b        0x0000029e  int16_t %s
+scroll_y_b        0x000002a0  int16_t %s
+world_end_steps          0x00000290  int16_t %s
+energy_pickup_active          0x00000268  uint16_t %s
+unused_2b0          0x000002b0  uint16_t %s
+level_ended          0x00000230  uint16_t %s
+frame_wait        0x000001dc  uint16_t %s   frames of a game frame, less one (the flip waits for more than this many)
+boss_load_request          0x00000258  uint16_t %s
+door_entered          0x000001f0  uint16_t %s
+event_flags         0x000003b0  uint8_t %s
+hit_list_last          0x0000020e  int16_t %s
+hit_list_offset         0x00000c6c  uint32_t %s
+game_record_ptr   0x00000bd2  uint8_t *%s    where the input of this frame is recorded when demo_mode is positive
+onscreen_count    0x000002b8  uint16_t %s     how many things were counted as on the screen this frame
+game_buttons      0x00000228  uint8_t %s     the button bits of this frame (bit 0 fire); the menu uses it as "the button is still down since it picked a cell of the grid"
+stone_records      0x0000113c  struct StoneRecord %s[10]   ten records of 12 bytes (the second word is not 0 for one in use)
+pickup_spots     0x00019334  struct ThingRecord %s[20]    twenty records of 8 bytes (the third word is not negative for one that is in use)
+thing_records     0x00019b14  struct ThingRecord %s[200]   two hundred records of 8 bytes (the second word is negative for one that is free)
+record_kind_dispatch    0x00018be0  void (*%s[])(void)     the routines a record's kind (0, 1, ...) names
+message_slots     0x00012be6  uint8_t %s[]           the first of the lines of text the messages are made of (88 bytes each)
+message_hold      0x00000264  int16_t %s     frames a message stays once it is in (counted down by the frame tick)
+table fill_words   0x00005fae uint16_t 14  fourteen words that fill_buffer makes longs of (sign extended) and repeats
+table fill_longs   0x00005fca uint32_t 14  fourteen longs it repeats instead when world_end_steps is not negative
+table zone_limits  0x00009992 uint16_t 28   seven records of four words: the limits of the zones the player is tested against
+table zone_groups  0x000099ca uint8_t 18   six groups of three zone numbers
+unused_210           0x00000210 uint16_t %s
+records_scroll_y           0x000002aa int16_t %s    the scroll row at which the records were last looked at
+things_activated_at_column           0x00000b24 uint16_t %s
+near_flags        0x00039fde uint8_t %s[200]   one byte for each record of thing_records: $FF when it has just come near the screen
+player_x           0x000001e0 int16_t %s
+player_y           0x000001e2 int16_t %s
+zone_counts        0x000004b6 uint8_t %s[8]   how many of each group's three zones the player is in
+energy_sound_played           0x000002e0 uint16_t %s    set while the energy goes down (the sound of it is played once)
+item_count         0x00000224 int16_t %s     how many of the things the player has (drawn as a row of glyphs at the top, at most 10)
+effect_alive           0x000002ac uint16_t %s    set while one of the effects is alive
+effects            0x0003a196 int16_t %s[100]   ten effects of five words (x, y, ?, glyph less 80, life): x negative when it is free
+hint_scrolling           0x00000236 uint16_t %s
+walker_group_pass           0x00000244 int16_t %s
+current_record_block           0x00000bb6 uint8_t *%s    the pointer a loop over records with a block of its own each keeps
+walker_groups       0x000012a0 struct WalkGroup %s[10]   ten records of 18 bytes (the first word is 0 for one that is free)
+monster_records       0x00001354 struct Monster %s[10]   ten records of 428 bytes (the first word is 0 for one that is free)
+screen_list_cursor         0x00001296 uint32_t %s
+free_monster_count          0x00000242 int16_t %s    how many monsters of the record being run are free
+monster_index          0x00000246 int16_t %s    which monster of the record is being run
+monster_old_x              0x000004ac int16_t %s    where the monster was in x before its step
+monster_old_vx             0x000004b2 int16_t %s    its speed before the step
+monster_old_vy             0x000004b4 int16_t %s
+entry_table_index          0x000001ea uint16_t %s
+level_entry_table          0x00000ed0 int16_t %s[128]    entries of four words
+puffs_active          0x0000721c uint16_t %s    non-zero while a record of puff_records is in use
+puff_records       0x0000721e int16_t %s[30]    ten records of three words (x, y, a count that goes down; negative: free)
+debris_records_in_use           0x000002a8 uint16_t %s    how many of the records of debris_records are in use
+debris_records      0x0003a0a6 int16_t %s[120]   twenty records of six words (a flag, x, y, speeds in x and y, a count that goes up to 69)
+score_redraw           0x000002d0 uint16_t %s    set when the score is to be drawn again
+score_words        0x000002d2 uint16_t %s[4]   the score, two decimal digits a word, the low digits first
+exit_kind           0x00000200 uint16_t %s
+exit_target           0x00000202 uint16_t %s
+chest_pieces_active          0x000002ae  uint16_t %s
+shutter_row          0x000002c0  int16_t %s
+shutter_reverse_request          0x000002bc  uint16_t %s
+shards_active         0x000073ce  uint16_t %s   a word in the middle of the code
+item_chosen          0x000002ce  uint16_t %s
+item_shown          0x000002cc  uint16_t %s
+energy_bar_phase          0x000002de  uint16_t %s   0 to 3: the picture of the energy bar cycles with it (goes on every other frame)
+high_score_baa    0x00000baa  int32_t %s    the first high score (two decimal digits a byte, as the score packed by score_packed)
+high_score_bae    0x00000bae  int32_t %s    the second
+fall_x            0x00007f78  int16_t %s    the thing that falls (in the code area): where it is
+fall_y            0x00007f7a  int16_t %s
+fall_speed        0x00007f7c  int16_t %s    -6 at the start, up by one a frame; at 4 the thing lands
+fall_kind         0x00007f7e  int16_t %s    what it is (negative: nothing falls)
+walker_picture_base         0x00007c50  uint16_t %s   the immediate of an instruction in walk_pace ($7C4E: add #496): the first picture of the walker (the original sets it)
+shutter_direction          0x000002be  int16_t %s   the way the shutter goes (draw_shutter adds it to shutter_row)
+table shutter_masks 0x0000542c uint16_t 12   the rows of the shutter a step shows (one bit a row)
+item_slots 0x0000030c int16_t %s[4]   the item (index of thing_kinds, -1 none) of each of the four slots
+orig_check_high_scores           0x00005af6 void %s(void)
+falcon_energy         0x00008890 int16_t %s    negative: the routines that look at it end at once (at the start of a level?)
+falcon_choice         0x0000888e int16_t %s    the choice falcon_choose_weapon makes (-1 none, else 0 to 2)
+wing_glyph         0x00008472 int16_t %s    the glyph falcon_draw draws (negative: none)
+falcon_screen_x         0x0000846e int16_t %s    its x
+falcon_screen_y         0x00008470 int16_t %s    its y
+falcon_speed_x         0x00008886 int16_t %s    the falcon's speed across
+falcon_speed_y         0x00008888 int16_t %s    its speed down
+falcon_facing         0x0000888a int16_t %s    the way it faces (-1 left, 1 right)
+wing_step         0x0000888c int16_t %s    its wing step (0 to 10, by 2)
+falcon_previous_facing         0x00008896 int16_t %s    the way it faced before (the code's own cell)
+spore_count         0x000010ae uint16_t %s
+player_invulnerable          0x00000aa8 uint16_t %s
+bolts_active        0x000186be uint16_t %s
+last_drop_frame          0x00000354 int16_t %s
+hit_box_extra_width          0x0000039c int16_t %s    added (half of it) to the width of the box the player is hit in
+hit_box_extra_height          0x0000039e int16_t %s    the same for its height
+game_nothing_opcode         0x00003436 uint16_t %s   the first word of the original's routine at $3436 (an rts, $4E75)
+hit_list_recording          0x00000214 int16_t %s
+burst_marks       0x00000316 int16_t %s[12]  four records of three words (a state that counts up from 0 to 6, x, y; negative: free)
+path_steps_left        0x000185bc int16_t %s
+level_walker_templates          0x00000b82 uint8_t *%s
+background_tile_graphics          0x00000c70 uint8_t *%s    the graphics of the background tiles (256 bytes for each)
+moving_paths_count          0x000004a2 uint16_t %s
+sound_last_variant 0x0001faca uint8_t %s   the last choice of the sounds that vary (variant 6): it is not chosen twice in a row
+redraw_gate_opcode        0x00017e9c uint16_t %s   the first word of the routine at $17E9C (a nop; the routine makes it an rts, $4E75)
+uncut_hit_box_width           0x000003a0 int16_t %s    the width hit_box_extra_width had before check_hit_and_walls cut it
+uncut_hit_box_height           0x000003a2 int16_t %s    the height hit_box_extra_height had
+creature_hit_flag           0x000003a6 uint16_t %s
+message_base           0x00000b66 uint8_t *%s    the base the message offsets (words) point from
+condition_results          0x00000300 int16_t %s[3]  the three results of the calls of finish_script_record (-1: yes)
+finished_record_dispatch    0x00018ba4 void (*%s[15])(void)   the routines the kind of a finished record names
+claimed_entries          0x00000b92 uint16_t *%s[3]  the free entry of each of the three units that claim_free_entries found (0: none)
+claimed_entry_ids       0x000002ea int16_t %s[3]    the number of that entry (1, 4, 7 for the first unit, 10, 13, 16 and 19, 22, 25)
+single_claim_taken           0x000002f0 uint16_t %s
+hit_damage_1cc    0x000001cc int16_t %s    game_b: the damage the cell hit by check_hit_and_walls does (set by the lookup of $159FC)
+slot_value_target          0x00000272 int16_t %s    game_b: compared with slot_value_sum by the lookup of $159FC (more than it: the damage grows)
+armour_level          0x00000284 int16_t %s    game_b: non-zero: check_hit_and_walls lets the player's armour take some of the damage (the higher, the less)
+hit_cell_strength          0x000003a4 int16_t %s    game_b: the strength check_hit_and_walls leaves after a hit on a cell
+falcon_shot_damage         0x00008892 int16_t %s    game_b: the damage a cell of type -1 does
+falcon_speed_bonus         0x00008894 int16_t %s    game_b: what the pick-up of a thing that is kind 8 raises
+level_end_counter 0x00013182 uint32_t %s   the bonus counted up so far (a long in the level end's code)
+level_end_step   0x0001026c uint32_t %s   what the level end adds to the score at a step (BCD)
+level_end_unit   0x00010270 uint32_t %s   what it takes off the bonus at a step
+digits_started   0x00010062 uint8_t %s    a digit that is not 0 has been drawn in the number that is being drawn
+particle_records       0x0000086c int16_t %s[240]  game_b: eighty records of three words (x, y, two signed speed bytes; negative first word: free), the particles of spawn_particle_burst
+particle_burst_counter          0x00000a52 int16_t %s    game_b: counter of the particle burst (spawn_particle_burst clears it)
+burst_respawn_delay          0x00000a54 int16_t %s    game_b: set to -10 by spawn_particle_burst
+table particle_speeds_15b5c 0x00015b5c uint16_t 8   game_b: the two speed bytes of each of the eight particles of a burst
+# game_c.c (the routines at $10000-$167FF)
+particle_burst_active          0x00000a4c  int16_t %s
+list_index_a98    0x00000a98  uint16_t %s    which of the three shot lists is being run (0 to 2)
+shot_lists        0x000006b6  struct ShotList %s[3]   the three lists of shots: the number of the object it is for (negative: none; the unit's weapon slot) and its shots
+shot_prev_x       0x000001f4  int16_t %s     where the shot being moved was
+shot_prev_y       0x000001f6  int16_t %s
+table shot_deltas 0x00016bb4  uint16_t 64    pairs of words: how a shot of direction n moves (x, y)
+player_frame        0x0000019a  int16_t %s     the player's animation frame (d7 of the player's state machine)
+player_state      0x0000019c  int16_t %s     which routine of the state table at $10280 runs the player
+landing_frames          0x000001e6  int16_t %s     counts frames after a landing
+fall_distance     0x000001e8  int16_t %s     how far the player has fallen (a count)
+fall_rows_36a        0x0000036a  int16_t %s     rows the player falls a frame (to 10)
+air_steps         0x0000021e  int16_t %s     sideways steps in the air (3 at most)
+jump_step         0x0000036c  int16_t %s     where in the jump (in bytes of jump_deltas, to 46)
+jump_start_x      0x00000218  int16_t %s     the player's x where the jump began
+ladder_side          0x00000370  int16_t %s
+ladder_frame_reverse          0x00000376  int16_t %s
+ladder_shot_start_y          0x00000372  int16_t %s     the player's y when a ladder shot began (state 24 or 25 gives it back)
+ladder_shot_frame          0x00000374  int16_t %s     the ladder frame when a ladder shot began
+ladder_frame_saved          0x00000378  int16_t %s
+scroll_ease_x          0x0000037e  int16_t %s     where the scroll is eased to (x), while scroll_ease_phase is not 0
+scroll_ease_y          0x00000380  int16_t %s     the same for y
+ladder_left_count          0x00000360  int16_t %s
+ladder_right_count          0x00000362  int16_t %s
+ladder_y_saved          0x0000037a  int16_t %s
+walk_step_pending          0x0000019e  int16_t %s
+lever_pressed          0x0000035e  int16_t %s
+pickup_active          0x0000035c  int16_t %s
+pickup_button_held          0x00000368  int16_t %s
+fall_fire_flip          0x0000036e  int16_t %s
+pickup_nothing_near          0x000001fa  int16_t %s
+table jump_deltas 0x00011318  uint16_t 23    how many rows up the player is in each step (2 bytes a step) of a jump
+table frame_map_125ac 0x000125ac uint16_t 6  the frame after a frame of the state 5 (five words), then how near the left or right of the screen the player may go before the scroll follows
+table state_table 0x00010280 uint32_t 58     29 states of the player, two longs each: the first sprite and the routine (the C does not use the second)
+falcon_x         0x00008882  int16_t %s
+falcon_y         0x00008884  int16_t %s
+orig_set_shutter_wait           0x00005496  void %s(void)
+orig_use_lever           0x00003c94  void %s(void)
+orig_claim_free_entries           0x0000fdba  int16_t %s(void)
+orig_player_cell_entries          0x00012710  void %s(void)
+orig_fill_buffer           0x00006002  void %s(void)
+orig_draw_background          0x000178c6  void %s(void)
+orig_find_used_pickup_record          0x0001924c  void %s(void)
+orig_do_nothing_b          0x000194d0  void %s(void)
+orig_update_crumbles          0x00017cc0  void %s(void)
+orig_boss4_death_wait           0x0000ba34  void %s(void)
+orig_redraw_record_images          0x00017e9c  void %s(void)
+orig_activate_records           0x00003ea4  void %s(void)
+orig_run_object_lists          0x00015b04  void %s(void)
+orig_fn_15cc4_c          0x00015cc4  void %s(void)
+orig_falcon_seek_target           0x0000836c  void %s(void)
+orig_draw_effects           0x00003f8e  void %s(void)
+orig_draw_marks_316          0x00018d14  void %s(void)
+orig_player_control          0x00010368  void %s(void)
+orig_count_zones           0x00009912  void %s(void)
+orig_invulnerability_step          0x00016aee  void %s(void)
+orig_bats_run           0x0000db04  void %s(void)
+orig_dropped_sparkle_update          0x000190f2  void %s(void)
+orig_thrown_things_update           0x0000e142  void %s(void)
+orig_archers_update           0x0000de54  void %s(void)
+orig_update_walker_groups           0x00009ae6  void %s(void)
+orig_mark_player_cells           0x00003c56  void %s(void)
+orig_update_monsters           0x00008a54  void %s(void)
+orig_draw_puffs           0x00007292  void %s(void)
+orig_falling_things_update           0x0000e3a2  void %s(void)
+orig_unit0_update           0x0000e486  void %s(void)
+orig_unit1_update           0x0000e76c  void %s(void)
+orig_unit2_update           0x0000ea52  void %s(void)
+orig_unit3_update           0x0000ed38  void %s(void)
+orig_unit4_update           0x0000f01e  void %s(void)
+orig_next_table_entry           0x0000d47e  void %s(void)
+orig_find_used_stone_record           0x0000d314  void %s(void)
+orig_pods_update           0x0000d6b8  void %s(void)
+orig_spores_update           0x0000d898  void %s(void)
+orig_boss3_death_fall           0x0000bc1a  void %s(void)
+orig_move_debris           0x00003dfc  void %s(void)
+orig_falcon_draw           0x00008452  void %s(void)
+orig_update_bolts           0x00006136  void %s(void)
+orig_bolts_update          0x0001843e  void %s(void)
+orig_boss_death_score           0x0000c374  void %s(void)
+orig_update_score_display           0x00005842  void %s(void)
+orig_update_energy_display           0x00005e02  void %s(void)
+orig_draw_item_row           0x00003806  void %s(void)
+orig_game_nothing           0x00003436  void %s(void)
+orig_face_bolts_move           0x000077e6  void %s(void)
+orig_face_bolt_pieces_move           0x00007906  void %s(void)
+orig_chest_pieces_move           0x00004070  void %s(void)
+orig_move_shards           0x000073d2  void %s(void)
+orig_draw_shutter           0x000054c4  void %s(void)
+orig_update_item_panel           0x00005608  void %s(void)
+orig_draw_energy_bar           0x00005d76  void %s(void)
+orig_update_falling_thing           0x00007faa  void %s(void)
+creature_x          0x000001da  int16_t %s    the x of the creature update_creatures is at
+creature_records_left         0x00006ebc  int16_t %s    in the code area: how many of the ten creature records are still to look at (counted down to -1)
+dying_count         0x00006ebe  int16_t %s    in the code area: how many creatures of the record are dying
+last_death_x         0x00007f74  int16_t %s    in the code area: where the last creature that died was (x)
+last_death_y         0x00007f76  int16_t %s    ... (y)
+slot_value_sum          0x00000274  uint16_t %s   the sum of the first_value of the objects in the slots (pick_up_object)
+digit_scratch_b          0x00000232  uint16_t %s   scratch: a digit (the remainder of a division by 10) of a number put into a message
+digit_scratch_a          0x00000234  uint16_t %s
+digit_scratch_d          0x000002fc  uint16_t %s
+digit_scratch_c          0x000002fe  uint16_t %s
+item_message_shown        0x0001970a  uint8_t %s[]  a bit for each item (index of thing_kinds): set when its message was shown
+table text_power  0x00012cee  char 12    "Power", 0, "Value", 0 (text_power + 6 is "Value")
+shot_id_bias         0x0000fb2c  uint16_t %s   in the code area: a word pick_up_object sets to 18 for the item 2
+table table_18714 0x00018714  uint32_t 10  the routines (take_creature_entry, finish_script_record, ...) the cell kinds' states name
+message_twin_entry          0x00000364  uint8_t *%s   the entry of the list at hint_list + 80 that orig_hint_message found
+text_index          0x0000022c  uint16_t %s
+level_texts        0x00010a20  uint32_t %s[5]   five texts (set when the level loads; text_index names one)
+table text_10a34  0x00010a34  uint8_t 8     the first eight bytes of the message orig_hint_message makes
+shot_speed          0x000002e4  int16_t %s    the speed of the enemy shot being made (negative: to the left)
+list_count_1294   0x00001294  uint16_t %s    game_d: how many things were put in the list at $121C this frame (the list holds 20 of three words)
+kind45_seen          0x0000025e  uint16_t %s    game_d: set when a thing of kind 45 was met (the list was cut at 20 entries)
+bat_flap_phase       0x00000204  uint16_t %s    game_d: counts 0 to 31 each frame (the bat's flap)
+anim_cycle_4       0x0000020c  uint16_t %s    game_d: counts 0 to 3 each frame while frame_toggle is set
+glyph_frame       0x000002b4  uint16_t %s    game_d: counts 0 to 3 each frame while frame_toggle is set
+anim_cycle_5       0x0000024a  uint16_t %s    game_d: counts 0 to 4 each frame while frame_toggle is clear
+anim_cycle_6       0x00000262  uint16_t %s    game_d: counts 0 to 5 each frame
+anim_cycle_8       0x00000260  uint16_t %s    game_d: counts 0 to 7 each frame
+viewed_record          0x00000ba6  struct ThingRecord *%s   game_d: the record of thing_records that is being looked at
+lever_entry_ptr          0x00000ba2  uint16_t *%s   game_d: a record whose third word the thing of kinds 232, 288, 290 and 292 toggles
+near_flags_byte          0x000002b6  uint8_t %s    game_d: the byte of near_flags of the record that is being looked at
+touched_thing_id          0x000002b2  uint16_t %s    game_d: the id of the thing the player touched
+score_total_1fc   0x000001fc  uint32_t %s    game_d: the points won, as one number (the score itself is in score_words)
+lever_step          0x000002ba  int16_t %s     game_d: -1, or the step (0 to 4) of the thing of kinds 232, 288, 290 and 292
+table fall_steps_f2   0x000000f2 uint8_t 52    game_d: signed bytes: how far a thing falls (added to y) at each step 0 to 23 of its flag byte (steps 24 to 37 read on into the next bytes, the sounds: up to $12F, where clip_rectangles is from $128)
+table frames_44b4 0x000044b4 uint16_t 4   game_d: the four glyphs of the sprite 280, by glyph_frame
+table frames_44bc 0x000044bc uint16_t 4   game_d: ... of the sprite 279
+table frames_44c4 0x000044c4 uint16_t 5   game_d: ... of the glyph 253, by anim_cycle_5 (counts 0 to 4)
+table words_3fde 0x00003fde uint16_t 30   game_d: the sprites (less 170) of the ten pieces a chest bursts into, for each chest (every 16 bytes; the last ten, from $4006, are the guardian's death's)
+table pictures_747e 0x0000747e uint16_t 4   game_d: the four pictures of the shard that goes up and comes down ($73D2), by its frame
+table glyphs_e22c 0x0000e22c uint16_t 4   game_d: the four glyphs of the thing $E144 draws ($E22C), by bits 0 and 1 of its word 2
+table unit_pictures_82d8 0x000082d8 uint16_t 4   game_d: the pictures of the unit move $8274 (first type), by its animation
+table unit_pictures_82e0 0x000082e0 uint16_t 4   game_d: ... (second type)
+walk_modes_99dc 0x000099dc const struct WalkMode %s[8]   game_d: (a name at its address, not a table: the hunk format pads zone_groups, which ends at $99DC, to $99DE) for each way of walking: its routine and the base its picture starts at ($9F2A adds the template's picture and the step)
+table walk_item_offsets 0x00009eb2 uint8_t 120   game_d: signed bytes: x and y where the object a walker carries is drawn, for each of the twenty pictures; forty bytes for each of the levels 2 to 4
+shop_repeat       0x00000386  uint16_t %s     shop: frames the stick has been held the same way
+shop_held         0x00000388  uint8_t %s[2]   shop: the second byte is the stick as first held (0 when it is let go)
+shop_selected     0x0000038c  int16_t %s      shop: the item that was chosen once (negative: it was asked to replace a weapon), -1 none
+shop_cursor_old   0x00000390  uint16_t %s     shop: the cell the cursor was at at the start of the frame
+shop_count        0x00000392  uint16_t %s     shop: how many items it offers
+shop_scroll       0x00000308  uint16_t %s     shop: how many items the grid has scrolled past (more than 17)
+shop_score_shown  0x00000b6a  uint32_t %s     shop: the score as shown, counted to the score
+shop_bought       0x00000b6e  uint32_t %s     shop: a bit for each kind of pick-up that has been bought
+shop_text         0x00000b72  uint8_t *%s     shop: the strip of text (9 rows of 8 words of 4 planes) that scrolls
+shop_list         0x00000aaa  uint16_t %s[31]   shop: the items on offer (item numbers, -1 ends the list)
+shop_offers       0x00000ae8  uint16_t %s[30]   shop: the list while it is filtered
+table shop_doors_351a 0x0000351a uint16_t 24   game_d: for each world (two for a level) x, y and the way the shop's door walks (-1 left, 1 right, 0)
+table shop_pi1_name 0x00013c56 char 10   "shop.pi1"
+table shop_kinds_13b32 0x00013b32 uint8_t 24   game_d: for each kind of pick-up whether the shop calls its handler (otherwise the item goes into a free slot)
+table shop_data_14206 0x00014206 uint16_t 210   game_d: the shop's stock: the lists' addresses by level and world (8 longs), the lists (item numbers, -1 ends each), the lists' addresses by level (4 longs, for menu_active), and the colours (25 words from $14378) the copper list of the shop is made from
+table text_inventory_full 0x0000ff34 char 41   the message when no slot is free
+table text_replace 0x00010029 char 38   the message that a weapon replaces another: the name follows
+table frames_493a 0x0000493a uint16_t 4   game_d: the second glyph of glyph 225, by the column
+table frames_4942 0x00004942 uint16_t 4   game_d: ... of glyph 251
+table frames_494a 0x0000494a uint16_t 4   game_d: ... of glyph 252
+table frames_4af4 0x00004af4 uint16_t 4   game_d: the glyphs of the thing 220, by anim_cycle_4
+table frames_4afc 0x00004afc uint16_t 6   game_d: ... of the thing 287, by anim_cycle_6
+table frames_4b08 0x00004b08 uint16_t 6   game_d: ... of the thing 300, by anim_cycle_6
+table frames_4ba8 0x00004ba8 uint16_t 20  game_d: five glyphs for each of the four values of param_index (kinds 232, 288, 290, 292)
+orig_hint_message          0x00010976  void %s(void)  game_d: the pick-up handler 18 of the table at $1067A (game_e writes it in C)
+pickup_glyph          0x0000026a  uint16_t %s    game_d: the glyph the pick-ups of pickup_spots are drawn with (sprite, two words wide)
+table mask_table    0x00017380 uint16_t 32   draw: the masks of the screen edges, two words for each shift (16 less the shift, times two): the first-word mask of a right edge, the first-word mask of a left edge
+bonus_score_bcd           0x00000346  uint16_t %s[4]  the number call_by_kind makes of five thousand times its argument, a BCD byte a word, the low digits first
+last_drop         0x0000034e  int16_t %s[3]   x, y and number of the last thing dropped (then last_drop_frame is cleared)
+finish_mark_count          0x00000314  int16_t %s      how many marks kind 6 of finish_script_record has made
+level_creature_templates          0x00000b7e  uint8_t *%s
+units             0x00018740  struct Unit %s[5]   the waves of enemies: five records of 24 bytes (a state word, 0 free) take_unit_record fills
+visited_spots_count          0x0000022e  uint16_t %s   counts the spots remembered in visited_spots (like text_index); the level ends (level_ended) when it reaches the count at level_end_record
+level_end_record          0x00000bc6  const struct LevelEnd *%s   the record of the level end that the level is at (its first word is how many spots end the level)
+previous_player_pos         0x000002a2  int16_t %s[2]   a copy of the player position (player_x, player_y) made by remember_visited_spot
+visited_spots        0x00000b3a  int16_t %s[12]   the six spots (x, y; the latest first) remember_visited_spot keeps
+shot_offsets_6a4 0x000006a4 int16_t %s[9]    per-column counters handler 1 of the object lists (update_shots_sliding) adds to the shots of a column
+
+# --- Begin Quest (game_h.c): the level's set-up ---
+level_names       0x00002816  uint8_t %s[196]   the level's file names: the template at $2752 with the level's number and letter put in
+table level_name_template 0x00002752 uint8_t 196   file names of a level: `?` is the level's number, `*` its letter (a or b)
+table level_starts 0x000028da uint32_t 4   where the player starts each level: the x in the high word, the y in the low
+table shift_tables 0x00002a0a uint32_t 40   for each level (ten longs): the first is the shift register's start, the others its source
+table table_17a6e  0x00017a6e uint16_t 8   for each level two words (by world_b_files): how many 32 by 16 pixel blocks its background tiles have
+table table_fa5c   0x0000fa5c uint16_t 4   the glyph of the pick-ups of each level (pickup_glyph)
+table table_143b8  0x000143b8 ByteP 4   for each level the list of spots that level_end_record points to
+table level_ends   0x000143d8 struct LevelEnds 1   the lists of the four levels' ends (struct LevelEnd, 34 bytes each: 4, 5, 3 and 5; two bytes before the second list, which the original has at $14462): the first level's is three spots, six, eight and twelve, the second's six, ten, eleven (the guardian's), fifteen and the level's end ($144E8 in the original, here 2 bytes later)
+table table_1527a  0x0001527a uint16_t 4   for each level the value slot_value_target takes
+table table_1077a  0x0001077a ByteP 4   for each level the list that teleport_list_cursor points to
+table table_5b9e   0x00005b9e uint32_t 4   for each level the first high score
+table table_5bb2   0x00005bb2 uint32_t 4   ... and the second
+table table_1c678  0x0001c678 ByteP 8   for each level two pointers (level_creature_templates, level_walker_templates)
+table sound1_name  0x0001d3d2 char 11   "sound1.bin"
+table sound_records 0x00020bce struct SoundRecord 67   the sounds: for each, its voices' tracks (the second byte names its voice entry)
+table sound_periods 0x0002080e uint16_t 480   the period tables: an instrument names where its table starts (word 0, 48 or 96); a note indexes it by 4 words, so they run into each other up to the sounds table
+table sound_tracks 0x00021c3a ByteP 137   the address of the track (the commands of the sequencer) of each track number, 0 for none
+table sound_instruments 0x0003a38a struct SoundInstrument 53   the instruments: the sample, its loop, and the period table
+table objects_name 0x000196de char 8   "objects": the asset set of the objects
+shot_block       0x00016bb4  uint8_t %s[24]   twenty-four bytes of data the game changes (put back from block_16bcc)
+digit_font        0x000058f0  uint8_t %s[512]   sixteen digits of 8 rows of 4 bytes (a plane each); hud_digits_load makes the first ten from the picture of the digits
+start_x           0x0000021a  int16_t %s      where the player starts the level
+start_y           0x0000021c  int16_t %s
+level_files_read          0x00000286  int16_t %s      -1: the level's files were read
+copper_colour_count          0x000001ec  uint16_t %s     how many colours the level's copper list has
+color_line_spacing          0x000001ee  uint16_t %s     the spacing of the lines of the level's colours
+ready_frames          0x000001f2  uint16_t %s   frames to go (negative: none) of the text "PLAYER ONE" and "READY" that orig $3BD2 draws; the text does not show in the original, neither at a level start nor after a lost life (an emulator run), so the port only keeps the count
+unused_1f8          0x000001f8  uint16_t %s
+unused_1ba          0x000001ba  uint16_t %s
+unused_1de          0x000001de  uint16_t %s
+unused_238          0x00000238  uint16_t %s
+life_score_offset          0x0000027c  uint16_t %s
+bonus_score_offset          0x0000027e  uint16_t %s
+shop_door_index          0x00000294  uint16_t %s
+shop_door_x          0x00000288  int16_t %s       the x of the shop's door in the level (the table at $351A by level and world), set when a world is loaded
+shop_door_y          0x0000028a  int16_t %s       its y
+shop_door_way          0x0000028c  uint16_t %s      its third word of the table
+shop_door_frame          0x0000028e  uint16_t %s
+image_set_base          0x00000292  uint16_t %s
+death_frame          0x000002a6  int16_t %s
+random_index          0x000002e6  uint16_t %s
+tile_block_count          0x000002fa  uint16_t %s     how many blocks the first picture of background tiles was cut into, less one
+pickups_placed          0x00000356  uint16_t %s
+boss_phase_flags         0x000003b1  uint8_t %s      the byte after event_flags
+next_tile_block          0x00000168  uint8_t *%s     where the next background tile block goes
+text_pool_end          0x00000b62  uint8_t *%s     the end of the pool of texts
+teleport_list_cursor          0x00000b76  const uint8_t *%s
+map_file_name          0x00000b8a  uint8_t *%s     the level's map file name
+clip_rect_list          0x00000de0  const int16_t *%s   the clip rectangles (x0, x1, y0, y1; ended by a negative x0) of image_draw_clipped
+sprites_name_place          0x000026de  uint8_t *%s     a place in the original's code that the start of a level stores a pointer to the sprites' name in
+text_pool         0x00000cf6  uint8_t *%s     where the pool of texts ends (the texts of the level are put there)
+particle_glyph_step          0x00000a4e  int16_t %s
+particle_phase          0x00000a50  int16_t %s
+unused_a68          0x00000a68  int16_t %s
+orbit_timer          0x00000a9a  int16_t %s
+image_mirrored          0x00000d82  uint16_t %s     image_draw_clipped: negative when the image is mirrored
+image_x_shift          0x00000d86  uint16_t %s     ... the shift in the bits of x
+image_clip_flags          0x00000d88  uint16_t %s     ... 1 left side clipped, 2 right side clipped
+screen_row_bytes          0x00000dd2  uint16_t %s     the bytes of a row of the screen the image goes to, in the draw routines
+image_clip_skip_rows          0x00000dd4  uint16_t %s
+unused_dd6          0x00000dd6  uint16_t %s
+image_plane_bytes          0x00000dd8  uint32_t %s     the bytes of one plane of the image
+draw_routine_index          0x00000dde  uint16_t %s     which draw routine of the table at $0D9A image_draw_clipped uses
+spore_records      0x00001036  uint8_t %s[120]   ten records of 12 bytes
+pod_records         0x00000fd0  int16_t %s[50]    ten records of 10 bytes, the first word -1 when free
+falling_things        0x000011b4  int16_t %s[50]    ... the same
+bat_records        0x000010b0  uint8_t %s[140]
+shard_records      0x0000737e  uint32_t %s[20]   ten records of two longs
+face_bolt_records      0x00007544  int16_t %s[210]   forty-two records of 10 bytes
+crumble_table       0x0001a30c  uint16_t %s[120]  forty records of 6 bytes
+bolt_records     0x0001a154  struct Bolt %s[20]   twenty records of 22 bytes
+pickup_entries       0x00019456  uint16_t %s[60]   ... copied by place_pickups
+circle_offsets        0x0000fbf2  uint8_t %s[64]    thirty-two pairs of bytes made by make_circle_offsets
+standing_pictures        0x00007a6e  uint16_t %s[4]
+pods_switch         0x0000d6b8  uint16_t %s     the first word of the routine at $D6B8 (rts: off)
+falling_slots_switch         0x0000e3a2  uint16_t %s
+archers_switch         0x0000de54  uint16_t %s
+thrown_switch         0x0000e142  uint16_t %s
+bats_switch         0x0000db04  uint16_t %s
+bolts_switch         0x000077e6  uint16_t %s
+bolt_pieces_switch         0x00007906  uint16_t %s
+boss_death_score_switch         0x0000c374  uint16_t %s
+boss4_death_wait_switch         0x0000ba34  uint16_t %s
+boss4_throne_switch         0x0000b958  uint16_t %s     the first word of the level 4 guardian's throne routine (a nop: it rises)
+boss_sparks_switch         0x0000c58e  uint16_t %s
+boss2_shots_switch         0x0000cb0e  uint16_t %s
+boss_shots_switch         0x0000c406  uint16_t %s
+boss3_death_fall_switch         0x0000bc1a  uint16_t %s
+monsters_switch         0x00008a54  uint16_t %s     the first word of the routine at $8A54 (a nop: on)
+walker_groups_switch         0x00009ae6  uint16_t %s
+creatures_switch         0x00006ed0  uint16_t %s
+level_text       0x000028f8  uint8_t %s[16]   "LOADING LEVEL " and the level's number (plus 93): the text of the loading screen
+sine_table      0x0001c9e4  uint16_t %s[640]   the sines (the first 256 words) and the cosines (the next 256) and then a copy of the first 128 words that make_circle_offsets makes; the circle of the monsters reads that far
+unit_path_end     0x00000c74  const uint8_t *%s[5]   where the path of each unit's members ends
+unit_count        0x00000c8c  int16_t %s[5]    how many members each unit has
+unit_shot_rate         0x00007edc  int16_t %s       in the code area: the rate of the shots of the unit that is run
+shot_aim         0x00007ede  int16_t %s       in the code area: how its shots are aimed (0: sideways)
+unit0_words       0x0000e764  uint16_t %s[3]   in the code area: the first unit's: the drop was made, the members killed, the members dying
+unit1_words       0x0000ea4a  uint16_t %s[3]   ... the second unit's
+unit2_words       0x0000ed30  uint16_t %s[3]
+unit3_words       0x0000f016  uint16_t %s[3]
+unit4_words       0x0000f2fc  uint16_t %s[3]
+crumbling_cell_count          0x000004a0  uint16_t %s     how many of the cells that crumble ($1A30C) are going
+falling_things_count         0x00001218  uint16_t %s     how many of the ten falling things ($11B4) are going (world 2: archers)
+thrown_things_count         0x00001034  uint16_t %s     world 2: how many of the sixteen things the archers threw (level_entry_table) are going
+crumbles_switch        0x00017cc0  uint16_t %s     the first word of the routine at $17CC0 (rts: off, nop: the cells crumble)
+table death_steps  0x00000096 uint16_t 14  the seven pieces of the player's death: the steps (x, y) each starts with
+death_particles   0x000000b2  int16_t %s[28]  ... and where each is (x, y) and its steps (dx, dy), on the screen
+orbit_positions         0x00000a9e  uint16_t %s[4]   the first four words of the list of message lines ($16AC8 sets them to 0, 16, 32, 48)
+table respawn_search 0x00003864 uint16_t 45  fifteen records of three words: where, from the cell the player was last at, the cell that is looked for (an offset into the collision map, then the step of x and y)
+planner           0x000004be  struct Planner %s   the path planner of the walkers (orig $A492)
+plan_queue        0x0001971c  struct PlanItem %s[32]   the places the planner has still to look at (x and y 0: free)
+plan_list         0x0001981c  struct PlanItem %s[50]   the places along the floor that the planner has been to
+ball_values       0x00000206  int16_t %s[3]   the bouncing ball's speeds (x, y) and its jump
+hit_list          0x00000bd6  int16_t %s[75]  the list of the creatures hit (x, y, strength: 25 of them)
+axe_steps         0x0000066e  int16_t %s[27]  the magic axe's nine shots' steps
+ball_pillars      0x00000a6e  int16_t %s[21]  the ball's pillars of fire
+ball_pieces       0x00000e6c  int16_t %s[50]  its burst's pieces
+guardian         0x000004e0  struct Guardian %s   the guardians' state: the routine of every frame, the callback and the area of their variables
+frame_things         0x0000121c  int16_t %s[60]  the list of things that list_count_1294 counts
+bat_count        0x0000121a  uint16_t %s
+game_loop_jump         0x00002c20  uint8_t %s[6]   the original's code at $2C20: the jump that game_loop_install puts there
+irq_vectors       0x00000068  uint32_t %s[3]  the interrupt vectors the start-up sets (the keyboard's, the blank's, the audio's)
+sound_state       0x0002079e  struct SoundState %s   the sound system's variables: the start-up clears them
+teleport_lists       0x0001078a  uint8_t %s[96]   the lists table_1077a points to
+sound_track_data  0x00020f74  uint8_t %s[3270]   the sequencer's tracks of the sounds (sound_tracks points into it)
+sound_sample_data 0x00021e5e  uint8_t %s[65920]   the 8 bit samples of the instruments (sound_instruments points into it); the first 16 bytes are the silent sample
+video_address_high 0x00ff8207 volatile uint8_t %s   the Atari ST's video address register (high byte): the game reads it as the seed of its random numbers; the Amiga has no such address
+video_address_low  0x00ff8209 volatile uint8_t %s   ... and the low byte
+level_data        0x0001aa66  struct LevelData %s   the tables of the level (the file alfils): the scripts, the entries of the cells, the creatures, the monsters, the levers, the teleport gems, the pick-ups, the paths and the hints' text table

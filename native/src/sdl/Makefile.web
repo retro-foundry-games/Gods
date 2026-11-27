@@ -1,0 +1,124 @@
+# Gods, the browser build of the SDL port (WebAssembly, Emscripten): the same program as the desktop one (Makefile), the machine around it the browser's.
+#
+#   make -f Makefile.web            build projects/gods/native/build/web/gods.html, gods.js, gods.wasm (and gods.worker.js when Emscripten makes one)
+#   make -f Makefile.web serve      the folder is served on http://localhost:8080/ with the headers a page that uses threads needs (scripts/serve_web.py)
+#   make -f Makefile.web clean
+#
+# The program's memory is one struct (struct Gods, game.h): nothing of it is at a fixed address.  The program runs on a thread of its own (a web worker, as on the desktop), so
+# the page needs cross-origin isolation (SharedArrayBuffer).  The disk images are not in the build: the page asks for them (web/shell.html).
+# Run inside the flake's shell (nix develop projects/gods/native): it has emcc, cmake and ninja; GODS_SDL3_SOURCE_DIR is SDL3's source, built here for Emscripten once.
+# `nix build projects/gods/native#web` does the same in the sandbox (GODS_NO_NIX=1: no shell of its own; SDL3_PREFIX: the SDL3 the flake built for Emscripten; W: the output folder).
+
+HERE   := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+NATIVE := $(abspath $(HERE)/../..)
+SRC    := $(NATIVE)/src
+W      ?= $(NATIVE)/build/web
+PYTHON ?= python3
+EMCC   ?= emcc
+SDL3_SRC ?= $(GODS_SDL3_SOURCE_DIR)
+SDL3_PREFIX ?= $(W)/sdl3
+
+ifeq ($(or $(IN_NIX_SHELL),$(GODS_NO_NIX)),)
+.PHONY: all $(MAKECMDGOALS)
+all $(MAKECMDGOALS):
+	@nix develop $(NATIVE) --command $(MAKE) --no-print-directory -f $(lastword $(MAKEFILE_LIST)) $@
+else
+
+WEB_OPT := -O2
+COMMON := -std=gnu11 $(WEB_OPT) -pthread -fno-strict-aliasing -Wall -Wno-unused-function -I$(SRC) -I$(HERE) -I$(W) -I$(SDL3_PREFIX)/include
+GAME_CFLAGS := $(COMMON) -fpack-struct=2 -DGODS_SDL -DGODS_HEAP_IN_GUEST -DMATCH_MEMORY_LAYOUT $(if $(PIRATED),-DPIRATED)
+HOST_CFLAGS := $(COMMON)
+
+MENU_MODULES := menu disk alloc decrunch input draw message file boot game data
+GAME_OBJS := $(W)/g_shims.o $(W)/g_display.o $(W)/g_sound.o $(W)/g_guest.o $(W)/g_guest_load.o $(W)/g_irq.o $(W)/g_files.o $(MENU_MODULES:%=$(W)/g_%.o) $(W)/g_stubs.o
+HOST_OBJS := $(W)/h_host.o $(W)/h_presentation.o $(W)/h_pixel_scale.o $(W)/h_intro_view.o $(W)/h_main.o
+INTRO_OBJS := $(W)/i_intro_host.o $(W)/i_intro.o $(W)/i_intro_data.o $(W)/i_intro_assets.o
+
+.PHONY: all serve clean
+all: $(W)/gods.html
+
+$(W):
+	mkdir -p $@ $@/p1
+
+# SDL3 for Emscripten, once
+$(SDL3_PREFIX)/lib/libSDL3.a: | $(W)
+	emcmake cmake -S $(SDL3_SRC) -B $(W)/sdl3-build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$(SDL3_PREFIX) \
+	    -DSDL_SHARED=OFF -DSDL_STATIC=ON -DSDL_TEST_LIBRARY=OFF -DSDL_TESTS=OFF -DSDL_INSTALL=ON -DCMAKE_C_FLAGS=-pthread
+	cmake --build $(W)/sdl3-build
+	cmake --install $(W)/sdl3-build
+
+# generated: the tables, the stubs, the fixups
+$(W)/g_stubs.c $(W)/guest_tables.h: $(HERE)/gen_guest.py $(SRC)/game.symbols $(SRC)/game.ld | $(W)
+	$(PYTHON) $(HERE)/gen_guest.py $(SRC) $(W)
+$(W)/guest_fixups.h: $(HERE)/gen_fixups.py $(SRC)/game.symbols | $(W)
+	$(PYTHON) $(HERE)/gen_fixups.py $(SRC) $(W)
+GENERATED := $(W)/guest_tables.h $(W)/guest_fixups.h $(SDL3_PREFIX)/lib/libSDL3.a
+
+$(W)/g_data.o: $(SRC)/data.c $(GENERATED)
+	$(EMCC) $(GAME_CFLAGS) -w -MMD -MP -c $< -o $@
+$(W)/g_stubs.o: $(W)/g_stubs.c
+	$(EMCC) $(GAME_CFLAGS) -w -MMD -MP -c $< -o $@
+$(W)/g_shims.o: $(HERE)/shims.c $(GENERATED)
+	$(EMCC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
+$(W)/g_display.o: $(HERE)/display.c $(GENERATED)
+	$(EMCC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
+$(W)/g_sound.o: $(HERE)/sound.c $(GENERATED)
+	$(EMCC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
+$(W)/g_guest.o: $(HERE)/guest.c $(GENERATED)
+	$(EMCC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
+$(W)/g_guest_load.o: $(HERE)/guest_load.c $(GENERATED)
+	$(EMCC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
+$(W)/g_irq.o: $(HERE)/irq.c $(GENERATED)
+	$(EMCC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
+$(W)/g_files.o: $(HERE)/files.c $(GENERATED)
+	$(EMCC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
+$(W)/g_draw.o: $(SRC)/draw.c $(GENERATED)
+	$(EMCC) $(GAME_CFLAGS) -fno-inline -MMD -MP -c $< -o $@
+$(W)/g_%.o: $(SRC)/%.c $(GENERATED)
+	$(EMCC) $(GAME_CFLAGS) -MMD -MP -c $< -o $@
+$(W)/h_%.o: $(HERE)/%.c $(GENERATED)
+	$(EMCC) $(HOST_CFLAGS) -MMD -MP -c $< -o $@
+
+# the intro: its names are those of the menu program's (glyph_draw, screens_flip, blit_image ...): all but the entry points are renamed (a first compile lists them, a second renames them)
+INTRO_EXPORTS := game_main ih_vbl ih_set_fire ih_shown_screen ih_color ih_music_mix ih_load_assets
+LLVM_NM ?= $(shell em-config LLVM_ROOT)/llvm-nm
+$(W)/p1/intro_host.o: $(HERE)/intro_host.c $(GENERATED) | $(W)
+	$(EMCC) $(GAME_CFLAGS) -c $< -o $@
+$(W)/p1/intro.o: $(SRC)/intro.c $(GENERATED) | $(W)
+	$(EMCC) $(GAME_CFLAGS) -c $< -o $@
+$(W)/p1/intro_data.o: $(SRC)/intro_data.c $(GENERATED) | $(W)
+	$(EMCC) $(GAME_CFLAGS) -w -c $< -o $@
+$(W)/p1/intro_assets.o: $(HERE)/intro_assets.c $(GENERATED) | $(W)
+	$(EMCC) $(GAME_CFLAGS) -c $< -o $@
+$(W)/intro_rename.h: $(W)/p1/intro_host.o $(W)/p1/intro.o $(W)/p1/intro_data.o $(W)/p1/intro_assets.o
+	$(LLVM_NM) --defined-only -g $^ | awk 'NF == 3 { print $$3 }' | sort -u $(foreach s,$(INTRO_EXPORTS),| grep -vx $(s)) | awk '{ print "#define " $$1 " intro__" $$1 }' > $@.tmp
+	test -s $@.tmp
+	mv $@.tmp $@
+$(W)/i_intro_host.o: $(HERE)/intro_host.c $(W)/intro_rename.h $(GENERATED)
+	$(EMCC) $(GAME_CFLAGS) -include $(W)/intro_rename.h -MMD -MP -c $< -o $@
+$(W)/i_intro.o: $(SRC)/intro.c $(W)/intro_rename.h $(GENERATED)
+	$(EMCC) $(GAME_CFLAGS) -include $(W)/intro_rename.h -MMD -MP -c $< -o $@
+$(W)/i_intro_data.o: $(SRC)/intro_data.c $(W)/intro_rename.h $(GENERATED)
+	$(EMCC) $(GAME_CFLAGS) -w -include $(W)/intro_rename.h -MMD -MP -c $< -o $@
+$(W)/i_intro_assets.o: $(HERE)/intro_assets.c $(W)/intro_rename.h $(GENERATED)
+	$(EMCC) $(GAME_CFLAGS) -include $(W)/intro_rename.h -MMD -MP -c $< -o $@
+
+# __builtin_return_address needs this setting only before Emscripten 4.0.14;
+# that release removed the converter and the setting (upstream changelog #24963).
+OFFSET_CONVERTER := $(shell $(EMCC) -dumpversion | awk -F. '$$1 < 4 || ($$1 == 4 && $$2 == 0 && $$3 < 14) { print "-sUSE_OFFSET_CONVERTER=1" }')
+LINK := -Wl,--allow-multiple-definition -pthread -sPTHREAD_POOL_SIZE=3 -sINITIAL_MEMORY=67108864 -sALLOW_MEMORY_GROWTH=0 $(OFFSET_CONVERTER) \
+        -sSTACK_SIZE=1048576 -sDEFAULT_PTHREAD_STACK_SIZE=4194304 -sENVIRONMENT=web,worker -sFORCE_FILESYSTEM=1 -sINVOKE_RUN=0 \
+        "-sEXPORTED_RUNTIME_METHODS=['FS','callMain']" -lidbfs.js --shell-file=$(NATIVE)/web/shell.html
+
+$(W)/gods.html: $(HOST_OBJS) $(INTRO_OBJS) $(GAME_OBJS) $(NATIVE)/web/shell.html $(NATIVE)/web/retro-foundry.png $(NATIVE)/web/coi-serviceworker.js $(HERE)/Makefile.web
+	$(EMCC) $(LINK) -o $@ $(HOST_OBJS) $(INTRO_OBJS) $(GAME_OBJS) -L$(SDL3_PREFIX)/lib -lSDL3 -lm
+	cp $(NATIVE)/web/retro-foundry.png $(NATIVE)/web/coi-serviceworker.js $(W)/
+
+serve: $(W)/gods.html
+	$(PYTHON) $(NATIVE)/scripts/serve_web.py $(W)
+
+clean:
+	rm -rf $(W)
+
+-include $(W)/*.d
+endif
