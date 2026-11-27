@@ -1,7 +1,7 @@
 """Compare two runs of host/menu_takeover.lua itervars=1 (the variables $100-$FFF at the top of each iteration of the game loop):
 the first iteration at which a game variable differs (the ones that only count time are told apart by being different from early on).
 
-    uv run python projects/gods/scripts/compare_iter.py ORIG.iter C.iter
+    uv run python tools/compare_iter.py ORIG.iter C.iter
 """
 import bisect
 import re

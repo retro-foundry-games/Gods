@@ -5,7 +5,7 @@
 -- $0063A2, after the top ten) the main thread continues in C (menu_main of native/build/game.blob) while the original's interrupt
 -- handlers go on; with mode=irq the interrupt vectors are C's too (vbl_irq, audio_irq).  mode=orig only records.
 --
---   ami9000_host projects/gods/host/menu_takeover.lua --headless --script-args "mode=orig|c|irq state=NAME.state until=F out=FILE"
+--   ../amiga_porting/ami9000/build/ami9000_host host/menu_takeover.lua --headless --script-args "mode=orig|c|irq state=NAME.state until=F out=FILE"
 local args = ami.args or ""
 local MODE = args:match("mode=(%w+)") or "orig"
 local STATE = args:match("state=(%S+)") or "gods-menu-1m.state"

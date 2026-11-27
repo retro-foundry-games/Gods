@@ -1,6 +1,6 @@
 -- Oracle for scripts/test_lift_gods.py: call original functions on the real core from planned register states.
 --
---   tools/engine9000/ami9000_host projects/gods/host/liftcheck.lua --headless --script-args "out=/abs/results.txt"
+--   ../amiga_porting/ami9000/build/ami9000_host host/liftcheck.lua --headless --script-args "out=/abs/results.txt"
 --
 -- Reads ../native/build/lifttest/plan.txt (lines: entry d0..d7 a0..a7 flags, hex), restores gods-11000.state, then for each
 -- line restores chip RAM, runs the routine with ami.call (interrupts masked) and writes one result line:

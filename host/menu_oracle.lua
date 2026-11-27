@@ -1,6 +1,6 @@
 -- Check the C functions of menu.c against the original program, on the machine as it runs.
 --
--- Boots the original disks, loads the C code (native/build/game.blob, from scripts/build_game.py) into RAM above the original's
+-- Boots the original disks, loads the C code (native/build/game.blob, from tools/build_game.py) into RAM above the original's
 -- 512 KB, presses the fire button (the left mouse button) at frame CLICK so that the original loads the menu, and hooks the
 -- original's entry of every function in host/menu_cases.lua.  At each call (the first SAMPLES of them) the state is saved,
 -- the original routine is run on it with ami.call, the memory is put back, the C function is run on the same state with the
@@ -8,7 +8,7 @@
 -- chip RAM (except the C code and the stack of the test).  Then the state is put back, so the program goes on as if nothing had
 -- happened.
 --
---   ami9000_host projects/gods/host/menu_oracle.lua --headless --script-args "[only=NAME[,NAME]] [samples=N] [stride=N] [until=FRAMES] [click=FRAME] [state=NAME.state] [joy=F:DIRS,...]"
+--   ../amiga_porting/ami9000/build/ami9000_host host/menu_oracle.lua --headless --script-args "[only=NAME[,NAME]] [samples=N] [stride=N] [until=FRAMES] [click=FRAME] [state=NAME.state] [joy=F:DIRS,...]"
 local args = ami.args or ""
 local only = {}
 for n in (args:match("only=([%w_,]+)") or ""):gmatch("[%w_]+") do only[n] = true end
@@ -174,7 +174,7 @@ for f, dirs in (args:match("joy=(%S+)") or ""):gmatch("(%d+):([%a+]+)") do
     joys[tonumber(f)] = st
 end
 -- kbd=1: the original's keyboard patch (native/src/amiga/keyboard_patch.asm) is put in memory after the state is loaded; replay=FILE: the keys
--- of a file written by gods.lua inputlog= (relative to projects/gods), as the human run of the game
+-- of a file written by gods.lua inputlog= (relative to the repository root), as the human run of the game
 local keys = {}
 local replay_path = args:match("replay=(%S+)")
 if replay_path then

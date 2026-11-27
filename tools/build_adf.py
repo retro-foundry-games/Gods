@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the Gods ADF whose game is the C in native/src/: boot -> original loader -> C (no original game code runs).
 
-    uv run python projects/gods/scripts/build_adf.py
+    uv run python tools/build_adf.py
 
 1. compile intro.c and intro_data.c with m68k-amigaos-gcc and link them with m68k-amigaos-ld -m amiga and intro.ld: the data
    hunk is laid out at the original addresses, the code hunk follows;

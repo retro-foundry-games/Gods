@@ -1,6 +1,6 @@
 """Compare two runs of host/menu_takeover.lua: the first frame at which each recorded region differs, and which variables.
 
-    uv run python projects/gods/scripts/compare_takeover.py ORIG.txt C.txt [MAXSHOW]
+    uv run python tools/compare_takeover.py ORIG.txt C.txt [MAXSHOW]
 """
 import sys
 

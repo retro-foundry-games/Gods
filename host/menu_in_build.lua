@@ -1,5 +1,5 @@
 -- Run the disk whose game is the C (local/gods-c.m3u), press space for the menu and report whether the C menu runs.
---   ami9000_host projects/gods/host/menu_in_build.lua --headless --script-args "until=FRAMES [shot=FILE.ppm] [keys=F:name:down|up,...]"
+--   ../amiga_porting/ami9000/build/ami9000_host host/menu_in_build.lua --headless --script-args "until=FRAMES [shot=FILE.ppm] [keys=F:name:down|up,...]"
 local args = ami.args or ""
 local UNTIL = tonumber(args:match("until=(%d+)")) or 9000
 ami.machine{ name = "Gods C menu", model = "A500", system = "../local/system", save = "../local/save", files = "..",

@@ -4,7 +4,7 @@ Makes native/build/game (the Makefile compiles the modules of native/src/ and li
 addresses), relocates the code hunk to BASE and writes
 native/build/game.blob (the bytes), native/build/game.sym (nm) and native/build/game_syms.lua (function name -> address, for host/menu_oracle.lua).
 
-    uv run python projects/gods/scripts/build_game.py [BASE]        # BASE in hex, default C0000 (RAM above the original's 512 KB)
+    uv run python tools/build_game.py [BASE]        # BASE in hex, default C0000 (RAM above the original's 512 KB)
 """
 from __future__ import annotations
 

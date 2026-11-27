@@ -6,7 +6,7 @@ code (a branch to code that did not run is marked `/* goes on at $ADDR */` and e
 
 ## The list of what is left
 
-    MENU_RAM=game-ram.bin MENU_COVERAGE=coverage-game.txt MENU_TODO_LIMIT=500 uv run python projects/gods/scripts/menu_dis.py --todo
+    MENU_RAM=game-ram.bin MENU_COVERAGE=coverage-game.txt MENU_TODO_LIMIT=500 uv run python tools/menu_dis.py --todo
 
 lists the components (a component is code connected by branches) that no C has yet, small ones first.
 `... menu_dis.py 0xADDR [0xADDR ...]` shows the disassembly of the component an address is in, with what it calls and (starred `*`)
@@ -31,13 +31,13 @@ which of its instructions ran.  `native/build/game-ram.bin` is the program's RAM
 
 ## Checking it against the original
 
-1. `uv run python projects/gods/scripts/build_game.py` builds the C (all modules) into `native/build/game.blob` and fails on a C error.
+1. `uv run python tools/build_game.py` builds the C (all modules) into `native/build/game.blob` and fails on a C error.
 2. Add a case for each function to `host/menu_cases.lua`, inserted before the final `}`:
    `{ name = "function_name", orig = 0xADDR, args = { "d0.w", "a0" }, ret = "d0.w", blitter = true, scenario = "game" },`
    (`args`: the registers the arguments come in, `.w` and `.b` for the low part; `ret`: the register of the result if the caller uses it;
    `blitter = true` when the function draws).  The oracle (`host/menu_oracle.lua`) hooks the original's entry in the running original,
    calls the original and the C on the same machine state, and compares the result register and all of chip RAM.
-3. `uv run python projects/gods/scripts/check_menu.py function_name ...` runs one oracle run for each (a minute or two each) and must
+3. `uv run python tools/check_menu.py function_name ...` runs one oracle run for each (a minute or two each) and must
    say `ok 24 differ 0` (or all the calls, when there are fewer).  A DIFF names the memory bytes that differ: that is your error.
    Run several functions in one command; it can go on in the background.
 4. A function whose results are the condition codes or whose entry is in the middle of another cannot be called by the oracle: check it
@@ -47,19 +47,19 @@ which of its instructions ran.  `native/build/game-ram.bin` is the program's RAM
 
 ## The tools of the checkout in a worktree
 
-A worktree has no `native/build`, `local` or `captures` and no host binary.  Make them first (once).  COPY the data, never
+A worktree has no `native/build`, `local` or `captures`.  Make them first (once).  COPY the data, never
 symlink it into the tree (a symlink named `local` or `captures` replaced the real directories when it was merged once):
 
-    W=$(pwd); R=/home/boran/git/amiga-decomp
-    mkdir -p projects/gods/native/build projects/gods/captures/input
-    cp $R/projects/gods/native/build/{game-ram.bin,game-image.bin,keyboard_patch.bin} projects/gods/native/build/
-    cp -r $R/projects/gods/local projects/gods/local
-    cp -r $R/projects/gods/captures/ref100k projects/gods/captures/ 2>/dev/null; cp $R/projects/gods/captures/input/* projects/gods/captures/input/
-    export AMI_HOST=$R/tools/engine9000/ami9000_host
+    W=$(pwd); R=/path/to/the/main/checkout
+    mkdir -p native/build captures/input
+    cp $R/native/build/{game-ram.bin,game-image.bin,keyboard_patch.bin} native/build/
+    cp -r $R/local local
+    cp -r $R/captures/ref100k captures/ 2>/dev/null; cp $R/captures/input/* captures/input/
+    export AMI_HOST=$R/../amiga_porting/ami9000/build/ami9000_host
     PY=$R/.venv/bin/python        # use this instead of `uv run python`
 
 Every command is run from the worktree's root (`$W`); the scripts find their own files.  The build runs the compiler through `nix develop`.
-Commit in your worktree (message ending `[skip ci]`); do not push and do not commit anything in `local/`, `captures/` or `native/build/`.
+Commit in your worktree; do not push and do not commit anything in `local/`, `captures/` or `native/build/`.
 
 ## What a finished function needs to do (lessons)
 
@@ -91,7 +91,7 @@ the loading screen).  How it was made and checked:
 * The check of the whole: two builds of the disk, one with `original_begin()` and one with `begin_quest()` in `menu.c`, each run
   from its snapshot to the first frame of the loop (`stopat=2c20` and `stopat=<game_loop>`).  The 512 KB chip RAM of the two is the same
   except the interrupt vectors and the jump at $2C22 (the blob's addresses), the frame counters ($1D05A, $1E256) and the stack.
-* The oracle (`scenario = "begin_quest"` in `scripts/check_menu.py`: the original from `gods-menu-1m.state`, the fire at frame 20,
+* The oracle (`scenario = "begin_quest"` in `tools/check_menu.py`: the original from `gods-menu-1m.state`, the fire at frame 20,
   1500 frames) checks the leaves.  The loaders of the files, the copper list and what waits for the vertical blank are in the
   whole check only.
 * A function that is only the way that ran says `goes on at $ADDR` where it stops: the other levels (`param_index` 2 to 4), the
@@ -103,7 +103,7 @@ the loading screen).  How it was made and checked:
 
 - Executed code of the human level-1 run (analysis/coverage-game.txt, 4456 instructions) and of Begin Quest (analysis/coverage-begin.txt, 4683):
   `menu_dis.py --todo` lists nothing that is not decompiled, except the keyboard patch code at $1E426/$1E608 (not the game's: it is the memory patch
-  of scripts/build_keyboard_patch.py).  Every written routine is checked by the oracle on every call of the replay (differ 0; the one remaining
+  of tools/build_keyboard_patch.py).  Every written routine is checked by the oracle on every call of the replay (differ 0; the one remaining
   difference was in the oracle's own comparison of the patched keyboard bytes, now ignored with kbd=1).
 - `game_frame` calls no original code except $30C6, $33D4 and $12E08, which the recording never reaches.  Branches of the written routines that
   the recording never reaches are marked `goes on at $ADDR` (or written from the disassembly without a check: the reports of the modules say which).
@@ -149,14 +149,14 @@ Longer run: a random input script (seed 7: 40 or so changes of direction, jump a
 - Coverage of Begin Quest and about 5400 frames of seeded random play in each of the levels 2, 3 and 4 is in analysis/coverage-level{2,3,4}.txt
   (with RAM dumps in native/build/level{N}-ram.bin): `menu_dis.py --todo` lists no component that is not named in C, because the components
   that matter are routines that exist in C as far as level 1 uses them (a routine that stops at `goes on at $ADDR`).
-- The oracle on the levels: `GODS_LEVEL=N python scripts/check_menu.py <the cases of scenario game>` (scripts/check_menu.py: scenarios game2 to game4,
+- The oracle on the levels: `GODS_LEVEL=N python tools/check_menu.py <the cases of scenario game>` (tools/check_menu.py: scenarios game2 to game4,
   the states above, a seeded random joystick script).  Level 2: 101 of 104 cases show 0 differences (the others have no calls); three differ:
   `game_step_73d2` (the particles: 10 records at $737E, continues at $73D8, uses $7486 and the routine $184EE, not in C), `creature_step_717e`
   (continues at $7184 for the types whose byte 19 is not 0, calls $60AE and $60F2) and `update_creatures` (because of the creature step).
   Levels 3 and 4 have not been run through the oracle yet.  These are the first of the routines that levels 2 to 4 need beyond level 1: write the
   continuations from the disassembly of the level's RAM dump, re-run the oracle for the level, repeat.
 
-## Lockstep on a recorded play (scripts/lockstep.py)
+## Lockstep on a recorded play (tools/lockstep.py)
 
 Level 1, your recording (captures/input/level1-run1.txt, 772 key events, about 2600 iterations of the loop): the original and the C loop, both given the
 keys by iteration, have the same game variables ($100-$FFF) at the top of every iteration, and 105 screenshots (every 25 iterations, above the message
@@ -164,8 +164,8 @@ line) are identical.  Only the variables that count time differ (message_*, $CE4
 the keys are applied to the keyboard interrupt's table ($1E63A) at the top of the iteration, because the interrupt loses one of two close key events by
 the original's own timing (a left-up and right-down at one instant gave `left+right` in one run and `right` in the other), and the comparison is by
 iteration, because the C loop is slower while the level starts.
-Use: play a level on the original disk with gods.lua inputlog= (see the top of scripts/lockstep.py), then
-`uv run python projects/gods/scripts/lockstep.py LEVEL`: it prints the first iteration at which a game variable differs (variable name, address, values);
+Use: play a level on the original disk with gods.lua inputlog= (see the top of tools/lockstep.py), then
+`uv run python tools/lockstep.py LEVEL`: it prints the first iteration at which a game variable differs (variable name, address, values);
 screenshots at chosen iterations: `menu_takeover.lua ... itershot=N,N shots=DIR` for mode=orig and mode=game.  The glue stack of the takeover moved to $FA000.
 
 ## Module layout (November 2)
@@ -176,7 +176,7 @@ Amiga, `amiga/display.c` (the old screen.c and display.c: the buffers and the sh
 tick, and the chips' parts: the copper scroll, the vertical blank, the blitter wait, `display_show`), with the interface in `display.h`; the host's
 version is `sdl/display.c` (the same logic; the chips' parts are the host's: it must follow changes of the Amiga's file).
 
-## Lockstep of the Amiga build and the SDL port (scripts/lockstep_sdl.py)
+## Lockstep of the Amiga build and the SDL port (tools/lockstep_sdl.py)
 
 Both start level 1 from Begin Quest and get the keys of your recording by iteration (shifted by the 128 iterations its state is into the level:
 captures/input/level1-run1-iterkeys*.txt), and write the variables $100-$FFF at the top of every iteration (gods.lua iterhook= itervars= iterkeysfile=; the SDL port

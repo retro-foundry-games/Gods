@@ -2,7 +2,7 @@
 version.  Each shim has the original's register interface (arguments in registers, all registers kept, the negative flag
 clear), pushes the arguments for the C function, calls it and returns to the original's caller.
 
-    uv run python projects/gods/scripts/build_glue.py
+    uv run python tools/build_glue.py
 """
 import re
 import sys

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compare the two sides of a lockstep stop saved by gods_lockstep.lua (captures/stops/stop-fFRAME.*).
 
-    python3 scripts/stop_diff.py captures/stops/stop-f5566 [START [LENGTH [SIZE]]]
+    python3 tools/stop_diff.py captures/stops/stop-f5566 [START [LENGTH [SIZE]]]
 
 The original's RAM (.ram, big endian) is compared with the port's memory (.portmem: the program's own words, native) from START (default
 0x100) for LENGTH bytes (default up to $80000), as words (SIZE 2, the default), longs (4) or bytes (1).  The runs that differ are listed with

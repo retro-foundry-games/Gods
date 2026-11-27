@@ -1,6 +1,6 @@
 -- Takes a saved state of the original and saves it again at its next screen flip ($1D302: the game's iteration has just ended and its next one has not begun), as a state and as its chip RAM:
 -- a quickload of the port (gods-sdl-dev --quickload) begins an iteration at its top, so the original's state has to be at the end of one.
---   tools/engine9000/ami9000_host --headless --frames 400 projects/gods/host/gods_flipsave.lua --script-args "state=/ABS/IN.state out=/ABS/OUTPREFIX"   (writes OUTPREFIX.state and OUTPREFIX.ram)
+--   ../amiga_porting/ami9000/build/ami9000_host --headless --frames 400 host/gods_flipsave.lua --script-args "state=/ABS/IN.state out=/ABS/OUTPREFIX"   (writes OUTPREFIX.state and OUTPREFIX.ram)
 local args = ami.args or ""
 local STATE = assert(args:match("state=(%S+)"), "state=PATH")
 local OUT = assert(args:match("out=(%S+)"), "out=PREFIX")

@@ -1,40 +1,49 @@
 # Gods
 
-Gods (1991, The Bitmap Brothers / Renegade) on the Amiga. This project follows the
-framework's [recomp-first workflow](../../docs/recomp/porting_game.md): obtain an
-executable baseline by static recompilation, qualify it against original
-execution, then replace translated routines with meaning-backed source.
+Gods (1991, The Bitmap Brothers / Renegade) on the Amiga, reconstructed in C: the intro and the game, as two programs that run on the Amiga and, for a
+Linux desktop and the browser, on SDL3. The method is the `amiga-porting` skill (`~/git/retrofoundry/amiga_porting`, `skill/SKILL.md`).
 
-## Builds
+## Branches
 
-- Amiga: `make -C projects/gods/native` (`build/intro` and `build/menu`, `make adf` for a disk).
-- Desktop SDL port: `make -C projects/gods/native sdl` builds `build/sdl/gods-sdl` (`--disks DIR`, the folder with `gods-disk1.adf` and `gods-disk2.adf`, default the
-  working folder; `--help`) and `gods-sdl-dev` (the lockstep with the original and the tests). The port keeps its own `hiscores.bin` in the working folder.
-- Browser (WebAssembly): `make -f projects/gods/native/src/sdl/Makefile.web` or `nix build projects/gods/native#web` makes `gods.html`, `gods.js` and `gods.wasm`.
-  `python3 projects/gods/native/scripts/serve_web.py [DIR [PORT]]` serves them (default `build/web`, port 8080) with the headers the page needs: the game runs on a thread
-  (a web worker), which wants cross-origin isolation, so a static host has to send `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`.
-  The page asks for the two ADF files (they stay in the tab); the high scores and level codes are kept in the browser (IndexedDB). Arrows and Space; Esc quits a game to the menu.
-  The program's memory is one struct (`struct Gods`, `native/src/game.h`, generated from `game.symbols` by `scripts/gen_guest_struct.py`): every variable is a member at the offset of its
-  original address, so the Amiga build links the struct at address 0 and the SDL and browser builds have it as an ordinary object (plus the program's heap). The sources say `guest.NAME`.
-  A save state is that block (`guest_state_write/read` in `sdl/guest.c`); the lockstep resumes the port from the original's RAM (`ram=f5-K.ram`: copied in at the offsets, the words made native and
-  the addresses of the data made the block's own) or from the port's own save (`.port`).
+- `develop` is this whole repository: the port in `native/` and the tools that check it against the original.
+- `master` is exactly `git subtree split --prefix=native` of `develop`: the port alone, which is what is published (and what GitHub Pages is built from).
 
-## Status
+Publishing: `git subtree push --prefix=native origin master`. A pull request merged on `master` is brought onto `develop` with `git am --directory=native` of its patch.
 
-Scaffold only. No media has been identified, no recording made and no claim of
-recompilation or parity exists yet.
+## Layout
 
-## Next steps
+    native/     the reconstruction (see native/README.md and native/src/sdl/README.md)
+    host/       ami9000 Lua scripts: the original, the lockstep with the port, the per-function oracle
+    tools/      generators of the checked-in sources and the check drivers
+    local/      git-ignored: the disks, the Kickstart, savestates
+    captures/   git-ignored: recordings, inputs, RAM dumps
+    PLAN.md  DECOMPILING.md   plan, status and the method as applied to this game
 
-1. Place the supplied disk images in ignored `local/`; inventory them
-   (hashes, variant, disk count) in `analysis/media_inventory.json`.
-2. Write `local/gods.uae` and `local/system/` (Kickstart) for the machine the
-   game actually needs; correct `project.json` memory regions from that setup.
-3. Establish the loader path (bootblock, custom trackloader, decrunch) per
-   [decrunching](../../docs/recomp/decrunching.md), and record the resident-image
-   entry point in `recomp/gods.toml`; add `"recomp_manifest"` to `project.json`.
-4. `python -m amiga_decomp --project gods run recompile analyze`
+Coverage and other reviewed reports are read from `analysis/`.
 
-Select the project explicitly: `python -m amiga_decomp --project gods info`.
-For storage-gated pushes, run
-`git config --local --add amigaDecomp.storageProject gods`.
+## Build
+
+| | |
+|---|---|
+| Amiga | `make -C native` builds `build/intro` and `build/game`; `make -C native adf` makes a disk |
+| SDL (desktop) | `make -C native sdl` builds `build/sdl/gods-sdl` (the game) and `gods-sdl-dev` (the lockstep and the tests) in `native/` |
+| Browser | `nix build ./native#web`; `python3 native/scripts/serve_web.py result` serves it with the headers the page needs |
+
+The toolchain is the flake of `native/`. `native/src/sdl/README.md` describes the port, its options and its layout in memory.
+
+## Checking against the original
+
+The emulator is `ami9000` of the `amiga_porting` repository, expected beside this one (`../amiga_porting/ami9000/build/ami9000_host`; build it as its
+README says). `local/` holds `system/kick34005.A500` (Kickstart 1.3, CRC32 c4f0f55f), `gods-disk1.adf`, `gods-disk2.adf`, `gods.m3u`
+(`printf 'gods-disk1.adf\ngods-disk2.adf\n' > local/gods.m3u`) and the savestates in `local/save/`.
+
+    AMI=../amiga_porting/ami9000/build/ami9000_host
+    python3 ../amiga_porting/ami9000/pidrun.py -- $AMI host/gods.lua                       the original, in a window
+    python3 ../amiga_porting/ami9000/pidrun.py -- $AMI --scale 2 host/gods_lockstep.lua    the original beside the port (options at the top of the script)
+    uv run python tools/check_menu.py [NAME ...]                                           per function, original against C
+
+## License
+
+Gods was written by The Bitmap Brothers and published by Renegade; this repository holds a reconstruction of its code in C and the tools used to check it against the original. The disks and the Kickstart are not part of it and are not distributed.
+
+The reconstruction and the tools are free software: you can redistribute them and/or modify them under the terms of the GNU General Public License as published by the Free Software Foundation, either version 2 of the License, or (at your option) any later version. See [LICENSE](LICENSE).

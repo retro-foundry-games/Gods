@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compare the draw calls of the two sides saved with a lockstep stop (captures/stops/stop-fN.draws).
 
-    python3 scripts/draws_diff.py captures/stops/stop-f5659
+    python3 tools/draws_diff.py captures/stops/stop-f5659
 
 O lines: the original's draws (age 0 the last flip interval that is over, 1 the one in progress; the caller's address last); P lines: the port's, by iteration (the two newest).
 Printed: the draws that only one side made in each interval (kind 0 glyph, 1 sprite; x, y, image)."""

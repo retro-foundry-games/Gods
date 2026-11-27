@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rename variables and functions: python3 scripts/rename_symbols.py OLD=NEW ...   (or a file of OLD=NEW lines with @FILE)
+"""Rename variables and functions: python3 tools/rename_symbols.py OLD=NEW ...   (or a file of OLD=NEW lines with @FILE)
 
 Whole-word replacement in the sources (native/src, host scripts, README), then game.h, game.ld, data.c and struct Gods are generated again, so game.symbols is the
 one place a variable's name is changed.  Skips (and says so) a new name that already exists or an old one that is not there."""
@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-FILES = [p for pattern in ("native/src/**/*.c", "native/src/**/*.h", "native/src/**/*.asm", "native/src/**/*.py", "native/src/game.symbols", "host/*.lua", "scripts/*.py", "README.md")
+FILES = [p for pattern in ("native/src/**/*.c", "native/src/**/*.h", "native/src/**/*.asm", "native/src/**/*.py", "native/src/game.symbols", "host/*.lua", "tools/*.py", "README.md")
          for p in ROOT.glob(pattern) if "build" not in p.parts and p.name not in ("game.ld", "data.c")]
 
 
@@ -31,9 +31,9 @@ def main() -> None:
     for p, t in texts.items():
         if t != p.read_text():
             p.write_text(t)
-    subprocess.run([sys.executable, str(ROOT / "scripts/gen_game_symbols.py")], check=True)
-    subprocess.run([sys.executable, str(ROOT / "scripts/gen_guest_struct.py")], check=True)
-    print("also run (needs capstone): uv run python projects/gods/scripts/gen_game_amiga_asm.py   (native/src/amiga/amiga.asm names the variables)")
+    subprocess.run([sys.executable, str(ROOT / "tools/gen_game_symbols.py")], check=True)
+    subprocess.run([sys.executable, str(ROOT / "tools/gen_guest_struct.py")], check=True)
+    print("also run (needs capstone): uv run python tools/gen_game_amiga_asm.py   (native/src/amiga/amiga.asm names the variables)")
 
 
 if __name__ == "__main__":

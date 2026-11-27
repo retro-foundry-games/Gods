@@ -1,9 +1,14 @@
-# direnv cache of the native/ flake
-native/.direnv/
-
-# a symlink named like these (made in a worktree) must not be committed either
-/captures
+# original media, ROMs and savestates; captures (a symlink named like these, made in a worktree, must not be committed either)
 /local
+/captures
 
-# direnv cache
+# builds
+build/
+native/build/
+result
+result-*
+
+__pycache__/
+*.pyc
+.venv/
 .direnv/

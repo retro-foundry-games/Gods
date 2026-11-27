@@ -5,7 +5,7 @@ The function entries are the targets of `jsr abs.l` and `bsr.w` in a RAM image o
 the program reaches through tables and pointers); a function counts as ported when an `orig $ADDR` comment names an address inside it (or a range
 `orig $A ... $B` covering it).  It is an estimate: the comments are the record, and an entry the scan found in data counts too.
 
-    python3 projects/gods/scripts/port_map.py [RAMFILE]
+    python3 tools/port_map.py [RAMFILE]
 """
 import re
 import sys

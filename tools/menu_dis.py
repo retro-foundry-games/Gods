@@ -1,8 +1,8 @@
 """Read the original menu program: a function's disassembly with what it calls, who calls it and what is decompiled.
 
-    uv run python projects/gods/scripts/menu_dis.py ADDR [ADDR ...]    # a function by its entry (hex), the code up to its last
+    uv run python tools/menu_dis.py ADDR [ADDR ...]    # a function by its entry (hex), the code up to its last
                                                                         # executed instruction, executed instructions marked *
-    uv run python projects/gods/scripts/menu_dis.py --todo             # the functions not decompiled yet, the leaves first
+    uv run python tools/menu_dis.py --todo             # the functions not decompiled yet, the leaves first
 
 The code is the program's RAM while the menu is on show (native/build/game-ram.bin: frame 8,000 of captures/menu_ref); the executed
 instructions are those of analysis/coverage-menu-handling.txt (the menu on show, the selection moved, the password screen and

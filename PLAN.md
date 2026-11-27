@@ -1,7 +1,7 @@
 # Gods: plan and status
 
 Gods (Bitmap Brothers, 1991, PAL original disks, Kickstart 1.3 A500). The user's latest direction overrides
-anything older here; see also [AGENTS.md](AGENTS.md).
+anything older here.
 
 ## Direction (from the user)
 
@@ -26,13 +26,12 @@ anything older here; see also [AGENTS.md](AGENTS.md).
 
 | What | Where |
 | --- | --- |
-| Project manifest, README, AGENTS, branch `game/gods` | `project.json`, `README.md`, `AGENTS.md` |
 | Media (original PAL ADFs, WHDLoad archive, Kickstart 1.3) in ignored storage | `local/` |
 | Run script: boots both disks (DF0/DF1 via `local/gods.m3u`); flags `load= snap= shots= frames= ram= record= compare= until= screen= cover=` | `host/gods.lua` |
 | Reference recording, 100,000 frames, 170 MiB (RAM 84 MiB + screens 83 MiB): per-frame screen hash and chip-RAM CRC, zstd XOR-delta RAM and screens, keyframe every 1,000 frames | `captures/ref100k/` (ignored) |
-| Recorder / comparer / RAM extractor, shared and game-agnostic | `tools/amiga/frame_recorder.py` |
+| Recorder / comparer / RAM extractor, shared and game-agnostic | `tools/frame_recorder.py` |
 | Executed-code coverage over the 100,000 frames: 2,104 instructions | `analysis/coverage-100k.txt` |
-| Resident-code analysis: stable instruction set, function partition | `scripts/intro_analysis.py` |
+| Resident-code analysis: stable instruction set, function partition | `tools/intro_analysis.py` |
 | FTP upload helper (anonymous, writable) | `scripts/ftp.py` (framework level) |
 | `ami.call` oracle skeleton | `host/liftcheck.lua` |
 
@@ -71,7 +70,7 @@ Verified facts:
 5. **Build the bootable ADF:** a script writes the `loader.asm` output over the boot sectors, keeps the original
    data sectors, and adds the C binary to free sectors. Check where the C lives in memory: chip RAM is almost full
    at the title screen, so it probably lives in slow RAM (`$C00000`).
-6. **Lockstep:** run the new ADF with `ami9000_host projects/gods/host/gods.lua ... compare=captures/ref100k`
+6. **Lockstep:** run the new ADF with `../amiga_porting/ami9000/build/ami9000_host host/gods.lua ... compare=captures/ref100k`
    (a `--script-args` flag the script already supports). Fix the first differing frame and byte range, repeat. Mask
    dead stack below SP if the real stack lives elsewhere; keep the mask documented.
 
@@ -79,7 +78,7 @@ Verified facts:
 
 - `native/src/intro.c` (code), `native/src/intro.h` (data types and declarations), `native/src/intro_data.c` (the data, C initializers
   copied from the original's initial image, frame 1746 of the recording) and `native/src/intro.ld` (generated with
-  `intro_data.c` by `scripts/gen_intro_data.py`).
+  `intro_data.c` by `tools/gen_intro_data.py`).
 - Compile each with `m68k-amigaos-gcc -m68000 -Os -ffreestanding -nostdlib -fdata-sections -c`, link with
   `m68k-amigaos-ld -m amiga -T intro.ld intro.o intro_data.o`. In a hunk executable an object's offset in the data hunk is its
   address, so `intro.ld` lays the data hunk out at the original addresses (`. = ADDR;`, `SUBALIGN(1)`); the loader loads
@@ -90,10 +89,10 @@ Verified facts:
 
 ## Lockstep status (latest)
 
-Run: `python3 scripts/build_adf.py` then
+Run: `python3 tools/build_adf.py` then
 `ami9000_host host/gods.lua --headless --script-args "rebuilt record=captures/rebuilt until=100400 screen=1"` and compare
 the per-frame hashes with the reference at the constant offset the loader's extra disk reads cause (169 frames: found by
-matching screen hashes, see `tools/amiga/frame_recorder.py`); `scripts/compare_events.py` compares the
+matching screen hashes, see `tools/frame_recorder.py`); `tools/compare_events.py` compares the
 game's variables.
 
 - The C runs from **chip RAM** like the original: the machine is given 1 MB chip RAM (`puae_chipmem_size=2`) and the code
@@ -101,7 +100,7 @@ game's variables.
   compared.  The CPU is the normal 7 MHz one.
 - The Amiga-specific routines are the original's instructions in `native/src/amiga/intro_amiga.asm` (the user allowed assembly for them,
   besides `loader.asm`): the blitter work, screen and bitplane fills, the busy-wait loops, the vertical blank interrupt,
-  `vbl_wait` and the music replayer.  `scripts/gen_intro_amiga_asm.py` generates it from the resident code of the recording; every
+  `vbl_wait` and the music replayer.  `tools/gen_intro_amiga_asm.py` generates it from the resident code of the recording; every
   instruction is assembled again at its original address and compared with the original bytes.  Struct field offsets in
   the assembly come from the compiler (`native/src/amiga/intro_offsets.c` -> `native/src/amiga/intro_offsets.i`, which `intro_amiga.asm` includes), so they follow
   `intro.h`.  Only C-callable
@@ -120,7 +119,7 @@ game's variables.
   frame for frame), and the C's loader hook reads its blob from disk.  Those frames are reported as not comparable.
 - **Frames:** reference frames 1,728-99,999 (98,272 frames) compared against the C build at the constant boot offset (169
   frames), 0 differ.
-- **Memory:** `scripts/compare_events.py` compares the pinned data objects (sizes from `native/build/intro_data.o`: the music module,
+- **Memory:** `tools/compare_events.py` compares the pinned data objects (sizes from `native/build/intro_data.o`: the music module,
   the graphics, the palette and blitter state, both screens, the music and channel state, the clocks and the frame counter)
   at the program's own points in time, not at the end of each frame.  An event is the entry of `vbl_wait` (the original's
   `$002CDE`), recorded with `gods.lua record=DIR hook=ADDRESS`: the interrupt of the frame has finished and the program has
@@ -142,7 +141,7 @@ the loader reads and decrunches over the intro.  It is a different program, abou
 - Recorded: `captures/menu_ref` (the original, left mouse button pressed at frame 2,700, 14,000 frames, RAM per frame; the
   menu is on show from about frame 5,700), `analysis/coverage-menu.txt` (executed instructions, 5,381 of them with the intro's
   and the loader's).  Make it again with `gods.lua --headless --script-args "click=2700 until=14000 record=DIR screen=500 cover=PATH"`.
-- `scripts/menu_analysis.py` -> `analysis/menu-functions.txt`: 2,858 stable instructions (resident and unchanged while the menu
+- `tools/menu_analysis.py` -> `analysis/menu-functions.txt`: 2,858 stable instructions (resident and unchanged while the menu
   is on show), 107 flow components, 128 entry points; none of it equals the intro's code at the same address.  The largest
   pieces: `$0500-$6440` (413 instructions, its own region of low memory), the screens' code around `$16DF8` and `$1CF26-$1E4FA`
   (about a thousand instructions), `$1FAF6-$20344`, `$39F0A-$3A376`.
@@ -154,7 +153,7 @@ the loader reads and decrunches over the intro.  It is a different program, abou
 
 "Menu handling" is the code that runs while the menu is on show and used: the attract screens (menu, top ten), the selection
 moved with the joystick, and the password screen with letters picked: 1,453 instructions in 58 flow components
-(`analysis/coverage-menu-handling.txt`; `scripts/menu_dis.py --todo` lists what is not decompiled).  What runs when Begin Quest
+(`analysis/coverage-menu-handling.txt`; `tools/menu_dis.py --todo` lists what is not decompiled).  What runs when Begin Quest
 starts the game is separate (`analysis/coverage-game-start.txt`, the loader and the game's set-up): functions decompiled
 from it are checked in their own scenario.  To use the menu in the emulator the joystick has to be in port 1:
 `--opt puae_joyport_order=2143` (the default puts the pad on the mouse port), and `gods.lua` has `joy=F:DIRS`, `move=`,
@@ -166,9 +165,9 @@ from it are checked in their own scenario.  To use the menu in the emulator the 
   (memory), `decrunch.c` (the unpacker), `input.c` (buttons, joystick, mouse), `screen.c` (buffers, colour shadow table, copper
   list search, blitter wait); `menu.c` has what is not placed yet.  Each module has its header, `menu.h` includes them all and
   `menu_types.h` has the types of the data.  Its its data is declared from `native/src/game.symbols` (name, address, type;
-  `scripts/gen_game_symbols.py` writes `menu_symbols.h` and `game.ld`, so the C names no address).  `scripts/build_game.py`
+  `tools/gen_game_symbols.py` writes `menu_symbols.h` and `game.ld`, so the C names no address).  `tools/build_game.py`
   builds the C into a blob at an address in the RAM above the original's 512 KB.
-- `host/menu_oracle.lua` (driven by `scripts/check_menu.py`) checks each decompiled function against the original **on the
+- `host/menu_oracle.lua` (driven by `tools/check_menu.py`) checks each decompiled function against the original **on the
   running original**: it hooks the original's entry, saves the machine state, runs the original routine with `ami.call`,
   puts the memory back, runs the C function on the same state with the arguments in the registers the original has them in,
   and compares the result register and all of chip RAM, leaving out what the chips write meanwhile (two runs of the original
@@ -182,7 +181,7 @@ from it are checked in their own scenario.  To use the menu in the emulator the 
   `amiga.asm`.  Code that did not run in the menu (the disk load of the background, the rest of the password route,
   Begin Quest and Continue) is not there; the first two are `load_background` and `password_screen_setup` guards.
 - What waits for the vertical blank cannot be checked by the oracle.  `host/menu_takeover.lua` (compared by
-  `scripts/compare_takeover.py`) runs the original from the savestate, and in the other modes hands the main thread to
+  `tools/compare_takeover.py`) runs the original from the savestate, and in the other modes hands the main thread to
   the C `menu_main` when the original reaches $63A2 (`mode=c`), or also the interrupt vectors (`mode=irq`: C `vbl_irq`,
   `audio_irq`, `frame_tick`, `input_poll`, the sound code), and records per frame the checksums of the screens, the copper
   lists, variables and sound state, and per `screens_flip` the finished screen.  Result for the idle run (menu, 750 frames,
@@ -201,7 +200,7 @@ from it are checked in their own scenario.  To use the menu in the emulator the 
   ($01E2B8) is generated asm too.  The data the asm keeps its state in is copied from the program as the loader leaves it
   (`host/menu_image.lua` writes `native/build/game-image.bin`), not from the RAM of a later frame.
 - Checked by running the original from a cold boot to the start of the menu ($006388) with the C versions in place of the
-  original's (`host/menu_boot.lua`, shims from `scripts/build_glue.py` that give a C function the original's register
+  original's (`host/menu_boot.lua`, shims from `tools/build_glue.py` that give a C function the original's register
   interface and run it on a stack of its own): the RAM is the same as the original's at that point except for the
   interrupt vectors (C's handlers), the restart address, frame counters and a few hundred bytes of the sound state and the
   stack, which depend on the timing.
@@ -215,7 +214,7 @@ from it are checked in their own scenario.  To use the menu in the emulator the 
   and reports which C functions were entered; the cursor keys up and down move the selection (through the key table).
 - The original menu with the keyboard (cursor up/down as the stick, space as fire): `native/src/amiga/keyboard_patch.asm`, a
   change of the original's input routine in memory (the `move.b d1,($1e5ac).l` at $01E420 becomes a call of 58 bytes put in the
-  unused bytes at $01E608).  `scripts/build_keyboard_patch.py` assembles it and `host/gods.lua` flag `keyboard` applies it when the
+  unused bytes at $01E608).  `tools/build_keyboard_patch.py` assembles it and `host/gods.lua` flag `keyboard` applies it when the
   menu starts ($6388), or at once after `load=` of a snapshot of the menu.  It cannot be put on the disk: the menu program's image
   is packed there, and the copy protection stops the game (Guru #4) when the loader's final jump or the entry code is changed.
 - What the program turned out to be: the menu is the game's whole engine (memory, disk and file layer, input, blitter and
@@ -235,29 +234,29 @@ From the repository root:
 
 ```console
 # play (window); F12 quits
-tools/engine9000/ami9000_host projects/gods/host/gods.lua
+../amiga_porting/ami9000/build/ami9000_host host/gods.lua
 # compare the current build against the recording; stops at the first difference
-tools/engine9000/ami9000_host projects/gods/host/gods.lua --headless --script-args "compare=$PWD/projects/gods/captures/ref100k until=100000"
+../amiga_porting/ami9000/build/ami9000_host host/gods.lua --headless --script-args "compare=$PWD/captures/ref100k until=100000"
 # re-record (replaces captures/ref100k; about 7 minutes)
-tools/engine9000/ami9000_host projects/gods/host/gods.lua --headless --script-args "record=$PWD/projects/gods/captures/ref100k until=100000 screen=1 cover=$PWD/projects/gods/analysis/coverage-100k.txt"
+../amiga_porting/ami9000/build/ami9000_host host/gods.lua --headless --script-args "record=$PWD/captures/ref100k until=100000 screen=1 cover=$PWD/analysis/coverage-100k.txt"
 # the C build: press space (the interrupt takes it as the fire button), wait for the main menu and save a savestate
 # (two ways: the script's press=, or the Lua control socket, which any client can drive while the host runs)
-tools/engine9000/ami9000_host projects/gods/host/gods.lua --headless --script-args "rebuilt press=space@2700 snap=6000 snapname=gods-c-menu"
-tools/engine9000/ami9000_host projects/gods/host/gods.lua --headless --control /tmp/gods.sock --script-args "rebuilt" &
-python3 tools/ami9000_host/ctl.py /tmp/gods.sock 'ami.key("space", true)'   # ... later: 'ami.key("space", false)'
-python3 tools/ami9000_host/ctl.py /tmp/gods.sock 'ami.snapshot_save("gods-c-menu-ctl.state")'
+../amiga_porting/ami9000/build/ami9000_host host/gods.lua --headless --script-args "rebuilt press=space@2700 snap=6000 snapname=gods-c-menu"
+../amiga_porting/ami9000/build/ami9000_host host/gods.lua --headless --control /tmp/gods.sock --script-args "rebuilt" &
+python3 ../amiga_porting/ami9000/host/ctl.py /tmp/gods.sock 'ami.key("space", true)'   # ... later: 'ami.key("space", false)'
+python3 ../amiga_porting/ami9000/host/ctl.py /tmp/gods.sock 'ami.snapshot_save("gods-c-menu-ctl.state")'
 # start from the savestate (a file in local/save), in a window
-tools/engine9000/ami9000_host projects/gods/host/gods.lua --script-args "rebuilt load=gods-c-menu.state"
+../amiga_porting/ami9000/build/ami9000_host host/gods.lua --script-args "rebuilt load=gods-c-menu.state"
 # RAM of any recorded frame
-python3 tools/amiga/frame_recorder.py --extract projects/gods/captures/ref100k FRAME out.bin
+python3 tools/frame_recorder.py --extract captures/ref100k FRAME out.bin
 ```
 
 Python tools use `uv run python ...` (capstone and unicorn are in `pyproject.toml`). The m68k toolchain is
-`nix develop projects/gods/src --command ...`.
+`nix develop native --command ...`.
 
 ## State of the C disk and the host port (November 2)
 
-- **C disk (`scripts/build_adf.py`, `local/gods-c-disk1.adf`)**: boots to the C intro and the C menu; Begin Quest still runs the original's code
+- **C disk (`tools/build_adf.py`, `local/gods-c-disk1.adf`)**: boots to the C intro and the C menu; Begin Quest still runs the original's code
   (`original_begin`, $651E) which loads level 1; before it `game_loop_install()` (game.c) patches the original's game loop at $2C20 into a
   jump to `game_loop` (amiga.asm, generated by gen_game_amiga_asm.py), which runs the C `game_frame` on its own stack and goes back to
   $2C20.  So level 1 is played by C code except `$30C6`, `$33D4` and `$12E08` (not run in the recording; the original's code is still called).

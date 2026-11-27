@@ -2,10 +2,10 @@
 """Lockstep: a recorded play of a level through the original disk and through the C game loop, compared at the top of every iteration.
 
     1. play (a window, the original disk; the keys are recorded):
-         tools/engine9000/ami9000_host projects/gods/host/gods.lua --script-args "onemb joy1 keyboard load=gods-level2-1m.state inputlog=captures/input/level2-run1.txt"
+         ../amiga_porting/ami9000/build/ami9000_host host/gods.lua --script-args "onemb joy1 keyboard load=gods-level2-1m.state inputlog=captures/input/level2-run1.txt"
        (levels 2 to 4: save/gods-levelN-1m.state, see DECOMPILING.md; level 1: gods-level1-1m.state with captures/input/level1-run1.txt; arrows move, space is fire)
     2. check:
-         uv run python projects/gods/scripts/lockstep.py LEVEL
+         uv run python tools/lockstep.py LEVEL
 
 Steps: the frame-timed recording is played on the original and each key event is noted by the iteration of the game loop it fell into
 (menu_takeover.lua mode=orig replay= iterlog=); then the original and the C loop (mode=game) are both given the keys by iteration (the key table is set at
@@ -19,9 +19,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3]
-PROJECT = ROOT / "projects" / "gods"
-HOST = ROOT / "tools" / "engine9000" / "ami9000_host"
+PROJECT = Path(__file__).resolve().parents[1]
+HOST = PROJECT.parent / "amiga_porting" / "ami9000" / "build" / "ami9000_host"
 SCRIPT = PROJECT / "host" / "menu_takeover.lua"
 BUILD = PROJECT / "native" / "build"
 TIME_ONLY = {"message_hold", "message_wide", "message_arg", "message_x", "message_shown", "message_text", "message_current", "message_state",
@@ -30,23 +29,23 @@ TIME_ONLY = {"message_hold", "message_wide", "message_arg", "message_x", "messag
 
 def run(mode: str, state: str, extra: str, frames: int, out: Path) -> None:
     args = f"mode={mode} state={state} kbd=1 {extra} until={frames} out={out}"
-    subprocess.run([str(HOST), str(SCRIPT), "--headless", "--script-args", args], capture_output=True, cwd=PROJECT.parent.parent)
+    subprocess.run([str(HOST), str(SCRIPT), "--headless", "--script-args", args], capture_output=True, cwd=PROJECT)
 
 
 def main() -> int:
     level = sys.argv[1] if len(sys.argv) > 1 else "1"
     state = f"gods-level{level}-1m.state"
-    rel = Path("projects/gods/captures/input") / f"level{level}-run1.txt"
-    if not (ROOT / rel).exists():
+    rel = Path("captures/input") / f"level{level}-run1.txt"
+    if not (PROJECT / rel).exists():
         print(f"no recording {rel}: play first (see the top of this file)")
         return 2
-    frames = max(int(l.split()[0]) for l in (ROOT / rel).read_text().split("\n") if l.strip()) + 100
-    iterfile = ROOT / "projects/gods/captures/input" / f"level{level}-run1-iter.txt"
+    frames = max(int(l.split()[0]) for l in (PROJECT / rel).read_text().split("\n") if l.strip()) + 100
+    iterfile = PROJECT / "captures/input" / f"level{level}-run1-iter.txt"
     out_o, out_c = BUILD / f"lock_o{level}.txt", BUILD / f"lock_c{level}.txt"
     subprocess.run([str(HOST), str(SCRIPT), "--headless", "--script-args",
-                    f"mode=orig state={state} kbd=1 replay={rel.relative_to('projects/gods')} iterlog={iterfile} until={frames} out={BUILD / 'lock_log.txt'}"],
+                    f"mode=orig state={state} kbd=1 replay={rel} iterlog={iterfile} until={frames} out={BUILD / 'lock_log.txt'}"],
                    capture_output=True, cwd=PROJECT)
-    keys = f"iterkeys={rel.relative_to('projects/gods').with_name(iterfile.name)} itervars=1"
+    keys = f"iterkeys={rel.with_name(iterfile.name)} itervars=1"
     run("orig", state, keys, frames, out_o)
     run("game", state, keys, frames * 2, out_c)
     sys.path.insert(0, str(Path(__file__).resolve().parent))

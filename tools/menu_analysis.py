@@ -7,7 +7,7 @@ are the same at every sampled frame while the menu is on show, so the loader and
 in it.  An instruction is *known* if the intro's coverage has the same instruction at the same address: it is code the
 intro already has (the C versions exist).
 
-    uv run python projects/gods/scripts/menu_analysis.py [out.txt]
+    uv run python tools/menu_analysis.py [out.txt]
 """
 from __future__ import annotations
 
@@ -15,7 +15,6 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-REPO = ROOT.parents[1]
 sys.path.insert(0, str(REPO / "tools" / "amiga"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import intro_analysis as G  # noqa: E402

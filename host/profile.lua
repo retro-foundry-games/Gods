@@ -1,7 +1,7 @@
 -- Profile an address range over a number of frames with a hook on every instruction: the cycles that pass between
 -- one hit and the next (ami.cycles) are charged to the instruction that was running, and its executions are counted.
 --
---   tools/engine9000/ami9000_host projects/gods/host/profile.lua --headless \
+--   ../amiga_porting/ami9000/build/ami9000_host host/profile.lua --headless \
 --       --script-args "[rebuilt] start=FRAME frames=N lo=HEX hi=HEX out=PATH"
 --
 -- Boots (the original disks, or with `rebuilt` the C game), runs to FRAME, hooks every even address in [lo, hi),

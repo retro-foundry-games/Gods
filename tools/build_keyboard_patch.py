@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Assemble native/src/amiga/keyboard_patch.asm (the keyboard in the original menu's input) to native/build/keyboard_patch.bin.
 
-    uv run python projects/gods/scripts/build_keyboard_patch.py
+    uv run python tools/build_keyboard_patch.py
 """
 import sys
 from pathlib import Path

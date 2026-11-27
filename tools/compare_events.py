@@ -9,16 +9,14 @@ Compared: every data object that intro.ld pins at the original's address (sizes 
 blitter's scratch mask and the frame counter included.  Not compared: the stack, the loader's buffers,
 the code, the vectors.
 
-    uv run python projects/gods/scripts/compare_events.py CAPTURE REFERENCE [FIRST [LAST]]
+    uv run python tools/compare_events.py CAPTURE REFERENCE [FIRST [LAST]]
 """
 import re
 import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3]
-PROJECT = ROOT / "projects" / "gods"
-sys.path.insert(0, str(ROOT / "tools" / "amiga"))
+PROJECT = Path(__file__).resolve().parents[1]
 from frame_recorder import RefRam  # noqa: E402
 
 SKIP = {"vectors"}          # the C handler's address is in the vector table, the original's is elsewhere
@@ -26,7 +24,7 @@ SKIP = {"vectors"}          # the C handler's address is in the vector table, th
 
 def objects() -> list[tuple[str, int, int]]:
     sizes: dict[str, int] = {}
-    out = subprocess.run(["nix", "develop", str(PROJECT), "--command", "m68k-amigaos-objdump", "-h",
+    out = subprocess.run(["nix", "develop", str(PROJECT / "native"), "--command", "m68k-amigaos-objdump", "-h",
                           str(PROJECT / "native" / "build" / "intro_data.o")], capture_output=True, text=True).stdout
     for m in re.finditer(r"\.(?:data|bss|rodata)\.(\w+)\s+([0-9a-f]{8})", out):
         sizes[m.group(1)] = int(m.group(2), 16)

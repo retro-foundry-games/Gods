@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Which original function entries have a C counterpart in native/src/intro.c (matched by its `orig $ADDR` comments).
 
-    uv run python projects/gods/scripts/decompile_status.py
+    uv run python tools/decompile_status.py
 """
 from __future__ import annotations
 

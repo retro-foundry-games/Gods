@@ -1,16 +1,15 @@
 """Check the functions of menu.c against the original, one oracle run each (host/menu_oracle.lua), samples spread over the run.
 
-    uv run python projects/gods/scripts/check_menu.py [NAME ...]     # all the functions in host/menu_cases.lua, or the named ones
+    uv run python tools/check_menu.py [NAME ...]     # all the functions in host/menu_cases.lua, or the named ones
 """
 import re
 import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3]
-PROJECT = ROOT / "projects" / "gods"
+PROJECT = Path(__file__).resolve().parents[1]
 import os
-HOST = Path(os.environ.get("AMI_HOST", ROOT / "tools" / "engine9000" / "ami9000_host"))   # a worktree has none of its own: AMI_HOST names the main checkout's
+HOST = Path(os.environ.get("AMI_HOST", PROJECT.parent / "amiga_porting" / "ami9000" / "build" / "ami9000_host"))   # AMI_HOST: for a checkout without amiga_porting beside it
 SAMPLES = 24
 # the oracle run: the original from a savestate at the menu (host/gods.lua snapname=gods-menu-1m), with the menu used: the
 # selection moved, the password screen opened and some letters picked, then Begin Quest chosen

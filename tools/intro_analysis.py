@@ -12,8 +12,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-REPO = ROOT.parents[1]
-sys.path.insert(0, str(REPO / "tools" / "amiga"))
+sys.path.insert(0, str(ROOT / "tools"))
 from frame_recorder import load_ram_segment  # noqa: E402
 
 REC = ROOT / "captures" / "ref100k"

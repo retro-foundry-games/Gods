@@ -1,5 +1,5 @@
 -- Writes the chip RAM of a saved state of the original (the quickload image of the port: `gods-sdl-dev --quickload FILE`).
---   tools/engine9000/ami9000_host --headless --frames 20 projects/gods/host/gods_ramdump.lua --script-args "state=/ABS/PATH.state out=/ABS/PATH.ram"
+--   ../amiga_porting/ami9000/build/ami9000_host --headless --frames 20 host/gods_ramdump.lua --script-args "state=/ABS/PATH.state out=/ABS/PATH.ram"
 local args = ami.args or ""
 local STATE = assert(args:match("state=(%S+)"), "state=PATH")
 local OUT = assert(args:match("out=(%S+)"), "out=PATH")

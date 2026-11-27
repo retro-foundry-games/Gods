@@ -1,7 +1,7 @@
 -- Time, in CPU cycles (a PAL frame is 141,875), from one address being reached to another being reached (for example the start of a scroll
 -- step's drawing and the page flip), averaged over the hits after a start frame.
 --
---   ami9000_host projects/gods/host/steptime.lua --headless --script-args "[rebuilt] start=F from=HEX to=HEX n=30"
+--   ../amiga_porting/ami9000/build/ami9000_host host/steptime.lua --headless --script-args "[rebuilt] start=F from=HEX to=HEX n=30"
 local args = ami.args or ""
 ami.machine{
     name = "Gods steptime", model = "A500", system = "../local/system", save = "../local/save",

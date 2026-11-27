@@ -2,7 +2,7 @@
 -- (native/build/game.blob, with the shims of native/build/takeover_glue.bin that give the C functions the original's register interface).
 -- At the end the RAM is saved, to be compared with the same run of the original alone.
 --
---   ami9000_host projects/gods/host/menu_boot.lua --headless --script-args "use=load_file,load_unpacked until=6500 out=FILE"
+--   ../amiga_porting/ami9000/build/ami9000_host host/menu_boot.lua --headless --script-args "use=load_file,load_unpacked until=6500 out=FILE"
 --   (no use= : the original alone)
 local args = ami.args or ""
 local UNTIL = tonumber(args:match("until=(%d+)")) or 6500

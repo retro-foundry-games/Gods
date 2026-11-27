@@ -1,8 +1,8 @@
 -- Gods (Bitmap Brothers, 1991) from the original PAL disk 1 on a plain Kickstart 1.3 A500.
 -- No WHDLoad, no patches: the boot block and the game's own loader run unmodified.
 --
---   play:   tools/engine9000/ami9000_host projects/gods/host/gods.lua
---   rebuilt             boot the disk whose game is the C in native/src/ (local/gods-c-disk1.adf, see scripts/build_adf.py)
+--   play:   ../amiga_porting/ami9000/build/ami9000_host host/gods.lua
+--   rebuilt             boot the disk whose game is the C in native/src/ (local/gods-c-disk1.adf, see tools/build_adf.py)
 --   flags:  see "Script flags" below (snapshots, screenshots)
 --
 -- Needs the A500 Kickstart 1.3 (CRC32 c4f0f55f) in ../local/system and ../local/gods-disk1.adf.
@@ -13,7 +13,7 @@ local compare_dir = script_args:match("compare=(%S+)")
 local recorder
 if record_dir or compare_dir then
     recorder = {
-        "/usr/bin/env", "python3", ami.script_dir .. "/../../../tools/amiga/frame_recorder.py",
+        "/usr/bin/env", "python3", ami.script_dir .. "/../tools/frame_recorder.py",
         record_dir and "--out" or "--compare", record_dir or compare_dir,
     }
     if compare_dir and script_args:match("%f[%w]survey%f[%W]") then recorder[#recorder + 1] = "--survey" end
@@ -45,11 +45,11 @@ ami.boot()
 
 -- Script flags (--script-args "..."):
 --   inputlog=FILE       play with the window and write the keys and mouse buttons used, with their frames, to FILE
---   replay=FILE         play such a file again (same snapshot, same frames); FILE is relative to projects/gods
+--   replay=FILE         play such a file again (same snapshot, same frames); FILE is relative to the repository root
 --   onemb               1 MB chip RAM (the state files gods-*-1m.state)
 --   joy1                the joystick in port 1 (puae_joyport_order=2143): needed for joy= to reach the program
 --   kbd2                port 1 as the keyboard layout kbd2 (cursor keys, Right/Left Ctrl = fire) through the host's joystick_keys; the keys then do not reach the keyboard
---   keyboard            the original menu with the keyboard: cursor up/down, space = fire (native/src/amiga/keyboard_patch.asm; build it with scripts/build_keyboard_patch.py)
+--   keyboard            the original menu with the keyboard: cursor up/down, space = fire (native/src/amiga/keyboard_patch.asm; build it with tools/build_keyboard_patch.py)
 --   load=NAME            restore snapshot NAME (a file in ../local/save) before running; frames below count from it
 --   snap=F[,F...]        save snapshot gods-F.state at frame F (relative to the start or the loaded snapshot)
 --   snapname=NAME        save the snapshots as NAME.state (with one frame in snap=) and quit afterwards
@@ -58,7 +58,7 @@ ami.boot()
 --   joy=F:DIRS[,...]     set the joystick (port 1) at frame F: DIRS is up, down, left, right, fire joined by +, or none
 --   press=KEY@F[xN][,...] press the key (a name from ami.keys, e.g. space) for N (default 3) frames at frame F (to reach the menu with
 --                        space and take a snapshot; the lockstep recordings never press a key)
---   record=DIR [screen=N]  stream every frame (hash, chip RAM, every Nth screen) to tools/amiga/frame_recorder.py
+--   record=DIR [screen=N]  stream every frame (hash, chip RAM, every Nth screen) to tools/frame_recorder.py
 --   record=DIR hook=HEX [maxevents=N]  record at every execution of the instruction at HEX (the entry of the program's
 --                       wait for the vertical blank) instead of every frame: event number, frame and chip RAM
 --   compare=DIR [survey] [mask=FILE]  compare each frame with a recording; stops at the first difference, or with
@@ -244,7 +244,7 @@ if iter_at then
     -- iterkeys=N:RAWCODE:1|0,...  sets key_down[RAWCODE] at the top of the Nth iteration (the keyboard interrupt's table, $1E63A; raw codes $4C up, $4D down, $4E right, $4F left, $40 space)
     local ikeys = {}
     local keys_text = args:match("iterkeys=(%S+)") or ""
-    local keys_file = args:match("iterkeysfile=(%S+)")   -- iterkeysfile=PATH (relative to projects/gods): the same list in a file
+    local keys_file = args:match("iterkeysfile=(%S+)")   -- iterkeysfile=PATH (relative to the repository root): the same list in a file
     if keys_file then keys_text = ami.file_read(keys_file, 0, ami.file_size(keys_file)):gsub("%s+", "") end
     for k, code, v in keys_text:gmatch("(%d+):(%x+):(%d)") do
         ikeys[tonumber(k)] = ikeys[tonumber(k)] or {}

@@ -1,11 +1,11 @@
--- Gods: the original against the SDL port, side by side, frame-locked and given the same keys (tools/ami9000_host/lua/amiga/lockstep.lua, as fa18.lua does for the native port of FA-18).
+-- Gods: the original against the SDL port, side by side, frame-locked and given the same keys (../amiga_porting/ami9000/host/lua/amiga/lockstep.lua, as fa18.lua does for the native port of FA-18).
 --
---   tools/engine9000/ami9000_host --scale 2 projects/gods/host/gods_lockstep.lua [--script-args "[state=NAME.state] [extra=N] [continue=all|N] [trace]"]
+--   ../amiga_porting/ami9000/build/ami9000_host --scale 2 host/gods_lockstep.lua [--script-args "[state=NAME.state] [extra=N] [continue=all|N] [trace]"]
 --
 -- The original starts from the saved state of level 1 (128 iterations into the level) and you play it with the keyboard (arrows and space); every frame the keys are given to the SDL
 -- port (native/build/sdl/gods-sdl-dev --lockstep: no window, the protocol on stdin/stdout), which boots to the same place by itself, is stepped one video frame, and what both show is
 -- compared exactly.  The panels right of the original's frame show the port's image and the difference.  At the first difference the original is paused (silent, frozen) and the port
--- is not stepped again: the control socket (--control PATH, tools/ami9000_host/ctl.py) can look at both.
+-- is not stepped again: the control socket (--control PATH, ../amiga_porting/ami9000/host/ctl.py) can look at both.
 --
 --   extra=N       the port is stepped N more frames before it is compared (the phase of the video frame the saved state is in; 0 to 2 for a state saved at the top of an iteration)
 --   continue=all  do not stop: the differences are logged as they start and stop, with a summary now and then
@@ -20,7 +20,7 @@
 --   ram=PATH      (with state=ABSOLUTE.state) the port begins from that chip RAM of the original (gods_ramdump.lua; gods-sdl-dev --quickload) instead of Begin Quest; the original starts from the state
 --                 with a PATH of f5-K.port (the port's own memory, saved by F5) the port begins exactly as it was, not from the original's RAM: state=f5-K.state ram=f5-K.port
 --   F5            (in the window) saves both sides: captures/quicksave/f5-K.state and .ram (the original) and f5-K.port (the port's memory), at the frame after the original's next flip
---   control socket (--control SOCK, tools/ami9000_host/ctl.py): port_read, port_poke, orig_poke, mem_diff and port_save (below, before `replay`) read, compare and change the memory of both sides, paused or not
+--   control socket (--control SOCK, ../amiga_porting/ami9000/host/ctl.py): port_read, port_poke, orig_poke, mem_diff and port_save (below, before `replay`) read, compare and change the memory of both sides, paused or not
 --   blitlog=F=PATH the original's custom register writes (with the pc) of the emulator frame F are written to PATH
 --   mask=X,Y,W,H[;..] image regions (in the 320x256 picture) left out of the comparison
 --   autosave=SECONDS the original's state is saved every SECONDS seconds (default 30; noautosave: off; not with replay=) to captures/quicksave/auto/auto-K.state/.ram, 5 slots going round (latest.txt)
@@ -397,7 +397,7 @@ local delayed = setmetatable({
         end
     end,
 }, { __index = function(_, k) local v = real[k] return type(v) == "function" and function(_, ...) return v(real, ...) end or v end })
--- Helpers for the control socket (tools/ami9000_host/ctl.py SOCK 'port_read(0x16bb4, 24)'), while the run is paused or going: the port's memory next to the original's.
+-- Helpers for the control socket (../amiga_porting/ami9000/host/ctl.py SOCK 'port_read(0x16bb4, 24)'), while the run is paused or going: the port's memory next to the original's.
 --   port_read(addr, len)           the port's bytes (as it holds them: the words and longs native, little endian), read in pieces of 4096
 --   port_poke(addr, value, size)   size 1, 2 (default) or 4 bytes of the port's memory are set (value as the program reads it, the number you mean)
 --   orig_poke(addr, value, size)   the same on the original (big endian)
@@ -574,7 +574,7 @@ if draw_first then   -- and the draw routine the creatures call at $E660 (the on
 end
 -- drawbox=FIRST-LAST,X0,Y0,X1,Y1: the original's calls of glyph_draw and sprite_draw whose screen place is in the box, in those emulator frames, with who called
 -- the original's draw routines (glyph $17686, sprite $173C4) are hooked once: the listeners (drawbox, the log below) are called from that hook.  The log keeps the last draws with the
--- flip interval they were made in; every stop saves them with the port's (`draws`, the same for its draw hook) in captures/stops/stop-fN.draws (scripts/draws_diff.py compares them)
+-- flip interval they were made in; every stop saves them with the port's (`draws`, the same for its draw hook) in captures/stops/stop-fN.draws (tools/draws_diff.py compares them)
 local draw_listeners = { [0x17686] = {}, [0x173c4] = {} }
 for at, list in pairs(draw_listeners) do
     ami.hook(at, function() for _, f in ipairs(list) do f(at) end end)
@@ -689,7 +689,7 @@ end
 lockstep.run {
     peer = delayed,
     width = 320, height = 256,
-    window = { x = 40, y = 18, sx = 2 },   -- where the port's image sits in the original's 720x287 frame (tools/lockstep_align.py)
+    window = { x = 40, y = 18, sx = 2 },   -- where the port's image sits in the original's 720x287 frame (lockstep alignment)
     start = function() if not args:find("ram=") then ami.wait(4) end return true end,   -- (a quickload begins with the first step: the port's first iteration goes with the original's next)   -- the saved state is the start (a frame later it has been drawn)
     keymap = function(key) return KEYS[key] end,
     on_frame = function(count, native, emulated)
@@ -758,7 +758,7 @@ lockstep.run {
             end
         end
         -- A stop (the first difference, from=N, pause=F, break=ADDR) saves both sides to captures/stops/stop-fFRAME[-N].*: the original's state and RAM, the port's memory
-        -- from 0 to $80000 (.portmem: as it holds it, words native) and the two pictures; scripts/stop_diff.py compares them offline, however the play got there.
+        -- from 0 to $80000 (.portmem: as it holds it, words native) and the two pictures; tools/stop_diff.py compares them offline, however the play got there.
         local stops_here = (pause_at and ami.frame() >= pause_at) or break_hit
             or (count > 0 and not args:find("continue=all") and ami.frame() >= START_SKIP)
         if stops_here and not stop_saved then
