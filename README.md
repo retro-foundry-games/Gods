@@ -47,3 +47,5 @@ README says). `local/` holds `system/kick34005.A500` (Kickstart 1.3, CRC32 c4f0f
 Gods was written by The Bitmap Brothers and published by Renegade; this repository holds a reconstruction of its code in C and the tools used to check it against the original. The disks and the Kickstart are not part of it and are not distributed.
 
 The reconstruction and the tools are free software: you can redistribute them and/or modify them under the terms of the GNU General Public License as published by the Free Software Foundation, either version 2 of the License, or (at your option) any later version. See [LICENSE](LICENSE).
+
+The pixel scaling code in `native/src/sdl/pixel_scale.*` builds on [ZXSC](https://github.com/binaryfoundry/zxsc) (MIT, Copyright (c) 2019 paul alexander welch); `native/src/sdl/third_party/ZXSC-LICENSE.txt` keeps its license.

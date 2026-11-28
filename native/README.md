@@ -39,3 +39,5 @@ The generators (`../tools/gen_game_symbols.py`, `gen_guest_struct.py`, `gen_game
 Gods was written by The Bitmap Brothers and published by Renegade; this repository holds a reconstruction of its code in C. The disks and the Kickstart are not part of it and are not distributed.
 
 The reconstruction is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 2 of the License, or (at your option) any later version. See [LICENSE](LICENSE).
+
+The pixel scaling code in `src/sdl/pixel_scale.*` builds on [ZXSC](https://github.com/binaryfoundry/zxsc) (MIT, Copyright (c) 2019 paul alexander welch); `src/sdl/third_party/ZXSC-LICENSE.txt` keeps its license.
