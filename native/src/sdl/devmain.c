@@ -411,8 +411,6 @@ int main(int argc, char **argv)
             options.scale = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--interpolate"))
             options.interpolate = 1;
-        else if (!strcmp(argv[i], "--widescreen"))
-            options.widescreen = 1;
         else if (!strcmp(argv[i], "--lockstep")) {
             extern int keys_space_is_fire;
 
@@ -455,12 +453,12 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "--dump-every") && i + 1 < argc)
             dump_every = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
-            printf("usage: gods-sdl-dev [--disks FOLDER (default: the working folder)] [--scale N] [--interpolate] [--widescreen] [--start intro|menu|level] [--skip-intro] [--level1-image FILE]\n"
+            printf("usage: gods-sdl-dev [--disks FOLDER (default: the working folder)] [--scale N] [--interpolate] [--start intro|menu|level] [--skip-intro] [--level1-image FILE]\n"
                    "                    [--headless --frames N [--dump PREFIX] [--dump-every N] [--keys FRAME:RAW:1|0,...]]\n"
                    "                    [--lockstep [--lockstep-level N] [--lockstep-iteration N] [--lockstep-extra N] [--lockstep-menu N]] [--quickload FILE] [--quicksave FILE]\n");
             return 0;
         } else {
-            fprintf(stderr, "usage: gods-sdl-dev [--disks FOLDER] [--scale N] [--interpolate] [--widescreen] [--start intro|menu|level] [--skip-intro] [--level1-image FILE]\n"
+            fprintf(stderr, "usage: gods-sdl-dev [--disks FOLDER] [--scale N] [--interpolate] [--start intro|menu|level] [--skip-intro] [--level1-image FILE]\n"
                             "                    [--headless --frames N [--dump PREFIX] [--dump-every N] [--keys FRAME:RAW:1|0,...]]\n"
                             "                    [--lockstep [--lockstep-level N] [--lockstep-iteration N] [--lockstep-extra N]] [--quickload FILE] [--quicksave FILE]\n");
             return 2;

@@ -35,7 +35,6 @@ struct HostOptions {
     int phase;           /* the program the machine starts: PHASE_INTRO, PHASE_MENU */
     int headless;        /* no window and no sound */
     int interpolate;     /* fixed machine timing, interpolated uncapped presentation */
-    int widescreen;      /* optional 16:9 presentation; original gameplay viewport */
     int frames;          /* 0: for ever */
     int window_x, window_y;   /* -1: where the system puts it */
     const char *wav;     /* the sound is also written to this file as raw 16 bit stereo (a test) */

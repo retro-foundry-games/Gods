@@ -11,47 +11,12 @@ You need the original disk images `gods-disk1.adf` and `gods-disk2.adf` in `loca
     make -C native sdl          # build   (the flake's shell with the 32-bit gcc and SDL3 is entered by itself)
     make -C native sdl-run      # run     (builds first; runs build/sdl/gods-sdl, which finds the disks in local)
 
-Two programs are built from the same machine (`host.c`): `gods-sdl` (`main.c`) runs the game with `--disks`, `--interpolate` and `--widescreen`, no environment variables and no control channel;
+Two programs are built from the same machine (`host.c`): `gods-sdl` (`main.c`) runs the game with `--disks` and `--interpolate`, no environment variables and no control channel;
 `gods-sdl-dev` (`devmain.c`, with `dev_game.c` for the game's thread) has everything the tests need: the options below, the lockstep with the original (`--lockstep`, see
 `host/gods_lockstep.lua`), the quicksave (F5) and quickload (F9), `--quickload FILE` and the `GODS_*` environment variables.
 
 Fire (space, left control, return) ends the intro as on the Amiga ("LOADING GAME") and the menu comes up in the same window.  Options of `gods-sdl-dev`:
 `--disks FOLDER`, `--scale N` (window size, default 3), `--skip-intro` (or `--start menu`), `--start level` (needs `--level1-image`).  F10 quits.
-
-### Widescreen (16:9)
-
-Both executables accept `--widescreen`; the browser launcher has a
-**Widescreen (16:9)** checkbox. This is the only extra aspect ratio. It works
-independently of `--interpolate` / **Smooth motion**.
-
-    build/sdl/gods-sdl --disks DIR --widescreen --interpolate
-
-The presentation surface shows 400 level pixels across rather than 320.
-Its 400x270 raster is displayed at 400x225, preserving the original 6:5 pixel
-proportions and giving exactly 16:9. The original 320x256 raster is centred in
-that surface; the HUD and message text retain their original pixels. Intro,
-menu, shop and result artwork keeps its original size and proportions.
-
-The wider camera stays inside the 4096-pixel level. The original camera,
-352-pixel bitplanes, saved-state layout and all gameplay rules remain intact.
-The game thread snapshots the same map/tiles used by `draw_background`
-(`$178C6` / `$17972`), plus the portions of actual glyph, sprite and clipped
-image draws beyond the original bitmap. Rendering never runs those routines
-again. Masks, fixed spike bases and foreground draw order are retained.
-
-Enemy activation, projectile removal and other visibility rules still use the
-original gameplay viewport. The additional view can therefore reveal their
-original appearance/disappearance boundaries. It does not activate enemies
-earlier, extend weapon range or change collision, physics or game speed.
-Development captures and the lockstep protocol retain their 320x256 format.
-
-    make -C src/sdl test-widescreen
-
-With the original disk images, the native lockstep test compares 300 machine
-ticks of walking and firing, checking every original raster pixel and all
-named gameplay members from `$100` through `$1D3FF` (unused padding excluded):
-
-    make -C src/sdl test-widescreen-gameplay GODS_DISKS="DIR"
 
 ### Pixel scaling
 
@@ -67,7 +32,7 @@ palettes and source resolution. The preferred enlargement is 12x, reduced to
 fit the source renderer's texture-size limits and its 256 MiB GPU / 16 MiB
 software texture budget. Targets are prepared before the game clock starts.
 
-Without `--widescreen` the window shows the 200 lines of the game's display
+The window shows the 200 lines of the game's display
 window (320x200 of the 320x256 picture, a pixel 5/6 as high as it is wide).
 Desktop windows have a fixed size, so a tiling compositor floats them, and
 support high DPI. The browser uses F/A-18's
