@@ -38,7 +38,6 @@
   <p>Drop your <strong>Gods disk 1 and disk 2 .adf</strong> files here.</p>
   <p id="status" role="status" aria-live="polite">Loading the browser runtime&hellip;</p>
   <p><label><input id="interpolate" type="checkbox"> Smooth motion (interpolated, display refresh rate)</label></p>
-  <p><label><input id="widescreen" type="checkbox"> Widescreen (16:9)</label></p>
   <div class="actions">
     <button type="button" id="choose">Choose ADFs</button>
     <button type="button" id="start" disabled>Start Game</button>
@@ -74,7 +73,7 @@
     gameViewport.style.top = top + 'px';
     gameViewport.style.right = Math.max(0, window.innerWidth - viewportWidth - left) + 'px';
     gameViewport.style.bottom = Math.max(0, window.innerHeight - viewportHeight - top) + 'px';
-    const aspect = document.getElementById('widescreen').checked ? 16 / 9 : 48 / 25;
+    const aspect = 48 / 25;
     const scale = Math.min(viewportWidth / aspect, viewportHeight);
     const density = window.devicePixelRatio * (visible ? visible.scale : 1);
     const width = Math.max(1, Math.min(Math.floor(viewportWidth * density), Math.round(aspect * scale * density)));
@@ -89,7 +88,6 @@
     canvas.style.transform = `translate(${(Math.floor(x) - x) / density}px, ${(Math.floor(y) - y) / density}px)`;
   }
   window.addEventListener('resize', fitCanvas);
-  document.getElementById('widescreen').addEventListener('change', fitCanvas);
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', fitCanvas);
     window.visualViewport.addEventListener('scroll', fitCanvas);
@@ -164,7 +162,6 @@
     Module.canvas.focus();
     const args = ['--disks', '/'];
     if (document.getElementById('interpolate').checked) args.push('--interpolate');
-    if (document.getElementById('widescreen').checked) args.push('--widescreen');
     Module.callMain(args);
   });
 </script>

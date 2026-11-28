@@ -212,11 +212,6 @@ static void glyph_draw_pixels(int16_t x, int16_t y, uint16_t index)
     uint16_t plane;
     int rows;
 
-    plane = guest.glyph_plane_size != 0 ? guest.glyph_plane_size : (img->height + 1) * 2;
-#ifdef GODS_SDL
-    presentation_image(x, y, 16, img->height + 1, data, plane, guest.x_offset & 31,
-                       SCREEN_LAST_ROW, 0, 0);
-#endif
     x += guest.x_offset;
     if (x <= -16 || x >= 352)
         return;
@@ -226,6 +221,7 @@ static void glyph_draw_pixels(int16_t x, int16_t y, uint16_t index)
     rows = rows_to_draw(y, img, 2, &data, &dst, SCREEN_LAST_ROW);
     if (rows == 0)
         return;
+    plane = guest.glyph_plane_size != 0 ? guest.glyph_plane_size : (img->height + 1) * 2;
     if (x < 0)
         blit_image_left(dst, data, plane, x & 15, rows);
     else if (x > 336)
@@ -271,14 +267,6 @@ static void sprite_draw_pixels(int16_t x, int16_t y, uint16_t index)
     uint16_t plane;
     int rows;
 
-#ifdef GODS_SDL
-    /* The normalizer also handles the mixed-endian tail of level 4's door. */
-    if (presentation_recording()) {
-        data = sprite_planes_as_words(data, (unsigned)(img->height + 1) * 16);
-        presentation_image(x, y, 32, img->height + 1, data, (img->height + 1) * 4,
-                           guest.x_offset & 31, (int16_t)sprite_last_row, 0, 0);
-    }
-#endif
     x += guest.x_offset;
     if (x <= -32 || x >= 352)
         return;

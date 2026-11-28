@@ -34,25 +34,15 @@ int host_dev;
 
 static volatile int next_phase = -1;   /* set by a program that asks for the next one */
 static pthread_t program_thread;
-static int wide_mode;
-static uint32_t wide_pixels[WIDE_WIDTH * WIDE_HEIGHT];
 
-/* Development hooks keep the original raster and coordinate system. Only
- * the displayed surface changes; intro/menu artwork remains centred. */
 static void render_frame(int phase, int interpolate, uint32_t *pixels)
 {
-    uint64_t now = interpolate ? SDL_GetTicksNS() : 0;
-    if (phase == PHASE_INTRO) {
+    if (phase == PHASE_INTRO)
         intro_render(pixels);
-        if (wide_mode)
-            presentation_fit_wide(wide_pixels, pixels);
-    } else if (wide_mode) {
-        display_render_widescreen(pixels, wide_pixels, now);
-    } else if (interpolate) {
-        display_render_interpolated(pixels, now);
-    } else {
+    else if (interpolate)
+        display_render_interpolated(pixels, SDL_GetTicksNS());
+    else
         display_render(pixels);
-    }
 }
 
 static void *intro_program(void *unused)
@@ -215,13 +205,11 @@ static void machine_tick(int phase, const struct HostHooks *hooks, int16_t *samp
 
 static int host_present(PixelScale *scale, SDL_Texture *texture, const uint32_t *pixels)
 {
-    int width = wide_mode ? WIDE_WIDTH : SCREEN_W;
-    pixels = wide_mode ? wide_pixels : pixels + DISPLAY_TOP * SCREEN_W;
     const char *operation = "SDL_UpdateTexture";
-    if (!SDL_UpdateTexture(texture, 0, pixels, width * 4))
+    if (!SDL_UpdateTexture(texture, 0, pixels + DISPLAY_TOP * SCREEN_W, SCREEN_W * 4))
         goto error;
     operation = "pixel upscaling";
-    if (!pixel_scale_draw(scale, texture, width))
+    if (!pixel_scale_draw(scale, texture, SCREEN_W))
         goto error;
     operation = "SDL_RenderPresent";
     if (!SDL_RenderPresent(scale->renderer))
@@ -413,14 +401,7 @@ int host_run(const struct HostOptions *options)
         fprintf(stderr, "gods-sdl: --interpolate requires a window\n");
         return 2;
     }
-    wide_mode = options->widescreen;
-    presentation_widescreen(wide_mode);
-    presentation_enable(options->interpolate || wide_mode);
-    const int output_width = wide_mode ? WIDE_WIDTH : SCREEN_W;
-    const int output_height = wide_mode ? WIDE_HEIGHT : DISPLAY_VISIBLE_H;
-    /* a pixel is 5/6 as high as it is wide; the logical size is in sixths of a pixel where that keeps it whole */
-    const int logical_width = wide_mode ? WIDE_WIDTH : SCREEN_W * 6;
-    const int logical_height = wide_mode ? 225 : DISPLAY_VISIBLE_H * 5;
+    presentation_enable(options->interpolate);
 
 #ifndef __EMSCRIPTEN__
     sigaction(SIGSEGV, &sa, 0);
@@ -441,7 +422,7 @@ int host_run(const struct HostOptions *options)
 #ifndef __EMSCRIPTEN__
         flags |= SDL_WINDOW_HIGH_PIXEL_DENSITY;
 #endif
-        window = SDL_CreateWindow("Gods", output_width * scale, wide_mode ? 225 * scale : DISPLAY_VISIBLE_H * 5 * scale / 6, flags);
+        window = SDL_CreateWindow("Gods", SCREEN_W * scale, DISPLAY_VISIBLE_H * 5 * scale / 6, flags);
 #ifdef __EMSCRIPTEN__
         if (window && !web_update_window(window)) {
             fprintf(stderr, "gods-sdl: browser display size: %s\n", SDL_GetError());
@@ -449,14 +430,15 @@ int host_run(const struct HostOptions *options)
         }
 #endif
         renderer = window ? SDL_CreateRenderer(window, 0) : 0;
-        texture = renderer ? SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, output_width, output_height) : 0;
+        texture = renderer ? SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_W, DISPLAY_VISIBLE_H) : 0;
         if (!texture) {
             fprintf(stderr, "SDL window: %s\n", SDL_GetError());
             return 1;
         }
-        if (!SDL_SetRenderLogicalPresentation(renderer, logical_width, logical_height, SDL_LOGICAL_PRESENTATION_LETTERBOX) ||
-            !SDL_UpdateTexture(texture, 0, wide_mode ? wide_pixels : pixels + DISPLAY_TOP * SCREEN_W, output_width * 4) ||
-            !pixel_scale_open(&pixel_scale, renderer, texture, output_width, output_height)) {
+        /* a pixel is 5/6 as high as it is wide: the logical size is in sixths of a pixel, which keeps it whole */
+        if (!SDL_SetRenderLogicalPresentation(renderer, SCREEN_W * 6, DISPLAY_VISIBLE_H * 5, SDL_LOGICAL_PRESENTATION_LETTERBOX) ||
+            !SDL_UpdateTexture(texture, 0, pixels + DISPLAY_TOP * SCREEN_W, SCREEN_W * 4) ||
+            !pixel_scale_open(&pixel_scale, renderer, texture, SCREEN_W, DISPLAY_VISIBLE_H)) {
             fprintf(stderr, "gods-sdl: pixel upscaling setup: %s\n", SDL_GetError());
             return 1;
         }

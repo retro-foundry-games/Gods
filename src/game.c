@@ -3307,14 +3307,10 @@ static void draw_background_pixels(void)
 
 void draw_background(void)
 {
-    int frozen = guest.scroll_ease_phase > 2;
     draw_background_pixels();
 #ifdef GODS_SDL
     presentation_begin(guest.screen_buffer, guest.scroll_x, guest.scroll_y,
                        (uintptr_t)guest.level_map ^ ((uintptr_t)guest.param_index << 24));
-    presentation_world(guest.level_map->tiles, guest.background_tile_graphics, frozen);
-#else
-    (void)frozen;
 #endif
 }
 

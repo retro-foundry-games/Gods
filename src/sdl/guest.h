@@ -37,14 +37,13 @@ extern volatile uint8_t host_cia_raw[0x2000];   /* from $BFD000 */
 /* display.c */
 #define SCREEN_W 320
 #define SCREEN_H 256
-/* the display window (DIWSTRT $3C81, DIWSTOP $04C1) is the 200 lines that start 16 lines into the picture; without --widescreen the window shows only those */
+/* the display window (DIWSTRT $3C81, DIWSTOP $04C1) is the 200 lines that start 16 lines into the picture; the window shows only those */
 #define DISPLAY_TOP 16
 #define DISPLAY_VISIBLE_H 200
 void display_latch_colors(void);                              /* ... and the colours, after the vertical blank interrupt has written them */
 void display_latch(void);                                      /* the display registers as the frame starts (before the vertical blank is signalled) */
 void display_render(uint32_t *pixels);                       /* one frame: the copper list and the bitplanes to ARGB pixels */
 void display_render_interpolated(uint32_t *pixels, uint64_t now);
-void display_render_widescreen(uint32_t *original, uint32_t *wide, uint64_t now);
 
 /* irq.c (the game thread runs the program, the main thread the interrupts) */
 void irq_vbl(void);
