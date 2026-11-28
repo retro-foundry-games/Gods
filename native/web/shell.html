@@ -74,7 +74,7 @@
     gameViewport.style.top = top + 'px';
     gameViewport.style.right = Math.max(0, window.innerWidth - viewportWidth - left) + 'px';
     gameViewport.style.bottom = Math.max(0, window.innerHeight - viewportHeight - top) + 'px';
-    const aspect = document.getElementById('widescreen').checked ? 16 / 9 : 6 / 5;
+    const aspect = document.getElementById('widescreen').checked ? 16 / 9 : 48 / 25;
     const scale = Math.min(viewportWidth / aspect, viewportHeight);
     const density = window.devicePixelRatio * (visible ? visible.scale : 1);
     const width = Math.max(1, Math.min(Math.floor(viewportWidth * density), Math.round(aspect * scale * density)));

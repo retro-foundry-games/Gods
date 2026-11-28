@@ -216,8 +216,7 @@ static void machine_tick(int phase, const struct HostHooks *hooks, int16_t *samp
 static int host_present(PixelScale *scale, SDL_Texture *texture, const uint32_t *pixels)
 {
     int width = wide_mode ? WIDE_WIDTH : SCREEN_W;
-    if (wide_mode)
-        pixels = wide_pixels;
+    pixels = wide_mode ? wide_pixels : pixels + DISPLAY_TOP * SCREEN_W;
     const char *operation = "SDL_UpdateTexture";
     if (!SDL_UpdateTexture(texture, 0, pixels, width * 4))
         goto error;
@@ -418,8 +417,10 @@ int host_run(const struct HostOptions *options)
     presentation_widescreen(wide_mode);
     presentation_enable(options->interpolate || wide_mode);
     const int output_width = wide_mode ? WIDE_WIDTH : SCREEN_W;
-    const int output_height = wide_mode ? WIDE_HEIGHT : SCREEN_H;
-    const int logical_height = wide_mode ? 225 : SCREEN_H * 5 / 6;
+    const int output_height = wide_mode ? WIDE_HEIGHT : DISPLAY_VISIBLE_H;
+    /* a pixel is 5/6 as high as it is wide; the logical size is in sixths of a pixel where that keeps it whole */
+    const int logical_width = wide_mode ? WIDE_WIDTH : SCREEN_W * 6;
+    const int logical_height = wide_mode ? 225 : DISPLAY_VISIBLE_H * 5;
 
 #ifndef __EMSCRIPTEN__
     sigaction(SIGSEGV, &sa, 0);
@@ -435,11 +436,12 @@ int host_run(const struct HostOptions *options)
             fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
             return 1;
         }
-        SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE;
+        /* not resizable: a tiling compositor floats it */
+        SDL_WindowFlags flags = 0;
 #ifndef __EMSCRIPTEN__
         flags |= SDL_WINDOW_HIGH_PIXEL_DENSITY;
 #endif
-        window = SDL_CreateWindow("Gods", output_width * scale, (wide_mode ? logical_height : SCREEN_H) * scale, flags);
+        window = SDL_CreateWindow("Gods", output_width * scale, wide_mode ? 225 * scale : DISPLAY_VISIBLE_H * 5 * scale / 6, flags);
 #ifdef __EMSCRIPTEN__
         if (window && !web_update_window(window)) {
             fprintf(stderr, "gods-sdl: browser display size: %s\n", SDL_GetError());
@@ -452,8 +454,8 @@ int host_run(const struct HostOptions *options)
             fprintf(stderr, "SDL window: %s\n", SDL_GetError());
             return 1;
         }
-        if (!SDL_SetRenderLogicalPresentation(renderer, output_width, logical_height, SDL_LOGICAL_PRESENTATION_LETTERBOX) ||
-            !SDL_UpdateTexture(texture, 0, wide_mode ? wide_pixels : pixels, output_width * 4) ||
+        if (!SDL_SetRenderLogicalPresentation(renderer, logical_width, logical_height, SDL_LOGICAL_PRESENTATION_LETTERBOX) ||
+            !SDL_UpdateTexture(texture, 0, wide_mode ? wide_pixels : pixels + DISPLAY_TOP * SCREEN_W, output_width * 4) ||
             !pixel_scale_open(&pixel_scale, renderer, texture, output_width, output_height)) {
             fprintf(stderr, "gods-sdl: pixel upscaling setup: %s\n", SDL_GetError());
             return 1;
