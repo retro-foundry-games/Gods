@@ -67,7 +67,10 @@ palettes and source resolution. The preferred enlargement is 12x, reduced to
 fit the source renderer's texture-size limits and its 256 MiB GPU / 16 MiB
 software texture budget. Targets are prepared before the game clock starts.
 
-Desktop windows support resizing and high DPI. The browser uses F/A-18's
+Without `--widescreen` the window shows the 200 lines of the game's display
+window (320x200 of the 320x256 picture, a pixel 5/6 as high as it is wide).
+Desktop windows have a fixed size, so a tiling compositor floats them, and
+support high DPI. The browser uses F/A-18's
 physical-pixel sizing and snaps the canvas size and origin to the display grid,
 including resize, fullscreen, high DPI and visual-viewport zoom. SDL renders
 directly to those pixels rather than enlarging a fixed canvas through CSS.
